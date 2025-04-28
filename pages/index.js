@@ -1,0 +1,33 @@
+// pages/index.js
+import Link from 'next/link';
+import { useEffect } from 'react';
+
+export default function HomePage() {
+  useEffect(() => {
+    console.log('Home page loaded');
+  }, []);
+
+  return (
+    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
+      <h1 style={{ textAlign: 'center', marginBottom: '30px' }}>Trading Analysis Platform</h1>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '20px' }}>
+        <div style={{ backgroundColor: '#f8f9fa', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+          <h2>Daily Bias Test</h2>
+          <p>Test your ability to predict market direction based on historical price data.</p>
+          <Link href="/bias-test" style={{ display: 'inline-block', padding: '8px 16px', backgroundColor: '#4CAF50', color: 'white', textDecoration: 'none', borderRadius: '4px', marginTop: '10px' }}>
+            Start Testing
+          </Link>
+        </div>
+
+        <div style={{ backgroundColor: '#f8f9fa', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+          <h2>Charting Exams</h2>
+          <p>Practice technical analysis with interactive charting exercises.</p>
+          <Link href="/charting-exam" style={{ display: 'inline-block', padding: '8px 16px', backgroundColor: '#2196F3', color: 'white', textDecoration: 'none', borderRadius: '4px', marginTop: '10px' }}>
+            Start Learning
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -1,15 +1,22 @@
 {
-  "name": "nodejs",
+  "name": "trading-platform",
   "version": "1.0.0",
-  "description": "",
+  "description": "Trading testing platform",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "dependencies": {
-    "@types/node": "^22.13.11"
+    "axios": "^1.9.0",
+    "coingecko-api": "^1.0.10",
+    "lightweight-charts": "^4.2.3",
+    "next": "^13.4.0",
+    "plotly.js": "^2.35.3",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-plotly.js": "^2.6.0",
+    "uuid": "^11.1.0"
   }
 }
