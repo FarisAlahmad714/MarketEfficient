@@ -1,4 +1,5 @@
 // index.js
+require('dotenv').config(); // Load environment variables
 const { createServer } = require('http');
 const { parse } = require('url');
 const next = require('next');
