@@ -1,9 +1,47 @@
-// components/CandlestickChart.js
+// components/charts/CandlestickChart.js
 import React from 'react';
-import Plot from 'react-plotly.js';
+import dynamic from 'next/dynamic';
 
+// Create a placeholder component to show while the chart is loading
+const LoadingChart = ({ height = 400 }) => (
+  <div 
+    style={{ 
+      height: `${height}px`, 
+      display: 'flex', 
+      alignItems: 'center', 
+      justifyContent: 'center',
+      backgroundColor: '#1e1e1e',
+      color: '#e0e0e0',
+      borderRadius: '4px'
+    }}
+  >
+    Loading chart...
+  </div>
+);
+
+// Export a dynamic component with SSR disabled
 const CandlestickChart = ({ data, height = 400 }) => {
-  if (!data || data.length === 0) return <div>No chart data available</div>;
+  // Early return if no data
+  if (!data || data.length === 0) {
+    return (
+      <div 
+        style={{ 
+          height: `${height}px`, 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center',
+          backgroundColor: '#1e1e1e',
+          color: '#e0e0e0',
+          borderRadius: '4px'
+        }}
+      >
+        No chart data available
+      </div>
+    );
+  }
+
+  // We'll use the client-side only Plot component
+  const Plot = require('react-plotly.js').default;
 
   const chartData = {
     x: data.map(item => new Date(item.date)),
@@ -37,4 +75,11 @@ const CandlestickChart = ({ data, height = 400 }) => {
   );
 };
 
-export default CandlestickChart;
+// This creates a new component with SSR disabled
+export default dynamic(
+  () => Promise.resolve(CandlestickChart),
+  { 
+    ssr: false,
+    loading: LoadingChart
+  }
+);

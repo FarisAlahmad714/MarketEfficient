@@ -1,338 +1,155 @@
-// pages/bias-test/[assetSymbol].js
+// pages/bias-test.js
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/router';
-import axios from 'axios';
 import Link from 'next/link';
-import CandlestickChart from '../../components/charts/CandlestickChart';
+import AssetSelector from '../../components/AssetSelector';
 
 export default function BiasTestPage() {
-  const router = useRouter();
-  const { assetSymbol } = router.query;
-
-  const [testData, setTestData] = useState(null);
-  const [answers, setAnswers] = useState({});
-  const [error, setError] = useState(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [sessionId, setSessionId] = useState(null);
-
   useEffect(() => {
-    if (!assetSymbol) return;
-
-    const fetchTest = async () => {
-      try {
-        console.log(`Fetching test for asset: ${assetSymbol}`);
-        const response = await axios.get(`/api/test/${assetSymbol}`);
-        console.log('Test data:', response.data);
-        setTestData(response.data);
-        setSessionId(response.data.session_id);
-      } catch (err) {
-        console.error('Error fetching test:', err);
-        setError('Failed to load test. Please try again later.');
-      }
-    };
-
-    fetchTest();
-  }, [assetSymbol]);
-
-  const handleAnswerChange = (questionId, prediction) => {
-    console.log(`Selecting ${prediction} for question ${questionId}`);
-    setAnswers((prev) => ({
-      ...prev,
-      [questionId]: prediction,
-    }));
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    console.log('Submitting answers:', answers);
-
-    const questionsCount = testData?.questions?.length || 0;
-    const answeredCount = Object.keys(answers).length;
-
-    console.log(`Answered ${answeredCount} of ${questionsCount} questions`);
-
-    if (answeredCount < questionsCount) {
-      alert(`Please answer all questions before submitting. You've answered ${answeredCount} of ${questionsCount}.`);
-      return;
+    // Add FontAwesome script if it's not already present
+    if (!document.querySelector('#fontawesome-script')) {
+      const script = document.createElement('script');
+      script.id = 'fontawesome-script';
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/js/all.min.js';
+      script.integrity = 'sha512-Tn2m0TIpgVyTzzvmxLNuqbSJH3JP8jm+Cy3hvHrW7ndTDcJ1w5mBiksqDBb8GpE2ksktFvDB/ykZ0mDpsZj20w==';
+      script.crossOrigin = 'anonymous';
+      script.referrerPolicy = 'no-referrer';
+      document.head.appendChild(script);
     }
-
-    try {
-      setSubmitting(true);
-
-      const answersArray = Object.entries(answers).map(([testId, prediction]) => ({
-        test_id: parseInt(testId, 10),
-        prediction,
-      }));
-
-      console.log('Sending answers to API:', answersArray);
-
-      const response = await axios.post(`/api/test/${assetSymbol}?session_id=${sessionId}`, answersArray);
-      console.log('Submission response:', response.data);
-
-      router.push(`/results/${assetSymbol}?session_id=${sessionId}`);
-    } catch (err) {
-      console.error('Error submitting answers:', err);
-      setError('Failed to submit test answers. Please try again.');
-      setSubmitting(false);
-    }
-  };
-
-  const getTimeframeLabel = (tf) => {
-    const labels = {
-      '4h': '4-Hour',
-      daily: 'Daily',
-      weekly: 'Weekly',
-      monthly: 'Monthly',
-      random: 'Mixed',
-    };
-    return labels[tf] || 'Unknown';
-  };
-
-  if (error) {
-    return (
-      <div style={{ maxWidth: '600px', margin: '0 auto', padding: '20px', textAlign: 'center' }}>
-        <div style={{ backgroundColor: '#ffebee', padding: '20px', borderRadius: '8px', color: '#d32f2f' }}>
-          <p>{error}</p>
-          <Link
-            href="/bias-test"
-            style={{
-              display: 'inline-block',
-              padding: '8px 16px',
-              backgroundColor: '#2196F3',
-              color: 'white',
-              textDecoration: 'none',
-              borderRadius: '4px',
-              marginTop: '10px',
-            }}
-          >
-            Back to Asset Selection
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  if (!testData) {
-    return (
-      <div style={{ textAlign: 'center', padding: '50px', color: '#666' }}>
-        Loading test data...
-      </div>
-    );
-  }
-
-  if (!testData.questions || testData.questions.length === 0) {
-    return (
-      <div style={{ maxWidth: '600px', margin: '0 auto', padding: '20px', textAlign: 'center' }}>
-        <div style={{ backgroundColor: '#fff9c4', padding: '20px', borderRadius: '8px', color: '#f57f17' }}>
-          <p>No test questions available for this asset.</p>
-          <Link
-            href="/bias-test"
-            style={{
-              display: 'inline-block',
-              padding: '8px 16px',
-              backgroundColor: '#2196F3',
-              color: 'white',
-              textDecoration: 'none',
-              borderRadius: '4px',
-              marginTop: '10px',
-            }}
-          >
-            Back to Asset Selection
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  console.log('Current answers:', answers);
+  }, []);
 
   return (
-    <div style={{ maxWidth: '800px', margin: '0 auto', padding: '20px' }}>
-      <h1 style={{ textAlign: 'center', marginBottom: '10px' }}>{testData.asset_name} Bias Test</h1>
-
-      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
-        <span
-          style={{
-            display: 'inline-block',
-            backgroundColor: '#2196F3',
-            color: 'white',
-            padding: '6px 12px',
-            borderRadius: '20px',
-            fontSize: '14px',
-          }}
-        >
-          {testData.selected_timeframe === 'random'
-            ? 'Mixed Timeframes'
-            : `${getTimeframeLabel(testData.selected_timeframe)} Timeframe`}
-        </span>
-      </div>
-
-      <form onSubmit={handleSubmit}>
-        {testData.questions.map((question, index) => (
-          <div
-            key={question.id}
-            style={{
-              marginBottom: '30px',
-              backgroundColor: 'white',
-              borderRadius: '8px',
-              padding: '20px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-            }}
-          >
-            <h3 style={{ borderBottom: '1px solid #eee', paddingBottom: '10px', marginBottom: '15px' }}>
-              Question {index + 1}
-              <span style={{ fontSize: '14px', fontWeight: 'normal', color: '#666', marginLeft: '5px' }}>
-                - {getTimeframeLabel(question.timeframe)} Timeframe
-              </span>
-            </h3>
-
-            <div style={{ marginBottom: '15px', backgroundColor: '#f8f9fa', padding: '15px', borderRadius: '8px' }}>
-              {question.ohlc_data && question.ohlc_data.length > 0 ? (
-                <>
-                  {console.log(`Chart data for question ${question.id}:`, question.ohlc_data)}
-                  <CandlestickChart
-                    data={question.ohlc_data}
-                    title={`Chart for ${testData.asset_name} - ${getTimeframeLabel(question.timeframe)}`}
-                    height={300}
-                  />
-                </>
-              ) : (
-                <div
-                  style={{
-                    height: '300px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#666',
-                  }}
-                >
-                  No chart data available
-                </div>
-              )}
-            </div>
-
-            <div style={{ marginBottom: '15px', backgroundColor: '#f8f9fa', padding: '15px', borderRadius: '8px' }}>
-              <p style={{ marginTop: 0, fontWeight: 'bold' }}>
-                OHLC for {new Date(question.date).toLocaleDateString()}:
-              </p>
-              <ul
-                style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', listStyle: 'none', padding: 0, margin: 0 }}
-              >
-                <li
-                  style={{
-                    backgroundColor: 'white',
-                    padding: '8px 12px',
-                    borderRadius: '4px',
-                    boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
-                  }}
-                >
-                  Open: {question.ohlc?.open?.toFixed(2) || 'N/A'}
-                </li>
-                <li
-                  style={{
-                    backgroundColor: 'white',
-                    padding: '8px 12px',
-                    borderRadius: '4px',
-                    boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
-                  }}
-                >
-                  High: {question.ohlc?.high?.toFixed(2) || 'N/A'}
-                </li>
-                <li
-                  style={{
-                    backgroundColor: 'white',
-                    padding: '8px 12px',
-                    borderRadius: '4px',
-                    boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
-                  }}
-                >
-                  Low: {question.ohlc?.low?.toFixed(2) || 'N/A'}
-                </li>
-                <li
-                  style={{
-                    backgroundColor: 'white',
-                    padding: '8px 12px',
-                    borderRadius: '4px',
-                    boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
-                  }}
-                >
-                  Close: {question.ohlc?.close?.toFixed(2) || 'N/A'}
-                </li>
-              </ul>
-            </div>
-
-            <div>
-              <p style={{ fontWeight: 'bold', marginBottom: '10px' }}>
-                Predict the next {question.timeframe} sentiment:
-              </p>
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <label
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    padding: '10px 15px',
-                    backgroundColor: answers[question.id] === 'Bullish' ? '#e8f5e9' : '#f8f9fa',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    border: answers[question.id] === 'Bullish' ? '1px solid #4CAF50' : '1px solid transparent',
-                  }}
-                >
-                  <input
-                    type="radio"
-                    name={`prediction_${question.id}`}
-                    value="Bullish"
-                    checked={answers[question.id] === 'Bullish'}
-                    onChange={() => handleAnswerChange(question.id, 'Bullish')}
-                    style={{ marginRight: '8px' }}
-                  />
-                  Bullish
-                </label>
-                <label
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    padding: '10px 15px',
-                    backgroundColor: answers[question.id] === 'Bearish' ? '#ffebee' : '#f8f9fa',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    border: answers[question.id] === 'Bearish' ? '1px solid #F44336' : '1px solid transparent',
-                  }}
-                >
-                  <input
-                    type="radio"
-                    name={`prediction_${question.id}`}
-                    value="Bearish"
-                    checked={answers[question.id] === 'Bearish'}
-                    onChange={() => handleAnswerChange(question.id, 'Bearish')}
-                    style={{ marginRight: '8px' }}
-                  />
-                  Bearish
-                </label>
-              </div>
-            </div>
-          </div>
-        ))}
-
-        <button
-          type="submit"
-          disabled={submitting}
-          style={{
-            display: 'block',
-            width: '100%',
-            padding: '15px',
-            backgroundColor: submitting ? '#cccccc' : '#4CAF50',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            fontSize: '16px',
+    <div style={{
+      minHeight: '100vh',
+      background: 'linear-gradient(135deg, #f5f7fa 0%, #e4efe9 100%)'
+    }}>
+      <header style={{
+        background: 'white',
+        boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
+        padding: '20px 0'
+      }}>
+        <div style={{
+          maxWidth: '1200px',
+          margin: '0 auto',
+          padding: '0 20px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <Link href="/" style={{
+            fontSize: '24px',
             fontWeight: 'bold',
-            cursor: submitting ? 'not-allowed' : 'pointer',
-          }}
-        >
-          {submitting ? 'Submitting...' : 'Submit'}
-        </button>
-      </form>
+            color: '#333',
+            textDecoration: 'none',
+            display: 'flex',
+            alignItems: 'center'
+          }}>
+            <span style={{
+              display: 'inline-block',
+              width: '32px',
+              height: '32px',
+              background: 'linear-gradient(135deg, #4CAF50, #2196F3)',
+              borderRadius: '8px',
+              marginRight: '10px'
+            }}></span>
+            Trading Platform
+          </Link>
+
+          <nav>
+            <ul style={{
+              display: 'flex',
+              listStyle: 'none',
+              margin: 0,
+              padding: 0,
+              gap: '20px'
+            }}>
+              <li>
+                <Link href="/" style={{
+                  color: '#555',
+                  textDecoration: 'none',
+                  fontWeight: '500',
+                  padding: '8px 0',
+                  transition: 'color 0.2s ease'
+                }}>
+                  Home
+                </Link>
+              </li>
+              <li>
+                <Link href="/bias-test" style={{
+                  color: '#2196F3',
+                  textDecoration: 'none',
+                  fontWeight: '600',
+                  padding: '8px 0',
+                  borderBottom: '2px solid #2196F3'
+                }}>
+                  Bias Test
+                </Link>
+              </li>
+            </ul>
+          </nav>
+        </div>
+      </header>
+
+      <main>
+        <AssetSelector />
+      </main>
+
+      <footer style={{
+        backgroundColor: '#fff',
+        padding: '40px 0',
+        borderTop: '1px solid #eee',
+        marginTop: '60px'
+      }}>
+        <div style={{
+          maxWidth: '1200px',
+          margin: '0 auto',
+          padding: '0 20px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          color: '#666'
+        }}>
+          <div>
+            <p style={{ margin: 0 }}>© 2025 Trading Platform. All rights reserved.</p>
+          </div>
+          <div>
+            <ul style={{
+              display: 'flex',
+              listStyle: 'none',
+              margin: 0,
+              padding: 0,
+              gap: '15px'
+            }}>
+              <li>
+                <a href="#" style={{
+                  color: '#666',
+                  fontSize: '24px',
+                  transition: 'color 0.2s ease'
+                }}>
+                  <i className="fab fa-twitter"></i>
+                </a>
+              </li>
+              <li>
+                <a href="#" style={{
+                  color: '#666',
+                  fontSize: '24px',
+                  transition: 'color 0.2s ease'
+                }}>
+                  <i className="fab fa-linkedin"></i>
+                </a>
+              </li>
+              <li>
+                <a href="#" style={{
+                  color: '#666',
+                  fontSize: '24px',
+                  transition: 'color 0.2s ease'
+                }}>
+                  <i className="fab fa-github"></i>
+                </a>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
