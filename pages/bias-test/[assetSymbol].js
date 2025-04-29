@@ -1,9 +1,26 @@
-// pages/bias-test.js
+// pages/bias-test/[assetSymbol].js
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/router';
+import axios from 'axios';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import AssetSelector from '../../components/AssetSelector';
+import LoadingScreen from '../../components/LoadingScreen';
 
-export default function BiasTestPage() {
+// Import CandlestickChart with SSR disabled
+const CandlestickChart = dynamic(
+  () => import('../../components/charts/CandlestickChart'),
+  { ssr: false }
+);
+
+export default function AssetTestPage() {
+  const router = useRouter();
+  const { assetSymbol, timeframe } = router.query;
+  const [testData, setTestData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [userAnswers, setUserAnswers] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   useEffect(() => {
     // Add FontAwesome script if it's not already present
     if (!document.querySelector('#fontawesome-script')) {
@@ -17,139 +34,224 @@ export default function BiasTestPage() {
     }
   }, []);
 
-  return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #f5f7fa 0%, #e4efe9 100%)'
-    }}>
-      <header style={{
-        background: 'white',
-        boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
-        padding: '20px 0'
-      }}>
-        <div style={{
-          maxWidth: '1200px',
-          margin: '0 auto',
-          padding: '0 20px',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
-        }}>
-          <Link href="/" style={{
-            fontSize: '24px',
-            fontWeight: 'bold',
-            color: '#333',
-            textDecoration: 'none',
-            display: 'flex',
-            alignItems: 'center'
-          }}>
-            <span style={{
+  useEffect(() => {
+    if (!assetSymbol || !timeframe) {
+      return;
+    }
+
+    const fetchTestData = async () => {
+      try {
+        setLoading(true);
+        const response = await axios.get(`/api/test/${assetSymbol}?timeframe=${timeframe}`);
+        setTestData(response.data);
+        // Initialize userAnswers with empty values
+        const initialAnswers = {};
+        response.data.questions.forEach(q => {
+          initialAnswers[q.id] = '';
+        });
+        setUserAnswers(initialAnswers);
+      } catch (err) {
+        console.error('Error fetching test data:', err);
+        setError('Failed to load test data. Please try again later.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTestData();
+  }, [assetSymbol, timeframe]);
+
+  const handleAnswerSelect = (questionId, prediction) => {
+    setUserAnswers(prev => ({
+      ...prev,
+      [questionId]: prediction
+    }));
+  };
+
+  const handleSubmitTest = async () => {
+    if (!testData || !testData.session_id) return;
+  
+    // Check if all questions are answered
+    const unansweredQuestions = Object.values(userAnswers).filter(v => !v).length;
+    if (unansweredQuestions > 0) {
+      alert(`Please answer all questions before submitting. ${unansweredQuestions} question(s) remaining.`);
+      return;
+    }
+  
+    setIsSubmitting(true);
+    
+    try {
+      // Format answers for submission
+      const formattedAnswers = Object.keys(userAnswers).map(id => ({
+        test_id: parseInt(id),
+        prediction: userAnswers[id]
+      }));
+  
+      // Make sure we properly log what we're submitting
+      console.log("Submitting answers:", formattedAnswers);
+      console.log("Session ID:", testData.session_id);
+  
+      // Submit answers
+      const response = await axios.post(`/api/test/${assetSymbol}?session_id=${testData.session_id}`, formattedAnswers);
+      console.log("Submission response:", response.data);
+      
+      // Redirect to results page with the same session ID
+      router.push(`/results/${assetSymbol}?session_id=${testData.session_id}`);
+    } catch (err) {
+      console.error('Error submitting test:', err);
+      alert('Failed to submit test. Please try again.');
+      setIsSubmitting(false);
+    }
+  };
+
+  if (loading) {
+    return <LoadingScreen message="Loading test data..." />;
+  }
+
+  if (error) {
+    return (
+      <div style={{ maxWidth: '800px', margin: '0 auto', padding: '20px', textAlign: 'center' }}>
+        <div style={{ backgroundColor: '#ffebee', padding: '20px', borderRadius: '8px', color: '#d32f2f' }}>
+          <p>{error}</p>
+          <Link
+            href="/bias-test"
+            style={{
               display: 'inline-block',
-              width: '32px',
-              height: '32px',
-              background: 'linear-gradient(135deg, #4CAF50, #2196F3)',
-              borderRadius: '8px',
-              marginRight: '10px'
-            }}></span>
-            Trading Platform
+              padding: '8px 16px',
+              backgroundColor: '#2196F3',
+              color: 'white',
+              textDecoration: 'none',
+              borderRadius: '4px',
+              marginTop: '10px',
+            }}
+          >
+            Back to Asset Selection
           </Link>
-
-          <nav>
-            <ul style={{
-              display: 'flex',
-              listStyle: 'none',
-              margin: 0,
-              padding: 0,
-              gap: '20px'
-            }}>
-              <li>
-                <Link href="/" style={{
-                  color: '#555',
-                  textDecoration: 'none',
-                  fontWeight: '500',
-                  padding: '8px 0',
-                  transition: 'color 0.2s ease'
-                }}>
-                  Home
-                </Link>
-              </li>
-              <li>
-                <Link href="/bias-test" style={{
-                  color: '#2196F3',
-                  textDecoration: 'none',
-                  fontWeight: '600',
-                  padding: '8px 0',
-                  borderBottom: '2px solid #2196F3'
-                }}>
-                  Bias Test
-                </Link>
-              </li>
-            </ul>
-          </nav>
         </div>
-      </header>
+      </div>
+    );
+  }
 
-      <main>
-        <AssetSelector />
-      </main>
+  if (!testData) {
+    return (
+      <div style={{ maxWidth: '800px', margin: '0 auto', padding: '20px', textAlign: 'center' }}>
+        <div style={{ backgroundColor: '#fff9c4', padding: '20px', borderRadius: '8px', color: '#f57f17' }}>
+          <p>Test data not available. Please return to the asset selection page.</p>
+          <Link
+            href="/bias-test"
+            style={{
+              display: 'inline-block',
+              padding: '8px 16px',
+              backgroundColor: '#2196F3',
+              color: 'white',
+              textDecoration: 'none',
+              borderRadius: '4px',
+              marginTop: '10px',
+            }}
+          >
+            Back to Asset Selection
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
-      <footer style={{
-        backgroundColor: '#fff',
-        padding: '40px 0',
-        borderTop: '1px solid #eee',
-        marginTop: '60px'
-      }}>
-        <div style={{
-          maxWidth: '1200px',
-          margin: '0 auto',
-          padding: '0 20px',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          color: '#666'
+  return (
+    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
+      <h1 style={{ textAlign: 'center', marginBottom: '30px' }}>
+        {testData.asset_name} Bias Test - {testData.selected_timeframe.toUpperCase()} Timeframe
+      </h1>
+      
+      <div style={{ backgroundColor: '#f5f5f5', padding: '20px', borderRadius: '8px', marginBottom: '30px' }}>
+        <p style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '18px', marginBottom: '10px' }}>
+          Instructions
+        </p>
+        <p style={{ textAlign: 'center' }}>
+          For each chart below, analyze the price pattern and predict if the market will be Bullish or Bearish after the last candle shown.
+        </p>
+      </div>
+      
+      {testData.questions.map((question, index) => (
+        <div key={question.id} style={{ 
+          backgroundColor: 'white', 
+          padding: '20px', 
+          borderRadius: '8px', 
+          boxShadow: '0 2px 8px rgba(0,0,0,0.1)', 
+          marginBottom: '30px' 
         }}>
-          <div>
-            <p style={{ margin: 0 }}>© 2025 Trading Platform. All rights reserved.</p>
+          <h2 style={{ marginBottom: '20px' }}>Chart {index + 1}</h2>
+          
+          <div style={{ marginBottom: '20px' }}>
+            {question.ohlc_data && question.ohlc_data.length > 0 ? (
+              <CandlestickChart data={question.ohlc_data} height={400} />
+            ) : (
+              <div style={{ height: '400px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666' }}>
+                No chart data available
+              </div>
+            )}
           </div>
-          <div>
-            <ul style={{
-              display: 'flex',
-              listStyle: 'none',
-              margin: 0,
-              padding: 0,
-              gap: '15px'
-            }}>
-              <li>
-                <a href="#" style={{
-                  color: '#666',
-                  fontSize: '24px',
-                  transition: 'color 0.2s ease'
-                }}>
-                  <i className="fab fa-twitter"></i>
-                </a>
-              </li>
-              <li>
-                <a href="#" style={{
-                  color: '#666',
-                  fontSize: '24px',
-                  transition: 'color 0.2s ease'
-                }}>
-                  <i className="fab fa-linkedin"></i>
-                </a>
-              </li>
-              <li>
-                <a href="#" style={{
-                  color: '#666',
-                  fontSize: '24px',
-                  transition: 'color 0.2s ease'
-                }}>
-                  <i className="fab fa-github"></i>
-                </a>
-              </li>
-            </ul>
+          
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '15px', marginTop: '20px' }}>
+            <button
+              onClick={() => handleAnswerSelect(question.id, 'Bullish')}
+              style={{
+                flex: 1,
+                padding: '15px',
+                backgroundColor: userAnswers[question.id] === 'Bullish' ? '#4CAF50' : '#f5f5f5',
+                color: userAnswers[question.id] === 'Bullish' ? 'white' : '#333',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontWeight: 'bold',
+                fontSize: '16px',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <i className="fas fa-chart-line" style={{ marginRight: '8px' }}></i>
+              Bullish
+            </button>
+            
+            <button
+              onClick={() => handleAnswerSelect(question.id, 'Bearish')}
+              style={{
+                flex: 1,
+                padding: '15px',
+                backgroundColor: userAnswers[question.id] === 'Bearish' ? '#F44336' : '#f5f5f5',
+                color: userAnswers[question.id] === 'Bearish' ? 'white' : '#333',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontWeight: 'bold',
+                fontSize: '16px',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <i className="fas fa-chart-line fa-flip-vertical" style={{ marginRight: '8px' }}></i>
+              Bearish
+            </button>
           </div>
         </div>
-      </footer>
+      ))}
+      
+      <div style={{ display: 'flex', justifyContent: 'center', marginTop: '30px' }}>
+        <button
+          onClick={handleSubmitTest}
+          disabled={isSubmitting}
+          style={{
+            padding: '15px 40px',
+            backgroundColor: '#2196F3',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            cursor: isSubmitting ? 'default' : 'pointer',
+            fontWeight: 'bold',
+            fontSize: '18px',
+            opacity: isSubmitting ? 0.7 : 1
+          }}
+        >
+          {isSubmitting ? 'Submitting...' : 'Submit Answers'}
+        </button>
+      </div>
     </div>
   );
 }

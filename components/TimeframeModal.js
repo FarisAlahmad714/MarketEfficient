@@ -1,7 +1,120 @@
 // components/TimeframeModal.js
 import React from 'react';
+import styled from 'styled-components';
+import { FaTimes } from 'react-icons/fa';
 
-const TimeframeModal = ({ assetName, onSelect, onClose }) => {
+const ModalOverlay = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+`;
+
+const ModalContainer = styled.div`
+  background: ${props => props.isDarkMode ? '#1a1a2e' : 'white'};
+  border-radius: 12px;
+  width: 90%;
+  max-width: 800px;
+  max-height: 90vh;
+  overflow: auto;
+  box-shadow: 0 5px 25px rgba(0, 0, 0, ${props => props.isDarkMode ? '0.4' : '0.25'});
+  transition: background-color 0.3s ease;
+`;
+
+const ModalHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 25px;
+  border-bottom: 1px solid ${props => props.isDarkMode ? '#2a2a3a' : '#eee'};
+  transition: border-color 0.3s ease;
+`;
+
+const ModalTitle = styled.h2`
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: ${props => props.isDarkMode ? '#e1e1e1' : 'inherit'};
+  transition: color 0.3s ease;
+`;
+
+const CloseButton = styled.button`
+  background: none;
+  border: none;
+  font-size: 1.8rem;
+  cursor: pointer;
+  color: ${props => props.isDarkMode ? '#b0b0b0' : '#666'};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  transition: background 0.2s ease, color 0.3s ease;
+
+  &:hover {
+    background: ${props => props.isDarkMode ? 'rgba(255, 255, 255, 0.1)' : '#f5f5f5'};
+    color: ${props => props.isDarkMode ? '#fff' : '#333'};
+  }
+`;
+
+const TimeframeGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 20px;
+  padding: 25px;
+`;
+
+const TimeframeCard = styled.div`
+  background: ${props => props.isDarkMode ? '#242438' : '#f9f9fa'};
+  border-radius: 12px;
+  padding: 25px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 2px solid transparent;
+  
+  &:hover {
+    background: ${props => props.isDarkMode ? '#2e2e48' : '#f0f4fa'};
+    transform: translateY(-3px);
+    box-shadow: 0 8px 15px rgba(0, 0, 0, ${props => props.isDarkMode ? '0.2' : '0.08'});
+    border-color: #2196F3;
+  }
+`;
+
+const IconContainer = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 70px;
+  height: 70px;
+  background: linear-gradient(135deg, rgba(33, 150, 243, 0.1) 0%, rgba(33, 150, 243, 0.2) 100%);
+  border-radius: 50%;
+  margin: 0 auto 20px;
+`;
+
+const TimeframeTitle = styled.h3`
+  margin: 0 0 12px 0;
+  font-weight: 600;
+  color: ${props => props.isDarkMode ? '#e1e1e1' : '#333'};
+  transition: color 0.3s ease;
+`;
+
+const TimeframeDescription = styled.p`
+  margin: 0;
+  font-size: 14px;
+  color: ${props => props.isDarkMode ? '#b0b0b0' : '#666'};
+  line-height: 1.5;
+  transition: color 0.3s ease;
+`;
+
+const TimeframeModal = ({ assetName, onSelect, onClose, isDarkMode }) => {
   const timeframes = [
     {
       id: 'random',
@@ -36,101 +149,28 @@ const TimeframeModal = ({ assetName, onSelect, onClose }) => {
   ];
 
   return (
-    <div style={{ 
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.7)',
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      zIndex: 1000,
-    }}>
-      <div style={{ 
-        background: 'white',
-        borderRadius: '12px',
-        width: '90%',
-        maxWidth: '800px',
-        maxHeight: '90vh',
-        overflow: 'auto',
-        boxShadow: '0 5px 25px rgba(0,0,0,0.25)',
-      }}>
-        <div style={{ 
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          padding: '20px 25px',
-          borderBottom: '1px solid #eee',
-        }}>
-          <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: '600' }}>
+    <ModalOverlay>
+      <ModalContainer isDarkMode={isDarkMode}>
+        <ModalHeader isDarkMode={isDarkMode}>
+          <ModalTitle isDarkMode={isDarkMode}>
             Select Timeframe for {assetName}
-          </h2>
-          <button 
+          </ModalTitle>
+          <CloseButton 
             onClick={onClose}
-            style={{ 
-              background: 'none',
-              border: 'none',
-              fontSize: '1.8rem',
-              cursor: 'pointer',
-              color: '#666',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '40px',
-              height: '40px',
-              borderRadius: '50%',
-              transition: 'background 0.2s ease',
-            }}
-            onMouseOver={(e) => e.currentTarget.style.background = '#f5f5f5'}
-            onMouseOut={(e) => e.currentTarget.style.background = 'none'}
+            isDarkMode={isDarkMode}
+            aria-label="Close modal"
           >
-            &times;
-          </button>
-        </div>
-        <div style={{ 
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
-          gap: '20px',
-          padding: '25px',
-        }}>
+            <FaTimes />
+          </CloseButton>
+        </ModalHeader>
+        <TimeframeGrid>
           {timeframes.map(timeframe => (
-            <div 
+            <TimeframeCard 
               key={timeframe.id}
               onClick={() => onSelect(timeframe.id)}
-              style={{ 
-                background: '#f9f9fa',
-                borderRadius: '12px',
-                padding: '25px',
-                textAlign: 'center',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                border: '2px solid transparent',
-              }}
-              onMouseOver={(e) => {
-                e.currentTarget.style.background = '#f0f4fa';
-                e.currentTarget.style.transform = 'translateY(-3px)';
-                e.currentTarget.style.boxShadow = '0 8px 15px rgba(0,0,0,0.08)';
-                e.currentTarget.style.borderColor = '#2196F3';
-              }}
-              onMouseOut={(e) => {
-                e.currentTarget.style.background = '#f9f9fa';
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = 'none';
-                e.currentTarget.style.borderColor = 'transparent';
-              }}
+              isDarkMode={isDarkMode}
             >
-              <div style={{ 
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                width: '70px',
-                height: '70px',
-                background: 'linear-gradient(135deg, rgba(33, 150, 243, 0.1) 0%, rgba(33, 150, 243, 0.2) 100%)',
-                borderRadius: '50%',
-                margin: '0 auto 20px',
-              }}>
+              <IconContainer>
                 <i 
                   className={`fas ${timeframe.icon}`} 
                   style={{ 
@@ -139,18 +179,18 @@ const TimeframeModal = ({ assetName, onSelect, onClose }) => {
                     filter: 'drop-shadow(0 2px 3px rgba(33, 150, 243, 0.3))'
                   }}
                 ></i>
-              </div>
-              <h3 style={{ margin: '0 0 12px 0', fontWeight: '600', color: '#333' }}>
+              </IconContainer>
+              <TimeframeTitle isDarkMode={isDarkMode}>
                 {timeframe.name}
-              </h3>
-              <p style={{ margin: 0, fontSize: '14px', color: '#666', lineHeight: 1.5 }}>
+              </TimeframeTitle>
+              <TimeframeDescription isDarkMode={isDarkMode}>
                 {timeframe.description}
-              </p>
-            </div>
+              </TimeframeDescription>
+            </TimeframeCard>
           ))}
-        </div>
-      </div>
-    </div>
+        </TimeframeGrid>
+      </ModalContainer>
+    </ModalOverlay>
   );
 };
 

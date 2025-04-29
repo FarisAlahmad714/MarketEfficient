@@ -1,17 +1,287 @@
-// components/AssetSelector.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, memo } from 'react';
 import { useRouter } from 'next/router';
 import axios from 'axios';
-import TimeframeModal from './TimeframeModal';
+import styled from 'styled-components';
+import { motion, AnimatePresence } from 'framer-motion';
+import PropTypes from 'prop-types';
 import Image from 'next/image';
+import {
+  FaBitcoin,
+  FaEthereum,
+  FaApple,
+  FaCar,
+  FaMicrochip,
+  FaCoins,
+  FaChartLine,
+  FaArrowRight,
+  FaSearch,
+} from 'react-icons/fa';
+import { useTheme } from '../contexts/ThemeContext';
+import TimeframeModal from './TimeframeModal';
 
+// Styled Components
+const Container = styled.div`
+  padding: 40px 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+  font-family: 'Inter', sans-serif;
+`;
+
+const Header = styled.div`
+  text-align: center;
+  margin-bottom: 50px;
+`;
+
+const Title = styled.h1`
+  font-size: 2.8rem;
+  margin-bottom: 15px;
+  background: linear-gradient(90deg, #00c4ff, #00ff88);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+`;
+
+const Highlight = styled.span`
+  color: #4CAF50;
+  position: relative;
+  z-index: 1;
+`;
+
+const Subtitle = styled.p`
+  color: ${props => props.isDarkMode ? '#b0b0b0' : '#b0b0b0'};
+  font-size: 1.2rem;
+  max-width: 700px;
+  margin: 0 auto;
+  line-height: 1.7;
+`;
+
+const SearchBar = styled.div`
+  display: flex;
+  align-items: center;
+  max-width: 500px;
+  margin: 20px auto;
+  padding: 12px 20px;
+  background: ${props => props.isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.1)'};
+  border-radius: 30px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, ${props => props.isDarkMode ? '0.2' : '0.1'});
+  transition: background 0.3s ease, box-shadow 0.3s ease;
+`;
+
+const SearchInput = styled.input`
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: ${props => props.isDarkMode ? '#fff' : '#fff'};
+  font-size: 1rem;
+  outline: none;
+  &::placeholder {
+    color: ${props => props.isDarkMode ? '#777' : '#a0a0a0'};
+  }
+`;
+
+const Grid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  gap: 30px;
+  margin-bottom: 60px;
+`;
+
+const Card = styled(motion.div)`
+  height: 450px;
+  border-radius: 15px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 15px 30px rgba(0, 0, 0, ${props => props.isDarkMode ? '0.4' : '0.2'});
+  cursor: pointer;
+  transition: box-shadow 0.3s ease;
+`;
+
+const Overlay = styled.div`
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: ${props => props.isDarkMode 
+    ? 'linear-gradient(rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.95))' 
+    : 'linear-gradient(rgba(10, 10, 10, 0.7), rgba(10, 10, 10, 0.9))'};
+  z-index: 1;
+  transition: transform 0.5s ease, background 0.3s ease;
+
+  ${Card}:hover & {
+    transform: scale(1.1);
+  }
+`;
+
+const CardContent = styled.div`
+  position: relative;
+  z-index: 2;
+  padding: 30px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 100%;
+`;
+
+const IconWrapper = styled.div`
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.8rem;
+  color: white;
+  margin-bottom: 20px;
+`;
+
+const AssetName = styled.h3`
+  font-size: 1.6rem;
+  color: white;
+  margin-bottom: 15px;
+`;
+
+const AssetType = styled.div`
+  display: inline-block;
+  padding: 6px 14px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 25px;
+  font-size: 0.9rem;
+  color: #fff;
+  margin-bottom: 20px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  display: flex;
+  align-items: center;
+`;
+
+const AssetTypeIcon = styled.span`
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  margin-right: 5px;
+`;
+
+const Description = styled.p`
+  color: #b0b0b0;
+  margin-bottom: 20px;
+  line-height: 1.5;
+  flex-grow: 0.5;
+`;
+
+const TimeframeIcon = styled(FaChartLine)`
+  margin-right: 8px;
+`;
+
+const TimeframeNote = styled.div`
+  color: #888;
+  font-size: 0.9rem;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+`;
+
+const StartButton = styled(motion.button)`
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 25px;
+  color: white;
+  border-radius: 50px;
+  text-decoration: none;
+  font-weight: bold;
+  border: none;
+  cursor: pointer;
+  width: 100%;
+  margin-top: auto;
+  transition: all 0.3s ease;
+
+  &:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+  }
+
+  & i {
+    margin-left: 10px;
+    transition: transform 0.3s ease;
+  }
+
+  &:hover i {
+    transform: translateX(5px);
+  }
+`;
+
+const Loader = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 400px;
+  color: ${props => props.isDarkMode ? '#a0a0a0' : '#a0a0a0'};
+`;
+
+const Spinner = styled.div`
+  width: 70px;
+  height: 70px;
+  border: 5px solid ${props => props.isDarkMode ? '#333' : '#f3f3f3'};
+  border-top: 5px solid #00c4ff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 25px;
+
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+`;
+
+const ErrorContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px;
+  text-align: center;
+  color: #ff4d4d;
+  min-height: 400px;
+`;
+
+const ErrorIcon = styled.div`
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  background: rgba(255, 77, 77, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 25px;
+`;
+
+const RetryButton = styled.button`
+  margin-top: 25px;
+  padding: 14px 30px;
+  background: #00c4ff;
+  color: #fff;
+  border: none;
+  border-radius: 30px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+`;
+
+// AssetSelector Component
 const AssetSelector = () => {
   const [assets, setAssets] = useState([]);
+  const [filteredAssets, setFilteredAssets] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showTimeframeModal, setShowTimeframeModal] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState(null);
   const router = useRouter();
+  const { isDarkMode } = useTheme();
 
   useEffect(() => {
     const fetchAssets = async () => {
@@ -19,6 +289,7 @@ const AssetSelector = () => {
         setLoading(true);
         const response = await axios.get('/api/assets');
         setAssets(response.data);
+        setFilteredAssets(response.data);
         setError(null);
       } catch (err) {
         console.error('Error fetching assets:', err);
@@ -31,6 +302,15 @@ const AssetSelector = () => {
     fetchAssets();
   }, []);
 
+  useEffect(() => {
+    const filtered = assets.filter(
+      (asset) =>
+        asset.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        asset.symbol.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+    setFilteredAssets(filtered);
+  }, [searchQuery, assets]);
+
   const handleAssetSelect = (asset) => {
     setSelectedAsset(asset);
     setShowTimeframeModal(true);
@@ -38,7 +318,9 @@ const AssetSelector = () => {
 
   const handleTimeframeSelect = (timeframe) => {
     if (selectedAsset) {
-      router.push(`/bias-test/${selectedAsset.symbol}?timeframe=${timeframe}&random=${Math.random()}`);
+      router.push(
+        `/bias-test/${selectedAsset.symbol}?timeframe=${timeframe}&random=${Math.random()}`
+      );
     }
   };
 
@@ -46,284 +328,239 @@ const AssetSelector = () => {
     setShowTimeframeModal(false);
   };
 
-  // Get gradient colors based on asset type
   const getGradient = (type, symbol) => {
     if (type === 'crypto') {
-      if (symbol === 'btc') return 'linear-gradient(135deg, #f2a900 0%, #e09200 100%)';
-      if (symbol === 'eth') return 'linear-gradient(135deg, #627eea 0%, #505dac 100%)';
-      if (symbol === 'sol') return 'linear-gradient(135deg, #9945ff 0%, #6e29c8 100%)';
-      if (symbol === 'bnb') return 'linear-gradient(135deg, #f3ba2f 0%, #d69e1c 100%)';
-      return 'linear-gradient(135deg, #4CAF50 0%, #2196F3 100%)';
+      if (symbol === 'btc') return 'linear-gradient(135deg, #F7931A, #FF9900)';
+      if (symbol === 'eth') return 'linear-gradient(135deg, #627EEA, #829FFF)';
+      if (symbol === 'sol') return 'linear-gradient(135deg, #00FFA3, #DC1FFF)';
+      if (symbol === 'bnb') return 'linear-gradient(135deg, #f0b90b, #d4a017)';
+      return 'linear-gradient(135deg, #00c4ff, #0077cc)';
     } else if (type === 'equity') {
-      if (symbol === 'aapl') return 'linear-gradient(135deg, #a2aaad 0%, #818181 100%)';
-      if (symbol === 'tsla') return 'linear-gradient(135deg, #e82127 0%, #b71d23 100%)';
-      if (symbol === 'nvda') return 'linear-gradient(135deg, #76b900 0%, #5c9300 100%)';
-      return 'linear-gradient(135deg, #3f51b5 0%, #2196F3 100%)';
+      if (symbol === 'aapl') return 'linear-gradient(135deg, #A2AAAD, #000000)';
+      if (symbol === 'tsla') return 'linear-gradient(135deg, #E82127, #8B0000)';
+      if (symbol === 'nvda') return 'linear-gradient(135deg, #76B900, #1A5200)';
+      if (symbol === 'gld') return 'linear-gradient(135deg, #FFD700, #B8860B)';
+      return 'linear-gradient(135deg, #3366cc, #1a3399)';
     }
-    return 'linear-gradient(135deg, #9C27B0 0%, #673AB7 100%)';
+    return 'linear-gradient(135deg, #cc33ff, #9933cc)';
   };
 
-  // Get background image URLs for each asset
-  const getBackgroundImage = (type, symbol) => {
-    // In a production app, you would likely have actual image assets
-    // Here we're using a CSS gradient as a fallback
-    return `linear-gradient(rgba(10, 10, 10, 0.8), rgba(10, 10, 10, 0.9))`;
-  };
+  const getImageSrc = (type, symbol) => {
+    let imageUrl = '';
 
-  // Get icon class based on asset type and symbol
-  const getIconClass = (type, symbol) => {
     if (type === 'crypto') {
-      if (symbol === 'btc') return 'fa-bitcoin';
-      if (symbol === 'eth') return 'fa-ethereum';
-      return 'fa-coins';
+      if (symbol === 'btc') {
+        imageUrl = 'https://images.unsplash.com/photo-1516245834210-c4c142787335?auto=format&w=800&q=60';
+        // For production: imageUrl = '/images/assets/bitcoin-coin.webp';
+      } else if (symbol === 'eth') {
+        imageUrl = 'https://imageio.forbes.com/specials-images/imageserve/66f508976bb31223eca58524/An-image-of-an-Ethereum-crypto-coin-to-represent-the-question-what-is-Ethereum-/960x0.jpg?format=jpg&width=960';
+        // For production: imageUrl = '/images/assets/ethereum-coin.webp';
+      } else if (symbol === 'sol') {
+        imageUrl = 'https://www.chainalysis.com/wp-content/uploads/2023/03/solana-min-scaled-1.jpg';
+        // For production: imageUrl = '/images/assets/solana-blockchain.webp';
+      } else if (symbol === 'bnb') {
+        imageUrl = 'https://images.unsplash.com/photo-1639322537504-6427a16b0a28?auto=format&w=800&q=60';
+        // For production: imageUrl = '/images/assets/bnb-logo.webp';
+      }
     } else if (type === 'equity') {
-      if (symbol === 'aapl') return 'fa-apple';
-      if (symbol === 'tsla') return 'fa-car';
-      if (symbol === 'nvda') return 'fa-microchip';
-      return 'fa-chart-line';
+      if (symbol === 'aapl') {
+        imageUrl = 'https://images.unsplash.com/photo-1491933382434-500287f9b54b?auto=format&w=800&q=60';
+        // For production: imageUrl = '/images/assets/apple-product.webp';
+      } else if (symbol === 'tsla') {
+        imageUrl = 'https://images.unsplash.com/photo-1617704548623-340376564e68?auto=format&w=800&q=60';
+        // For production: imageUrl = '/images/assets/tesla-car.webp';
+      } else if (symbol === 'nvda') {
+        imageUrl = 'https://images.unsplash.com/photo-1587202372634-32705e3bf49c?auto=format&w=800&q=60';
+        // For production: imageUrl = '/images/assets/nvidia-tech.webp';
+      } else if (symbol === 'gld') {
+        imageUrl = 'https://images.unsplash.com/photo-1610375461369-d613b564bad9?auto=format&w=800&q=60';
+        // For production: imageUrl = '/images/assets/gold-bars.webp';
+      }
+    } else if (type === 'mixed') {
+      imageUrl = 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&w=800&q=60';
+      // For production: imageUrl = '/images/assets/mixed-financial.webp';
     }
-    return 'fa-random';
+
+    if (!imageUrl) {
+      if (type === 'crypto') {
+        imageUrl = 'https://images.unsplash.com/photo-1518546305927-5a555bb7020d?auto=format&w=800&q=60';
+        // For production: imageUrl = '/images/assets/generic-crypto.webp';
+      } else if (type === 'equity') {
+        imageUrl = 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&w=800&q=60';
+        // For production: imageUrl = '/images/assets/stock-market.webp';
+      } else {
+        imageUrl = 'https://images.unsplash.com/photo-1642543492481-44e81e3914a7?auto=format&w=800&q=60';
+        // For production: imageUrl = '/images/assets/financial-dashboard.webp';
+      }
+    }
+
+    return imageUrl;
   };
 
-  // Get description based on asset type
+  const getIcon = (type, symbol) => {
+    if (type === 'crypto') {
+      if (symbol === 'btc') return <FaBitcoin />;
+      if (symbol === 'eth') return <FaEthereum />;
+      if (symbol === 'sol') return <FaCoins />;
+      if (symbol === 'bnb') return <FaCoins />;
+      return <FaCoins />;
+    } else if (type === 'equity') {
+      if (symbol === 'aapl') return <FaApple />;
+      if (symbol === 'tsla') return <FaCar />;
+      if (symbol === 'nvda') return <FaMicrochip />;
+      if (symbol === 'gld') return <FaCoins />;
+      return <FaChartLine />;
+    }
+    return <FaChartLine />;
+  };
+
+  const getToolBlogInfoColor = (type, symbol) => {
+    if (type === 'crypto') {
+      if (symbol === 'btc') return '#F7931A';
+      if (symbol === 'eth') return '#627EEA';
+      if (symbol === 'sol') return '#00FFA3';
+      if (symbol === 'bnb') return '#f0b90b';
+      return '#00c4ff';
+    } else if (type === 'equity') {
+      if (symbol === 'aapl') return '#A2AAAD';
+      if (symbol === 'tsla') return '#E82127';
+      if (symbol === 'nvda') return '#76B900';
+      if (symbol === 'gld') return '#FFD700';
+      return '#3366cc';
+    }
+    return '#cc33ff';
+  };
+
   const getDescription = (asset) => {
     if (asset.type === 'crypto') {
-      return `Test your prediction skills on ${asset.name} cryptocurrency price movements across multiple timeframes.`;
+      return `Challenge yourself with ${asset.name} price predictions across various timeframes.`;
     } else if (asset.type === 'equity') {
-      return `Analyze ${asset.name} stock market patterns and predict future price action in this interactive test.`;
+      return `Predict ${asset.name} stock trends and test your market analysis skills.`;
     }
-    return `Experience a mix of different assets with the ${asset.name} option, challenging your prediction abilities.`;
+    return `Dive into a diverse asset mix with ${asset.name} and sharpen your forecasting abilities.`;
   };
 
   if (loading) {
     return (
-      <div style={{ 
-        display: 'flex', 
-        flexDirection: 'column',
-        alignItems: 'center', 
-        justifyContent: 'center', 
-        height: '400px', 
-        color: '#666'
-      }}>
-        <div style={{ 
-          width: '60px', 
-          height: '60px', 
-          border: '4px solid #f3f3f3', 
-          borderTop: '4px solid #2196F3', 
-          borderRadius: '50%',
-          animation: 'spin 1s linear infinite',
-          marginBottom: '20px'
-        }} />
-        <p style={{ fontSize: '18px' }}>Loading assets...</p>
-        <style jsx>{`
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-        `}</style>
-      </div>
+      <Loader isDarkMode={isDarkMode}>
+        <Spinner isDarkMode={isDarkMode} />
+        <p style={{ fontSize: '1.2rem' }}>Loading assets...</p>
+      </Loader>
     );
   }
 
   if (error) {
     return (
-      <div style={{ 
-        display: 'flex', 
-        flexDirection: 'column',
-        alignItems: 'center', 
-        justifyContent: 'center', 
-        padding: '50px', 
-        textAlign: 'center',
-        color: '#d32f2f',
-        minHeight: '400px'
-      }}>
-        <div style={{
-          width: '80px',
-          height: '80px',
-          borderRadius: '50%',
-          backgroundColor: 'rgba(211, 47, 47, 0.1)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          marginBottom: '20px'
-        }}>
-          <i className="fas fa-exclamation-triangle" style={{ fontSize: '32px', color: '#d32f2f' }}></i>
-        </div>
-        <h3 style={{ marginBottom: '10px', fontSize: '20px' }}>Error Loading Assets</h3>
+      <ErrorContainer>
+        <ErrorIcon>
+          <FaCoins style={{ fontSize: '2.5rem', color: '#ff4d4d' }} />
+        </ErrorIcon>
+        <h3 style={{ marginBottom: '15px', fontSize: '1.5rem' }}>
+          Error Loading Assets
+        </h3>
         <p>{error}</p>
-        <button
-          onClick={() => window.location.reload()}
-          style={{
-            marginTop: '20px',
-            padding: '12px 24px',
-            backgroundColor: '#2196F3',
-            color: 'white',
-            border: 'none',
-            borderRadius: '30px',
-            cursor: 'pointer',
-            fontWeight: 'bold',
-            fontSize: '16px'
-          }}
-        >
-          <i className="fas fa-sync-alt" style={{ marginRight: '8px' }}></i>
+        <RetryButton onClick={() => window.location.reload()}>
+          <FaChartLine style={{ marginRight: '10px' }} />
           Retry
-        </button>
-      </div>
+        </RetryButton>
+      </ErrorContainer>
     );
   }
 
   return (
-    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px 20px' }}>
-      <div style={{ textAlign: 'center', marginBottom: '50px' }}>
-        <h1 style={{ 
-          fontSize: '2.8rem', 
-          marginBottom: '15px',
-          background: 'linear-gradient(90deg, #2196F3, #4CAF50)',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-          display: 'inline-block'
-        }}>
-          Select an Asset for Testing
-        </h1>
-        <p style={{ 
-          color: '#666', 
-          fontSize: '1.2rem', 
-          maxWidth: '700px', 
-          margin: '0 auto',
-          lineHeight: '1.6'
-        }}>
-          Test your prediction skills by analyzing price charts and forecasting market movements
-        </p>
-      </div>
+    <Container>
+      <Header>
+        <Title>
+          Select Your <Highlight>Asset</Highlight>
+        </Title>
+        <Subtitle isDarkMode={isDarkMode}>
+          Hone your market prediction skills by analyzing price charts and
+          forecasting trends.
+        </Subtitle>
+        <SearchBar isDarkMode={isDarkMode}>
+          <FaSearch style={{ color: '#a0a0a0', marginRight: '10px' }} />
+          <SearchInput
+            type="text"
+            placeholder="Search assets..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            aria-label="Search assets"
+            isDarkMode={isDarkMode}
+          />
+        </SearchBar>
+      </Header>
 
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(auto-fill, minmax(330px, 1fr))', 
-        gap: '30px', 
-        marginBottom: '60px' 
-      }}>
-        {assets.map(asset => (
-          <div 
-            key={asset.id} 
-            onClick={() => handleAssetSelect(asset)}
-            style={{ 
-              height: '450px',
-              borderRadius: '15px',
-              overflow: 'hidden',
-              position: 'relative',
-              boxShadow: '0 15px 30px rgba(0,0,0,0.2)',
-              cursor: 'pointer',
-              transition: 'transform 0.3s ease, box-shadow 0.3s ease',
-              background: getBackgroundImage(asset.type, asset.symbol),
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-            }}
-            onMouseOver={(e) => {
-              e.currentTarget.style.transform = 'translateY(-10px)';
-              e.currentTarget.style.boxShadow = '0 20px 40px rgba(0,0,0,0.3)';
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 15px 30px rgba(0,0,0,0.2)';
-            }}
-          >
-            <div style={{ 
-              position: 'relative', 
-              zIndex: 1, 
-              padding: '30px',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-              height: '100%',
-              background: 'linear-gradient(to bottom, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.8) 100%)'
-            }}>
-              <div>
-                <div style={{ 
-                  width: '70px',
-                  height: '70px',
-                  marginBottom: '20px',
-                  borderRadius: '50%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '1.8rem',
-                  background: getGradient(asset.type, asset.symbol),
-                  color: 'white',
-                  boxShadow: '0 10px 20px rgba(0,0,0,0.2)'
-                }}>
-                  <i className={`fas ${getIconClass(asset.type, asset.symbol)}`}></i>
+      <Grid>
+        <AnimatePresence>
+          {filteredAssets.map((asset) => (
+            <Card
+              key={asset.id}
+              onClick={() => handleAssetSelect(asset)}
+              whileHover={{ scale: 1.05, rotateX: 2, rotateY: 2 }}
+              whileTap={{ scale: 0.98 }}
+              transition={{ type: 'spring', stiffness: 300 }}
+              aria-label={`Select ${asset.name} for testing`}
+              isDarkMode={isDarkMode}
+            >
+              <Image
+                src={getImageSrc(asset.type, asset.symbol)}
+                alt={`${asset.name} background`}
+                fill
+                sizes="100%"
+                style={{ objectFit: 'cover' }}
+                quality={80}
+                priority={false}
+              />
+              <Overlay isDarkMode={isDarkMode} />
+              <CardContent>
+                <div>
+                  <IconWrapper style={{ background: getGradient(asset.type, asset.symbol) }}>
+                    {getIcon(asset.type, asset.symbol)}
+                  </IconWrapper>
+                  <AssetName>{asset.name}</AssetName>
+                  <AssetType>
+                    <AssetTypeIcon as={() => getIcon(asset.type, asset.symbol)} />
+                    {asset.type}
+                  </AssetType>
+                  <Description>{getDescription(asset)}</Description>
                 </div>
-                <h3 style={{ fontSize: '1.6rem', color: 'white', marginBottom: '15px' }}>
-                  {asset.name}
-                </h3>
-                <div style={{ 
-                  display: 'inline-block', 
-                  padding: '5px 12px', 
-                  backgroundColor: 'rgba(255,255,255,0.1)', 
-                  borderRadius: '20px',
-                  fontSize: '0.8rem',
-                  color: '#fff',
-                  marginBottom: '15px',
-                  textTransform: 'uppercase',
-                  letterSpacing: '1px'
-                }}>
-                  <i className={`fas ${getIconClass(asset.type, asset.symbol)}`} style={{ marginRight: '5px' }}></i>
-                  {asset.type}
+                <div>
+                  <TimeframeNote>
+                    <TimeframeIcon style={{ color: getToolBlogInfoColor(asset.type, asset.symbol) }} />
+                    Available on multiple timeframes
+                  </TimeframeNote>
+                  <StartButton
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleAssetSelect(asset);
+                    }}
+                    style={{ background: getGradient(asset.type, asset.symbol) }}
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    aria-label={`Start test for ${asset.name}`}
+                  >
+                    Start Test
+                    <FaArrowRight />
+                  </StartButton>
                 </div>
-                <p style={{ color: '#b0b0b0', marginBottom: '20px', lineHeight: 1.5 }}>
-                  {getDescription(asset)}
-                </p>
-              </div>
-
-              <div>
-                <div style={{ color: '#888', marginBottom: '20px', fontSize: '0.9rem' }}>
-                  <i style={{ color: '#4CAF50', marginRight: '8px' }} className="fas fa-chart-line"></i>
-                  Available on multiple timeframes
-                </div>
-                <button style={{ 
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '12px 25px',
-                  background: getGradient(asset.type, asset.symbol),
-                  color: 'white',
-                  borderRadius: '50px',
-                  textDecoration: 'none',
-                  fontWeight: 'bold',
-                  transition: 'all 0.3s ease',
-                  border: 'none',
-                  cursor: 'pointer',
-                  width: '100%',
-                  boxShadow: '0 5px 15px rgba(0,0,0,0.2)',
-                  fontSize: '16px'
-                }}
-                onMouseOver={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-3px)';
-                  e.currentTarget.style.boxShadow = '0 8px 20px rgba(0,0,0,0.3)';
-                }}
-                onMouseOut={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '0 5px 15px rgba(0,0,0,0.2)';
-                }}
-                >
-                  Start Test
-                  <i className="fas fa-arrow-right"></i>
-                </button>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
+              </CardContent>
+            </Card>
+          ))}
+        </AnimatePresence>
+      </Grid>
 
       {showTimeframeModal && (
-        <TimeframeModal 
+        <TimeframeModal
           assetName={selectedAsset?.name}
           onSelect={handleTimeframeSelect}
           onClose={handleCloseModal}
+          isDarkMode={isDarkMode}
         />
       )}
-    </div>
+    </Container>
   );
 };
 
-export default AssetSelector;
+AssetSelector.propTypes = {};
+
+export default memo(AssetSelector);
