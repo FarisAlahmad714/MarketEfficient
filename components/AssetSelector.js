@@ -40,9 +40,12 @@ const Title = styled.h1`
 `;
 
 const Highlight = styled.span`
-  color: #4CAF50;
+  color:rgb(193, 182, 63);
   position: relative;
   z-index: 1;
+  -webkit-background-clip: initial;
+  -webkit-text-fill-color: initial;
+  background: none;
 `;
 
 const Subtitle = styled.p`
@@ -111,7 +114,7 @@ const Overlay = styled.div`
 const CardContent = styled.div`
   position: relative;
   z-index: 2;
-  padding: 30px;
+  padding: 1px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;

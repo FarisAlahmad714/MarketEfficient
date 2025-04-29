@@ -1,7 +1,9 @@
-// components/TimeframeModal.js
-import React from 'react';
+import React, { useContext } from 'react';
+import { ThemeContext } from '../contexts/ThemeContext';
 
 const TimeframeModal = ({ assetName, onSelect, onClose }) => {
+  const { darkMode } = useContext(ThemeContext);
+  
   const timeframes = [
     {
       id: 'random',
@@ -49,22 +51,28 @@ const TimeframeModal = ({ assetName, onSelect, onClose }) => {
       zIndex: 1000,
     }}>
       <div style={{ 
-        background: 'white',
+        background: darkMode ? '#1e1e1e' : 'white',
         borderRadius: '12px',
         width: '90%',
         maxWidth: '800px',
         maxHeight: '90vh',
         overflow: 'auto',
-        boxShadow: '0 5px 25px rgba(0,0,0,0.25)',
+        boxShadow: darkMode ? '0 5px 25px rgba(0,0,0,0.5)' : '0 5px 25px rgba(0,0,0,0.25)',
+        transition: 'all 0.3s ease'
       }}>
         <div style={{ 
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           padding: '20px 25px',
-          borderBottom: '1px solid #eee',
+          borderBottom: `1px solid ${darkMode ? '#333' : '#eee'}`,
         }}>
-          <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: '600' }}>
+          <h2 style={{ 
+            margin: 0, 
+            fontSize: '1.5rem', 
+            fontWeight: '600',
+            color: darkMode ? '#e0e0e0' : 'inherit'
+          }}>
             Select Timeframe for {assetName}
           </h2>
           <button 
@@ -74,16 +82,16 @@ const TimeframeModal = ({ assetName, onSelect, onClose }) => {
               border: 'none',
               fontSize: '1.8rem',
               cursor: 'pointer',
-              color: '#666',
+              color: darkMode ? '#999' : '#666',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               width: '40px',
               height: '40px',
               borderRadius: '50%',
-              transition: 'background 0.2s ease',
+              transition: 'background 0.2s ease, color 0.2s ease',
             }}
-            onMouseOver={(e) => e.currentTarget.style.background = '#f5f5f5'}
+            onMouseOver={(e) => e.currentTarget.style.background = darkMode ? '#333' : '#f5f5f5'}
             onMouseOut={(e) => e.currentTarget.style.background = 'none'}
           >
             &times;
@@ -100,7 +108,7 @@ const TimeframeModal = ({ assetName, onSelect, onClose }) => {
               key={timeframe.id}
               onClick={() => onSelect(timeframe.id)}
               style={{ 
-                background: '#f9f9fa',
+                background: darkMode ? '#2a2a2a' : '#f9f9fa',
                 borderRadius: '12px',
                 padding: '25px',
                 textAlign: 'center',
@@ -109,13 +117,15 @@ const TimeframeModal = ({ assetName, onSelect, onClose }) => {
                 border: '2px solid transparent',
               }}
               onMouseOver={(e) => {
-                e.currentTarget.style.background = '#f0f4fa';
+                e.currentTarget.style.background = darkMode ? '#333' : '#f0f4fa';
                 e.currentTarget.style.transform = 'translateY(-3px)';
-                e.currentTarget.style.boxShadow = '0 8px 15px rgba(0,0,0,0.08)';
+                e.currentTarget.style.boxShadow = darkMode 
+                  ? '0 8px 15px rgba(0,0,0,0.2)' 
+                  : '0 8px 15px rgba(0,0,0,0.08)';
                 e.currentTarget.style.borderColor = '#2196F3';
               }}
               onMouseOut={(e) => {
-                e.currentTarget.style.background = '#f9f9fa';
+                e.currentTarget.style.background = darkMode ? '#2a2a2a' : '#f9f9fa';
                 e.currentTarget.style.transform = 'translateY(0)';
                 e.currentTarget.style.boxShadow = 'none';
                 e.currentTarget.style.borderColor = 'transparent';
@@ -140,10 +150,19 @@ const TimeframeModal = ({ assetName, onSelect, onClose }) => {
                   }}
                 ></i>
               </div>
-              <h3 style={{ margin: '0 0 12px 0', fontWeight: '600', color: '#333' }}>
+              <h3 style={{ 
+                margin: '0 0 12px 0', 
+                fontWeight: '600', 
+                color: darkMode ? '#e0e0e0' : '#333' 
+              }}>
                 {timeframe.name}
               </h3>
-              <p style={{ margin: 0, fontSize: '14px', color: '#666', lineHeight: 1.5 }}>
+              <p style={{ 
+                margin: 0, 
+                fontSize: '14px', 
+                color: darkMode ? '#b0b0b0' : '#666', 
+                lineHeight: 1.5 
+              }}>
                 {timeframe.description}
               </p>
             </div>

@@ -1,26 +1,33 @@
-// components/charts/CandlestickChart.js
-import React from 'react';
+import React, { useContext } from 'react';
 import dynamic from 'next/dynamic';
+import { ThemeContext } from '../../contexts/ThemeContext';
 
 // Create a placeholder component to show while the chart is loading
-const LoadingChart = ({ height = 400 }) => (
-  <div 
-    style={{ 
-      height: `${height}px`, 
-      display: 'flex', 
-      alignItems: 'center', 
-      justifyContent: 'center',
-      backgroundColor: '#1e1e1e',
-      color: '#e0e0e0',
-      borderRadius: '4px'
-    }}
-  >
-    Loading chart...
-  </div>
-);
+const LoadingChart = ({ height = 400 }) => {
+  const { darkMode } = useContext(ThemeContext);
+  
+  return (
+    <div 
+      style={{ 
+        height: `${height}px`, 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5',
+        color: darkMode ? '#e0e0e0' : '#666',
+        borderRadius: '4px',
+        transition: 'all 0.3s ease'
+      }}
+    >
+      Loading chart...
+    </div>
+  );
+};
 
 // Export a dynamic component with SSR disabled
 const CandlestickChart = ({ data, height = 400 }) => {
+  const { darkMode } = useContext(ThemeContext);
+  
   // Early return if no data
   if (!data || data.length === 0) {
     return (
@@ -30,9 +37,10 @@ const CandlestickChart = ({ data, height = 400 }) => {
           display: 'flex', 
           alignItems: 'center', 
           justifyContent: 'center',
-          backgroundColor: '#1e1e1e',
-          color: '#e0e0e0',
-          borderRadius: '4px'
+          backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5',
+          color: darkMode ? '#e0e0e0' : '#666',
+          borderRadius: '4px',
+          transition: 'all 0.3s ease'
         }}
       >
         No chart data available
@@ -54,15 +62,18 @@ const CandlestickChart = ({ data, height = 400 }) => {
     decreasing: { line: { color: '#ef5350' } },
   };
 
+  const bgColor = darkMode ? '#1e1e1e' : '#ffffff';
+  const textColor = darkMode ? '#e0e0e0' : '#333333';
+
   const layout = {
     dragmode: 'zoom',
     margin: { r: 20, t: 50, b: 50, l: 70 },
     showlegend: false,
-    xaxis: { autorange: true, title: 'Date', rangeslider: { visible: false } },
-    yaxis: { autorange: true, title: 'Price' },
-    plot_bgcolor: '#1e1e1e',
-    paper_bgcolor: '#1e1e1e',
-    font: { color: '#e0e0e0' },
+    xaxis: { autorange: true, title: 'Date', rangeslider: { visible: false }, color: textColor },
+    yaxis: { autorange: true, title: 'Price', color: textColor },
+    plot_bgcolor: bgColor,
+    paper_bgcolor: bgColor,
+    font: { color: textColor },
   };
 
   return (
