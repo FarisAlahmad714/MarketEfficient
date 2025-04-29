@@ -16,7 +16,6 @@ import {
   FaArrowRight,
   FaSearch,
 } from 'react-icons/fa';
-import { useTheme } from '../contexts/ThemeContext';
 import TimeframeModal from './TimeframeModal';
 
 // Styled Components
@@ -47,7 +46,7 @@ const Highlight = styled.span`
 `;
 
 const Subtitle = styled.p`
-  color: ${props => props.isDarkMode ? '#b0b0b0' : '#b0b0b0'};
+  color: #b0b0b0;
   font-size: 1.2rem;
   max-width: 700px;
   margin: 0 auto;
@@ -60,22 +59,21 @@ const SearchBar = styled.div`
   max-width: 500px;
   margin: 20px auto;
   padding: 12px 20px;
-  background: ${props => props.isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.1)'};
+  background: rgba(255, 255, 255, 0.1);
   border-radius: 30px;
   backdrop-filter: blur(10px);
-  box-shadow: 0 4px 15px rgba(0, 0, 0, ${props => props.isDarkMode ? '0.2' : '0.1'});
-  transition: background 0.3s ease, box-shadow 0.3s ease;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
 `;
 
 const SearchInput = styled.input`
   flex: 1;
   border: none;
   background: transparent;
-  color: ${props => props.isDarkMode ? '#fff' : '#fff'};
+  color: #fff;
   font-size: 1rem;
   outline: none;
   &::placeholder {
-    color: ${props => props.isDarkMode ? '#777' : '#a0a0a0'};
+    color: #a0a0a0;
   }
 `;
 
@@ -91,9 +89,8 @@ const Card = styled(motion.div)`
   border-radius: 15px;
   overflow: hidden;
   position: relative;
-  box-shadow: 0 15px 30px rgba(0, 0, 0, ${props => props.isDarkMode ? '0.4' : '0.2'});
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
   cursor: pointer;
-  transition: box-shadow 0.3s ease;
 `;
 
 const Overlay = styled.div`
@@ -102,11 +99,9 @@ const Overlay = styled.div`
   left: 0;
   right: 0;
   bottom: 0;
-  background: ${props => props.isDarkMode 
-    ? 'linear-gradient(rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.95))' 
-    : 'linear-gradient(rgba(10, 10, 10, 0.7), rgba(10, 10, 10, 0.9))'};
+  background: linear-gradient(rgba(10, 10, 10, 0.7), rgba(10, 10, 10, 0.9));
   z-index: 1;
-  transition: transform 0.5s ease, background 0.3s ease;
+  transition: transform 0.5s ease;
 
   ${Card}:hover & {
     transform: scale(1.1);
@@ -217,13 +212,13 @@ const Loader = styled.div`
   align-items: center;
   justify-content: center;
   height: 400px;
-  color: ${props => props.isDarkMode ? '#a0a0a0' : '#a0a0a0'};
+  color: #a0a0a0;
 `;
 
 const Spinner = styled.div`
   width: 70px;
   height: 70px;
-  border: 5px solid ${props => props.isDarkMode ? '#333' : '#f3f3f3'};
+  border: 5px solid #f3f3f3;
   border-top: 5px solid #00c4ff;
   border-radius: 50%;
   animation: spin 1s linear infinite;
@@ -281,7 +276,6 @@ const AssetSelector = () => {
   const [showTimeframeModal, setShowTimeframeModal] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState(null);
   const router = useRouter();
-  const { isDarkMode } = useTheme();
 
   useEffect(() => {
     const fetchAssets = async () => {
@@ -442,8 +436,8 @@ const AssetSelector = () => {
 
   if (loading) {
     return (
-      <Loader isDarkMode={isDarkMode}>
-        <Spinner isDarkMode={isDarkMode} />
+      <Loader>
+        <Spinner />
         <p style={{ fontSize: '1.2rem' }}>Loading assets...</p>
       </Loader>
     );
@@ -473,11 +467,11 @@ const AssetSelector = () => {
         <Title>
           Select Your <Highlight>Asset</Highlight>
         </Title>
-        <Subtitle isDarkMode={isDarkMode}>
+        <Subtitle>
           Hone your market prediction skills by analyzing price charts and
           forecasting trends.
         </Subtitle>
-        <SearchBar isDarkMode={isDarkMode}>
+        <SearchBar>
           <FaSearch style={{ color: '#a0a0a0', marginRight: '10px' }} />
           <SearchInput
             type="text"
@@ -485,7 +479,6 @@ const AssetSelector = () => {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             aria-label="Search assets"
-            isDarkMode={isDarkMode}
           />
         </SearchBar>
       </Header>
@@ -500,7 +493,6 @@ const AssetSelector = () => {
               whileTap={{ scale: 0.98 }}
               transition={{ type: 'spring', stiffness: 300 }}
               aria-label={`Select ${asset.name} for testing`}
-              isDarkMode={isDarkMode}
             >
               <Image
                 src={getImageSrc(asset.type, asset.symbol)}
@@ -511,7 +503,7 @@ const AssetSelector = () => {
                 quality={80}
                 priority={false}
               />
-              <Overlay isDarkMode={isDarkMode} />
+              <Overlay />
               <CardContent>
                 <div>
                   <IconWrapper style={{ background: getGradient(asset.type, asset.symbol) }}>
@@ -554,7 +546,6 @@ const AssetSelector = () => {
           assetName={selectedAsset?.name}
           onSelect={handleTimeframeSelect}
           onClose={handleCloseModal}
-          isDarkMode={isDarkMode}
         />
       )}
     </Container>
