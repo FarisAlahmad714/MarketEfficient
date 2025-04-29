@@ -367,7 +367,7 @@ const AssetSelector = () => {
         imageUrl = 'https://images.unsplash.com/photo-1587202372634-32705e3bf49c?auto=format&w=800&q=60';
         // For production: imageUrl = '/images/assets/nvidia-tech.webp';
       } else if (symbol === 'gld') {
-        imageUrl = 'https://images.unsplash.com/photo-1610375461369-d613b564bad9?auto=format&w=800&q=60';
+        imageUrl = 'https://images.unsplash.com/photo-1610375461369-d613b564f4c4?w=1200&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Nnx8Z29sZHxlbnwwfHwwfHx8MA%3D%3D';
         // For production: imageUrl = '/images/assets/gold-bars.webp';
       }
     } else if (type === 'mixed') {
