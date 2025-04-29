@@ -1,7 +1,11 @@
 // components/LoadingScreen.js
-import React from 'react';
+import React, { useContext } from 'react';
+import { ThemeContext } from '../contexts/ThemeContext';
+import CryptoLoader from './CryptoLoader';
 
 const LoadingScreen = ({ message = 'Loading...' }) => {
+  const { darkMode } = useContext(ThemeContext);
+  
   return (
     <div style={{
       position: 'fixed',
@@ -9,7 +13,7 @@ const LoadingScreen = ({ message = 'Loading...' }) => {
       left: 0,
       width: '100%',
       height: '100%',
-      backgroundColor: 'rgba(0, 0, 0, 0.7)',
+      backgroundColor: darkMode ? 'rgba(0, 0, 0, 0.8)' : 'rgba(0, 0, 0, 0.7)',
       display: 'flex',
       flexDirection: 'column',
       justifyContent: 'center',
@@ -17,27 +21,11 @@ const LoadingScreen = ({ message = 'Loading...' }) => {
       zIndex: 1000,
     }}>
       <div style={{
-        width: '60px',
-        height: '60px',
-        border: '6px solid #f3f3f3',
-        borderTop: '6px solid #3498db',
-        borderRadius: '50%',
-        animation: 'spin 1s linear infinite',
-        marginBottom: '20px',
-      }} />
-      <p style={{
-        color: 'white',
-        fontSize: '18px',
-        fontWeight: 'bold',
+        maxWidth: '600px',
+        width: '80%'
       }}>
-        {message}
-      </p>
-      <style jsx>{`
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-      `}</style>
+        <CryptoLoader message={message} />
+      </div>
     </div>
   );
 };

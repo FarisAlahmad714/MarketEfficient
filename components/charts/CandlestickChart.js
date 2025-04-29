@@ -1,27 +1,12 @@
 import React, { useContext } from 'react';
 import dynamic from 'next/dynamic';
 import { ThemeContext } from '../../contexts/ThemeContext';
+import CryptoLoader from '../CryptoLoader'; // Import the new loader
 
 // Create a placeholder component to show while the chart is loading
 const LoadingChart = ({ height = 400 }) => {
-  const { darkMode } = useContext(ThemeContext);
-  
-  return (
-    <div 
-      style={{ 
-        height: `${height}px`, 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'center',
-        backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5',
-        color: darkMode ? '#e0e0e0' : '#666',
-        borderRadius: '4px',
-        transition: 'all 0.3s ease'
-      }}
-    >
-      Loading chart...
-    </div>
-  );
+  // Use the CryptoLoader instead of the simple loading text
+  return <CryptoLoader height={`${height}px`} message="Loading chart data..." />;
 };
 
 // Export a dynamic component with SSR disabled
