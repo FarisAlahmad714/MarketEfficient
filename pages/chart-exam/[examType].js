@@ -49,8 +49,8 @@ export default function ChartExam() {
   const [error, setError] = useState(null);
   const [drawings, setDrawings] = useState([]);
   const [chartInitialized, setChartInitialized] = useState(false);
-  const plotlyRef = useRef(null);
   const cryptoLoaderRef = useRef(null);
+  const chartRef = useRef(null);
 
   // Initialize exam configuration based on the examType
   useEffect(() => {
@@ -96,6 +96,7 @@ export default function ChartExam() {
       
       // Reset drawings when starting a new exam
       setDrawings([]);
+      setChartInitialized(false); // Reset chart initialization state for new data
       
       // Simulate loading time and then hide loader
       setTimeout(() => {
@@ -118,9 +119,13 @@ export default function ChartExam() {
     setDrawings(allDrawings);
   };
 
+  // This is the key function to initialize the chart and make it available to drawing tools
   const handleChartInitialized = (figure) => {
-    plotlyRef.current = figure;
-    setChartInitialized(true);
+    console.log("Chart initialized:", figure);
+    // Only set chartInitialized to true after a short delay to ensure plotly is fully rendered
+    setTimeout(() => {
+      setChartInitialized(true);
+    }, 500);
   };
 
   const handleSubmitAnalysis = () => {
@@ -415,13 +420,21 @@ export default function ChartExam() {
           
           <div style={{ position: 'relative' }}>
             <PlotlyChart 
+              ref={chartRef}
               data={chartData}
               height={600}
               onInitialized={handleChartInitialized}
+              config={{
+                displayModeBar: true,
+                scrollZoom: true,
+                displaylogo: false
+              }}
             />
+            
+            {/* Only mount DrawingToolsOverlay after chart is initialized */}
             {chartInitialized && (
               <DrawingToolsOverlay 
-                plotlyNode={plotlyRef.current} 
+                plotlyNode={chartRef.current} 
                 onDrawingComplete={handleDrawingComplete}
                 onDrawingChange={handleDrawingChange}
               />
@@ -535,4 +548,4 @@ export default function ChartExam() {
       </div>
     </div>
   );
-} 
+}

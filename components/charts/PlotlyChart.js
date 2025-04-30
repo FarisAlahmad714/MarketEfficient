@@ -15,7 +15,7 @@ const PlotlyChart = ({
   onInitialized = null, 
   onRelayout = null,
   config = {}
-}) => {
+}, ref) => {
   const { darkMode } = useContext(ThemeContext);
   const [isReady, setIsReady] = useState(false);
   const [chartData, setChartData] = useState(null);
@@ -23,17 +23,25 @@ const PlotlyChart = ({
   const [chartConfig, setChartConfig] = useState(null);
   const plotRef = useRef(null);
   const loaderRef = useRef(null);
+  const configRef = useRef(config);
+  const plotlyInstanceRef = useRef(null);
+  
+  useEffect(() => {
+    const currentConfigStr = JSON.stringify(configRef.current || {});
+    const newConfigStr = JSON.stringify(config || {});
+    
+    if (currentConfigStr !== newConfigStr) {
+      configRef.current = config;
+    }
+  }, [config]);
 
   useEffect(() => {
-    // Prepare the data structure for Plotly
     if (data) {
-      // If data is already in Plotly format, use it directly
       const processedData = Array.isArray(data) ? data : [data];
       setChartData(processedData);
       
-      // Set up the default layout
       const defaultLayout = {
-        dragmode: 'zoom',
+        dragmode: 'pan', // Default to pan mode
         margin: { r: 20, t: 50, b: 50, l: 70 },
         showlegend: false,
         xaxis: {
@@ -56,18 +64,17 @@ const PlotlyChart = ({
       
       setLayout(defaultLayout);
       
-      // Set up the default config
+      const currentConfig = configRef.current || {};
       const defaultConfig = {
         responsive: true,
         displayModeBar: true,
         modeBarButtonsToRemove: ['lasso2d', 'select2d', 'autoScale2d'],
         displaylogo: false,
-        ...config
+        ...currentConfig
       };
       
       setChartConfig(defaultConfig);
       
-      // Mark as ready after a brief delay to ensure proper rendering
       const timer = setTimeout(() => {
         setIsReady(true);
         if (loaderRef.current) {
@@ -77,21 +84,68 @@ const PlotlyChart = ({
       
       return () => clearTimeout(timer);
     }
-  }, [data, darkMode, height, config]);
+  }, [data, darkMode, height]);
   
-  // Handle chart initialization
+  // Properly store the Plotly instance when initialized
   const handlePlotInitialized = (figure) => {
+    console.log('Plotly chart initialized:', figure);
+    plotlyInstanceRef.current = figure;
+    
+    // Store a reference to the DOM element for easier access
+    if (figure && figure.el) {
+      // Create _container property to help with DOM operations
+      figure._container = figure.el;
+    }
+    
     if (onInitialized) {
       onInitialized(figure);
     }
   };
   
-  // Handle layout changes (like zooming)
   const handleRelayout = (eventData) => {
+    console.log('Plotly chart relayout:', eventData);
+    
     if (onRelayout) {
       onRelayout(eventData);
     }
   };
+  
+  // Updated function to change the dragmode
+  const setDragMode = (mode) => {
+    console.log("setDragMode called with:", mode);
+    
+    try {
+      // Try multiple methods to find and update the Plotly element
+      if (typeof window !== 'undefined' && window.Plotly) {
+        // Method 1: Use the stored plotly instance
+        if (plotlyInstanceRef.current && plotlyInstanceRef.current._container) {
+          console.log("Using plotlyInstance._container");
+          window.Plotly.relayout(plotlyInstanceRef.current._container, { dragmode: mode });
+          return true;
+        }
+        
+        // Method 2: Find Plotly element in the DOM
+        const plotlyDiv = document.querySelector('.js-plotly-plot');
+        if (plotlyDiv) {
+          console.log("Using DOM element:", plotlyDiv);
+          window.Plotly.relayout(plotlyDiv, { dragmode: mode });
+          return true;
+        }
+      }
+      
+      console.warn("Could not set dragmode - Plotly not available");
+      return false;
+    } catch (err) {
+      console.error("Error in setDragMode:", err);
+      return false;
+    }
+  };
+  
+  // Make functions available via ref
+  React.useImperativeHandle(ref, () => ({
+    setDragMode,
+    getPlotlyInstance: () => plotlyInstanceRef.current
+  }));
   
   if (!data || !chartData || !layout) {
     return (
@@ -131,4 +185,4 @@ const PlotlyChart = ({
   );
 };
 
-export default PlotlyChart; 
+export default React.forwardRef(PlotlyChart);

@@ -1,4 +1,3 @@
-// components/charts/DrawingToolsOverlay.js
 import React, { useState, useEffect, useRef, useContext } from 'react';
 import { ThemeContext } from '../../contexts/ThemeContext';
 
@@ -106,142 +105,204 @@ const DrawingToolsOverlay = ({
   const containerRef = useRef(null);
   const drawingAreaRef = useRef(null);
 
-  // Create and position the SVG overlay on the Plotly chart
-  useEffect(() => {
-    if (!plotlyNode || !containerRef.current) {
-      console.warn('Missing plotlyNode or containerRef');
-      return;
-    }
-    
-    // Try to find the plot area using different approaches
-    let plotArea = null;
-    
-    // Check what kind of object plotlyNode is
-    if (typeof plotlyNode === 'object') {
-      // First, try to access it as a Plotly object
-      if (plotlyNode._fullLayout && plotlyNode._fullLayout.plot) {
-        // It's a Plotly object
-        plotArea = plotlyNode._fullLayout.plot;
-      } 
-      // Then try to access it as a DOM element
-      else if (plotlyNode.querySelector) {
-        try {
-          // It's a DOM element
-          plotArea = plotlyNode.querySelector('.plot');
-        } catch (err) {
-          console.warn('Error using querySelector:', err);
-        }
+  console.log("DrawingToolsOverlay rendering with plotlyNode:", plotlyNode);
+
+  // Helper to find Plotly container and create overlay
+  const setupDrawingOverlay = () => {
+    try {
+      // Find Plotly container in the DOM
+      const plotlyContainer = document.querySelector('.js-plotly-plot');
+      if (!plotlyContainer) {
+        console.warn("No Plotly container found in the DOM");
+        return;
       }
-      // Additional check - maybe plotlyNode itself is the plot area
-      else if (plotlyNode.getBoundingClientRect) {
-        plotArea = plotlyNode;
-      }
-    }
-    
-    // If we still don't have a plot area, log a warning and return
-    if (!plotArea) {
-      console.warn('Could not find plot area in Plotly node:', plotlyNode);
-      return;
-    }
-    
-    // Get the drawing area dimensions and position
-    const updateDrawingAreaSize = () => {
-      if (!drawingAreaRef.current || !plotArea) return;
       
-      try {
-        const rect = plotArea.getBoundingClientRect();
-        const containerRect = containerRef.current.getBoundingClientRect();
-        
-        drawingAreaRef.current.style.width = `${rect.width}px`;
-        drawingAreaRef.current.style.height = `${rect.height}px`;
-        drawingAreaRef.current.style.top = `${rect.top - containerRect.top}px`;
-        drawingAreaRef.current.style.left = `${rect.left - containerRect.left}px`;
-      } catch (err) {
-        console.warn('Error updating drawing area size:', err);
+      console.log("Found Plotly container:", plotlyContainer);
+      
+      // Find the plot area (the main SVG or the plot div)
+      const mainSvg = plotlyContainer.querySelector('.main-svg');
+      if (!mainSvg) {
+        console.warn("No main-svg found in Plotly container");
+        return;
       }
-    };
-    
-    // Create SVG overlay if it doesn't exist
-    if (!svgRef.current && drawingAreaRef.current) {
-      try {
+      
+      console.log("Found main SVG:", mainSvg);
+      
+      // Create drawing area if it doesn't exist
+      if (!drawingAreaRef.current) {
+        console.log("Creating drawing area");
+        const drawingArea = document.createElement('div');
+        drawingArea.className = 'drawing-overlay';
+        drawingArea.style.position = 'absolute';
+        drawingArea.style.top = '0';
+        drawingArea.style.left = '0';
+        drawingArea.style.width = '100%';
+        drawingArea.style.height = '100%';
+        drawingArea.style.zIndex = '10';
+        drawingArea.style.pointerEvents = activeTool === TOOL_TYPES.POINTER ? 'none' : 'auto';
+        
+        // Add to the container
+        containerRef.current.appendChild(drawingArea);
+        drawingAreaRef.current = drawingArea;
+      }
+      
+      // Create SVG for drawings if it doesn't exist
+      if (drawingAreaRef.current && !svgRef.current) {
+        console.log("Creating SVG overlay");
         const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
         svg.style.width = '100%';
         svg.style.height = '100%';
         svg.style.position = 'absolute';
         svg.style.top = '0';
         svg.style.left = '0';
-        svg.style.pointerEvents = 'none';
+        svg.style.pointerEvents = activeTool === TOOL_TYPES.POINTER ? 'none' : 'auto';
         
         drawingAreaRef.current.appendChild(svg);
         svgRef.current = svg;
-      } catch (err) {
-        console.warn('Error creating SVG element:', err);
       }
-    }
-    
-    // Initial size update
-    updateDrawingAreaSize();
-    
-    // Update dimensions when window resizes
-    try {
-      const resizeObserver = new ResizeObserver(updateDrawingAreaSize);
-      resizeObserver.observe(plotArea);
+      
+      // Position the drawing area to match the Plotly chart
+      positionDrawingArea(mainSvg);
+      
+      // Create a resize observer to update positioning when the chart resizes
+      const resizeObserver = new ResizeObserver(() => {
+        positionDrawingArea(mainSvg);
+      });
+      
+      resizeObserver.observe(mainSvg);
       
       return () => {
         resizeObserver.disconnect();
       };
     } catch (err) {
-      console.warn('Error setting up ResizeObserver:', err);
-      // Fallback to window resize event
-      window.addEventListener('resize', updateDrawingAreaSize);
-      return () => {
-        window.removeEventListener('resize', updateDrawingAreaSize);
-      };
+      console.error("Error setting up drawing overlay:", err);
     }
-  }, [plotlyNode]);
+  };
+  
+  // Helper to position the drawing area
+  const positionDrawingArea = (plotElement) => {
+    if (!drawingAreaRef.current || !containerRef.current || !plotElement) return;
+    
+    try {
+      const plotRect = plotElement.getBoundingClientRect();
+      const containerRect = containerRef.current.getBoundingClientRect();
+      
+      const drawingArea = drawingAreaRef.current;
+      drawingArea.style.width = `${plotRect.width}px`;
+      drawingArea.style.height = `${plotRect.height}px`;
+      drawingArea.style.top = `${plotRect.top - containerRect.top}px`;
+      drawingArea.style.left = `${plotRect.left - containerRect.left}px`;
+      
+      console.log("Drawing area positioned:", {
+        width: plotRect.width,
+        height: plotRect.height,
+        top: plotRect.top - containerRect.top,
+        left: plotRect.left - containerRect.left
+      });
+    } catch (err) {
+      console.error("Error positioning drawing area:", err);
+    }
+  };
+
+  // Setup drawing area and SVG overlay
+  useEffect(() => {
+    // Give time for Plotly to render
+    const timer = setTimeout(() => {
+      setupDrawingOverlay();
+    }, 1000);
+    
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Handle tool changes
+  useEffect(() => {
+    console.log("Tool changed to:", activeTool);
+    
+    try {
+      // Update drawing area pointer events
+      if (drawingAreaRef.current) {
+        drawingAreaRef.current.style.pointerEvents = activeTool === TOOL_TYPES.POINTER ? 'none' : 'auto';
+      }
+      
+      if (svgRef.current) {
+        svgRef.current.style.pointerEvents = activeTool === TOOL_TYPES.POINTER ? 'none' : 'auto';
+      }
+      
+      // Change Plotly's dragmode
+      if (plotlyNode && plotlyNode.setDragMode) {
+        if (activeTool === TOOL_TYPES.POINTER) {
+          plotlyNode.setDragMode('pan');
+        } else {
+          plotlyNode.setDragMode(false);
+        }
+      } else {
+        // Fallback method - use window.Plotly directly
+        const plotlyDiv = document.querySelector('.js-plotly-plot');
+        if (plotlyDiv && window.Plotly) {
+          if (activeTool === TOOL_TYPES.POINTER) {
+            window.Plotly.relayout(plotlyDiv, { dragmode: 'pan' });
+          } else {
+            window.Plotly.relayout(plotlyDiv, { dragmode: false });
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Error updating tool mode:", err);
+    }
+  }, [activeTool, plotlyNode]);
 
   // Helper function to convert pixel coordinates to data values
   const pixelToDataCoordinates = (x, y) => {
-    if (!plotlyNode) return { date: new Date(), price: 0 };
-    
     try {
-      // Access Plotly's internal layout object
-      const layout = plotlyNode._fullLayout;
-      if (!layout || !layout.xaxis || !layout.yaxis) {
-        console.warn('Plotly layout axes not available');
+      // Find the Plotly chart
+      const plotlyDiv = document.querySelector('.js-plotly-plot');
+      if (!plotlyDiv || !window.Plotly) {
+        console.warn("Cannot convert coordinates - Plotly not found");
         return { date: new Date(), price: 0 };
       }
       
-      // Convert pixels to data coordinates
-      const date = layout.xaxis.p2d(x);
-      const price = layout.yaxis.p2d(y);
+      // Get the full layout with axes
+      const fullLayout = plotlyDiv._fullLayout;
+      if (!fullLayout || !fullLayout.xaxis || !fullLayout.yaxis) {
+        console.warn("Plotly layout or axes not available");
+        return { date: new Date(), price: 0 };
+      }
+      
+      // Convert coordinates
+      const date = fullLayout.xaxis.p2d(x);
+      const price = fullLayout.yaxis.p2d(y);
       
       return { date: new Date(date), price };
     } catch (error) {
-      console.error('Error converting pixel to data coordinates:', error);
+      console.error("Error converting coordinates:", error);
       return { date: new Date(), price: 0 };
     }
   };
   
   // Helper function to convert data coordinates to pixel position
   const dataToPixelCoordinates = (date, price) => {
-    if (!plotlyNode) return { x: 0, y: 0 };
-    
     try {
-      // Access Plotly's internal layout object
-      const layout = plotlyNode._fullLayout;
-      if (!layout || !layout.xaxis || !layout.yaxis) {
-        console.warn('Plotly layout axes not available');
+      // Find the Plotly chart
+      const plotlyDiv = document.querySelector('.js-plotly-plot');
+      if (!plotlyDiv || !window.Plotly) {
+        console.warn("Cannot convert coordinates - Plotly not found");
+        return { x: 0, y: 0 };
+      }
+      
+      // Get the full layout with axes
+      const fullLayout = plotlyDiv._fullLayout;
+      if (!fullLayout || !fullLayout.xaxis || !fullLayout.yaxis) {
+        console.warn("Plotly layout or axes not available");
         return { x: 0, y: 0 };
       }
       
       // Convert data coordinates to pixels
-      const x = layout.xaxis.d2p(date instanceof Date ? date.getTime() : date);
-      const y = layout.yaxis.d2p(price);
+      const x = fullLayout.xaxis.d2p(date instanceof Date ? date.getTime() : date);
+      const y = fullLayout.yaxis.d2p(price);
       
       return { x, y };
     } catch (error) {
-      console.error('Error converting data to pixel coordinates:', error);
+      console.error("Error converting data to pixel coordinates:", error);
       return { x: 0, y: 0 };
     }
   };
@@ -250,11 +311,15 @@ const DrawingToolsOverlay = ({
   const handleMouseDown = (e) => {
     if (activeTool === TOOL_TYPES.POINTER) return;
     
+    console.log("Mouse down in drawing area");
+    
     const rect = drawingAreaRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
     
     const dataCoords = pixelToDataCoordinates(x, y);
+    console.log("Start point data coordinates:", dataCoords);
+    
     setStartPoint(dataCoords);
     setCurrentPoint(dataCoords);
     setIsDrawing(true);
@@ -267,11 +332,14 @@ const DrawingToolsOverlay = ({
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
     
-    setCurrentPoint(pixelToDataCoordinates(x, y));
+    const dataCoords = pixelToDataCoordinates(x, y);
+    setCurrentPoint(dataCoords);
   };
   
   const handleMouseUp = () => {
     if (!isDrawing) return;
+    
+    console.log("Mouse up in drawing area");
     
     // Create the drawing object based on tool type
     if (startPoint && currentPoint) {
@@ -280,6 +348,8 @@ const DrawingToolsOverlay = ({
         type: activeTool,
         points: [startPoint, currentPoint]
       };
+      
+      console.log("Creating new drawing:", newDrawing);
       
       // Add to drawings array
       const updatedDrawings = [...drawings, newDrawing];
@@ -312,6 +382,8 @@ const DrawingToolsOverlay = ({
   useEffect(() => {
     if (!svgRef.current) return;
     
+    console.log("Rendering drawings:", drawings.length);
+    
     // Clear existing drawings
     while (svgRef.current.firstChild) {
       svgRef.current.removeChild(svgRef.current.firstChild);
@@ -331,7 +403,13 @@ const DrawingToolsOverlay = ({
     }
   }, [drawings, isDrawing, startPoint, currentPoint, activeTool]);
   
-  // Function to render different drawing types
+  // Function to handle tool selection
+  const handleToolSelect = (tool) => {
+    console.log("Tool selected:", tool);
+    setActiveTool(tool);
+  };
+
+  // Functions to render different drawing types
   const renderDrawing = (svg, drawing, isTemp = false) => {
     switch (drawing.type) {
       case TOOL_TYPES.TRENDLINE:
@@ -483,28 +561,33 @@ const DrawingToolsOverlay = ({
     
     svg.appendChild(label);
   };
-  
+
   return (
     <div ref={containerRef} style={{ position: 'relative', width: '100%', height: '100%' }}>
       <DrawingToolbar
         activeTool={activeTool}
-        onToolSelect={setActiveTool}
+        onToolSelect={handleToolSelect}
         onClearAll={handleClearAll}
         darkMode={darkMode}
       />
       
-      <div 
-        ref={drawingAreaRef}
-        style={{ 
-          position: 'absolute',
-          pointerEvents: activeTool === TOOL_TYPES.POINTER ? 'none' : 'auto',
-          cursor: activeTool === TOOL_TYPES.POINTER ? 'default' : 'crosshair'
-        }}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
-      />
+      {drawingAreaRef.current && (
+        <div 
+          style={{ 
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            pointerEvents: activeTool === TOOL_TYPES.POINTER ? 'none' : 'auto',
+            cursor: activeTool === TOOL_TYPES.POINTER ? 'default' : 'crosshair'
+          }}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+        />
+      )}
     </div>
   );
 };
