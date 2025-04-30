@@ -20,7 +20,7 @@ const drawLine = keyframes`
   100% { width: 100%; }
 `;
 
-// Enhanced dynamic candle pulse animations
+// Enhanced dynamic candle pulse animations with more variety
 const candlePulseGreen = keyframes`
   0% { transform: scaleY(0.92) rotate(-0.1deg); }
   20% { transform: scaleY(0.98) rotate(0.1deg); }
@@ -39,6 +39,17 @@ const candlePulseRed = keyframes`
   100% { transform: scaleY(0.94) rotate(0.1deg); }
 `;
 
+const fadeIn = keyframes`
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+`;
+
+const pricePulse = keyframes`
+  0% { transform: scale(1); }
+  50% { transform: scale(1.03); }
+  100% { transform: scale(1); }
+`;
+
 // Styled Components with fixed props (using $ prefix)
 const LoaderContainer = styled.div`
   width: 100%;
@@ -52,6 +63,7 @@ const LoaderContainer = styled.div`
   align-items: center;
   justify-content: center;
   transition: background-color 0.3s ease;
+  animation: ${fadeIn} 0.5s ease-in;
 `;
 
 const ChartGrid = styled.div`
@@ -69,6 +81,7 @@ const HorizontalLine = styled.div`
   right: 0;
   height: 1px;
   background-color: ${props => props.$isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'};
+  animation: ${fadeIn} 1s ease-in;
 `;
 
 const VerticalLine = styled.div`
@@ -77,6 +90,7 @@ const VerticalLine = styled.div`
   bottom: 20%;
   width: 1px;
   background-color: ${props => props.$isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'};
+  animation: ${fadeIn} 1s ease-in;
 `;
 
 const ChartPrice = styled.div`
@@ -94,6 +108,7 @@ const CurrentPrice = styled.span`
   font-weight: bold;
   color: ${props => props.$isDarkMode ? '#e0e0e0' : '#333'};
   margin-bottom: 5px;
+  animation: ${pricePulse} 2s ease-in-out infinite;
 `;
 
 const PriceChange = styled.span`
@@ -111,6 +126,7 @@ const PriceLabels = styled.div`
   flex-direction: column;
   justify-content: space-between;
   z-index: 2;
+  animation: ${fadeIn} 1.2s ease-in;
 `;
 
 const PriceLabel = styled.div`
@@ -127,6 +143,7 @@ const TimeLabels = styled.div`
   display: flex;
   justify-content: space-between;
   z-index: 2;
+  animation: ${fadeIn} 1.2s ease-in;
 `;
 
 const TimeLabel = styled.div`
@@ -154,10 +171,16 @@ const Candle = styled.div`
   position: relative;
   margin-right: 0;
   transform-origin: bottom;
+  opacity: 0;
+  animation: ${fadeIn} 0.3s ease-in forwards;
+  animation-delay: ${props => props.$delay}s;
   
   /* Dynamic animation based on candle direction */
-  animation: ${props => props.$isUp ? candlePulseGreen : candlePulseRed} ${props => props.$pulseSpeed}s ease-in-out infinite;
-  animation-delay: ${props => props.$delay}s;
+  &.animated {
+    animation: ${props => props.$isUp ? candlePulseGreen : candlePulseRed} ${props => props.$pulseSpeed}s ease-in-out infinite;
+    animation-delay: ${props => props.$delay}s;
+    opacity: 1;
+  }
   
   &::before, &::after {
     content: '';
@@ -188,8 +211,10 @@ const TrendLine = styled.div`
   height: 2px;
   background: linear-gradient(to right, #2196F3, #4CAF50);
   z-index: 2;
-  opacity: 0.7;
-  animation: ${drawLine} 1.5s ease-out;
+  opacity: 0;
+  transform-origin: left;
+  animation: ${drawLine} 2.5s ease-out forwards, ${fadeIn} 0.8s ease-in forwards;
+  animation-delay: 0.5s;
 `;
 
 const StatusText = styled.div`
@@ -208,15 +233,58 @@ const StatusText = styled.div`
 const CryptoLoader = React.forwardRef(({ 
   height = "400px", 
   message = "Loading chart data...", 
-  minDisplayTime = 2500 // Minimum time to display in milliseconds 
+  minDisplayTime = 2500, // Minimum time to display in milliseconds 
+  candleCount = 32 // More candles for a richer visualization
 }, ref) => {
   const { darkMode } = useContext(ThemeContext);
-  const [price, setPrice] = useState(21500);
-  const [priceChange, setPriceChange] = useState(0.45);
+  
+  // Pre-calculate random price range for initial state
+  const getRandomPriceData = () => {
+    const priceRanges = [
+      { min: 15000, max: 25000 },   // Bitcoin-like range
+      { min: 1000, max: 2500 },     // Ethereum-like range
+      { min: 0.5, max: 2 },         // XRP-like range
+      { min: 50, max: 150 },        // Solana-like range
+      { min: 5, max: 15 }           // Polkadot-like range
+    ];
+    
+    const selectedRange = priceRanges[Math.floor(Math.random() * priceRanges.length)];
+    const randomPrice = selectedRange.min + Math.random() * (selectedRange.max - selectedRange.min);
+    
+    // Format based on range
+    let formattedPrice;
+    if (selectedRange.min < 1) {
+      formattedPrice = +randomPrice.toFixed(4);
+    } else if (selectedRange.min < 100) {
+      formattedPrice = +randomPrice.toFixed(2);
+    } else {
+      formattedPrice = Math.round(randomPrice);
+    }
+    
+    return { 
+      price: formattedPrice, 
+      priceRange: selectedRange 
+    };
+  };
+  
+  // Get initial random price data
+  const initialPriceData = getRandomPriceData();
+  
+  // Initialize states with random values
+  const [price, setPrice] = useState(initialPriceData.price);
+  const [priceRange, setPriceRange] = useState(initialPriceData.priceRange);
+  const [priceChange, setPriceChange] = useState(0);
   const [isVisible, setIsVisible] = useState(true);
-  const candlesRef = useRef([]);
+  const [candles, setCandles] = useState([]);
+  const [animationStarted, setAnimationStarted] = useState(false);
+  const [priceLabels, setPriceLabels] = useState([]);
+  const [timeLabels, setTimeLabels] = useState([]);
+  const [isInitialized, setIsInitialized] = useState(false);
   const startTimeRef = useRef(Date.now());
   const loaderRef = useRef(null);
+  const priceIntervalRef = useRef(null);
+  const candleAnimationTimerRef = useRef(null);
+  const candleUpdateIntervalRef = useRef(null);
   
   // Combine refs
   React.useImperativeHandle(ref, () => ({
@@ -236,15 +304,38 @@ const CryptoLoader = React.forwardRef(({
     }
   }));
   
-  // When component is mounted, record the start time
+  // Clean up intervals on unmount
+  useEffect(() => {
+    return () => {
+      if (priceIntervalRef.current) clearInterval(priceIntervalRef.current);
+      if (candleAnimationTimerRef.current) clearTimeout(candleAnimationTimerRef.current);
+      if (candleUpdateIntervalRef.current) clearInterval(candleUpdateIntervalRef.current);
+    };
+  }, []);
+  
+  // Generate time labels
+  useEffect(() => {
+    // Generate time labels dynamically
+    const now = new Date();
+    const labels = [];
+    for (let i = 0; i < 5; i++) {
+      const time = new Date(now);
+      time.setHours(time.getHours() - (4 - i) * 2);
+      labels.push(time.getHours() + ':00');
+    }
+    setTimeLabels(labels);
+  }, []);
+  
+  // Generate and animate candles
   useEffect(() => {
     startTimeRef.current = Date.now();
+    
     // Generate candles
-    const candles = [];
+    const generatedCandles = [];
     let baseHeight = 40;
     let trendDirection = Math.random() > 0.5 ? 1 : -1;
     
-    for (let i = 0; i < 25; i++) {
+    for (let i = 0; i < candleCount; i++) {
       // Add some trend to make it look more realistic
       if (i % 5 === 0) {
         // Possibly change trend every 5 candles
@@ -263,34 +354,161 @@ const CryptoLoader = React.forwardRef(({
       // Dynamic animation speeds for each candle
       const pulseSpeed = 2 + Math.random() * 3; // 2-5 seconds
       
-      candles.push({
+      generatedCandles.push({
         id: i,
         height: Math.max(15, height),
         isUp,
         wickTop: 2 + Math.random() * 15,
         wickBottom: 2 + Math.random() * 15,
-        delay: i * 0.05,
-        pulseSpeed
+        delay: i * 0.03, // Faster sequential appearance
+        pulseSpeed,
+        animated: false // Will be set to true sequentially
       });
     }
     
-    candlesRef.current = candles;
+    setCandles(generatedCandles);
     
-    // Animate the price
-    const priceInterval = setInterval(() => {
+    // Start sequential animation of candles
+    let animatedCount = 0;
+    const animateCandles = () => {
+      if (animatedCount < generatedCandles.length) {
+        setCandles(prevCandles => {
+          const newCandles = [...prevCandles];
+          if (newCandles[animatedCount]) {
+            newCandles[animatedCount] = { ...newCandles[animatedCount], animated: true };
+          }
+          return newCandles;
+        });
+        animatedCount++;
+        candleAnimationTimerRef.current = setTimeout(animateCandles, 50);
+      } else {
+        setAnimationStarted(true);
+      }
+    };
+    
+    // Start animation after a small delay
+    setTimeout(animateCandles, 300);
+    
+    // Add some influence from the candles
+    const lastCandlesAvg = generatedCandles
+      .slice(-5)
+      .reduce((sum, candle) => sum + candle.height, 0) / 5;
+    
+    // Adjust price based on candle pattern but keep within the selected range
+    const priceAdjustment = lastCandlesAvg * (priceRange.max - priceRange.min) / 100;
+    let finalPrice = price + priceAdjustment;
+    
+    // Keep within range
+    finalPrice = Math.max(priceRange.min, Math.min(priceRange.max, finalPrice));
+    
+    // Set the price with appropriate decimal places based on the range
+    if (priceRange.min < 1) {
+      // For very low prices (like XRP), use more decimal places
+      setPrice(+finalPrice.toFixed(4));
+    } else if (priceRange.min < 100) {
+      // For medium range prices
+      setPrice(+finalPrice.toFixed(2));
+    } else {
+      // For high value coins like BTC, round to whole numbers
+      setPrice(Math.round(finalPrice));
+    }
+    
+    // Generate dynamic price labels
+    const dynamicPriceLabels = [];
+    const priceStep = priceRange.min < 1 ? 
+      priceRange.max / 4 : 
+      (priceRange.max - priceRange.min) / 4;
+      
+    for (let i = 0; i < 4; i++) {
+      let labelPrice = finalPrice + (2 - i) * priceStep;
+      
+      // Format label price based on range
+      if (priceRange.min < 1) {
+        dynamicPriceLabels.push(+labelPrice.toFixed(4));
+      } else if (priceRange.min < 100) {
+        dynamicPriceLabels.push(+labelPrice.toFixed(2));
+      } else {
+        dynamicPriceLabels.push(Math.round(labelPrice));
+      }
+    }
+    setPriceLabels(dynamicPriceLabels);
+    
+    // Mark as initialized
+    setIsInitialized(true);
+    
+    // Animate the price with random fluctuations more frequently
+    priceIntervalRef.current = setInterval(() => {
       setPrice(prev => {
-        const change = Math.random() * 50 - 25;
+        // More volatile price changes
+        const volatility = 0.005; // 0.5% volatility per update
+        const change = prev * (Math.random() * volatility * 2 - volatility);
         const newPrice = prev + change;
-        setPriceChange(change > 0 ? +(change / prev * 100).toFixed(2) : -(Math.abs(change) / prev * 100).toFixed(2));
-        return +newPrice.toFixed(2);
+        
+        // Set price change as percentage
+        const changePercent = (change / prev * 100);
+        setPriceChange(changePercent.toFixed(2));
+        
+        // Format based on price range
+        if (prev < 1) {
+          return +newPrice.toFixed(4);
+        } else if (prev < 100) {
+          return +newPrice.toFixed(2);
+        } else {
+          return Math.round(newPrice);
+        }
       });
-    }, 1500);
+    }, 800); // More frequent updates
     
-    return () => clearInterval(priceInterval);
-  }, []);
+    // Periodically update some candles to create a dynamic chart effect
+    candleUpdateIntervalRef.current = setInterval(() => {
+      setCandles(prevCandles => {
+        const newCandles = [...prevCandles];
+        
+        // Update 2-4 random candles
+        const numUpdates = 2 + Math.floor(Math.random() * 3);
+        for (let i = 0; i < numUpdates; i++) {
+          const randomIndex = Math.floor(Math.random() * newCandles.length);
+          const candle = newCandles[randomIndex];
+          
+          if (candle) {
+            // Randomly change direction sometimes
+            const newIsUp = Math.random() > 0.6 ? !candle.isUp : candle.isUp;
+            
+            // Adjust height
+            const heightChange = (Math.random() - 0.5) * 30;
+            const newHeight = Math.max(15, candle.height + heightChange);
+            
+            newCandles[randomIndex] = {
+              ...candle,
+              isUp: newIsUp,
+              height: newHeight,
+              pulseSpeed: 1 + Math.random() * 4, // vary animation speed
+              wickTop: 2 + Math.random() * 15,
+              wickBottom: 2 + Math.random() * 15,
+            };
+          }
+        }
+        
+        return newCandles;
+      });
+    }, 1200); // Update candles every 1.2 seconds
+    
+    return () => {
+      clearInterval(priceIntervalRef.current);
+      clearTimeout(candleAnimationTimerRef.current);
+      clearInterval(candleUpdateIntervalRef.current);
+    };
+  }, [candleCount, price, priceRange]);
   
   // If the loader is hidden, return null
   if (!isVisible) return null;
+  
+  // Don't render until fully initialized
+  if (!isInitialized) return (
+    <LoaderContainer ref={loaderRef} height={height} $isDarkMode={darkMode} style={{ justifyContent: 'center', alignItems: 'center' }}>
+      {/* Minimal placeholder while initializing */}
+    </LoaderContainer>
+  );
   
   return (
     <LoaderContainer ref={loaderRef} height={height} $isDarkMode={darkMode}>
@@ -307,28 +525,25 @@ const CryptoLoader = React.forwardRef(({
       
       <ChartPrice>
         <CurrentPrice $isDarkMode={darkMode}>${price.toLocaleString()}</CurrentPrice>
-        <PriceChange $isPositive={priceChange >= 0}>
-          {priceChange >= 0 ? '+' : ''}{priceChange}%
+        <PriceChange $isPositive={parseFloat(priceChange) >= 0}>
+          {parseFloat(priceChange) >= 0 ? '+' : ''}{Math.abs(parseFloat(priceChange)).toFixed(2)}%
         </PriceChange>
       </ChartPrice>
       
       <PriceLabels>
-        <PriceLabel $isDarkMode={darkMode}>$22,000</PriceLabel>
-        <PriceLabel $isDarkMode={darkMode}>$21,500</PriceLabel>
-        <PriceLabel $isDarkMode={darkMode}>$21,000</PriceLabel>
-        <PriceLabel $isDarkMode={darkMode}>$20,500</PriceLabel>
+        {priceLabels.map((label, index) => (
+          <PriceLabel key={index} $isDarkMode={darkMode}>${label.toLocaleString()}</PriceLabel>
+        ))}
       </PriceLabels>
       
       <TimeLabels>
-        <TimeLabel $isDarkMode={darkMode}>12:00</TimeLabel>
-        <TimeLabel $isDarkMode={darkMode}>14:00</TimeLabel>
-        <TimeLabel $isDarkMode={darkMode}>16:00</TimeLabel>
-        <TimeLabel $isDarkMode={darkMode}>18:00</TimeLabel>
-        <TimeLabel $isDarkMode={darkMode}>20:00</TimeLabel>
+        {timeLabels.map((label, index) => (
+          <TimeLabel key={index} $isDarkMode={darkMode}>{label}</TimeLabel>
+        ))}
       </TimeLabels>
       
       <CandlesContainer>
-        {candlesRef.current.map(candle => (
+        {candles.map(candle => (
           <Candle 
             key={candle.id}
             $isUp={candle.isUp}
@@ -339,14 +554,16 @@ const CryptoLoader = React.forwardRef(({
             $wickBottom={candle.wickBottom}
             $delay={candle.delay}
             $pulseSpeed={candle.pulseSpeed}
+            className={candle.animated ? 'animated' : ''}
           />
         ))}
       </CandlesContainer>
       
-      <TrendLine />
+      {animationStarted && <TrendLine />}
       
-      {/* Subtle text indicator without any spinner */}
-      <StatusText $isDarkMode={darkMode}>{message}</StatusText>
+      <StatusText $isDarkMode={darkMode}>
+        {message}
+      </StatusText>
     </LoaderContainer>
   );
 });

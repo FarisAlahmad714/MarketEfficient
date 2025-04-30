@@ -16,7 +16,6 @@ const CandlestickChart = dynamic(
 const Results = () => {
   const { darkMode } = useContext(ThemeContext);
   const router = useRouter();
-  const { assetSymbol, session_id } = router.query;
   const [results, setResults] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -25,6 +24,8 @@ const Results = () => {
   useEffect(() => {
     // Wait for router to be ready
     if (!router.isReady) return;
+    
+    const { assetSymbol, session_id } = router.query;
     
     // Log router query params
     console.log("Router query parameters:", router.query);
@@ -60,17 +61,22 @@ const Results = () => {
           return;
         }
         
-        console.log('Results data:', response.data);
-        setResults(response.data);
-        
-        // Check if answers array exists
-        if (!Array.isArray(response.data.answers) || response.data.answers.length === 0) {
-          console.warn("No answers found in results data");
+        // Check if answers array exists and log their structure
+        if (response.data && response.data.answers) {
+          console.log('Answers array length:', response.data.answers.length);
+          if (response.data.answers.length > 0) {
+            console.log('First answer structure:', response.data.answers[0]);
+          }
+        } else {
+          console.warn('No answers found in response data');
           setDebugInfo({
             message: "No answers in results data",
             resultsKeys: Object.keys(response.data)
           });
         }
+        
+        console.log('Results data:', response.data);
+        setResults(response.data);
       } catch (err) {
         console.error('Error fetching results:', err);
         setError(`Failed to load results: ${err.message}`);
@@ -87,10 +93,12 @@ const Results = () => {
     };
     
     fetchResults();
-  }, [router.isReady, assetSymbol, session_id, router.query]);
+  }, [router.isReady, router.query]);
 
   const handleTakeAnotherTest = () => {
+    const { assetSymbol } = router.query;
     // Force a new test by using a random query parameter
+    // Include timeframe parameter to ensure proper test generation
     router.push(`/bias-test/${assetSymbol}?timeframe=daily&random=${Math.random()}`);
   };
 
@@ -185,7 +193,7 @@ const Results = () => {
         }}>
           <p>No results found for this session.</p>
           <p style={{ fontSize: '0.9rem', marginTop: '10px' }}>
-            Session ID: {session_id || 'Not available'}
+            Session ID: {router.query.session_id || 'Not available'}
           </p>
           <Link
             href="/bias-test"
@@ -225,24 +233,34 @@ const Results = () => {
     }
   };
 
-  // Helper function to get the percentage change between setup and outcome
+  // Helper function to safely get percentage change between setup and outcome
   const getPercentageChange = (setupData, outcomeData) => {
-    if (!setupData || !setupData.length || !outcomeData || !outcomeData.length) {
+    try {
+      if (!setupData || !setupData.length || !outcomeData || !outcomeData.length) {
+        return { value: 0, isPositive: false };
+      }
+      
+      const setupClose = setupData[setupData.length - 1].close;
+      const outcomeClose = outcomeData[outcomeData.length - 1].close;
+      const percentChange = ((outcomeClose - setupClose) / setupClose) * 100;
+      
+      return {
+        value: Math.abs(percentChange.toFixed(2)),
+        isPositive: percentChange >= 0
+      };
+    } catch (error) {
+      console.error('Error calculating percentage change:', error);
       return { value: 0, isPositive: false };
     }
-    
-    const setupClose = setupData[setupData.length - 1].close;
-    const outcomeClose = outcomeData[outcomeData.length - 1].close;
-    const percentChange = ((outcomeClose - setupClose) / setupClose) * 100;
-    
-    return {
-      value: Math.abs(percentChange.toFixed(2)),
-      isPositive: percentChange >= 0
-    };
   };
 
   return (
-    <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '20px' }}>
+    <div style={{ 
+      maxWidth: '1000px', 
+      margin: '0 auto', 
+      padding: '20px', 
+      color: darkMode ? '#e0e0e0' : '#333'
+    }}>
       <h1 style={{ 
         textAlign: 'center', 
         marginBottom: '20px',
@@ -299,23 +317,27 @@ const Results = () => {
           </h2>
           
           {results.answers.map((answer, index) => {
-            const change = getPercentageChange(answer.ohlc_data, answer.outcome_data);
+            // Safely handle potential missing data
+            const ohlcData = Array.isArray(answer.ohlc_data) ? answer.ohlc_data : [];
+            const outcomeData = Array.isArray(answer.outcome_data) ? answer.outcome_data : [];
             
-            // Get the last candle date from setup data
-            const lastSetupCandleDate = answer.ohlc_data && answer.ohlc_data.length > 0 ? 
-              formatDate(answer.ohlc_data[answer.ohlc_data.length - 1].date) : 'N/A';
+            const change = getPercentageChange(ohlcData, outcomeData);
             
-            // Get the first outcome candle date
-            const firstOutcomeCandleDate = answer.outcome_data && answer.outcome_data.length > 0 ? 
-              formatDate(answer.outcome_data[0].date) : 'N/A';
+            // Safely get the last candle date from setup data
+            const lastSetupCandleDate = ohlcData.length > 0 ? 
+              formatDate(ohlcData[ohlcData.length - 1].date) : 'N/A';
             
-            // Get the last setup candle OHLC data
-            const lastSetupCandle = answer.ohlc_data && answer.ohlc_data.length > 0 ? 
-              answer.ohlc_data[answer.ohlc_data.length - 1] : null;
+            // Safely get the first outcome candle date
+            const firstOutcomeCandleDate = outcomeData.length > 0 ? 
+              formatDate(outcomeData[0].date) : 'N/A';
             
-            // Get the first outcome candle OHLC data
-            const firstOutcomeCandle = answer.outcome_data && answer.outcome_data.length > 0 ? 
-              answer.outcome_data[0] : null;
+            // Safely get the last setup candle OHLC data
+            const lastSetupCandle = ohlcData.length > 0 ? 
+              ohlcData[ohlcData.length - 1] : null;
+            
+            // Safely get the first outcome candle OHLC data
+            const firstOutcomeCandle = outcomeData.length > 0 ? 
+              outcomeData[0] : null;
             
             return (
               <div 
@@ -351,8 +373,285 @@ const Results = () => {
                   </span>
                 </h3>
                 
-                {/* Rest of your answer rendering code with dark mode support */}
-                {/* ... */}
+                <div style={{ 
+                  display: 'grid', 
+                  gridTemplateColumns: '1fr 1fr', 
+                  gap: '15px',
+                  marginBottom: '20px'
+                }}>
+                  {/* Setup Chart with last candle date and data */}
+                  <div>
+                    <h4 style={{ 
+                      marginBottom: '10px', 
+                      borderBottom: `1px solid ${darkMode ? '#333' : '#eee'}`, 
+                      paddingBottom: '5px',
+                      color: darkMode ? '#e0e0e0' : 'inherit'
+                    }}>
+                      Setup Chart
+                    </h4>
+                    <div style={{ 
+                      backgroundColor: darkMode ? '#262626' : '#fff', 
+                      padding: '15px', 
+                      borderRadius: '8px'
+                    }}>
+                      {ohlcData.length > 0 ? (
+                        <>
+                          <CandlestickChart data={ohlcData} height={250} />
+                          <div style={{ 
+                            textAlign: 'center', 
+                            fontWeight: 'bold',
+                            backgroundColor: darkMode ? '#1a2e1a' : '#e8f5e9', 
+                            padding: '8px', 
+                            borderRadius: '4px',
+                            marginTop: '10px',
+                            border: `1px solid ${darkMode ? '#265426' : '#c8e6c9'}`,
+                            color: darkMode ? '#81c784' : 'inherit'
+                          }}>
+                            Last Candle Date: {lastSetupCandleDate}
+                          </div>
+                          
+                          {/* Last Setup Candle OHLC Data */}
+                          {lastSetupCandle && (
+                            <div style={{ marginTop: '15px' }}>
+                              <p style={{ 
+                                fontWeight: 'bold', 
+                                marginBottom: '8px', 
+                                fontSize: '14px',
+                                color: darkMode ? '#e0e0e0' : 'inherit'
+                              }}>
+                                Last Candle OHLC Data:
+                              </p>
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
+                                <div style={{ 
+                                  backgroundColor: darkMode ? '#333' : '#f5f5f5', 
+                                  padding: '6px', 
+                                  borderRadius: '4px',
+                                  fontSize: '13px',
+                                  color: darkMode ? '#e0e0e0' : 'inherit'
+                                }}>
+                                  <strong>Open:</strong> {lastSetupCandle.open.toFixed(2)}
+                                </div>
+                                <div style={{ 
+                                  backgroundColor: darkMode ? '#333' : '#f5f5f5', 
+                                  padding: '6px', 
+                                  borderRadius: '4px',
+                                  fontSize: '13px',
+                                  color: darkMode ? '#e0e0e0' : 'inherit'
+                                }}>
+                                  <strong>High:</strong> {lastSetupCandle.high.toFixed(2)}
+                                </div>
+                                <div style={{ 
+                                  backgroundColor: darkMode ? '#333' : '#f5f5f5', 
+                                  padding: '6px', 
+                                  borderRadius: '4px',
+                                  fontSize: '13px',
+                                  color: darkMode ? '#e0e0e0' : 'inherit'
+                                }}>
+                                  <strong>Low:</strong> {lastSetupCandle.low.toFixed(2)}
+                                </div>
+                                <div style={{ 
+                                  backgroundColor: darkMode ? '#333' : '#f5f5f5', 
+                                  padding: '6px', 
+                                  borderRadius: '4px',
+                                  fontSize: '13px',
+                                  color: darkMode ? '#e0e0e0' : 'inherit'
+                                }}>
+                                  <strong>Close:</strong> {lastSetupCandle.close.toFixed(2)}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <div style={{ 
+                          height: '250px', 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'center', 
+                          color: darkMode ? '#b0b0b0' : '#666' 
+                        }}>
+                          No chart data available
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Outcome Chart with first candle date and data */}
+                  <div>
+                    <h4 style={{ 
+                      marginBottom: '10px', 
+                      borderBottom: `1px solid ${darkMode ? '#333' : '#eee'}`, 
+                      paddingBottom: '5px',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      color: darkMode ? '#e0e0e0' : 'inherit'
+                    }}>
+                      <span>Outcome Chart</span>
+                      <span style={{
+                        backgroundColor: change.isPositive 
+                          ? (darkMode ? '#1a2e1a' : '#e8f5e9') 
+                          : (darkMode ? '#3a181a' : '#ffebee'),
+                        color: change.isPositive 
+                          ? (darkMode ? '#81c784' : '#388e3c') 
+                          : (darkMode ? '#ef9a9a' : '#d32f2f'),
+                        padding: '3px 10px',
+                        borderRadius: '20px',
+                        fontSize: '14px',
+                        fontWeight: 'bold'
+                      }}>
+                        {change.isPositive ? '+' : '-'}{change.value}%
+                      </span>
+                    </h4>
+                    <div style={{ 
+                      backgroundColor: darkMode ? '#262626' : '#fff', 
+                      padding: '15px', 
+                      borderRadius: '8px'
+                    }}>
+                      {outcomeData.length > 0 ? (
+                        <>
+                          <CandlestickChart data={outcomeData} height={250} />
+                          <div style={{ 
+                            textAlign: 'center', 
+                            fontWeight: 'bold',
+                            backgroundColor: darkMode ? '#4d3308' : '#fff3e0', 
+                            padding: '8px', 
+                            borderRadius: '4px',
+                            marginTop: '10px',
+                            border: `1px solid ${darkMode ? '#855600' : '#ffe0b2'}`,
+                            color: darkMode ? '#ffcc80' : 'inherit'
+                          }}>
+                            First Outcome Candle Date: {firstOutcomeCandleDate}
+                          </div>
+                          
+                          {/* First Outcome Candle OHLC Data */}
+                          {firstOutcomeCandle && (
+                            <div style={{ marginTop: '15px' }}>
+                              <p style={{ 
+                                fontWeight: 'bold', 
+                                marginBottom: '8px', 
+                                fontSize: '14px',
+                                color: darkMode ? '#e0e0e0' : 'inherit'
+                              }}>
+                                First Outcome Candle OHLC Data:
+                              </p>
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
+                                <div style={{ 
+                                  backgroundColor: darkMode ? '#333' : '#f5f5f5', 
+                                  padding: '6px', 
+                                  borderRadius: '4px',
+                                  fontSize: '13px',
+                                  color: darkMode ? '#e0e0e0' : 'inherit'
+                                }}>
+                                  <strong>Open:</strong> {firstOutcomeCandle.open.toFixed(2)}
+                                </div>
+                                <div style={{ 
+                                  backgroundColor: darkMode ? '#333' : '#f5f5f5', 
+                                  padding: '6px', 
+                                  borderRadius: '4px',
+                                  fontSize: '13px',
+                                  color: darkMode ? '#e0e0e0' : 'inherit'
+                                }}>
+                                  <strong>High:</strong> {firstOutcomeCandle.high.toFixed(2)}
+                                </div>
+                                <div style={{ 
+                                  backgroundColor: darkMode ? '#333' : '#f5f5f5', 
+                                  padding: '6px', 
+                                  borderRadius: '4px',
+                                  fontSize: '13px',
+                                  color: darkMode ? '#e0e0e0' : 'inherit'
+                                }}>
+                                  <strong>Low:</strong> {firstOutcomeCandle.low.toFixed(2)}
+                                </div>
+                                <div style={{ 
+                                  backgroundColor: darkMode ? '#333' : '#f5f5f5', 
+                                  padding: '6px', 
+                                  borderRadius: '4px',
+                                  fontSize: '13px',
+                                  color: darkMode ? '#e0e0e0' : 'inherit'
+                                }}>
+                                  <strong>Close:</strong> {firstOutcomeCandle.close.toFixed(2)}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <div style={{ 
+                          height: '250px', 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'center', 
+                          color: darkMode ? '#b0b0b0' : '#666' 
+                        }}>
+                          No outcome data available
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                
+                <div style={{ 
+                  backgroundColor: darkMode ? '#262626' : '#fff', 
+                  padding: '15px', 
+                  borderRadius: '8px'
+                }}>
+                  <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    flexWrap: 'wrap', 
+                    gap: '10px'
+                  }}>
+                    <p>
+                      <span style={{ 
+                        fontWeight: 'bold',
+                        color: darkMode ? '#e0e0e0' : 'inherit'
+                      }}>Your Prediction:</span> 
+                      <span style={{ 
+                        display: 'inline-block',
+                        marginLeft: '5px',
+                        padding: '3px 10px',
+                        backgroundColor: answer.user_prediction === 'Bullish' 
+                          ? (darkMode ? '#1a2e1a' : '#e8f5e9') 
+                          : (darkMode ? '#3a181a' : '#ffebee'),
+                        borderRadius: '4px',
+                        color: answer.user_prediction === 'Bullish' 
+                          ? (darkMode ? '#81c784' : '#388e3c') 
+                          : (darkMode ? '#ef9a9a' : '#d32f2f')
+                      }}>
+                        {answer.user_prediction || 'N/A'}
+                      </span>
+                    </p>
+                    <p>
+                      <span style={{ 
+                        fontWeight: 'bold',
+                        color: darkMode ? '#e0e0e0' : 'inherit'
+                      }}>Correct Answer:</span>
+                      <span style={{ 
+                        display: 'inline-block',
+                        marginLeft: '5px',
+                        padding: '3px 10px',
+                        backgroundColor: answer.correct_answer === 'Bullish' 
+                          ? (darkMode ? '#1a2e1a' : '#e8f5e9') 
+                          : (darkMode ? '#3a181a' : '#ffebee'),
+                        borderRadius: '4px',
+                        color: answer.correct_answer === 'Bullish' 
+                          ? (darkMode ? '#81c784' : '#388e3c') 
+                          : (darkMode ? '#ef9a9a' : '#d32f2f')
+                      }}>
+                        {answer.correct_answer || 'N/A'}
+                      </span>
+                    </p>
+                    <p style={{ 
+                      fontWeight: 'bold',
+                      color: answer.is_correct 
+                        ? (darkMode ? '#81c784' : '#4CAF50') 
+                        : (darkMode ? '#ef9a9a' : '#F44336')
+                    }}>
+                      {answer.is_correct ? '✓ Correct' : '✗ Incorrect'}
+                    </p>
+                  </div>
+                </div>
               </div>
             );
           })}
