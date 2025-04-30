@@ -2,11 +2,13 @@ import React from 'react';
 import { ThemeProvider } from '../contexts/ThemeContext';
 import Navbar from './Navbar';
 import Footer from './Footer';
+import GlobalLoader from './GlobalLoader';
 
 const Layout = ({ children }) => {
   return (
     <ThemeProvider>
       <div id="app-container">
+      <GlobalLoader />
         <Navbar />
         <main>{children}</main>
         <Footer />

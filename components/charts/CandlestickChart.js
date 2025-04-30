@@ -1,12 +1,13 @@
+// components/charts/CandlestickChart.js
 import React, { useContext } from 'react';
 import dynamic from 'next/dynamic';
 import { ThemeContext } from '../../contexts/ThemeContext';
-import CryptoLoader from '../CryptoLoader'; // Import the new loader
+import CryptoLoader from '../CryptoLoader'; // Import the fixed loader
 
 // Create a placeholder component to show while the chart is loading
 const LoadingChart = ({ height = 400 }) => {
   // Use the CryptoLoader instead of the simple loading text
-  return <CryptoLoader height={`${height}px`} message="Loading chart data..." />;
+  return <CryptoLoader height={`${height}px`} message="Loading chart data..." minDisplayTime={2000} />;
 };
 
 // Export a dynamic component with SSR disabled

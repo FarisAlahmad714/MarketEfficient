@@ -69,38 +69,28 @@ export default function AssetTestPage() {
   };
 
   const handleSubmitTest = async () => {
-    if (!testData || !testData.session_id) return;
-  
-    // Check if all questions are answered
-    const unansweredQuestions = Object.values(userAnswers).filter(v => !v).length;
-    if (unansweredQuestions > 0) {
-      alert(`Please answer all questions before submitting. ${unansweredQuestions} question(s) remaining.`);
-      return;
-    }
-  
+    // Show loader
     setIsSubmitting(true);
     
+    // Display the global loader directly (optional - if needed for longer operations)
+    document.getElementById('global-loader').style.display = 'flex';
+    
     try {
-      // Format answers for submission
-      const formattedAnswers = Object.keys(userAnswers).map(id => ({
-        test_id: parseInt(id),
-        prediction: userAnswers[id]
-      }));
-  
-      // Make sure we properly log what we're submitting
-      console.log("Submitting answers:", formattedAnswers);
-      console.log("Session ID:", testData.session_id);
-  
-      // Submit answers
+      // Your code to submit the test
       const response = await axios.post(`/api/test/${assetSymbol}?session_id=${testData.session_id}`, formattedAnswers);
-      console.log("Submission response:", response.data);
       
-      // Redirect to results page with the same session ID
+      // Wait for animation to complete
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Redirect to results
       router.push(`/results/${assetSymbol}?session_id=${testData.session_id}`);
     } catch (err) {
       console.error('Error submitting test:', err);
       alert('Failed to submit test. Please try again.');
+      
+      // Hide loader
       setIsSubmitting(false);
+      document.getElementById('global-loader').style.display = 'none';
     }
   };
 
