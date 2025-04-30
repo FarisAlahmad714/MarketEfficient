@@ -57,7 +57,7 @@ export default function HomePage() {
           <p style={{ color: darkMode ? '#b0b0b0' : '#555' }}>
             Practice technical analysis with interactive charting exercises.
           </p>
-          <Link href="/charting-exam" style={{ 
+          <Link href="/chart-exam" style={{ 
             display: 'inline-block', 
             padding: '8px 16px', 
             backgroundColor: '#2196F3', 

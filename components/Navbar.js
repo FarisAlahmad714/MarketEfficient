@@ -85,6 +85,20 @@ const Navbar = () => {
                   Bias Test
                 </Link>
               </li>
+              <li>
+                <Link href="/chart-exam" style={{
+                  color: router.pathname === '/chart-exam' || router.pathname.includes('/chart-exam/') 
+                    ? '#2196F3' 
+                    : (darkMode ? '#b0b0b0' : '#555'),
+                  textDecoration: 'none',
+                  fontWeight: router.pathname === '/chart-exam' || router.pathname.includes('/chart-exam/') ? '600' : '500',
+                  padding: '8px 0',
+                  borderBottom: router.pathname === '/chart-exam' || router.pathname.includes('/chart-exam/') ? '2px solid #2196F3' : 'none',
+                  transition: 'all 0.3s ease'
+                }}>
+                  Chart Exam
+                </Link>
+              </li>
             </ul>
           </nav>
           
