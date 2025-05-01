@@ -282,9 +282,18 @@ export default async function handler(req, res) {
   
   // Check if we're getting test results for an existing session
   // Only if we're not forcing a new session
-  if (!forceNewSession && req.query.session_id && sessions[req.query.session_id]) {
-    console.log(`Returning results for existing session ${req.query.session_id}`);
-    return res.status(200).json(sessions[req.query.session_id]);
+  if (!forceNewSession && req.query.session_id) {
+    // First, check if we have processed results for this session
+    if (sessions[req.query.session_id] && sessions[req.query.session_id].answers) {
+      console.log(`Returning existing processed results for ${req.query.session_id}`);
+      return res.status(200).json(sessions[req.query.session_id]);
+    }
+    
+    // If no processed results, check for test session
+    const testSessionKey = req.query.session_id + '_test';
+    if (sessions[testSessionKey]) {
+      console.log(`Found test session ${testSessionKey}, but no processed results yet`);
+    }
   }
   
   // Handle POST request for submitting test answers

@@ -1,10 +1,12 @@
-import React, { useState, useEffect, memo } from 'react';
+import React, { useState, useEffect, memo, useRef } from 'react'; // Added useRef here
+
 import { useRouter } from 'next/router';
 import axios from 'axios';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import PropTypes from 'prop-types';
 import Image from 'next/image';
+import CryptoLoader from './CryptoLoader'; 
 import {
   FaBitcoin,
   FaEthereum,
@@ -279,8 +281,9 @@ const AssetSelector = () => {
   const [showTimeframeModal, setShowTimeframeModal] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState(null);
   const router = useRouter();
+  const cryptoLoaderRef = useRef(null); 
 
-  useEffect(() => {
+ useEffect(() => {
     const fetchAssets = async () => {
       try {
         setLoading(true);
@@ -288,16 +291,24 @@ const AssetSelector = () => {
         setAssets(response.data);
         setFilteredAssets(response.data);
         setError(null);
+        
+        // Add a small delay to make the loading animation more noticeable
+        setTimeout(() => {
+          setLoading(false);
+          if (cryptoLoaderRef.current) {
+            cryptoLoaderRef.current.hideLoader();
+          }
+        }, 1500);
       } catch (err) {
         console.error('Error fetching assets:', err);
         setError('Failed to load assets. Please try again later.');
-      } finally {
         setLoading(false);
       }
     };
 
     fetchAssets();
   }, []);
+
 
   useEffect(() => {
     const filtered = assets.filter(
@@ -439,10 +450,14 @@ const AssetSelector = () => {
 
   if (loading) {
     return (
-      <Loader>
-        <Spinner />
-        <p style={{ fontSize: '1.2rem' }}>Loading assets...</p>
-      </Loader>
+      <div style={{ maxWidth: '800px', margin: '0 auto', padding: '20px', minHeight: '400px' }}>
+        <CryptoLoader 
+          ref={cryptoLoaderRef} 
+          message="Loading available assets..." 
+          height="400px" 
+          minDisplayTime={1500} 
+        />
+      </div>
     );
   }
 

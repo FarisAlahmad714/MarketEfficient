@@ -13,6 +13,8 @@
     "coingecko-api": "^1.0.10",
     "dotenv": "^16.5.0",
     "framer-motion": "^12.9.2",
+    "highcharts": "^11.4.8",
+    "highcharts-react-official": "^3.2.2",
     "lightweight-charts": "^4.2.3",
     "next": "^13.4.0",
     "plotly.js": "^2.35.3",
