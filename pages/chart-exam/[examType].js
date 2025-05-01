@@ -24,7 +24,7 @@ const EXAM_CONFIGS = {
     title: 'Swing Point Analysis',
     instructions: 'Identify key swing points (highs and lows) in the chart. These are critical pivot areas where price direction changed.',
     tools: ['pointer', 'swingPoint'],
-    minDrawings: 3,
+    minDrawings: 1,
     maxDrawings: 10,
     asset: 'btc', // Default asset
     timeframe: 'daily' // Default timeframe
@@ -122,19 +122,24 @@ const ChartExam = () => {
   }, [router.isReady, examType, router.query]);
   
   // Handle drawing changes
-  const handleDrawingChange = (newDrawings) => {
-    setDrawings(newDrawings);
+ // In chart-exam/[examType].js
+const handleDrawingChange = (newDrawings) => {
+  console.log('Drawing change detected:', newDrawings.length, 'drawings');
+  
+  // Update local state with new drawings
+  setDrawings(newDrawings);
+  
+  // Update progress based on current exam requirements
+  if (examConfig) {
+    const minRequired = examConfig.minDrawings;
+    const currentCount = newDrawings.length;
     
-    // Update progress based on number of drawings vs requirements
-    if (examConfig) {
-      const minRequired = examConfig.minDrawings;
-      const currentCount = newDrawings.length;
-      
-      // Calculate progress - scale from 0 to 100%
-      const newProgress = Math.min(100, Math.round((currentCount / minRequired) * 100));
-      setProgress(newProgress);
-    }
-  };
+    // Calculate progress - scale from 0 to 100%
+    const newProgress = Math.min(100, Math.round((currentCount / minRequired) * 100));
+    console.log('Updating progress:', newProgress, '%');
+    setProgress(newProgress);
+  }
+};
   
   // Handle chart creation
   const handleChartCreated = (chart) => {
@@ -376,6 +381,8 @@ const ChartExam = () => {
               <HighchartsDrawingTools
                 chart={chartInstance}
                 onDrawingChange={handleDrawingChange}
+                examConfig={examConfig} // Make sure this is passed
+
               />
             )}
             

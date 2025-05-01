@@ -184,6 +184,7 @@ const DrawingToolbar = ({ activeTool, onToolSelect, onClearAll, darkMode }) => {
 // Main HighchartsDrawingTools component
 const HighchartsDrawingTools = ({ 
   chart, 
+  examConfig = null ,
   onDrawingComplete = null,
   onDrawingChange = null
 }) => {
@@ -1048,35 +1049,29 @@ const HighchartsDrawingTools = ({
 
   // Update the local drawings array and notify parent
   // Updated updateDrawings function to properly track elements
+// In HighchartsDrawingTools.js - Fix the updateDrawings function
+// Update the local drawings array and notify parent
 const updateDrawings = (newDrawing) => {
-  console.log(`Adding new drawing to state: ${newDrawing.type}`);
-  
-  // Ensure drawings is treated as immutable
-  const updatedDrawings = [...drawings, newDrawing];
-  setDrawings(updatedDrawings);
-  
-  // Update progress based on number of drawings vs requirements
-  if (examConfig) {
-    const minRequired = examConfig.minDrawings;
-    const currentCount = updatedDrawings.length;
+  try {
+    // Add the new drawing to the existing drawings
+    const updatedDrawings = [...drawings, newDrawing];
+    setDrawings(updatedDrawings);
     
-    // Calculate progress - scale from 0 to 100%
-    const newProgress = Math.min(100, Math.round((currentCount / minRequired) * 100));
-    setProgress(newProgress);
+    // Notify parent component
+    if (onDrawingChange) {
+      onDrawingChange(updatedDrawings);
+    }
     
-    console.log(`Progress updated: ${newProgress}% (${currentCount}/${minRequired})`);
-  }
-  
-  // Notify parent component
-  if (onDrawingComplete) {
-    onDrawingComplete(newDrawing);
-  }
-  
-  if (onDrawingChange) {
-    onDrawingChange(updatedDrawings);
+    // Notify on completion if handler exists
+    if (onDrawingComplete) {
+      onDrawingComplete(newDrawing);
+    }
+    
+    console.log(`Drawing updated: ${newDrawing.type}`);
+  } catch (error) {
+    console.error('Error updating drawings:', error);
   }
 };
-
   // Clear all annotations
   const handleClearAll = () => {
     if (!chart) return;
