@@ -1,6 +1,7 @@
 // components/charts/HighchartsDrawingTools.js
 import React, { useState, useEffect, useContext } from 'react';
 import { ThemeContext } from '../../contexts/ThemeContext';
+import AnnotationsModule from 'highcharts/modules/annotations';
 
 // Drawing tools types
 const TOOL_TYPES = {
@@ -12,6 +13,54 @@ const TOOL_TYPES = {
   ZOOM_IN: 'zoomIn',
   ZOOM_OUT: 'zoomOut',
   RESET_ZOOM: 'resetZoom'
+};
+
+// State indicator component
+const DrawingStateIndicator = ({ isDrawing, activeTool, darkMode, startPoint }) => {
+  if (!isDrawing) return null;
+  
+  let message = '';
+  switch (activeTool) {
+    case TOOL_TYPES.TRENDLINE:
+      message = 'Click again to complete the trendline';
+      break;
+    case TOOL_TYPES.FIBONACCI:
+      message = 'Click again to place the Fibonacci retracement';
+      break;
+    case TOOL_TYPES.FVG:
+      message = 'Click again to create the Fair Value Gap';
+      break;
+    default:
+      message = 'Click to complete drawing';
+  }
+  
+  return (
+    <div style={{
+      position: 'absolute',
+      top: '60px',
+      left: '50%',
+      transform: 'translateX(-50%)',
+      backgroundColor: darkMode ? 'rgba(33,150,243,0.8)' : 'rgba(33,150,243,0.9)',
+      color: 'white',
+      padding: '8px 15px',
+      borderRadius: '4px',
+      fontWeight: 'bold',
+      zIndex: 1000,
+      boxShadow: '0 2px 10px rgba(0,0,0,0.2)',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px',
+      pointerEvents: 'none'
+    }}>
+      <i className="fas fa-info-circle" />
+      {message}
+      {startPoint && (
+        <span style={{ marginLeft: '5px', fontSize: '0.9em', opacity: 0.8 }}>
+          (Started at {new Date(startPoint.x).toLocaleTimeString()}, ${startPoint.y.toFixed(2)})
+        </span>
+      )}
+    </div>
+  );
 };
 
 // Component to render the toolbar
@@ -145,6 +194,26 @@ const HighchartsDrawingTools = ({
   const [startPoint, setStartPoint] = useState(null);
   const [chartReady, setChartReady] = useState(false);
 
+  // Utility function to help with coordinate conversion
+  const getPixelCoordinates = (dataX, dataY) => {
+    if (!chart || !chart.xAxis || !chart.yAxis) {
+      return null;
+    }
+    
+    try {
+      const xAxis = chart.xAxis[0];
+      const yAxis = chart.yAxis[0];
+      
+      const pixelX = xAxis.toPixels(dataX);
+      const pixelY = yAxis.toPixels(dataY);
+      
+      return { x: pixelX, y: pixelY };
+    } catch (err) {
+      console.error("Error converting coordinates:", err);
+      return null;
+    }
+  };
+
   // Effect to monitor chart instance changes
   useEffect(() => {
     if (!chart) return;
@@ -208,13 +277,21 @@ const HighchartsDrawingTools = ({
 
   // Helper function to update chart interaction based on active tool
   const updateChartInteraction = (tool) => {
-    if (!chartReady || !chart) return;
+    if (!chartReady || !chart) {
+      console.error('Chart not ready or not available');
+      return;
+    }
+    
+    console.log(`Updating chart interaction for tool: ${tool}`);
     
     try {
       // Enable chart pointer events based on the selected tool
       if (tool === TOOL_TYPES.POINTER) {
+        console.log('Enabling standard pointer interactions');
+        
         // Remove click event handlers if they exist
         if (chart.container) {
+          console.log('Removing click handler from chart container');
           chart.container.onclick = null;
         }
         
@@ -226,6 +303,8 @@ const HighchartsDrawingTools = ({
         }, false);
         chart.redraw();
       } else {
+        console.log(`Setting up drawing tool: ${tool}`);
+        
         // For drawing tools, disable chart zoom
         chart.update({
           chart: {
@@ -234,10 +313,43 @@ const HighchartsDrawingTools = ({
         }, false);
         chart.redraw();
         
-        // Add click handler to chart container
-        if (chart.container) {
-          chart.container.onclick = (e) => handleChartContainerClick(e, tool);
+        // IMPORTANT: Add debugging to find the chart container
+        if (!chart.container) {
+          console.error('Chart container not found!');
+          
+          // Try to find it anyway
+          const chartDiv = document.querySelector('.highcharts-container');
+          if (chartDiv) {
+            console.log('Found chart container via querySelector');
+            chart.container = chartDiv;
+          } else {
+            console.error('Could not find chart container with any method');
+            return;
+          }
+        } else {
+          console.log('Chart container found:', chart.container);
         }
+        
+        // Create a wrapped click handler with debugging
+        const clickHandler = function(e) {
+          console.log(`Chart clicked with tool: ${tool}`);
+          e.preventDefault();
+          e.stopPropagation();
+          handleChartContainerClick(e, tool);
+        };
+        
+        // CRITICAL: Make sure existing handler is removed first
+        if (chart.container.onclick) {
+          chart.container.onclick = null;
+        }
+        
+        // Directly attach listener to ensure it works
+        chart.container.addEventListener('click', clickHandler);
+        
+        console.log(`Click handler attached for tool: ${tool}`);
+        
+        // Show visual feedback that drawing mode is active
+        chart.container.style.cursor = 'crosshair';
       }
     } catch (err) {
       console.error("Error updating chart interaction:", err);
@@ -330,46 +442,112 @@ const HighchartsDrawingTools = ({
 
   // Handle click directly on chart container
   const handleChartContainerClick = (event, tool) => {
-    if (!chart || !chart.xAxis || !chart.yAxis) return;
+    console.log(`Chart container clicked. Tool: ${tool}`, event);
+    
+    if (!chart) {
+      console.error('Chart instance not available');
+      return;
+    }
+    
+    if (!chart.xAxis || !chart.yAxis) {
+      console.error('Chart axes not available');
+      return;
+    }
+    
+    // Check if addAnnotation method exists
+    if (typeof chart.addAnnotation !== 'function') {
+      console.error('addAnnotation method not available on chart instance');
+      
+      // Try to reinitialize annotations
+      try {
+        console.log('Attempting to reinitialize annotations module');
+        if (typeof Highcharts === 'object') {
+          AnnotationsModule(Highcharts);
+          
+          // Add basic implementation if still missing
+          if (typeof chart.addAnnotation !== 'function') {
+            chart.annotations = chart.annotations || [];
+            chart.addAnnotation = function(options) {
+              console.log('Using manual addAnnotation implementation:', options);
+              this.annotations.push(options);
+              this.redraw();
+            };
+          }
+        }
+      } catch (err) {
+        console.error('Failed to reinitialize annotations:', err);
+      }
+      
+      if (typeof chart.addAnnotation !== 'function') {
+        console.error('Still unable to initialize addAnnotation method');
+        return;
+      }
+    }
     
     try {
-      // Get chart position
+      // Get chart position - IMPROVED VERSION
       const chartRect = chart.container.getBoundingClientRect();
+      console.log('Chart rectangle:', chartRect);
+      
+      // Calculate relative position within chart
       const chartX = event.clientX - chartRect.left;
       const chartY = event.clientY - chartRect.top;
+      console.log(`Click at chart-relative coordinates: x=${chartX}, y=${chartY}`);
       
       // Convert to chart coordinates
       let xValue, yValue;
       
-      // Use chart.pointer if available, otherwise do manual conversion
-      if (chart.pointer && chart.pointer.normalize) {
-        const chartPosition = chart.pointer.normalize(event);
-        xValue = chart.xAxis[0].toValue(chartPosition.chartX);
-        yValue = chart.yAxis[0].toValue(chartPosition.chartY);
-      } else {
-        // Manual conversion as fallback
-        const xAxisPixelRatio = chart.xAxis[0].width / (chart.xAxis[0].max - chart.xAxis[0].min);
-        const yAxisPixelRatio = chart.yAxis[0].height / (chart.yAxis[0].max - chart.yAxis[0].min);
+      // Multiple conversion approaches for redundancy
+      try {
+        if (chart.pointer && chart.pointer.normalize) {
+          // Method 1: Use chart's pointer normalize
+          const chartPosition = chart.pointer.normalize(event);
+          xValue = chart.xAxis[0].toValue(chartPosition.chartX);
+          yValue = chart.yAxis[0].toValue(chartPosition.chartY);
+          console.log('Coordinates via pointer.normalize:', { x: xValue, y: yValue });
+        } else {
+          throw new Error('chart.pointer.normalize not available');
+        }
+      } catch (err) {
+        console.warn('Using fallback coordinate conversion:', err.message);
         
-        // Adjust for chart plot positions
+        // Method 2: Manual conversion 
+        // Adjust for chart plot area position
         const plotLeft = chart.plotLeft || 0;
         const plotTop = chart.plotTop || 0;
         
-        xValue = chart.xAxis[0].min + (chartX - plotLeft) / xAxisPixelRatio;
-        yValue = chart.yAxis[0].max - (chartY - plotTop) / yAxisPixelRatio;
+        console.log('Plot area offset:', { plotLeft, plotTop });
+        
+        // Calculate click position relative to plot area
+        const plotX = chartX - plotLeft;
+        const plotY = chartY - plotTop;
+        
+        // Convert from pixels to data values
+        try {
+          xValue = chart.xAxis[0].toValue(plotX);
+          yValue = chart.yAxis[0].toValue(plotY);
+          console.log('Coordinates via manual conversion:', { x: xValue, y: yValue });
+        } catch (convErr) {
+          console.error('Error in manual coordinate conversion:', convErr);
+          return;
+        }
       }
       
-      console.log(`Chart clicked at x=${xValue}, y=${yValue} with tool=${tool}`);
+      console.log(`Final converted coordinates: x=${xValue}, y=${yValue} with tool=${tool}`);
       
+      // Process click based on tool type
       if (tool === TOOL_TYPES.SWING_POINT) {
         // Swing points only require a single click
+        console.log('Adding swing point at', { x: xValue, y: yValue });
         addSwingPoint({ x: xValue, y: yValue });
       } else if (!isDrawing) {
         // First click for other tools - start drawing
+        console.log('Starting drawing from', { x: xValue, y: yValue });
         setStartPoint({ x: xValue, y: yValue });
         setIsDrawing(true);
       } else {
         // Second click - complete drawing
+        console.log('Completing drawing to', { x: xValue, y: yValue });
         const endPoint = { x: xValue, y: yValue };
         
         // Create different annotation types based on the active tool
@@ -384,6 +562,7 @@ const HighchartsDrawingTools = ({
             addFairValueGap(startPoint, endPoint);
             break;
           default:
+            console.warn(`No handler for tool type: ${tool}`);
             break;
         }
         
@@ -398,61 +577,95 @@ const HighchartsDrawingTools = ({
 
   // Add a trendline annotation
   const addTrendline = (start, end) => {
-    if (!chart) return;
+    if (!chart) {
+      console.error('Chart instance not available');
+      return;
+    }
+    
+    console.log(`Adding trendline from (${start.x}, ${start.y}) to (${end.x}, ${end.y})`);
     
     try {
       const id = `trendline-${Date.now()}`;
       
-      // Create the annotation configuration
-      const annotationOptions = {
-        labelOptions: {
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          style: {
-            color: '#FFFFFF'
-          },
-          borderWidth: 0,
-          borderRadius: 3
-        },
-        labels: [{
-          point: {
-            x: start.x,
-            y: start.y,
-            xAxis: 0,
-            yAxis: 0
-          },
-          text: 'Start'
-        }, {
-          point: {
-            x: end.x,
-            y: end.y,
-            xAxis: 0,
-            yAxis: 0
-          },
-          text: 'End'
-        }],
-        shapes: [{
-          type: 'path',
-          points: [
-            { x: start.x, y: start.y, xAxis: 0, yAxis: 0 },
-            { x: end.x, y: end.y, xAxis: 0, yAxis: 0 }
-          ],
+      // Always use manual rendering for reliability
+      console.log('Using direct manual rendering for trendline');
+      
+      // Get axes
+      const xAxis = chart.xAxis[0];
+      const yAxis = chart.yAxis[0];
+      
+      if (!xAxis || !yAxis) {
+        console.error('Chart axes not available');
+        return;
+      }
+      
+      // Convert data coordinates to pixel coordinates
+      const x1 = xAxis.toPixels(start.x);
+      const y1 = yAxis.toPixels(start.y);
+      const x2 = xAxis.toPixels(end.x);
+      const y2 = yAxis.toPixels(end.y);
+      
+      console.log('Rendering line at pixels:', { x1, y1, x2, y2 });
+      
+      // Draw the line with high zIndex
+      const line = chart.renderer.path(['M', x1, y1, 'L', x2, y2])
+        .attr({
+          'stroke-width': 2,
           stroke: '#3f51b5',
-          strokeWidth: 2
-        }],
-        draggable: true,
-        id: id
-      };
+          zIndex: 1000,
+          dashStyle: 'Solid'
+        })
+        .add();
       
-      // Add the annotation to the chart
-      chart.addAnnotation(annotationOptions);
+      // Add slope and distance labels
+      const dx = end.x - start.x;
+      const dy = end.y - start.y;
+      const slope = dy / dx;
+      const priceChange = end.y - start.y;
+      const percentChange = (priceChange / start.y * 100).toFixed(2);
       
-      console.log(`Added trendline from (${start.x}, ${start.y}) to (${end.x}, ${end.y})`);
+      // Place label at the midpoint of the line
+      const midX = (x1 + x2) / 2;
+      const midY = (y1 + y2) / 2;
+      
+      const label = chart.renderer.text(
+        `${priceChange > 0 ? '+' : ''}${priceChange.toFixed(2)} (${percentChange}%)`, 
+        midX, 
+        midY - 10
+      )
+      .attr({
+        align: 'center',
+        zIndex: 1000
+      })
+      .css({
+        color: priceChange >= 0 ? '#4CAF50' : '#F44336',
+        fontSize: '12px',
+        fontWeight: 'bold'
+      })
+      .add();
+      
+      // Add background to make text readable
+      const box = label.getBBox();
+      const labelBackground = chart.renderer.rect(box.x - 3, box.y - 3, box.width + 6, box.height + 6, 2)
+        .attr({
+          fill: darkMode ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.7)',
+          stroke: priceChange >= 0 ? '#4CAF50' : '#F44336',
+          'stroke-width': 1,
+          zIndex: 999
+        })
+        .add();
+      
+      // Move label to front
+      label.toFront();
+      
+      console.log('Manual rendering successful');
       
       // Add to local state
       const newDrawing = {
         id,
         type: TOOL_TYPES.TRENDLINE,
-        points: [start, end]
+        points: [start, end],
+        elements: [line, label, labelBackground] // Store for potential removal later
       };
       
       updateDrawings(newDrawing);
@@ -460,62 +673,126 @@ const HighchartsDrawingTools = ({
       console.error("Error adding trendline:", err);
     }
   };
+  
 
+  const renderManualTrendline = (start, end) => {
+    console.log('Attempting manual trendline rendering');
+    
+    try {
+      if (!chart || !chart.renderer) {
+        console.error('Chart renderer not available');
+        return false;
+      }
+      
+      // Get axes
+      const xAxis = chart.xAxis[0];
+      const yAxis = chart.yAxis[0];
+      
+      if (!xAxis || !yAxis) {
+        console.error('Chart axes not available');
+        return false;
+      }
+      
+      // Convert data coordinates to pixel coordinates
+      const x1 = xAxis.toPixels(start.x);
+      const y1 = yAxis.toPixels(start.y);
+      const x2 = xAxis.toPixels(end.x);
+      const y2 = yAxis.toPixels(end.y);
+      
+      console.log('Rendering line at pixels:', { x1, y1, x2, y2 });
+      
+      // Draw the line
+      const line = chart.renderer.path(['M', x1, y1, 'L', x2, y2])
+        .attr({
+          'stroke-width': 2,
+          stroke: '#3f51b5',
+          zIndex: 5
+        })
+        .add();
+      
+      console.log('Manual rendering successful');
+      return true;
+    } catch (renderError) {
+      console.error('Error in manual rendering:', renderError);
+      return false;
+    }
+  };
+  
   // Add a swing point annotation
   const addSwingPoint = (point) => {
-    if (!chart) return;
+    if (!chart) {
+      console.error('Chart instance not available');
+      return;
+    }
+    
+    console.log(`Adding swing point at (${point.x}, ${point.y})`);
     
     try {
       const id = `swingPoint-${Date.now()}`;
       
-      // Create the annotation configuration with explicit axis references
-      const annotationOptions = {
-        labelOptions: {
-          backgroundColor: darkMode ? 'rgba(0, 0, 0, 0.7)' : 'rgba(255, 255, 255, 0.7)',
-          style: {
-            color: darkMode ? '#81c784' : '#388E3C',
-            fontWeight: 'bold'
-          },
-          borderWidth: 0,
-          borderRadius: 3,
-          y: -25
-        },
-        labels: [{
-          point: {
-            x: point.x,
-            y: point.y,
-            xAxis: 0,
-            yAxis: 0
-          },
-          text: 'Swing'
-        }],
-        shapes: [{
-          type: 'circle',
-          point: {
-            x: point.x,
-            y: point.y,
-            xAxis: 0,
-            yAxis: 0
-          },
-          r: 6,
-          fill: darkMode ? '#81c784' : '#388E3C',
-          stroke: darkMode ? '#2E7D32' : '#1B5E20',
-          strokeWidth: 2
-        }],
-        draggable: true,
-        id: id
-      };
+      // IMPORTANT: Always use the manual rendering approach since it's more reliable
+      console.log('Using direct manual rendering for swing point');
       
-      // Add the annotation to the chart
-      chart.addAnnotation(annotationOptions);
+      // Get axes
+      const xAxis = chart.xAxis[0];
+      const yAxis = chart.yAxis[0];
       
-      console.log(`Added swing point at (${point.x}, ${point.y})`);
+      if (!xAxis || !yAxis) {
+        console.error('Chart axes not available');
+        return;
+      }
+      
+      // Convert data coordinates to pixel coordinates
+      const x = xAxis.toPixels(point.x);
+      const y = yAxis.toPixels(point.y);
+      
+      console.log('Rendering circle at pixels:', { x, y });
+      
+      // Draw the circle with high zIndex to ensure visibility
+      const circle = chart.renderer.circle(x, y, 6)
+        .attr({
+          fill: '#4CAF50',
+          stroke: '#2E7D32',
+          'stroke-width': 2,
+          zIndex: 1000 // Very high zIndex to ensure it's on top
+        })
+        .add();
+      
+      // Add label above the point
+      const label = chart.renderer.text(`${point.y.toFixed(2)}`, x, y - 15)
+        .attr({
+          align: 'center',
+          zIndex: 1000
+        })
+        .css({
+          color: '#4CAF50',
+          fontSize: '12px',
+          fontWeight: 'bold'
+        })
+        .add();
+      
+      // Add background to make text readable
+      const box = label.getBBox();
+      const labelBackground = chart.renderer.rect(box.x - 3, box.y - 3, box.width + 6, box.height + 6, 2)
+        .attr({
+          fill: darkMode ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.7)',
+          stroke: '#4CAF50',
+          'stroke-width': 1,
+          zIndex: 999 // Just below the text
+        })
+        .add();
+      
+      // Move label to front
+      label.toFront();
+      
+      console.log('Manual rendering successful');
       
       // Add to local state
       const newDrawing = {
         id,
         type: TOOL_TYPES.SWING_POINT,
-        points: [point]
+        points: [point],
+        elements: [circle, label, labelBackground] // Store for potential removal later
       };
       
       updateDrawings(newDrawing);
@@ -523,95 +800,160 @@ const HighchartsDrawingTools = ({
       console.error("Error adding swing point:", err);
     }
   };
+  
+
+  const renderManualSwingPoint = (point) => {
+    console.log('Attempting manual swing point rendering');
+    
+    try {
+      if (!chart || !chart.renderer) {
+        console.error('Chart renderer not available');
+        return false;
+      }
+      
+      // Get axes
+      const xAxis = chart.xAxis[0];
+      const yAxis = chart.yAxis[0];
+      
+      if (!xAxis || !yAxis) {
+        console.error('Chart axes not available');
+        return false;
+      }
+      
+      // Convert data coordinates to pixel coordinates
+      const x = xAxis.toPixels(point.x);
+      const y = yAxis.toPixels(point.y);
+      
+      console.log('Rendering circle at pixels:', { x, y });
+      
+      // Draw the circle
+      const circle = chart.renderer.circle(x, y, 6)
+        .attr({
+          fill: '#4CAF50',
+          stroke: '#2E7D32',
+          'stroke-width': 2,
+          zIndex: 5
+        })
+        .add();
+      
+      console.log('Manual rendering successful');
+      return true;
+    } catch (renderError) {
+      console.error('Error in manual rendering:', renderError);
+      return false;
+    }
+  };
 
   // Add a Fibonacci retracement annotation
   const addFibonacciRetracement = (start, end) => {
-    if (!chart) return;
+    if (!chart) {
+      console.error('Chart instance not available');
+      return;
+    }
+    
+    console.log(`Adding Fibonacci retracement from (${start.x}, ${start.y}) to (${end.x}, ${end.y})`);
     
     try {
       const id = `fibonacci-${Date.now()}`;
       
-      // Fibonacci levels
+      // Always use manual rendering for reliability
+      console.log('Using direct manual rendering for Fibonacci');
+      
+      // Get axes
+      const xAxis = chart.xAxis[0];
+      const yAxis = chart.yAxis[0];
+      
+      if (!xAxis || !yAxis) {
+        console.error('Chart axes not available');
+        return;
+      }
+      
+      // Convert data coordinates to pixel coordinates
+      const x1 = xAxis.toPixels(start.x);
+      const y1 = yAxis.toPixels(start.y);
+      const x2 = xAxis.toPixels(end.x);
+      const y2 = yAxis.toPixels(end.y);
+      
+      // Fibonacci levels: 0, 0.236, 0.382, 0.5, 0.618, 0.786, 1
       const levels = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1];
       const colors = ["#9C27B0", "#673AB7", "#3F51B5", "#2196F3", "#03A9F4", "#00BCD4", "#009688"];
       
       // Calculate the price range
       const priceRange = end.y - start.y;
       
-      // Create shapes and labels for each Fibonacci level
-      const shapes = [];
-      const labels = [];
+      // Create elements array to store all rendered elements
+      const elements = [];
       
+      // Draw the main trend line
+      const mainLine = chart.renderer.path(['M', x1, y1, 'L', x2, y2])
+        .attr({
+          'stroke-width': 2,
+          stroke: '#9C27B0',
+          zIndex: 1000
+        })
+        .add();
+      
+      elements.push(mainLine);
+      
+      // Create lines and labels for each Fibonacci level
       levels.forEach((level, i) => {
         const levelPrice = start.y + priceRange * level;
+        const levelY = yAxis.toPixels(levelPrice);
         
-        // Add horizontal line for this level
-        shapes.push({
-          type: 'path',
-          points: [
-            { x: start.x, y: levelPrice, xAxis: 0, yAxis: 0 },
-            { x: end.x, y: levelPrice, xAxis: 0, yAxis: 0 }
-          ],
-          stroke: colors[i],
-          strokeWidth: 1,
-          dashStyle: 'dash'
-        });
+        // Draw horizontal line for this level
+        const line = chart.renderer.path(['M', x1, levelY, 'L', x2, levelY])
+          .attr({
+            'stroke-width': 1,
+            stroke: colors[i],
+            zIndex: 1000,
+            dashStyle: 'Dash'
+          })
+          .add();
+        
+        elements.push(line);
         
         // Add label for this level
-        labels.push({
-          point: {
-            x: end.x,
-            y: levelPrice,
-            xAxis: 0,
-            yAxis: 0
-          },
-          text: level.toFixed(3),
-          x: 5, // Offset to position label to the right of the end point
-          backgroundColor: darkMode ? 'rgba(0, 0, 0, 0.7)' : 'rgba(255, 255, 255, 0.7)',
-          style: {
-            color: colors[i],
-            fontSize: '12px'
-          }
-        });
+        const label = chart.renderer.text(
+          `${level.toFixed(3)} - ${levelPrice.toFixed(2)}`, 
+          x2 + 5, 
+          levelY + 4
+        )
+        .attr({
+          align: 'left',
+          zIndex: 1000
+        })
+        .css({
+          color: colors[i],
+          fontSize: '11px',
+          fontWeight: 'bold'
+        })
+        .add();
+        
+        elements.push(label);
+        
+        // Add background for label
+        const box = label.getBBox();
+        const labelBackground = chart.renderer.rect(box.x - 2, box.y - 2, box.width + 4, box.height + 4, 2)
+          .attr({
+            fill: darkMode ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.7)',
+            zIndex: 999
+          })
+          .add();
+        
+        elements.push(labelBackground);
+        
+        // Move label to front
+        label.toFront();
       });
       
-      // Add the main trend line
-      shapes.push({
-        type: 'path',
-        points: [
-          { x: start.x, y: start.y, xAxis: 0, yAxis: 0 },
-          { x: end.x, y: end.y, xAxis: 0, yAxis: 0 }
-        ],
-        stroke: '#9C27B0',
-        strokeWidth: 2
-      });
-      
-      // Create the annotation configuration with proper labelOptions
-      const annotationOptions = {
-        labelOptions: {
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          style: {
-            color: '#FFFFFF'
-          },
-          borderWidth: 0,
-          borderRadius: 3
-        },
-        labels: labels,
-        shapes: shapes,
-        draggable: true,
-        id: id
-      };
-      
-      // Add the annotation to the chart
-      chart.addAnnotation(annotationOptions);
-      
-      console.log(`Added Fibonacci retracement from (${start.x}, ${start.y}) to (${end.x}, ${end.y})`);
+      console.log('Manual rendering successful');
       
       // Add to local state
       const newDrawing = {
         id,
         type: TOOL_TYPES.FIBONACCI,
-        points: [start, end]
+        points: [start, end],
+        elements: elements // Store all elements for potential removal later
       };
       
       updateDrawings(newDrawing);
@@ -619,79 +961,83 @@ const HighchartsDrawingTools = ({
       console.error("Error adding Fibonacci retracement:", err);
     }
   };
-
-  // Add a Fair Value Gap (FVG) annotation
+  
   const addFairValueGap = (start, end) => {
-    if (!chart) return;
+    if (!chart) {
+      console.error('Chart instance not available');
+      return;
+    }
+    
+    console.log(`Adding FVG from (${start.x}, ${start.y}) to (${end.x}, ${end.y})`);
     
     try {
       const id = `fvg-${Date.now()}`;
       
-      // Get the minimum and maximum values for proper rectangle positioning
-      const minX = Math.min(start.x, end.x);
-      const maxX = Math.max(start.x, end.x);
-      const minY = Math.min(start.y, end.y);
-      const maxY = Math.max(start.y, end.y);
+      // Always use manual rendering for reliability
+      console.log('Using direct manual rendering for FVG');
       
-      // Calculate width and height
-      const width = maxX - minX;
-      const height = maxY - minY;
+      // Get axes
+      const xAxis = chart.xAxis[0];
+      const yAxis = chart.yAxis[0];
       
-      // Create the annotation configuration with explicit axis references
-      const annotationOptions = {
-        labelOptions: {
-          backgroundColor: 'rgba(0, 0, 0, 0.7)',
-          style: {
-            color: darkMode ? '#FFB74D' : '#EF6C00',
-            fontWeight: 'bold',
-            fontSize: '14px'
-          },
-          borderWidth: 0,
-          borderRadius: 5,
-          padding: 5
-        },
-        labels: [{
-          point: {
-            x: minX + width / 2,
-            y: minY + height / 2,
-            xAxis: 0,
-            yAxis: 0
-          },
-          text: 'FVG'
-        }],
-        shapeOptions: {
+      if (!xAxis || !yAxis) {
+        console.error('Chart axes not available');
+        return;
+      }
+      
+      // Convert data coordinates to pixel coordinates
+      const x1 = xAxis.toPixels(start.x);
+      const y1 = yAxis.toPixels(start.y);
+      const x2 = xAxis.toPixels(end.x);
+      const y2 = yAxis.toPixels(end.y);
+      
+      // Get the min/max values for the rectangle
+      const minX = Math.min(x1, x2);
+      const maxX = Math.max(x1, x2);
+      const minY = Math.min(y1, y2);
+      const maxY = Math.max(y1, y2);
+      
+      // Draw the rectangle
+      const rect = chart.renderer.rect(minX, minY, maxX - minX, maxY - minY)
+        .attr({
           fill: 'rgba(255, 152, 0, 0.2)',
           stroke: '#EF6C00',
-          strokeWidth: 1
-        },
-        shapes: [{
-          type: 'rect',
-          points: [{
-            x: minX,
-            y: minY,
-            xAxis: 0,
-            yAxis: 0
-          }, {
-            x: maxX,
-            y: maxY,
-            xAxis: 0,
-            yAxis: 0
-          }]
-        }],
-        draggable: true,
-        id: id
-      };
+          'stroke-width': 1,
+          zIndex: 990 // Below other elements but still visible
+        })
+        .add();
       
-      // Add the annotation to the chart
-      chart.addAnnotation(annotationOptions);
+      // Add FVG label in the center
+      const centerX = minX + (maxX - minX) / 2;
+      const centerY = minY + (maxY - minY) / 2;
       
-      console.log(`Added FVG from (${start.x}, ${start.y}) to (${end.x}, ${end.y})`);
+      const label = chart.renderer.text('FVG', centerX, centerY)
+        .attr({
+          align: 'center',
+          zIndex: 1000
+        })
+        .css({
+          color: '#EF6C00',
+          fontSize: '14px',
+          fontWeight: 'bold'
+        })
+        .add();
+      
+      // Center the label (adjust position based on text size)
+      const box = label.getBBox();
+      label.attr({
+        x: centerX - box.width / 2,
+        y: centerY + box.height / 4
+      });
+      
+      console.log('Manual rendering successful');
       
       // Add to local state
       const newDrawing = {
         id,
         type: TOOL_TYPES.FVG,
-        points: [start, end]
+        points: [start, end],
+        elements: [rect, label] // Store for potential removal later
       };
       
       updateDrawings(newDrawing);
@@ -701,50 +1047,80 @@ const HighchartsDrawingTools = ({
   };
 
   // Update the local drawings array and notify parent
-  const updateDrawings = (newDrawing) => {
-    const updatedDrawings = [...drawings, newDrawing];
-    setDrawings(updatedDrawings);
+  // Updated updateDrawings function to properly track elements
+const updateDrawings = (newDrawing) => {
+  console.log(`Adding new drawing to state: ${newDrawing.type}`);
+  
+  // Ensure drawings is treated as immutable
+  const updatedDrawings = [...drawings, newDrawing];
+  setDrawings(updatedDrawings);
+  
+  // Update progress based on number of drawings vs requirements
+  if (examConfig) {
+    const minRequired = examConfig.minDrawings;
+    const currentCount = updatedDrawings.length;
     
-    if (onDrawingComplete) {
-      onDrawingComplete(newDrawing);
-    }
+    // Calculate progress - scale from 0 to 100%
+    const newProgress = Math.min(100, Math.round((currentCount / minRequired) * 100));
+    setProgress(newProgress);
     
-    if (onDrawingChange) {
-      onDrawingChange(updatedDrawings);
-    }
-  };
+    console.log(`Progress updated: ${newProgress}% (${currentCount}/${minRequired})`);
+  }
+  
+  // Notify parent component
+  if (onDrawingComplete) {
+    onDrawingComplete(newDrawing);
+  }
+  
+  if (onDrawingChange) {
+    onDrawingChange(updatedDrawings);
+  }
+};
 
   // Clear all annotations
   const handleClearAll = () => {
     if (!chart) return;
     
     try {
-      // Clear all annotations from the chart
-      if (chart.annotations && chart.annotations.length > 0) {
-        // We need to clone the array because destroying annotations modifies the array
-        const annotationsToRemove = [...chart.annotations];
-        annotationsToRemove.forEach(annotation => {
-          try {
-            annotation.destroy();
-          } catch (err) {
-            console.error("Error destroying annotation:", err);
-          }
-        });
-      }
+      console.log('Clearing all drawings, current count:', drawings.length);
       
-      // Make sure annotations array is properly reset
-      chart.annotations = [];
+      // Remove all manually rendered elements
+      drawings.forEach(drawing => {
+        if (drawing.elements && Array.isArray(drawing.elements)) {
+          drawing.elements.forEach(element => {
+            if (element && typeof element.destroy === 'function') {
+              try {
+                console.log(`Destroying element for ${drawing.type}`);
+                element.destroy();
+              } catch (e) {
+                console.warn('Error destroying element:', e);
+              }
+            }
+          });
+        } else {
+          console.log(`Drawing ${drawing.id} has no elements array`);
+        }
+      });
+      
+      // Force a redraw of the chart to ensure elements are removed
+      if (chart.redraw) {
+        chart.redraw();
+      }
       
       // Clear local state
       setDrawings([]);
       
+      // Notify parent component
       if (onDrawingChange) {
         onDrawingChange([]);
       }
+      
+      console.log('All drawings cleared');
     } catch (err) {
-      console.error("Error clearing annotations:", err);
+      console.error("Error clearing drawings:", err);
     }
   };
+  
 
   return (
     <div style={{ position: 'relative', width: '100%' }}>
@@ -753,6 +1129,14 @@ const HighchartsDrawingTools = ({
         onToolSelect={handleToolSelect}
         onClearAll={handleClearAll}
         darkMode={darkMode}
+      />
+      
+      {/* Drawing state indicator (New component) */}
+      <DrawingStateIndicator 
+        isDrawing={isDrawing} 
+        activeTool={activeTool} 
+        darkMode={darkMode} 
+        startPoint={startPoint}
       />
       
       {!chartReady && (
@@ -771,7 +1155,8 @@ const HighchartsDrawingTools = ({
         </div>
       )}
       
-      {isDrawing && (
+      {/* Existing isDrawing message (can be removed since we have the new indicator) */}
+      {false && isDrawing && (
         <div style={{
           padding: '10px 15px',
           backgroundColor: darkMode ? 'rgba(33, 150, 243, 0.2)' : 'rgba(33, 150, 243, 0.1)',

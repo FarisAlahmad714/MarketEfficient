@@ -10,18 +10,34 @@ import AnnotationsModule from 'highcharts/modules/annotations';
 import IndicatorsModule from 'highcharts/indicators/indicators';
 import VolumeByPriceModule from 'highcharts/indicators/volume-by-price';
 
-// Initialize the modules only if Highcharts is available and they haven't already been initialized
-if (typeof Highcharts === 'object') {
-  if (!Highcharts.Annotation) {
-    AnnotationsModule(Highcharts);
+// Enhanced module initialization
+const initHighchartsModules = () => {
+  if (typeof Highcharts === 'object') {
+    console.log('Initializing Highcharts modules...');
+    
+    // Proper way to initialize the annotations module
+    if (!Highcharts.Annotation) {
+      console.log('Loading Annotations module');
+      AnnotationsModule(Highcharts);
+    }
+    
+    if (!Highcharts.seriesTypes.sma) {
+      console.log('Loading Indicators module');
+      IndicatorsModule(Highcharts);
+    }
+    
+    if (!Highcharts.seriesTypes.vbp) {
+      console.log('Loading Volume By Price module');
+      VolumeByPriceModule(Highcharts);
+    }
+    
+    console.log('Highcharts modules initialized successfully');
+    return true;
   }
-  if (!Highcharts.seriesTypes.sma) {
-    IndicatorsModule(Highcharts);
-  }
-  if (!Highcharts.seriesTypes.vbp) {
-    VolumeByPriceModule(Highcharts);
-  }
-}
+  
+  console.warn('Highcharts not available yet');
+  return false;
+};
 
 const HighchartsChart = ({ 
   data, 
@@ -37,6 +53,11 @@ const HighchartsChart = ({
   const chartRef = useRef(null);
   const loaderRef = useRef(null);
   const configRef = useRef(config);
+
+  // Initialize modules on component mount
+  useEffect(() => {
+    initHighchartsModules();
+  }, []);
 
   // Keep track of config changes
   useEffect(() => {
@@ -186,7 +207,6 @@ const HighchartsChart = ({
           },
           shared: true
         },
-        // IMPORTANT FIX: Initialize annotations as an empty array
         annotations: [],
         // Merge in any additional config passed as props
         ...configRef.current
@@ -207,27 +227,53 @@ const HighchartsChart = ({
   }, [data, darkMode, height, onChartCreated, onSelection]);
 
   // Handle chart creation/reference
-  const afterChartCreated = (chart) => {
-    console.log("Chart created callback", chart);
-    setChartInstance(chart);
-    
-    if (onChartCreated) {
-      // Check if we have a valid chart instance
-      if (chart && chart.container) {
-        console.log("Valid chart instance, calling onChartCreated");
-        
-        // Make sure annotations are initialized
-        if (!chart.annotations) {
-          chart.annotations = [];
-        }
-        
-        onChartCreated(chart);
-      } else {
-        console.warn("Invalid chart instance in callback");
+const afterChartCreated = (chart) => {
+  console.log("Chart created callback", chart);
+  setChartInstance(chart);
+  
+  if (onChartCreated) {
+    // Check if we have a valid chart instance
+    if (chart && chart.container) {
+      console.log("Valid chart instance, calling onChartCreated");
+      
+      // CRITICAL FIX: Make sure annotations is ALWAYS initialized as an array
+      if (!chart.annotations || !Array.isArray(chart.annotations)) {
+        chart.annotations = [];
+        console.log("Initialized chart.annotations as empty array");
       }
+      
+      // Proper annotation initialization
+      if (chart && typeof chart.addAnnotation !== 'function') {
+        console.warn('Chart instance missing addAnnotation method');
+        
+        // Force re-init the annotations module
+        if (typeof Highcharts === 'object') {
+          try {
+            AnnotationsModule(Highcharts);
+            
+            // If we still don't have annotations, create basic implementation
+            if (typeof chart.addAnnotation !== 'function') {
+              // Make sure annotations is an array before implementing methods
+              chart.annotations = Array.isArray(chart.annotations) ? chart.annotations : [];
+              chart.addAnnotation = function(options) {
+                console.log('Adding annotation:', options);
+                this.annotations.push(options);
+                // Trigger redraw to update the chart
+                this.redraw();
+              };
+            }
+          } catch (err) {
+            console.error('Error initializing annotations module:', err);
+          }
+        }
+      }
+      
+      onChartCreated(chart);
+    } else {
+      console.warn("Invalid chart instance in callback");
     }
-  };
-
+  }
+};
   if (!data || !chartOptions) {
     return (
       <CryptoLoader

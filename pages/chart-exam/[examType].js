@@ -163,10 +163,15 @@ const ChartExam = () => {
       return;
     }
     
+    // Log submission details for debugging
+    console.log(`Submitting exam with ${drawings.length} drawings:`);
+    drawings.forEach((drawing, index) => {
+      console.log(`Drawing ${index + 1}: ${drawing.type} with ${drawing.points.length} points`);
+    });
+    
     // Process submission
     setSubmitted(true);
-    
-    // Generate feedback based on exam type
+  
     const generateFeedback = () => {
       switch (examType) {
         case 'swing-points':
@@ -197,7 +202,9 @@ const ChartExam = () => {
     
     // Set feedback with slight delay for animation
     setTimeout(() => {
-      setFeedback(generateFeedback());
+      const feedback = generateFeedback();
+      console.log('Setting feedback:', feedback);
+      setFeedback(feedback);
     }, 800);
   };
   
