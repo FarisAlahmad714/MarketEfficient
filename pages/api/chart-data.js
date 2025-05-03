@@ -55,15 +55,6 @@ function seedRandom(seed) {
 }
 
 /**
- * Gets a random element from an array
- * @param {Array} array - Array to select from
- * @returns {*} - Random element
- */
-function getRandomElement(array) {
-  return array[Math.floor(Math.random() * array.length)];
-}
-
-/**
  * Fetches chart data for a given coin and timeframe
  * @param {string} coin - Cryptocurrency symbol (optional)
  * @param {string} timeframe - Time interval (optional)
@@ -97,24 +88,29 @@ export async function fetchChartData(coin = null, timeframe = null) {
   console.log(`Fetching chart data for ${coin} (${timeframe})`);
   
   try {
-    // Use CoinGecko data and process it
-    const rawData = await fetchCoinGeckoData(coin);
-    const chartData = generateChartData(rawData, timeframe);
+    // For real implementation, use a crypto price API
+    // Here we'll use your API endpoint
+    const response = await fetch(`/api/chart-data?coin=${coin}&timeframe=${timeframe}`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch chart data: ${response.statusText}`);
+    }
+    
+    const data = await response.json();
     
     // Cache the data
-    chartCache.set(cacheKey, chartData);
+    chartCache.set(cacheKey, data.chart_data);
     
     return {
-      chart_data: chartData,
+      chart_data: data.chart_data,
       symbol: coin,
       timeframe: timeframe
     };
   } catch (error) {
     console.error("Error fetching chart data:", error);
-    // Generate fallback data
-    const fallbackData = generateFallbackData();
+    // Generate synthetic data as fallback
+    const syntheticData = generateSyntheticData();
     return {
-      chart_data: fallbackData,
+      chart_data: syntheticData,
       symbol: "SYNTHETIC",
       timeframe: timeframe
     };
@@ -122,143 +118,10 @@ export async function fetchChartData(coin = null, timeframe = null) {
 }
 
 /**
- * Fetches OHLC data from CoinGecko
- * @param {string} coin - CoinGecko coin ID (default: bitcoin)
- * @returns {Promise<Array>} - Raw OHLC data
- */
-export async function fetchCoinGeckoData(coin = 'bitcoin') {
-  const days = 365; // Get a year of data
-  const url = `https://api.coingecko.com/api/v3/coins/${coin}/ohlc?vs_currency=usd&days=#{days}`;
-  
-  try {
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`CoinGecko API error: ${response.status}`);
-    }
-    return await response.json();
-  } catch (error) {
-    console.error("Error fetching from CoinGecko:", error);
-    return generateFallbackData();
-  }
-}
-
-/**
- * Processes raw OHLC data into the specified timeframe
- * @param {Array} rawData - Raw OHLC data from CoinGecko
- * @param {string} timeframe - Time interval (1h, 4h, 1d, 1w)
- * @returns {Array} - Processed chart data
- */
-export function generateChartData(rawData, timeframe = '1d') {
-  // If no valid data, return fallback
-  if (!Array.isArray(rawData) || rawData.length < 10) {
-    return generateFallbackData();
-  }
-  
-  const chartData = [];
-  
-  if (timeframe === '1h') {
-    // Convert 1-day candles to hourly
-    for (const row of rawData) {
-      const baseTime = Math.floor(row[0] / 1000); // Convert ms to s
-      const open = parseFloat(row[1]);
-      const high = parseFloat(row[2]);
-      const low = parseFloat(row[3]);
-      const close = parseFloat(row[4]);
-      
-      // Create 24 hourly candles
-      for (let hour = 0; hour < 24; hour++) {
-        const time = baseTime + hour * 3600;
-        const ratio = hour / 24;
-        const interpolatedPrice = open + (close - open) * ratio;
-        
-        chartData.push({
-          time: time,
-          open: hour === 0 ? open : chartData[chartData.length-1].close,
-          high: high * (1 + (hour / 24) * (close / open - 1)),
-          low: low * (1 + (hour / 24) * (close / open - 1)),
-          close: interpolatedPrice
-        });
-      }
-    }
-  } else if (timeframe === '4h') {
-    // Convert to 4-hour candles
-    for (const row of rawData) {
-      const baseTime = Math.floor(row[0] / 1000);
-      const open = parseFloat(row[1]);
-      const high = parseFloat(row[2]);
-      const low = parseFloat(row[3]);
-      const close = parseFloat(row[4]);
-      
-      // Create 6 four-hour candles
-      for (let segment = 0; segment < 6; segment++) {
-        const time = baseTime + segment * 14400;
-        const ratio = segment / 6;
-        const interpolatedPrice = open + (close - open) * ratio;
-        
-        chartData.push({
-          time: time,
-          open: segment === 0 ? open : chartData[chartData.length-1].close,
-          high: high * (1 + (segment / 6) * (close / open - 1)),
-          low: low * (1 + (segment / 6) * (close / open - 1)),
-          close: interpolatedPrice
-        });
-      }
-    }
-  } else if (timeframe === '1d') {
-    // Use daily candles directly
-    for (const row of rawData) {
-      chartData.push({
-        time: Math.floor(row[0] / 1000),
-        open: parseFloat(row[1]),
-        high: parseFloat(row[2]),
-        low: parseFloat(row[3]),
-        close: parseFloat(row[4])
-      });
-    }
-  } else if (timeframe === '1w') {
-    // Aggregate to weekly candles
-    const weeklyCandles = {};
-    
-    for (const row of rawData) {
-      const timestamp = Math.floor(row[0] / 1000);
-      const weekStart = timestamp - (timestamp % (7 * 86400));
-      
-      if (!weeklyCandles[weekStart]) {
-        weeklyCandles[weekStart] = {
-          open: parseFloat(row[1]),
-          high: parseFloat(row[2]),
-          low: parseFloat(row[3]),
-          close: parseFloat(row[4])
-        };
-      } else {
-        const candle = weeklyCandles[weekStart];
-        candle.high = Math.max(candle.high, parseFloat(row[2]));
-        candle.low = Math.min(candle.low, parseFloat(row[3]));
-        candle.close = parseFloat(row[4]);
-      }
-    }
-    
-    // Convert to array sorted by time
-    for (const [weekStart, candle] of Object.entries(weeklyCandles).sort()) {
-      chartData.push({
-        time: parseInt(weekStart),
-        open: candle.open,
-        high: candle.high,
-        low: candle.low,
-        close: candle.close
-      });
-    }
-  }
-  
-  // Limit to last 100 candles
-  return chartData.slice(-100);
-}
-
-/**
- * Generates fallback OHLC data when APIs fail
+ * Generates synthetic chart data as a fallback
  * @returns {Array} - Array of synthetic OHLC data
  */
-function generateFallbackData() {
+function generateSyntheticData() {
   const data = [];
   let basePrice = 100;
   const now = Math.floor(Date.now() / 1000);
@@ -522,7 +385,7 @@ export async function fetchStockOHLCData(symbol, timeframe = 'daily', candles = 
   }
 
   if (Math.random() > 0.1 || dataCache.failedRequests.stock >= 2) {
-    console.log(`Using mock data for ${symbol} to avoid API rate limits`);
+    console.log(`Using.Domain mock data for ${symbol} to avoid API rate limits`);
     let basePrice = 100;
     if (symbol === 'NVDA') basePrice = 800;
     else if (symbol === 'AAPL') basePrice = 175;
@@ -853,7 +716,7 @@ function generateMockPlotlyData(coinId, days) {
   }
   
   let currentPrice = basePrice;
-  const volatility = 0.05;
+  const volatility = 0.03;
   const trend = random() > 0.5 ? 0.001 : -0.001;
   
   const endDate = new Date();
@@ -877,4 +740,13 @@ function generateMockPlotlyData(coinId, days) {
   }
   
   return plotlyData;
+}
+
+/**
+ * Gets a random element from an array
+ * @param {Array} array - Array to select from
+ * @returns {*} - Random element
+ */
+function getRandomElement(array) {
+  return array[Math.floor(Math.random() * array.length)];
 }

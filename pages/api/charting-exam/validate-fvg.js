@@ -1,4 +1,4 @@
-import { detectFairValueGaps } from '../../../utils/fvg-detection';
+import { detectFairValueGaps } from './utils/fvg-detection.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
