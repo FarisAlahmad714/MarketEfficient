@@ -42,8 +42,31 @@ const Chart = dynamic(
           wickDownColor: '#F44336',
         });
         
-        // Set the data
-        candlestick.setData(chartData);
+        // FIXED: Validate and process chart data before setting
+        if (chartData && chartData.length > 0) {
+          // Ensure all data points have valid time values and are sorted
+          const validData = chartData
+            .filter(candle => {
+              // Filter out invalid data points
+              return (
+                candle && 
+                typeof candle.time === 'number' && 
+                !isNaN(candle.time) &&
+                typeof candle.open === 'number' && 
+                typeof candle.high === 'number' && 
+                typeof candle.low === 'number' && 
+                typeof candle.close === 'number'
+              );
+            })
+            .sort((a, b) => a.time - b.time); // Ensure time is ascending order
+          
+          if (validData.length > 0) {
+            // Set the data
+            candlestick.setData(validData);
+          } else {
+            console.error('No valid chart data available after filtering');
+          }
+        }
         
         // Set markers if available
         if (options.markers && options.markers.length > 0) {
@@ -176,17 +199,52 @@ const SwingAnalysis = ({ chartData, onDrawingsUpdate, chartCount, isDarkMode }) 
   const [drawings, setDrawings] = useState([]);
   const [markingMode, setMarkingMode] = useState(false);
   
-  // Prepare chart data in the format needed by lightweight-charts
+  // FIXED: More robust chart data preparation with validation
   const formattedChartData = React.useMemo(() => {
-    if (!chartData) return [];
+    if (!chartData || !Array.isArray(chartData)) return [];
     
-    return chartData.map(candle => ({
-      time: candle.time || Math.floor(new Date(candle.date).getTime() / 1000),
-      open: candle.open,
-      high: candle.high,
-      low: candle.low,
-      close: candle.close
-    }));
+    // Filter out any invalid data points and ensure time is properly formatted
+    return chartData
+      .filter(candle => {
+        // Skip any null or undefined items
+        if (!candle) return false;
+        
+        // Check that all required properties exist
+        return (
+          (typeof candle.time === 'number' || typeof candle.date === 'string') &&
+          typeof candle.open === 'number' &&
+          typeof candle.high === 'number' &&
+          typeof candle.low === 'number' &&
+          typeof candle.close === 'number'
+        );
+      })
+      .map(candle => {
+        // Convert date string to timestamp if time isn't available
+        let timeValue;
+        if (typeof candle.time === 'number' && !isNaN(candle.time)) {
+          timeValue = candle.time;
+        } else if (candle.date) {
+          try {
+            timeValue = Math.floor(new Date(candle.date).getTime() / 1000);
+          } catch (e) {
+            console.error('Invalid date format:', candle.date);
+            // Use a fallback timestamp (30 days ago + random offset)
+            timeValue = Math.floor(Date.now() / 1000) - (86400 * 30) + Math.floor(Math.random() * 86400);
+          }
+        } else {
+          // Last resort fallback
+          timeValue = Math.floor(Date.now() / 1000) - (86400 * 30) + Math.floor(Math.random() * 86400);
+        }
+        
+        return {
+          time: timeValue,
+          open: candle.open,
+          high: candle.high,
+          low: candle.low,
+          close: candle.close
+        };
+      })
+      .sort((a, b) => a.time - b.time); // Ensure data is sorted by time
   }, [chartData]);
   
   // Create markers from drawings - FIXED: sort by time
@@ -266,6 +324,12 @@ const SwingAnalysis = ({ chartData, onDrawingsUpdate, chartCount, isDarkMode }) 
     setDrawings(newDrawings);
   };
   
+  // Debug info function - can be helpful for troubleshooting
+  const getChartDataInfo = (data) => {
+    if (!data || !Array.isArray(data)) return 'No data';
+    return `${data.length} points, First time: ${data[0]?.time}, Last time: ${data[data.length-1]?.time}`;
+  };
+  
   return (
     <div>
       <ToolBar>
@@ -293,7 +357,7 @@ const SwingAnalysis = ({ chartData, onDrawingsUpdate, chartCount, isDarkMode }) 
       </ToolBar>
       
       <ChartWrapper ref={containerRef}>
-        {containerRef.current && (
+        {containerRef.current && formattedChartData.length > 0 ? (
           <Chart 
             container={containerRef} 
             chartData={formattedChartData} 
@@ -303,6 +367,20 @@ const SwingAnalysis = ({ chartData, onDrawingsUpdate, chartCount, isDarkMode }) 
             }}
             onClick={handlePointClick}
           />
+        ) : (
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            height: '100%',
+            backgroundColor: isDarkMode ? '#1e1e1e' : '#f8f9fa',
+            color: isDarkMode ? '#b0b0b0' : '#666',
+            borderRadius: '8px'
+          }}>
+            {formattedChartData.length === 0 ? 
+              'No valid chart data available' : 
+              'Chart container not initialized'}
+          </div>
         )}
         
         <MarkerPanel $isDarkMode={isDarkMode}>
