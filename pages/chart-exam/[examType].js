@@ -1,77 +1,174 @@
-// pages/chart-exam/[examType].js
 import React, { useState, useEffect, useRef, useContext } from 'react';
 import { useRouter } from 'next/router';
-import Link from 'next/link';
 import axios from 'axios';
-import dynamic from 'next/dynamic';
+import styled from 'styled-components';
 import { ThemeContext } from '../../contexts/ThemeContext';
 import CryptoLoader from '../../components/CryptoLoader';
+import dynamic from 'next/dynamic';
 
-// Import Highcharts components dynamically to avoid SSR issues
-const HighchartsChart = dynamic(
-  () => import('../../components/charts/HighchartsChart'),
-  { ssr: false }
+// Dynamically import the chart components to avoid SSR issues
+const ChartComponent = dynamic(
+  () => import('../../components/charts/PlotlyChart'),
+  { ssr: false, loading: () => <div>Loading Chart...</div> }
 );
 
-const HighchartsDrawingTools = dynamic(
-  () => import('../../components/charts/HighchartsDrawingTools'),
-  { ssr: false }
-);
-
-// Map exam types to their configurations
+// Exam configurations
 const EXAM_CONFIGS = {
-  'swing-points': {
+  'swing-analysis': {
     title: 'Swing Point Analysis',
     instructions: 'Identify key swing points (highs and lows) in the chart. These are critical pivot areas where price direction changed.',
-    tools: ['pointer', 'swingPoint'],
     minDrawings: 1,
     maxDrawings: 10,
-    asset: 'btc', // Default asset
-    timeframe: 'daily' // Default timeframe
+    asset: 'btc',
+    timeframe: 'daily'
   },
-  'fibonacci': {
+  'fibonacci-retracement': {
     title: 'Fibonacci Retracement',
-    instructions: 'Draw Fibonacci retracement levels between significant price moves. Identify key support and resistance levels based on Fibonacci ratios.',
-    tools: ['pointer', 'fibonacci'],
+    instructions: 'Draw Fibonacci retracement levels by selecting the swing high and swing low. Part 1: Draw an uptrend Fibonacci retracement (from a low to a high). Part 2: Draw a downtrend retracement (from a high to a low).',
     minDrawings: 1,
     maxDrawings: 3,
     asset: 'eth',
-    timeframe: 'daily'
+    timeframe: 'daily',
+    parts: 2
   },
-  'fvg': {
-    title: 'Fair Value Gaps (FVG)',
-    instructions: 'Identify Fair Value Gaps - areas where price makes a significant move leaving an imbalance that often gets filled later.',
-    tools: ['pointer', 'fvg'],
-    minDrawings: 2,
+  'fair-value-gaps': {
+    title: 'Fair Value Gaps',
+    instructions: 'Identify Fair Value Gaps - areas where price makes a significant move leaving an imbalance that often gets filled later. Part 1: Identify Bullish FVGs. Part 2: Identify Bearish FVGs.',
+    minDrawings: 0, // Can be 0 if no FVGs exist
     maxDrawings: 5,
     asset: 'sol',
-    timeframe: 'daily'
+    timeframe: 'daily',
+    parts: 2
   }
 };
 
-const ChartExam = () => {
+// Styled components using your existing style approach
+const Container = styled.div`
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  color: ${props => props.theme.darkMode ? '#e0e0e0' : '#333'};
+`;
+
+const Title = styled.h1`
+  text-align: center;
+  margin-bottom: 30px;
+  color: ${props => props.theme.darkMode ? '#e0e0e0' : '#333'};
+`;
+
+const InstructionsPanel = styled.div`
+  background-color: ${props => props.theme.darkMode ? '#1e1e1e' : '#f5f5f5'};
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  box-shadow: ${props => props.theme.darkMode ? '0 2px 8px rgba(0,0,0,0.3)' : '0 2px 8px rgba(0,0,0,0.1)'};
+`;
+
+const InstructionsTitle = styled.h2`
+  font-size: 1.3rem;
+  margin-bottom: 10px;
+  color: ${props => props.theme.darkMode ? '#e0e0e0' : '#333'};
+`;
+
+const InstructionsText = styled.p`
+  color: ${props => props.theme.darkMode ? '#b0b0b0' : '#555'};
+  margin-bottom: 15px;
+`;
+
+const RequirementsBox = styled.div`
+  margin-top: 15px;
+  padding: 10px;
+  background-color: ${props => props.theme.darkMode ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.05)'};
+  border-radius: 4px;
+`;
+
+const ProgressBar = styled.div`
+  background-color: ${props => props.theme.darkMode ? '#333' : '#e0e0e0'};
+  height: 8px;
+  border-radius: 4px;
+  margin-bottom: 20px;
+  overflow: hidden;
+`;
+
+const ProgressFill = styled.div`
+  background-color: ${props => props.complete ? '#4CAF50' : '#2196F3'};
+  height: 100%;
+  width: ${props => props.progress}%;
+  transition: width 0.3s ease;
+`;
+
+const ChartContainer = styled.div`
+  background-color: ${props => props.theme.darkMode ? '#262626' : 'white'};
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: ${props => props.theme.darkMode ? '0 2px 8px rgba(0,0,0,0.3)' : '0 2px 8px rgba(0,0,0,0.1)'};
+  margin-bottom: 30px;
+  position: relative;
+  min-height: 600px;
+`;
+
+const StatsContainer = styled.div`
+  background-color: ${props => props.theme.darkMode ? '#1e1e1e' : '#f8f9fa'};
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+`;
+
+const ActionButtons = styled.div`
+  display: flex;
+  justify-content: space-between;
+  margin-top: 30px;
+`;
+
+const BackButton = styled.a`
+  padding: 12px 25px;
+  background-color: ${props => props.theme.darkMode ? '#333' : '#e0e0e0'};
+  color: ${props => props.theme.darkMode ? '#e0e0e0' : '#333'};
+  text-decoration: none;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+`;
+
+const SubmitButton = styled.button`
+  padding: 12px 25px;
+  background-color: ${props => props.disabled ? '#ccc' : '#4CAF50'};
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: ${props => props.disabled ? 'not-allowed' : 'pointer'};
+  font-weight: bold;
+  opacity: ${props => props.submitted ? 0.7 : 1};
+`;
+
+// Dynamic import for each exam type
+const FibonacciRetracement = dynamic(() => import('../../components/charting-exam/FibonacciRetracement'), { ssr: false });
+const SwingAnalysis = dynamic(() => import('../../components/charting-exam/SwingAnalysis'), { ssr: false });
+const FairValueGaps = dynamic(() => import('../../components/charting-exam/FairValueGaps'), { ssr: false });
+
+const ChartExamPage = () => {
   const router = useRouter();
   const { examType } = router.query;
   const { darkMode } = useContext(ThemeContext);
   
-  // State variables
+  // State
   const [loading, setLoading] = useState(true);
   const [chartData, setChartData] = useState(null);
   const [error, setError] = useState(null);
-  const [drawings, setDrawings] = useState([]);
   const [examConfig, setExamConfig] = useState(null);
-  const [progress, setProgress] = useState(0); // 0-100%
-  const [feedback, setFeedback] = useState(null);
-  const [chartInstance, setChartInstance] = useState(null);
+  const [drawings, setDrawings] = useState([]);
+  const [progress, setProgress] = useState(0);
   const [submitted, setSubmitted] = useState(false);
+  const [feedback, setFeedback] = useState(null);
+  const [currentPart, setCurrentPart] = useState(1);
+  const [chartCount, setChartCount] = useState(1);
   
   const cryptoLoaderRef = useRef(null);
   
-  // Initialize exam based on the examType
+  // Load exam configuration and initial chart data
   useEffect(() => {
     if (!router.isReady || !examType) return;
     
-    // Get the config for this exam type
     const config = EXAM_CONFIGS[examType];
     if (!config) {
       setError('Invalid exam type');
@@ -81,27 +178,23 @@ const ChartExam = () => {
     
     setExamConfig(config);
     
-    // Fetch chart data for the exam
+    // Function to fetch chart data
     const fetchChartData = async () => {
       try {
         setLoading(true);
         
-        // Get proper asset data for this exam
-        const asset = config.asset;
-        const timeframe = config.timeframe;
+        // Construct the API endpoint based on exam type
+        let endpoint = `/api/charting-exam/fetch-chart?examType=${examType}&part=${currentPart}&chart=${chartCount}`;
         
-        console.log(`Fetching chart data for ${asset} with timeframe ${timeframe}`);
+        // For now, we'll mock this with a simplified API call
+        // In the full implementation, this would connect to your backend
+        const response = await axios.get(endpoint);
         
-        // Use the API to fetch OHLC data
-        const response = await axios.get(`/api/test/${asset}?timeframe=${timeframe}&random=${Math.random()}`);
-        
-        if (response.data && response.data.questions && response.data.questions.length > 0) {
-          // Use first question's data for the exam
-          const chartData = response.data.questions[0].ohlc_data;
-          setChartData(chartData);
-          console.log("Chart data loaded:", chartData.length, "candles");
+        if (response.data && response.data.chartData) {
+          setChartData(response.data.chartData);
         } else {
-          throw new Error('No valid chart data received');
+          // Fallback to mock data if needed
+          setChartData(generateMockChartData(config.asset));
         }
         
         // Set a small timeout to simulate loading
@@ -119,48 +212,32 @@ const ChartExam = () => {
     };
     
     fetchChartData();
-  }, [router.isReady, examType, router.query]);
+  }, [router.isReady, examType, currentPart, chartCount]);
   
-  // Handle drawing changes
- // In chart-exam/[examType].js
-const handleDrawingChange = (newDrawings) => {
-  console.log('Drawing change detected:', newDrawings.length, 'drawings');
-  
-  // Update local state with new drawings
-  setDrawings(newDrawings);
-  
-  // Update progress based on current exam requirements
-  if (examConfig) {
-    const minRequired = examConfig.minDrawings;
-    const currentCount = newDrawings.length;
+  // Handle drawing updates
+  const handleDrawingsUpdate = (newDrawings) => {
+    setDrawings(newDrawings);
     
-    // Calculate progress - scale from 0 to 100%
-    const newProgress = Math.min(100, Math.round((currentCount / minRequired) * 100));
-    console.log('Updating progress:', newProgress, '%');
-    setProgress(newProgress);
-  }
-};
-  
-  // Handle chart creation
-  const handleChartCreated = (chart) => {
-    console.log("Chart instance created:", chart);
-    
-    // Ensure proper initialization of chart instance
-    if (chart) {
-      // Initialize annotations array if it doesn't exist
-      if (!chart.annotations) {
-        chart.annotations = [];
-      }
+    // Update progress based on the requirements
+    if (examConfig) {
+      const minRequired = examConfig.minDrawings;
+      const currentCount = newDrawings.length;
       
-      // Pass chart instance to state for use in other components
-      setChartInstance(chart);
+      // If minDrawings is 0, then any drawing counts as progress
+      const calculatedProgress = minRequired === 0 ? 
+        (currentCount > 0 ? 100 : 0) : 
+        Math.min(100, Math.round((currentCount / minRequired) * 100));
+      
+      setProgress(calculatedProgress);
     }
   };
   
   // Handle exam submission
-  const handleSubmit = () => {
-    // Check if minimum requirements met
-    if (drawings.length < examConfig.minDrawings) {
+  const handleSubmit = async () => {
+    if (!examConfig) return;
+    
+    // For exams with minimum required drawings
+    if (examConfig.minDrawings > 0 && drawings.length < examConfig.minDrawings) {
       setFeedback({
         type: 'warning',
         message: `Please add at least ${examConfig.minDrawings} drawings to complete this exam.`
@@ -168,93 +245,155 @@ const handleDrawingChange = (newDrawings) => {
       return;
     }
     
-    // Log submission details for debugging
-    console.log(`Submitting exam with ${drawings.length} drawings:`);
-    drawings.forEach((drawing, index) => {
-      console.log(`Drawing ${index + 1}: ${drawing.type} with ${drawing.points.length} points`);
-    });
-    
-    // Process submission
+    // Mark the exam as submitted
     setSubmitted(true);
-  
-    const generateFeedback = () => {
-      switch (examType) {
-        case 'swing-points':
-          return {
-            type: 'success',
-            message: `Great job identifying ${drawings.length} key swing points! These areas often act as support and resistance levels in future price action.`,
-            details: 'Swing points mark important areas where market sentiment shifted. Understanding these points helps with future trade planning.'
-          };
-        case 'fibonacci':
-          return {
-            type: 'success',
-            message: `Well done applying Fibonacci retracement levels to this chart! These levels can help identify potential reversal zones.`,
-            details: 'The key Fibonacci levels (0.382, 0.5, 0.618, 0.786) often coincide with areas where price consolidates or reverses.'
-          };
-        case 'fvg':
-          return {
-            type: 'success',
-            message: `Good identification of Fair Value Gaps! These imbalances often get filled in future price movements.`,
-            details: 'FVGs represent inefficiency in price discovery that the market tends to correct. They can be valuable for identifying future price targets.'
-          };
-        default:
-          return {
-            type: 'success',
-            message: 'Exam completed successfully!'
-          };
-      }
-    };
     
-    // Set feedback with slight delay for animation
-    setTimeout(() => {
-      const feedback = generateFeedback();
-      console.log('Setting feedback:', feedback);
-      setFeedback(feedback);
-    }, 800);
+    try {
+      // Submit drawings to the backend for validation
+      const response = await axios.post(`/api/charting-exam/validate-${examType}`, {
+        drawings,
+        part: currentPart,
+        chartCount
+      });
+      
+      // Process the response
+      if (response.data) {
+        const { success, message, score, expected, totalExpectedPoints, next_part } = response.data;
+        
+        // Update feedback
+        setFeedback({
+          type: success ? 'success' : 'error',
+          message: message || (success ? 'Exam completed successfully!' : 'Submission failed.'),
+          score,
+          totalPoints: totalExpectedPoints,
+          expected
+        });
+        
+        // Check if there's a next part
+        if (next_part) {
+          setTimeout(() => {
+            setCurrentPart(next_part);
+            setDrawings([]);
+            setProgress(0);
+            setSubmitted(false);
+            setFeedback(null);
+          }, 3000);
+        } else if (chartCount < 5) {
+          // Move to next chart
+          setTimeout(() => {
+            setChartCount(chartCount + 1);
+            setCurrentPart(1);
+            setDrawings([]);
+            setProgress(0);
+            setSubmitted(false);
+            setFeedback(null);
+          }, 3000);
+        }
+      }
+    } catch (err) {
+      console.error('Error submitting exam:', err);
+      setFeedback({
+        type: 'error',
+        message: 'Failed to submit exam. Please try again.'
+      });
+      setSubmitted(false);
+    }
   };
   
-  // Handle retaking the exam
-  const handleRetry = () => {
-    // Clear all annotations from chart
-    if (chartInstance) {
-      try {
-        // Remove all annotations from the chart
-        while (chartInstance.annotations && chartInstance.annotations.length > 0) {
-          chartInstance.annotations[0].destroy();
-        }
-      } catch (err) {
-        console.error("Error clearing annotations:", err);
-      }
+  // Helper function to generate mock chart data if needed
+  const generateMockChartData = (asset) => {
+    const basePrice = asset === 'btc' ? 60000 : asset === 'eth' ? 3000 : 100;
+    const data = [];
+    
+    for (let i = 0; i < 100; i++) {
+      const time = new Date();
+      time.setDate(time.getDate() - (100 - i));
+      
+      const randomChange = (Math.random() - 0.5) * basePrice * 0.02;
+      const open = i === 0 ? basePrice : data[i-1].close;
+      const close = open + randomChange;
+      const high = Math.max(open, close) + Math.random() * basePrice * 0.01;
+      const low = Math.min(open, close) - Math.random() * basePrice * 0.01;
+      
+      data.push({
+        date: time.toISOString(),
+        time: Math.floor(time.getTime() / 1000),
+        open,
+        high,
+        low,
+        close
+      });
     }
     
-    // Reset state
-    setDrawings([]);
-    setProgress(0);
-    setFeedback(null);
-    setSubmitted(false);
+    return data;
   };
   
-  // If loading, show crypto loader
+  // Render the appropriate exam component based on type
+  const renderExamComponent = () => {
+    if (!chartData || !examConfig) return null;
+    
+    switch (examType) {
+      case 'swing-analysis':
+        return (
+          <SwingAnalysis 
+            chartData={chartData} 
+            onDrawingsUpdate={handleDrawingsUpdate}
+            chartCount={chartCount}
+            isDarkMode={darkMode}
+          />
+        );
+      case 'fibonacci-retracement':
+        return (
+          <FibonacciRetracement 
+            chartData={chartData} 
+            onDrawingsUpdate={handleDrawingsUpdate}
+            part={currentPart}
+            chartCount={chartCount}
+            isDarkMode={darkMode}
+          />
+        );
+      case 'fair-value-gaps':
+        return (
+          <FairValueGaps 
+            chartData={chartData} 
+            onDrawingsUpdate={handleDrawingsUpdate}
+            part={currentPart}
+            chartCount={chartCount}
+            isDarkMode={darkMode}
+          />
+        );
+      default:
+        return <div>Unsupported exam type</div>;
+    }
+  };
+  
+  // Loading screen
   if (loading) {
     return (
-      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
+      <Container>
         <CryptoLoader 
           ref={cryptoLoaderRef} 
           message="Loading your chart exam..." 
           height="400px" 
           minDisplayTime={1500} 
         />
-      </div>
+      </Container>
     );
   }
   
-  // If error, show error message
+  // Error screen
   if (error) {
     return (
-      <div style={{ maxWidth: '800px', margin: '0 auto', padding: '20px', textAlign: 'center' }}>
-        <div style={{ backgroundColor: darkMode ? '#3a181a' : '#ffebee', padding: '20px', borderRadius: '8px', color: darkMode ? '#ff8a80' : '#d32f2f' }}>
+      <Container>
+        <div style={{ 
+          backgroundColor: darkMode ? '#3a181a' : '#ffebee', 
+          padding: '20px', 
+          borderRadius: '8px', 
+          textAlign: 'center',
+          color: darkMode ? '#ff8a80' : '#d32f2f' 
+        }}>
           <p>{error}</p>
-          <Link
+          <a
             href="/chart-exam"
             style={{
               display: 'inline-block',
@@ -267,145 +406,54 @@ const handleDrawingChange = (newDrawings) => {
             }}
           >
             Back to Exam Selection
-          </Link>
+          </a>
         </div>
-      </div>
-    );
-  }
-  
-  // If no exam config or chart data, show error
-  if (!examConfig || !chartData) {
-    return (
-      <div style={{ maxWidth: '800px', margin: '0 auto', padding: '20px', textAlign: 'center' }}>
-        <div style={{ backgroundColor: darkMode ? '#332d10' : '#fff9c4', padding: '20px', borderRadius: '8px', color: darkMode ? '#ffee58' : '#f57f17' }}>
-          <p>Exam data not available. Please return to the exam selection page.</p>
-          <Link
-            href="/chart-exam"
-            style={{
-              display: 'inline-block',
-              padding: '8px 16px',
-              backgroundColor: '#2196F3',
-              color: 'white',
-              textDecoration: 'none',
-              borderRadius: '4px',
-              marginTop: '10px',
-            }}
-          >
-            Back to Exam Selection
-          </Link>
-        </div>
-      </div>
+      </Container>
     );
   }
   
   return (
-    <div style={{ 
-      maxWidth: '1200px', 
-      margin: '0 auto', 
-      padding: '20px', 
-      color: darkMode ? '#e0e0e0' : '#333'
-    }}>
-      <h1 style={{ 
-        textAlign: 'center', 
-        marginBottom: '20px',
-        color: darkMode ? '#e0e0e0' : 'inherit'
-      }}>
-        {examConfig.title} Exam
-      </h1>
+    <Container theme={{ darkMode }}>
+      <Title theme={{ darkMode }}>{examConfig?.title} Exam</Title>
       
       {/* Instructions Panel */}
-      <div style={{ 
-        backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5', 
-        padding: '20px', 
-        borderRadius: '8px', 
-        marginBottom: '20px',
-        boxShadow: darkMode ? '0 2px 8px rgba(0,0,0,0.3)' : '0 2px 8px rgba(0,0,0,0.1)'
-      }}>
-        <h2 style={{ 
-          fontSize: '1.3rem', 
-          marginBottom: '10px',
-          color: darkMode ? '#e0e0e0' : 'inherit'
-        }}>
-          Instructions
-        </h2>
-        <p style={{ color: darkMode ? '#b0b0b0' : '#555' }}>
-          {examConfig.instructions}
-        </p>
+      <InstructionsPanel theme={{ darkMode }}>
+        <InstructionsTitle theme={{ darkMode }}>Instructions</InstructionsTitle>
+        <InstructionsText theme={{ darkMode }}>{examConfig?.instructions}</InstructionsText>
         
-        {/* Requirements */}
-        <div style={{ 
-          marginTop: '15px', 
-          padding: '10px', 
-          backgroundColor: darkMode ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.05)', 
-          borderRadius: '4px'
-        }}>
-          <p style={{ margin: 0, color: darkMode ? '#b0b0b0' : '#555' }}>
-            <strong>Requirements:</strong> Add at least {examConfig.minDrawings} and up to {examConfig.maxDrawings} drawings to the chart.
-          </p>
-        </div>
-      </div>
-      
-      {/* Progress Bar */}
-      <div style={{ 
-        backgroundColor: darkMode ? '#333' : '#e0e0e0', 
-        height: '8px', 
-        borderRadius: '4px', 
-        marginBottom: '20px',
-        overflow: 'hidden'
-      }}>
-        <div 
-          style={{ 
-            backgroundColor: progress >= 100 ? '#4CAF50' : '#2196F3', 
-            height: '100%', 
-            width: `${progress}%`,
-            transition: 'width 0.3s ease'
-          }}
-        />
-      </div>
-      
-      {/* Main Chart Area */}
-      <div style={{ 
-        backgroundColor: darkMode ? '#262626' : 'white', 
-        padding: '20px', 
-        borderRadius: '8px', 
-        boxShadow: darkMode ? '0 2px 8px rgba(0,0,0,0.3)' : '0 2px 8px rgba(0,0,0,0.1)', 
-        marginBottom: '30px',
-        position: 'relative',
-        minHeight: '600px'
-      }}>
-        {/* Chart and Drawing Tools */}
-        {chartData && chartData.length > 0 ? (
-          <>
-            {/* Drawing Tools Component */}
-            {chartInstance && (
-              <HighchartsDrawingTools
-                chart={chartInstance}
-                onDrawingChange={handleDrawingChange}
-                examConfig={examConfig} // Make sure this is passed
-
-              />
-            )}
-            
-            {/* HighchartsChart Component */}
-            <HighchartsChart 
-              data={chartData} 
-              height={500}
-              onChartCreated={handleChartCreated}
-            />
-          </>
-        ) : (
-          <div style={{ 
-            height: '500px', 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center', 
-            color: darkMode ? '#b0b0b0' : '#666' 
-          }}>
-            No chart data available
+        {examConfig?.parts > 1 && (
+          <div style={{ marginBottom: '10px', color: darkMode ? '#4CAF50' : '#388E3C' }}>
+            <strong>Current Part: {currentPart}/2</strong> - 
+            {currentPart === 1 && examType === 'fibonacci-retracement' && ' Draw uptrend Fibonacci retracement'}
+            {currentPart === 2 && examType === 'fibonacci-retracement' && ' Draw downtrend Fibonacci retracement'}
+            {currentPart === 1 && examType === 'fair-value-gaps' && ' Identify Bullish Fair Value Gaps'}
+            {currentPart === 2 && examType === 'fair-value-gaps' && ' Identify Bearish Fair Value Gaps'}
           </div>
         )}
         
-        {/* Feedback Overlay for Submitted Exam */}
+        <div style={{ marginBottom: '10px', color: darkMode ? '#03A9F4' : '#0288D1' }}>
+          <strong>Chart: {chartCount}/5</strong>
+        </div>
+        
+        <RequirementsBox theme={{ darkMode }}>
+          <p style={{ margin: 0, color: darkMode ? '#b0b0b0' : '#555' }}>
+            <strong>Requirements:</strong> {examConfig?.minDrawings === 0 ? 
+              'Mark all the pattern instances you can find. Use the "No Patterns Found" button if none exist.' : 
+              `Add at least ${examConfig?.minDrawings} and up to ${examConfig?.maxDrawings} drawings to the chart.`}
+          </p>
+        </RequirementsBox>
+      </InstructionsPanel>
+      
+      {/* Progress Bar */}
+      <ProgressBar theme={{ darkMode }}>
+        <ProgressFill progress={progress} complete={progress >= 100} />
+      </ProgressBar>
+      
+      {/* Main Chart Area */}
+      <ChartContainer theme={{ darkMode }}>
+        {renderExamComponent()}
+        
+        {/* Feedback overlay when submitted */}
         {submitted && feedback && (
           <div style={{
             position: 'absolute',
@@ -431,10 +479,12 @@ const handleDrawingChange = (newDrawings) => {
               boxShadow: '0 10px 30px rgba(0,0,0,0.3)'
             }}>
               <h2 style={{
-                color: feedback.type === 'success' ? '#4CAF50' : '#F44336',
+                color: feedback.type === 'success' ? '#4CAF50' : 
+                       feedback.type === 'warning' ? '#FF9800' : '#F44336',
                 marginBottom: '20px'
               }}>
-                {feedback.type === 'success' ? 'Exam Completed!' : 'Warning'}
+                {feedback.type === 'success' ? 'Great Job!' : 
+                 feedback.type === 'warning' ? 'Warning' : 'Error'}
               </h2>
               <p style={{
                 fontSize: '1.1rem',
@@ -443,60 +493,45 @@ const handleDrawingChange = (newDrawings) => {
               }}>
                 {feedback.message}
               </p>
-              {feedback.details && (
-                <p style={{
-                  color: darkMode ? '#b0b0b0' : '#666',
-                  marginBottom: '20px'
-                }}>
-                  {feedback.details}
+              {feedback.score !== undefined && (
+                <div style={{ marginBottom: '20px' }}>
+                  <p>Score: <strong>{feedback.score}/{feedback.totalPoints}</strong></p>
+                  <div style={{ 
+                    backgroundColor: darkMode ? '#333' : '#e0e0e0', 
+                    height: '10px', 
+                    borderRadius: '5px', 
+                    overflow: 'hidden',
+                    margin: '10px 0'
+                  }}>
+                    <div style={{
+                      backgroundColor: '#4CAF50',
+                      height: '100%',
+                      width: `${(feedback.score / feedback.totalPoints) * 100}%`
+                    }}></div>
+                  </div>
+                </div>
+              )}
+              
+              {examConfig?.parts > 1 && currentPart === 1 ? (
+                <p style={{ color: darkMode ? '#b0b0b0' : '#666' }}>
+                  Moving to Part 2 in a moment...
+                </p>
+              ) : chartCount < 5 ? (
+                <p style={{ color: darkMode ? '#b0b0b0' : '#666' }}>
+                  Moving to next chart in a moment...
+                </p>
+              ) : (
+                <p style={{ color: darkMode ? '#b0b0b0' : '#666' }}>
+                  Exam complete! Great job practicing your technical analysis skills.
                 </p>
               )}
-              <div style={{
-                display: 'flex',
-                justifyContent: 'center',
-                gap: '15px',
-                marginTop: '20px'
-              }}>
-                <button
-                  onClick={handleRetry}
-                  style={{
-                    padding: '10px 20px',
-                    backgroundColor: '#2196F3',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    fontWeight: 'bold'
-                  }}
-                >
-                  Try Again
-                </button>
-                <Link
-                  href="/chart-exam"
-                  style={{
-                    padding: '10px 20px',
-                    backgroundColor: '#4CAF50',
-                    color: 'white',
-                    textDecoration: 'none',
-                    borderRadius: '4px',
-                    fontWeight: 'bold'
-                  }}
-                >
-                  Next Exam
-                </Link>
-              </div>
             </div>
           </div>
         )}
-      </div>
+      </ChartContainer>
       
       {/* Drawing Stats */}
-      <div style={{
-        backgroundColor: darkMode ? '#1e1e1e' : '#f8f9fa',
-        padding: '15px',
-        borderRadius: '8px',
-        marginBottom: '20px'
-      }}>
+      <StatsContainer theme={{ darkMode }}>
         <h3 style={{
           fontSize: '1.1rem',
           marginBottom: '10px',
@@ -512,64 +547,58 @@ const handleDrawingChange = (newDrawings) => {
         }}>
           <div>
             <span style={{ color: darkMode ? '#b0b0b0' : '#666' }}>Drawings: </span>
-            <span style={{ fontWeight: 'bold', color: drawings.length >= examConfig.minDrawings ? '#4CAF50' : '#FF9800' }}>
-              {drawings.length} / {examConfig.minDrawings} required
+            <span style={{ 
+              fontWeight: 'bold', 
+              color: examConfig?.minDrawings === 0 || drawings.length >= examConfig?.minDrawings 
+                ? '#4CAF50' 
+                : '#FF9800' 
+            }}>
+              {drawings.length} {examConfig?.minDrawings > 0 ? `/ ${examConfig?.minDrawings} required` : ''}
             </span>
           </div>
           <div>
             <span style={{ color: darkMode ? '#b0b0b0' : '#666' }}>Status: </span>
             <span style={{
               fontWeight: 'bold',
-              color: drawings.length >= examConfig.minDrawings ? '#4CAF50' : '#FF9800'
+              color: examConfig?.minDrawings === 0 || drawings.length >= examConfig?.minDrawings 
+                ? '#4CAF50' 
+                : '#FF9800'
             }}>
-              {drawings.length >= examConfig.minDrawings ? 'Ready to submit' : 'More drawings needed'}
+              {examConfig?.minDrawings === 0 || drawings.length >= examConfig?.minDrawings 
+                ? 'Ready to submit' 
+                : 'More drawings needed'}
             </span>
           </div>
         </div>
-      </div>
+      </StatsContainer>
       
       {/* Actions */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '30px' }}>
-        <Link
+      <ActionButtons>
+        <BackButton 
           href="/chart-exam"
-          style={{
-            padding: '12px 25px',
-            backgroundColor: darkMode ? '#333' : '#e0e0e0',
-            color: darkMode ? '#e0e0e0' : '#333',
-            textDecoration: 'none',
-            borderRadius: '8px',
-            fontWeight: 'bold'
-          }}
+          theme={{ darkMode }}
         >
           Back to Exam Selection
-        </Link>
+        </BackButton>
         
-        <button
+        <SubmitButton
           onClick={handleSubmit}
-          disabled={drawings.length < examConfig.minDrawings || submitted}
-          style={{
-            padding: '12px 25px',
-            backgroundColor: drawings.length >= examConfig.minDrawings ? '#4CAF50' : '#ccc',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            cursor: drawings.length >= examConfig.minDrawings && !submitted ? 'pointer' : 'not-allowed',
-            fontWeight: 'bold',
-            opacity: submitted ? 0.7 : 1
-          }}
+          disabled={(examConfig?.minDrawings > 0 && drawings.length < examConfig?.minDrawings) || submitted}
+          submitted={submitted}
+          theme={{ darkMode }}
         >
           {submitted ? 'Submitted' : 'Submit Exam'}
-        </button>
-      </div>
+        </SubmitButton>
+      </ActionButtons>
       
-      {/* Add a global style for animations */}
+      {/* Add global styles for animations */}
       <style jsx global>{`
         @keyframes fadeIn {
           from { opacity: 0; }
           to { opacity: 1; }
         }
       `}</style>
-    </div>
+    </Container>
   );
 };
 
