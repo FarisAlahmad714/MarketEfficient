@@ -368,4 +368,148 @@ const FibonacciRetracement = ({ chartData, onDrawingsUpdate, part, chartCount, i
       const newDrawing = {
         start: startPoint,
         end: endPoint,
-        direction: part === 1
+        direction: part === 1 ? 'uptrend' : 'downtrend'
+      };
+      
+      // Add new drawing
+      setDrawings([...drawings, newDrawing]);
+      
+      // Reset start point
+      setStartPoint(null);
+    }
+  };
+  
+  // Toggle drawing mode
+  const toggleDrawingMode = () => {
+    setDrawingMode(!drawingMode);
+    if (drawingMode) {
+      // If turning off drawing mode, clear start point
+      setStartPoint(null);
+    }
+  };
+  
+  // Undo last drawing
+  const undoLastDrawing = () => {
+    if (drawings.length > 0) {
+      const newDrawings = [...drawings];
+      newDrawings.pop();
+      setDrawings(newDrawings);
+    }
+    // Also clear startPoint if active
+    if (startPoint) {
+      setStartPoint(null);
+    }
+  };
+  
+  // Clear all drawings
+  const clearAllDrawings = () => {
+    setDrawings([]);
+    setStartPoint(null);
+  };
+  
+  // Remove specific drawing
+  const removeDrawing = (index) => {
+    const newDrawings = [...drawings];
+    newDrawings.splice(index, 1);
+    setDrawings(newDrawings);
+  };
+  
+  // Format date
+  const formatDate = (time) => {
+    const date = new Date(time * 1000);
+    return date.toLocaleDateString();
+  };
+  
+  return (
+    <div>
+      <ToolBar>
+        <Button 
+          onClick={toggleDrawingMode} 
+          active={drawingMode}
+          isDarkMode={isDarkMode}
+        >
+          {drawingMode ? 'Stop Drawing' : 'Draw Fibonacci'}
+        </Button>
+        <Button 
+          onClick={undoLastDrawing} 
+          isDarkMode={isDarkMode}
+          disabled={drawings.length === 0 && !startPoint}
+        >
+          Undo
+        </Button>
+        <DangerButton 
+          onClick={clearAllDrawings} 
+          isDarkMode={isDarkMode}
+          disabled={drawings.length === 0 && !startPoint}
+        >
+          Clear All
+        </DangerButton>
+      </ToolBar>
+      
+      <StatusBadge active={drawingMode} isDarkMode={isDarkMode}>
+        {drawingMode ? (
+          startPoint ? 
+            'Now click to set the end point' : 
+            'Click on the chart to set the start point'
+        ) : (
+          'Click "Draw Fibonacci" to begin'
+        )}
+      </StatusBadge>
+      
+      <ChartWrapper ref={containerRef}>
+        {containerRef.current && (
+          <Chart 
+            container={containerRef} 
+            chartData={formattedChartData} 
+            options={{
+              isDarkMode,
+              markers: chartMarkers,
+              ...chartOptions
+            }}
+            onClick={handlePointClick}
+          />
+        )}
+        
+        <FibPanel isDarkMode={isDarkMode}>
+          <h3 style={{ 
+            marginTop: 0, 
+            fontSize: '1rem', 
+            marginBottom: '10px',
+            color: isDarkMode ? '#e0e0e0' : '#333'
+          }}>
+            Fibonacci Retracements
+          </h3>
+          
+          {drawings.length === 0 ? (
+            <p style={{ color: isDarkMode ? '#b0b0b0' : '#666', fontSize: '0.9rem' }}>
+              No retracements drawn yet.
+            </p>
+          ) : (
+            drawings.map((drawing, index) => (
+              <FibItem key={index} isDarkMode={isDarkMode}>
+                <h4>{drawing.direction === 'uptrend' ? 'Uptrend' : 'Downtrend'} #{index + 1}</h4>
+                <div className="fib-data">
+                  <span>Start:</span>
+                  <span>{drawing.start.price.toFixed(2)}</span>
+                </div>
+                <div className="fib-data">
+                  <span>End:</span>
+                  <span>{drawing.end.price.toFixed(2)}</span>
+                </div>
+                <div className="fib-data">
+                  <span>Date Range:</span>
+                  <span>{formatDate(drawing.start.time)} - {formatDate(drawing.end.time)}</span>
+                </div>
+                <div className="fib-remove">
+                  <button onClick={() => removeDrawing(index)}>×</button>
+                </div>
+              </FibItem>
+            ))
+          )}
+        </FibPanel>
+      </ChartWrapper>
+    </div>
+  );
+};
+
+export default FibonacciRetracement;
