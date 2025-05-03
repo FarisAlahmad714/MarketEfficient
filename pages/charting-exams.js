@@ -1,6 +1,7 @@
-import ExamSelector from '../components/charting-exam/ExamSelector';
-import { useTheme } from '../contexts/ThemeContext';
-import styled from 'styled-components';
+import ExamSelector from '../components/charting_exam/ExamSelector';
+import { useContext } from 'react';
+import { ThemeContext } from '../contexts/ThemeContext';
+const { darkMode } = useContext(ThemeContext);
 
 const PageContainer = styled.div`
   background-color: ${props => props.theme.darkMode ? '#121212' : '#f5f5f5'};
@@ -9,8 +10,7 @@ const PageContainer = styled.div`
 `;
 
 const ChartingExams = () => {
-  const { darkMode } = useTheme();
-  
+    const { darkMode } = useContext(ThemeContext);  
   return (
     <PageContainer>
       <ExamSelector />

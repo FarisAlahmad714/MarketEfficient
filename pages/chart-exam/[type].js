@@ -1,7 +1,8 @@
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
-import ChartExam from '../../components/charting-exam/ChartExam';
-import { useTheme } from '../../contexts/ThemeContext';
+import ChartExam from '../../components/charting_exam/ChartExam';
+import { useContext } from 'react';
+import { ThemeContext } from '../../contexts/ThemeContext';
 import styled from 'styled-components';
 
 const LoadingContainer = styled.div`
@@ -31,7 +32,7 @@ const Spinner = styled.div`
 const ChartExamPage = () => {
   const router = useRouter();
   const { type } = router.query;
-  const { darkMode } = useTheme();
+  const { darkMode } = useContext(ThemeContext);
   const [loading, setLoading] = useState(true);
   
   useEffect(() => {
@@ -40,7 +41,7 @@ const ChartExamPage = () => {
     }
   }, [type]);
   
-  if (loading) {
+  if (!type) {
     return (
       <LoadingContainer>
         <Spinner />
@@ -49,8 +50,10 @@ const ChartExamPage = () => {
     );
   }
   
-  // Valid exam types
+  // Changed to match the IDs you're using in chart-exam.js
   const validTypes = ['swing-analysis', 'fibonacci-retracement', 'fair-value-gaps'];
+  
+  console.log("Current type:", type); // Debug to see what value is coming in
   
   if (!validTypes.includes(type)) {
     return (
@@ -64,7 +67,7 @@ const ChartExamPage = () => {
         <h1>Invalid Exam Type</h1>
         <p>The requested exam type does not exist.</p>
         <button
-          onClick={() => router.push('/charting-exams')}
+          onClick={() => router.push('/chart-exam')}
           style={{
             padding: '10px 20px',
             backgroundColor: darkMode ? '#3f51b5' : '#2196F3',

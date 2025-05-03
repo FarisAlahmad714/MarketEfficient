@@ -10,24 +10,24 @@ const ChartExamIntro = () => {
 
   const examTypes = [
     {
-      id: 'swing-points',
+      id: 'swing-analysis',  // Changed from 'swing-points'
       title: 'Swing Point Analysis',
       description: 'Learn to identify key swing points (highs and lows) in chart patterns. Swing points are crucial for determining market structure and potential reversal zones.',
-      image: '/images/placeholder-chart.png', // Replace with local placeholder
+      image: '/images/placeholder-chart.png',
       difficulty: 'Beginner'
     },
     {
-      id: 'fibonacci',
+      id: 'fibonacci-retracement',  // Changed from 'fibonacci'
       title: 'Fibonacci Retracements',
       description: 'Master the use of Fibonacci retracement levels to identify potential support and resistance zones. These mathematical ratios help predict where price might reverse.',
-      image: '/images/placeholder-chart.png', // Replace with local placeholder
+      image: '/images/placeholder-chart.png',
       difficulty: 'Intermediate'
     },
     {
-      id: 'fvg',
+      id: 'fair-value-gaps',  // Changed from 'fvg'
       title: 'Fair Value Gaps (FVG)',
       description: 'Understand how to spot and trade Fair Value Gaps - areas where price makes a significant move leaving an imbalance that often gets filled later.',
-      image: '/images/placeholder-chart.png', // Replace with local placeholder
+      image: '/images/placeholder-chart.png',
       difficulty: 'Advanced'
     }
   ];

@@ -6,9 +6,9 @@ import FibonacciRetracement from './FibonacciRetracement';
 import FairValueGaps from './FairValueGaps';
 import ExamProgress from './common/ExamProgress';
 import ResultsPanel from './common/ResultsPanel';
-import { useTheme } from '../../contexts/ThemeContext';
+import { ThemeContext } from '../../contexts/ThemeContext';
 
-// Styled components
+// Styled components with $-prefixed props to prevent DOM forwarding
 const ExamContainer = styled.div`
   max-width: 1200px;
   margin: 0 auto;
@@ -23,20 +23,20 @@ const ExamHeader = styled.div`
 const Title = styled.h1`
   font-size: 2.2rem;
   margin-bottom: 10px;
-  color: ${props => props.theme.darkMode ? '#e0e0e0' : '#333'};
+  color: ${props => props.$isDarkMode ? '#e0e0e0' : '#333'};
 `;
 
 const Subtitle = styled.h2`
   font-size: 1.4rem;
   font-weight: 500;
   margin-bottom: 5px;
-  color: ${props => props.theme.darkMode ? '#b0b0b0' : '#555'};
+  color: ${props => props.$isDarkMode ? '#b0b0b0' : '#555'};
 `;
 
 const Instructions = styled.p`
   font-size: 1rem;
   margin-bottom: 20px;
-  color: ${props => props.theme.darkMode ? '#b0b0b0' : '#666'};
+  color: ${props => props.$isDarkMode ? '#b0b0b0' : '#666'};
   line-height: 1.5;
 `;
 
@@ -52,7 +52,7 @@ const ControlPanel = styled.div`
 
 const Button = styled.button`
   padding: 10px 20px;
-  background-color: ${props => props.theme.darkMode ? '#3f51b5' : '#2196F3'};
+  background-color: ${props => props.$isDarkMode ? '#3f51b5' : '#2196F3'};
   color: white;
   border: none;
   border-radius: 4px;
@@ -61,11 +61,11 @@ const Button = styled.button`
   transition: all 0.2s ease;
   
   &:hover {
-    background-color: ${props => props.theme.darkMode ? '#303f9f' : '#1976D2'};
+    background-color: ${props => props.$isDarkMode ? '#303f9f' : '#1976D2'};
   }
   
   &:disabled {
-    background-color: ${props => props.theme.darkMode ? '#555' : '#ccc'};
+    background-color: ${props => props.$isDarkMode ? '#555' : '#ccc'};
     cursor: not-allowed;
   }
 `;
@@ -83,7 +83,7 @@ const LoadingOverlay = styled.div`
   z-index: 1000;
   
   & > div {
-    background-color: ${props => props.theme.darkMode ? '#262626' : 'white'};
+    background-color: ${props => props.$isDarkMode ? '#262626' : 'white'};
     padding: 20px 30px;
     border-radius: 8px;
     display: flex;
@@ -93,8 +93,8 @@ const LoadingOverlay = styled.div`
 `;
 
 const Spinner = styled.div`
-  border: 4px solid ${props => props.theme.darkMode ? '#555' : '#f3f3f3'};
-  border-top: 4px solid ${props => props.theme.darkMode ? '#3f51b5' : '#2196F3'};
+  border: 4px solid ${props => props.$isDarkMode ? '#555' : '#f3f3f3'};
+  border-top: 4px solid ${props => props.$isDarkMode ? '#3f51b5' : '#2196F3'};
   border-radius: 50%;
   width: 30px;
   height: 30px;
@@ -108,8 +108,9 @@ const Spinner = styled.div`
 `;
 
 const ChartExam = ({ examType }) => {
+  // Move all hook calls inside the component function
   const router = useRouter();
-  const { darkMode } = useTheme();
+  const { darkMode } = React.useContext(ThemeContext);
   const [chartData, setChartData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [chartCount, setChartCount] = useState(1);
@@ -301,13 +302,13 @@ const ChartExam = ({ examType }) => {
   return (
     <ExamContainer>
       <ExamHeader>
-        <Title>
+        <Title $isDarkMode={darkMode}>
           {examType === 'swing-analysis' ? 'Swing Analysis' :
            examType === 'fibonacci-retracement' ? 'Fibonacci Retracement' :
            examType === 'fair-value-gaps' ? 'Fair Value Gaps' : 'Chart Exam'}
         </Title>
-        <Subtitle>Symbol: {symbol} ({timeframe})</Subtitle>
-        <Instructions>{getInstructions()}</Instructions>
+        <Subtitle $isDarkMode={darkMode}>Symbol: {symbol} ({timeframe})</Subtitle>
+        <Instructions $isDarkMode={darkMode}>{getInstructions()}</Instructions>
       </ExamHeader>
       
       <ExamProgress 
@@ -325,7 +326,7 @@ const ChartExam = ({ examType }) => {
             alignItems: 'center', 
             justifyContent: 'center' 
           }}>
-            <Spinner />
+            <Spinner $isDarkMode={darkMode} />
             <p>Loading chart data...</p>
           </div>
         ) : (
@@ -334,7 +335,11 @@ const ChartExam = ({ examType }) => {
       </ChartContainer>
       
       <ControlPanel>
-        <Button onClick={validateDrawings} disabled={loading || submitting}>
+        <Button 
+          onClick={validateDrawings} 
+          disabled={loading || submitting}
+          $isDarkMode={darkMode}
+        >
           Submit Answer
         </Button>
       </ControlPanel>
@@ -351,9 +356,9 @@ const ChartExam = ({ examType }) => {
       )}
       
       {submitting && (
-        <LoadingOverlay>
+        <LoadingOverlay $isDarkMode={darkMode}>
           <div>
-            <Spinner />
+            <Spinner $isDarkMode={darkMode} />
             <p>Analyzing your answers...</p>
           </div>
         </LoadingOverlay>

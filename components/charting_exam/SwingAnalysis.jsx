@@ -47,7 +47,9 @@ const Chart = dynamic(
         
         // Set markers if available
         if (options.markers && options.markers.length > 0) {
-          candlestick.setMarkers(options.markers);
+          // Make sure markers are sorted by time
+          const sortedMarkers = [...options.markers].sort((a, b) => a.time - b.time);
+          candlestick.setMarkers(sortedMarkers);
         }
         
         // Set click handler
@@ -77,7 +79,7 @@ const Chart = dynamic(
   { ssr: false }
 );
 
-// Styled components
+// Styled components with $-prefixed props
 const ChartWrapper = styled.div`
   width: 100%;
   height: 500px;
@@ -93,34 +95,34 @@ const ToolBar = styled.div`
 
 const Button = styled.button`
   padding: 8px 16px;
-  background-color: ${props => props.active 
-    ? (props.isDarkMode ? '#3f51b5' : '#2196F3') 
-    : (props.isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)')
+  background-color: ${props => props.$active 
+    ? (props.$isDarkMode ? '#3f51b5' : '#2196F3') 
+    : (props.$isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)')
   };
-  color: ${props => props.active 
+  color: ${props => props.$active 
     ? 'white' 
-    : (props.isDarkMode ? '#e0e0e0' : '#333')
+    : (props.$isDarkMode ? '#e0e0e0' : '#333')
   };
   border: none;
   border-radius: 4px;
-  font-weight: ${props => props.active ? 'bold' : 'normal'};
+  font-weight: ${props => props.$active ? 'bold' : 'normal'};
   cursor: pointer;
   transition: all 0.2s ease;
   
   &:hover {
-    background-color: ${props => props.active 
-      ? (props.isDarkMode ? '#3f51b5' : '#2196F3') 
-      : (props.isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)')
+    background-color: ${props => props.$active 
+      ? (props.$isDarkMode ? '#3f51b5' : '#2196F3') 
+      : (props.$isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)')
     };
   }
 `;
 
 const DangerButton = styled(Button)`
-  background-color: ${props => props.isDarkMode ? '#d32f2f' : '#ffcdd2'};
-  color: ${props => props.isDarkMode ? 'white' : '#d32f2f'};
+  background-color: ${props => props.$isDarkMode ? '#d32f2f' : '#ffcdd2'};
+  color: ${props => props.$isDarkMode ? 'white' : '#d32f2f'};
   
   &:hover {
-    background-color: ${props => props.isDarkMode ? '#b71c1c' : '#ffb3b3'};
+    background-color: ${props => props.$isDarkMode ? '#b71c1c' : '#ffb3b3'};
   }
 `;
 
@@ -128,7 +130,7 @@ const MarkerPanel = styled.div`
   position: absolute;
   right: 20px;
   top: 20px;
-  background-color: ${props => props.isDarkMode ? 'rgba(30, 30, 30, 0.8)' : 'rgba(255, 255, 255, 0.8)'};
+  background-color: ${props => props.$isDarkMode ? 'rgba(30, 30, 30, 0.8)' : 'rgba(255, 255, 255, 0.8)'};
   border-radius: 8px;
   padding: 15px;
   width: 220px;
@@ -141,7 +143,7 @@ const MarkerPanel = styled.div`
 const MarkerItem = styled.div`
   padding: 8px;
   margin-bottom: 8px;
-  background-color: ${props => props.isDarkMode ? 'rgba(0, 0, 0, 0.2)' : 'rgba(0, 0, 0, 0.05)'};
+  background-color: ${props => props.$isDarkMode ? 'rgba(0, 0, 0, 0.2)' : 'rgba(0, 0, 0, 0.05)'};
   border-radius: 4px;
   display: flex;
   justify-content: space-between;
@@ -153,18 +155,18 @@ const MarkerItem = styled.div`
     font-size: 0.8rem;
     font-weight: bold;
     color: white;
-    background-color: ${props => props.type === 'high' ? '#4CAF50' : '#2196F3'};
+    background-color: ${props => props.$type === 'high' ? '#4CAF50' : '#2196F3'};
   }
   
   & > button {
     background: none;
     border: none;
-    color: ${props => props.isDarkMode ? '#e0e0e0' : '#555'};
+    color: ${props => props.$isDarkMode ? '#e0e0e0' : '#555'};
     cursor: pointer;
     font-size: 1rem;
     
     &:hover {
-      color: ${props => props.isDarkMode ? '#fff' : '#000'};
+      color: ${props => props.$isDarkMode ? '#fff' : '#000'};
     }
   }
 `;
@@ -187,15 +189,18 @@ const SwingAnalysis = ({ chartData, onDrawingsUpdate, chartCount, isDarkMode }) 
     }));
   }, [chartData]);
   
-  // Create markers from drawings
+  // Create markers from drawings - FIXED: sort by time
   const chartMarkers = React.useMemo(() => {
-    return drawings.map(point => ({
+    const markers = drawings.map(point => ({
       time: point.time,
       position: point.type === 'high' ? 'aboveBar' : 'belowBar',
       color: point.type === 'high' ? '#4CAF50' : '#2196F3',
       shape: 'circle',
       size: 2
     }));
+    
+    // Sort markers by time in ascending order
+    return markers.sort((a, b) => a.time - b.time);
   }, [drawings]);
   
   // Update parent component when drawings change
@@ -266,21 +271,21 @@ const SwingAnalysis = ({ chartData, onDrawingsUpdate, chartCount, isDarkMode }) 
       <ToolBar>
         <Button 
           onClick={toggleMarkingMode} 
-          active={markingMode}
-          isDarkMode={isDarkMode}
+          $active={markingMode}
+          $isDarkMode={isDarkMode}
         >
           {markingMode ? 'Stop Marking' : 'Mark Swing Points'}
         </Button>
         <Button 
           onClick={undoLastMarker} 
-          isDarkMode={isDarkMode}
+          $isDarkMode={isDarkMode}
           disabled={drawings.length === 0}
         >
           Undo
         </Button>
         <DangerButton 
           onClick={clearAllMarkers} 
-          isDarkMode={isDarkMode}
+          $isDarkMode={isDarkMode}
           disabled={drawings.length === 0}
         >
           Clear All
@@ -300,7 +305,7 @@ const SwingAnalysis = ({ chartData, onDrawingsUpdate, chartCount, isDarkMode }) 
           />
         )}
         
-        <MarkerPanel isDarkMode={isDarkMode}>
+        <MarkerPanel $isDarkMode={isDarkMode}>
           <h3 style={{ 
             marginTop: 0, 
             fontSize: '1rem', 
@@ -316,7 +321,7 @@ const SwingAnalysis = ({ chartData, onDrawingsUpdate, chartCount, isDarkMode }) 
             </p>
           ) : (
             drawings.map((point, index) => (
-              <MarkerItem key={index} type={point.type} isDarkMode={isDarkMode}>
+              <MarkerItem key={index} $type={point.type} $isDarkMode={isDarkMode}>
                 <span>{point.type.toUpperCase()}</span>
                 <div style={{ color: isDarkMode ? '#b0b0b0' : '#666' }}>
                   {point.price.toFixed(2)}
