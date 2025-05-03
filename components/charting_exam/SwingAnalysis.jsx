@@ -113,55 +113,69 @@ const Chart = dynamic(
                 return currentDistance < closestDistance ? marker : closest;
               }, null);
               
-              if (closestMarker && Math.abs(param.point.y - param.seriesPrices.get(candlestick)) < 50) {
-                // Show tooltip
-                const tooltipContent = `
-                  <div style="
-                    padding: 8px;
-                    background: ${options.isDarkMode ? 'rgba(33, 33, 33, 0.95)' : 'rgba(255, 255, 255, 0.95)'};
-                    color: ${options.isDarkMode ? '#e0e0e0' : '#333'};
-                    border-radius: 4px;
-                    font-size: 12px;
-                    max-width: 200px;
-                    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-                    border-left: 3px solid ${
-                      closestMarker.text?.includes('Missed') 
-                        ? '#FFD700' 
-                        : closestMarker.text?.includes('Incorrect')
-                          ? '#FF4444'
-                          : closestMarker.color
-                    };
-                  ">
-                    <div style="font-weight: bold; margin-bottom: 5px;">
-                      ${closestMarker.text || 'Point'}
-                    </div>
-                    <div>
-                      Price: ${closestMarker.price?.toFixed(2) || 'N/A'}
-                    </div>
-                    ${closestMarker.advice ? 
-                      `<div style="margin-top: 5px; font-style: italic;">
-                        ${closestMarker.advice}
-                      </div>` 
-                      : ''
-                    }
-                  </div>
-                `;
+              if (closestMarker) {
+                // Get price value safely with fallback to coordinate conversion
+                let priceValue;
+                if (param.seriesPrices && param.seriesPrices.has(candlestick)) {
+                  priceValue = param.seriesPrices.get(candlestick);
+                } else if (candlestick && typeof candlestick.coordinateToPrice === 'function') {
+                  priceValue = candlestick.coordinateToPrice(param.point.y);
+                } else {
+                  // Last resort fallback - use point's Y coordinate directly
+                  priceValue = param.point.y;
+                }
                 
-                // Position tooltip near the point
-                const tooltipWidth = 200;
-                const tooltipHeight = 100;
-                const chartRect = chart.chartElement().getBoundingClientRect();
+                // Now use the safely obtained price value
+                if (Math.abs(param.point.y - priceValue) < 50) {
+                  // Show tooltip
+                  const tooltipContent = `
+                    <div style="
+                      padding: 8px;
+                      background: ${options.isDarkMode ? 'rgba(33, 33, 33, 0.95)' : 'rgba(255, 255, 255, 0.95)'};
+                      color: ${options.isDarkMode ? '#e0e0e0' : '#333'};
+                      border-radius: 4px;
+                      font-size: 12px;
+                      max-width: 200px;
+                      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+                      border-left: 3px solid ${
+                        closestMarker.text?.includes('Missed') 
+                          ? '#FFD700' 
+                          : closestMarker.text?.includes('Incorrect')
+                            ? '#FF4444'
+                            : closestMarker.color
+                      };
+                    ">
+                      <div style="font-weight: bold; margin-bottom: 5px;">
+                        ${closestMarker.text || 'Point'}
+                      </div>
+                      <div>
+                        Price: ${closestMarker.price?.toFixed(2) || 'N/A'}
+                      </div>
+                      ${closestMarker.advice ? 
+                        `<div style="margin-top: 5px; font-style: italic;">
+                          ${closestMarker.advice}
+                        </div>` 
+                        : ''
+                      }
+                    </div>
+                  `;
                 
-                tooltipRef.current.innerHTML = tooltipContent;
-                tooltipRef.current.style.display = 'block';
-                tooltipRef.current.style.left = `${Math.min(
-                  chartRect.left + param.point.x + 10,
-                  chartRect.right - tooltipWidth - 10
-                )}px`;
-                tooltipRef.current.style.top = `${Math.min(
-                  chartRect.top + param.point.y - tooltipHeight - 10,
-                  chartRect.bottom - tooltipHeight - 10
-                )}px`;
+                  // Position tooltip near the point
+                  const tooltipWidth = 200;
+                  const tooltipHeight = 100;
+                  const chartRect = chart.chartElement().getBoundingClientRect();
+                
+                  tooltipRef.current.innerHTML = tooltipContent;
+                  tooltipRef.current.style.display = 'block';
+                  tooltipRef.current.style.left = `${Math.min(
+                    chartRect.left + param.point.x + 10,
+                    chartRect.right - tooltipWidth - 10
+                  )}px`;
+                  tooltipRef.current.style.top = `${Math.min(
+                    chartRect.top + param.point.y - tooltipHeight - 10,
+                    chartRect.bottom - tooltipHeight - 10
+                  )}px`;
+                } // Added missing closing brace for the if (Math.abs(param.point.y - priceValue) < 50) block
               } else {
                 // Hide tooltip
                 if (tooltipRef.current) {

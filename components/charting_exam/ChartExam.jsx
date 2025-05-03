@@ -297,7 +297,7 @@ const ChartExam = ({ examType }) => {
         
         // Redirect to results page or show final results
         alert(`Exam complete! Your final score: ${totalScore}/${totalPossible}`);
-        router.push('/charting-exams');
+        router.push('/chart-exam'); // FIXED: Correct route
         return;
       }
       

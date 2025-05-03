@@ -54,16 +54,32 @@ const Chart = dynamic(
               lineStyle: level.lineStyle || 0, // LineStyle.Solid
               title: level.title,
             });
-            lineSeries.setData([
-              { time: options.startTime, value: level.price },
-              { time: options.endTime, value: level.price }
-            ]);
+            
+            // Ensure times are in ascending order
+            const timePoint1 = options.startTime;
+            const timePoint2 = options.endTime;
+            
+            // Create data points in ascending time order
+            const data = timePoint1 <= timePoint2 
+              ? [
+                  { time: timePoint1, value: level.price },
+                  { time: timePoint2, value: level.price }
+                ]
+              : [
+                  { time: timePoint2, value: level.price },
+                  { time: timePoint1, value: level.price }
+                ];
+            
+            lineSeries.setData(data);
+         
           });
         }
         
         // Set markers if available
         if (options.markers && options.markers.length > 0) {
-          candlestick.setMarkers(options.markers);
+          // Sort markers by time in ascending order to prevent errors
+          const sortedMarkers = [...options.markers].sort((a, b) => a.time - b.time);
+          candlestick.setMarkers(sortedMarkers);
         }
         
         // Set click handler
@@ -122,34 +138,34 @@ const ToolBar = styled.div`
 
 const Button = styled.button`
   padding: 8px 16px;
-  background-color: ${props => props.active 
-    ? (props.isDarkMode ? '#3f51b5' : '#2196F3') 
-    : (props.isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)')
+  background-color: ${props => props.$active 
+    ? (props.$isDarkMode ? '#3f51b5' : '#2196F3') 
+    : (props.$isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)')
   };
-  color: ${props => props.active 
+  color: ${props => props.$active 
     ? 'white' 
-    : (props.isDarkMode ? '#e0e0e0' : '#333')
+    : (props.$isDarkMode ? '#e0e0e0' : '#333')
   };
   border: none;
   border-radius: 4px;
-  font-weight: ${props => props.active ? 'bold' : 'normal'};
+  font-weight: ${props => props.$active ? 'bold' : 'normal'};
   cursor: pointer;
   transition: all 0.2s ease;
   
   &:hover {
-    background-color: ${props => props.active 
-      ? (props.isDarkMode ? '#3f51b5' : '#2196F3') 
-      : (props.isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)')
+    background-color: ${props => props.$active 
+      ? (props.$isDarkMode ? '#3f51b5' : '#2196F3') 
+      : (props.$isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)')
     };
   }
 `;
 
 const DangerButton = styled(Button)`
-  background-color: ${props => props.isDarkMode ? '#d32f2f' : '#ffcdd2'};
-  color: ${props => props.isDarkMode ? 'white' : '#d32f2f'};
+  background-color: ${props => props.$isDarkMode ? '#d32f2f' : '#ffcdd2'};
+  color: ${props => props.$isDarkMode ? 'white' : '#d32f2f'};
   
   &:hover {
-    background-color: ${props => props.isDarkMode ? '#b71c1c' : '#ffb3b3'};
+    background-color: ${props => props.$isDarkMode ? '#b71c1c' : '#ffb3b3'};
   }
 `;
 
@@ -157,7 +173,7 @@ const FibPanel = styled.div`
   position: absolute;
   right: 20px;
   top: 20px;
-  background-color: ${props => props.isDarkMode ? 'rgba(30, 30, 30, 0.8)' : 'rgba(255, 255, 255, 0.8)'};
+  background-color: ${props => props.$isDarkMode ? 'rgba(30, 30, 30, 0.8)' : 'rgba(255, 255, 255, 0.8)'};
   border-radius: 8px;
   padding: 15px;
   width: 250px;
@@ -165,6 +181,22 @@ const FibPanel = styled.div`
   overflow-y: auto;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
   z-index: 10;
+`;
+
+const FibInfoOverlay = styled.div`
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  background-color: ${props => props.$isDarkMode ? 'rgba(30, 30, 30, 0.9)' : 'rgba(255, 255, 255, 0.9)'};
+  padding: 15px;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  max-width: 250px;
+  border-left: 3px solid ${props => props.$direction === 'uptrend' ? '#4CAF50' : '#F44336'};
+  font-size: 0.9rem;
+  line-height: 1.4;
+  z-index: 50;
+  display: ${props => props.$active ? 'block' : 'none'};
 `;
 
 const StatusBadge = styled.div`
@@ -175,26 +207,26 @@ const StatusBadge = styled.div`
   padding: 5px 10px;
   border-radius: 15px;
   font-size: 0.85rem;
-  background-color: ${props => props.active
-    ? (props.isDarkMode ? 'rgba(76, 175, 80, 0.2)' : 'rgba(76, 175, 80, 0.1)')
+  background-color: ${props => props.$active
+    ? (props.$isDarkMode ? 'rgba(76, 175, 80, 0.2)' : 'rgba(76, 175, 80, 0.1)')
     : 'transparent'
   };
-  color: ${props => props.active
+  color: ${props => props.$active
     ? '#4CAF50'
-    : (props.isDarkMode ? '#b0b0b0' : '#666')
+    : (props.$isDarkMode ? '#b0b0b0' : '#666')
   };
-  border: 1px solid ${props => props.active ? '#4CAF50' : 'transparent'};
+  border: 1px solid ${props => props.$active ? '#4CAF50' : 'transparent'};
 `;
 
 const FibItem = styled.div`
   padding: 8px;
   margin-bottom: 10px;
-  background-color: ${props => props.isDarkMode ? 'rgba(0, 0, 0, 0.2)' : 'rgba(0, 0, 0, 0.05)'};
+  background-color: ${props => props.$isDarkMode ? 'rgba(0, 0, 0, 0.2)' : 'rgba(0, 0, 0, 0.05)'};
   border-radius: 4px;
   
   h4 {
     margin: 0 0 8px 0;
-    color: ${props => props.isDarkMode ? '#e0e0e0' : '#333'};
+    color: ${props => props.$isDarkMode ? '#e0e0e0' : '#333'};
     font-size: 0.95rem;
   }
   
@@ -205,11 +237,11 @@ const FibItem = styled.div`
     font-size: 0.85rem;
     
     span:first-child {
-      color: ${props => props.isDarkMode ? '#b0b0b0' : '#666'};
+      color: ${props => props.$isDarkMode ? '#b0b0b0' : '#666'};
     }
     
     span:last-child {
-      color: ${props => props.isDarkMode ? '#e0e0e0' : '#333'};
+      color: ${props => props.$isDarkMode ? '#e0e0e0' : '#333'};
       font-weight: bold;
     }
   }
@@ -220,31 +252,146 @@ const FibItem = styled.div`
     button {
       background: none;
       border: none;
-      color: ${props => props.isDarkMode ? '#e0e0e0' : '#555'};
+      color: ${props => props.$isDarkMode ? '#e0e0e0' : '#555'};
       cursor: pointer;
       font-size: 1rem;
       
       &:hover {
-        color: ${props => props.isDarkMode ? '#fff' : '#000'};
+        color: ${props => props.$isDarkMode ? '#fff' : '#000'};
       }
     }
+  }
+`;
+
+const FibGuidelinesWrapper = styled.div`
+  margin-top: 20px;
+  background-color: ${props => props.$isDarkMode ? 'rgba(0, 0, 0, 0.2)' : 'rgba(0, 0, 0, 0.05)'};
+  padding: 15px;
+  border-radius: 8px;
+  color: ${props => props.$isDarkMode ? '#b0b0b0' : '#666'};
+  font-size: 0.9rem;
+  
+  h3 {
+    color: ${props => props.$isDarkMode ? '#e0e0e0' : '#333'};
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-size: 1rem;
+  }
+  
+  ul {
+    margin: 0;
+    padding-left: 20px;
+  }
+  
+  li {
+    margin-bottom: 5px;
   }
 `;
 
 // Helper function to generate Fibonacci colors
 const getFibColors = (isDarkMode) => {
   return [
-    { level: 0, color: '#FFFFFF' },
-    { level: 0.236, color: '#FFEB3B' },
-    { level: 0.382, color: '#FFC107' },
-    { level: 0.5, color: '#FF9800' },
-    { level: 0.618, color: '#FF5722' },
-    { level: 0.786, color: '#F44336' },
-    { level: 1, color: '#FFFFFF' },
-    { level: 1.272, color: '#E91E63' },
-    { level: 1.618, color: '#9C27B0' }
+    { level: 0, color: isDarkMode ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)' },
+    { level: 0.236, color: '#FFEB3B' }, // Yellow
+    { level: 0.382, color: '#FFC107' }, // Amber
+    { level: 0.5, color: '#FF9800' },   // Orange
+    { level: 0.618, color: '#FF5722' }, // Deep Orange
+    { level: 0.786, color: '#F44336' }, // Red
+    { level: 1, color: isDarkMode ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)' },
+    { level: 1.272, color: '#E91E63' }, // Pink
+    { level: 1.618, color: '#9C27B0' }  // Purple
   ];
 };
+
+/**
+ * Get guidelines text based on current part
+ * @param {Number} part - Current exam part (1 for uptrend, 2 for downtrend)
+ * @returns {String} Guidelines text
+ */
+function getFibGuidelines(part) {
+  if (part === 1) {
+    return `For UPTREND Fibonacci Retracement:
+1. Find a significant UPTREND (price moving from low to high)
+2. Place your START point at a major SWING LOW
+3. Place your END point at a major SWING HIGH
+4. Key levels to watch: 0.382, 0.5, 0.618`;
+  } else {
+    return `For DOWNTREND Fibonacci Retracement:
+1. Find a significant DOWNTREND (price moving from high to low)
+2. Place your START point at a major SWING HIGH
+3. Place your END point at a major SWING LOW
+4. Key levels to watch: 0.382, 0.5, 0.618`;
+  }
+}
+
+/**
+ * Enhanced point selection for better accuracy
+ * @param {Object} point - Clicked point
+ * @param {Array} chartData - Chart data
+ * @param {Number} part - Current part
+ * @param {Boolean} isEndPoint - Whether this is an end point
+ * @returns {Object} Optimized point
+ */
+function enhancePointSelection(point, chartData, part, isEndPoint = false) {
+  // Find the nearest candle
+  const candle = chartData.find(c => 
+    c.time === point.time || 
+    Math.floor(new Date(c.date).getTime() / 1000) === point.time
+  );
+  
+  if (!candle) return point;
+  
+  // Look at a small window of candles around the clicked point
+  const lookbackWindow = 2;
+  const surroundingCandles = [];
+  
+  // Get surrounding candles for better point selection
+  chartData.forEach(c => {
+    const candleTime = c.time || Math.floor(new Date(c.date).getTime() / 1000);
+    const pointTime = point.time;
+    
+    if (Math.abs(candleTime - pointTime) <= lookbackWindow * 86400) { // Within N days
+      surroundingCandles.push(c);
+    }
+  });
+  
+  // For uptrend start point (low) or downtrend end point (low)
+  if ((part === 1 && !isEndPoint) || (part === 2 && isEndPoint)) {
+    // Find the lowest low in surrounding candles
+    let lowestLow = candle.low;
+    let lowestTime = candle.time || Math.floor(new Date(candle.date).getTime() / 1000);
+    
+    surroundingCandles.forEach(c => {
+      if (c.low < lowestLow) {
+        lowestLow = c.low;
+        lowestTime = c.time || Math.floor(new Date(c.date).getTime() / 1000);
+      }
+    });
+    
+    return {
+      time: lowestTime,
+      price: lowestLow
+    };
+  } 
+  // For uptrend end point (high) or downtrend start point (high)
+  else {
+    // Find the highest high in surrounding candles
+    let highestHigh = candle.high;
+    let highestTime = candle.time || Math.floor(new Date(c.date).getTime() / 1000);
+    
+    surroundingCandles.forEach(c => {
+      if (c.high > highestHigh) {
+        highestHigh = c.high;
+        highestTime = c.time || Math.floor(new Date(c.date).getTime() / 1000);
+      }
+    });
+    
+    return {
+      time: highestTime,
+      price: highestHigh
+    };
+  }
+}
 
 const FibonacciRetracement = ({ chartData, onDrawingsUpdate, part, chartCount, isDarkMode }) => {
   const containerRef = useRef(null);
@@ -329,7 +476,8 @@ const FibonacciRetracement = ({ chartData, onDrawingsUpdate, part, chartCount, i
       });
     });
     
-    return markers;
+    // Sort markers by time to ensure they're in ascending order
+    return markers.sort((a, b) => a.time - b.time);
   }, [drawings]);
   
   // Update parent component when drawings change
@@ -339,35 +487,29 @@ const FibonacciRetracement = ({ chartData, onDrawingsUpdate, part, chartCount, i
     }
   }, [drawings, onDrawingsUpdate]);
   
-  // Handle point click on chart
+  // Enhanced handle point click on chart
   const handlePointClick = (point) => {
     if (!drawingMode) return;
     
-    // Find the nearest candle
-    const candle = chartData.find(c => 
-      c.time === point.time || 
-      Math.floor(new Date(c.date).getTime() / 1000) === point.time
-    );
-    
-    if (!candle) return;
-    
     if (!startPoint) {
-      // Set start point
+      // Set enhanced start point
+      const enhancedPoint = enhancePointSelection(point, chartData, part, false);
+      
       setStartPoint({
-        time: point.time,
-        price: part === 1 ? candle.low : candle.high // For uptrend start at low, downtrend start at high
+        time: enhancedPoint.time,
+        price: enhancedPoint.price
       });
     } else {
-      // Set end point and create Fibonacci drawing
-      const endPoint = {
-        time: point.time,
-        price: part === 1 ? candle.high : candle.low // For uptrend end at high, downtrend end at low
-      };
+      // Set enhanced end point and create Fibonacci drawing
+      const enhancedPoint = enhancePointSelection(point, chartData, part, true);
       
       // Create new drawing
       const newDrawing = {
         start: startPoint,
-        end: endPoint,
+        end: {
+          time: enhancedPoint.time,
+          price: enhancedPoint.price
+        },
         direction: part === 1 ? 'uptrend' : 'downtrend'
       };
       
@@ -425,28 +567,28 @@ const FibonacciRetracement = ({ chartData, onDrawingsUpdate, part, chartCount, i
       <ToolBar>
         <Button 
           onClick={toggleDrawingMode} 
-          active={drawingMode}
-          isDarkMode={isDarkMode}
+          $active={drawingMode}
+          $isDarkMode={isDarkMode}
         >
           {drawingMode ? 'Stop Drawing' : 'Draw Fibonacci'}
         </Button>
         <Button 
           onClick={undoLastDrawing} 
-          isDarkMode={isDarkMode}
+          $isDarkMode={isDarkMode}
           disabled={drawings.length === 0 && !startPoint}
         >
           Undo
         </Button>
         <DangerButton 
           onClick={clearAllDrawings} 
-          isDarkMode={isDarkMode}
+          $isDarkMode={isDarkMode}
           disabled={drawings.length === 0 && !startPoint}
         >
           Clear All
         </DangerButton>
       </ToolBar>
       
-      <StatusBadge active={drawingMode} isDarkMode={isDarkMode}>
+      <StatusBadge $active={drawingMode} $isDarkMode={isDarkMode}>
         {drawingMode ? (
           startPoint ? 
             'Now click to set the end point' : 
@@ -470,7 +612,37 @@ const FibonacciRetracement = ({ chartData, onDrawingsUpdate, part, chartCount, i
           />
         )}
         
-        <FibPanel isDarkMode={isDarkMode}>
+        {/* Info Overlay during drawing */}
+        <FibInfoOverlay
+          $isDarkMode={isDarkMode}
+          $direction={part === 1 ? 'uptrend' : 'downtrend'}
+          $active={drawingMode}
+        >
+          <h4 style={{ marginTop: 0, marginBottom: '10px' }}>
+            Drawing {part === 1 ? 'Uptrend' : 'Downtrend'} Fibonacci
+          </h4>
+          
+          {startPoint ? (
+            <p>
+              Great! Start point set at {startPoint.price.toFixed(2)}<br />
+              Now click to set the {part === 1 ? 'high' : 'low'} point
+            </p>
+          ) : (
+            <p>
+              Click to set the start point ({part === 1 ? 'low' : 'high'})
+            </p>
+          )}
+          
+          <div style={{ 
+            marginTop: '10px', 
+            fontSize: '0.8rem',
+            color: isDarkMode ? '#b0b0b0' : '#666'
+          }}>
+            Tip: Look for significant {part === 1 ? 'low-to-high' : 'high-to-low'} moves
+          </div>
+        </FibInfoOverlay>
+        
+        <FibPanel $isDarkMode={isDarkMode}>
           <h3 style={{ 
             marginTop: 0, 
             fontSize: '1rem', 
@@ -486,7 +658,7 @@ const FibonacciRetracement = ({ chartData, onDrawingsUpdate, part, chartCount, i
             </p>
           ) : (
             drawings.map((drawing, index) => (
-              <FibItem key={index} isDarkMode={isDarkMode}>
+              <FibItem key={index} $isDarkMode={isDarkMode}>
                 <h4>{drawing.direction === 'uptrend' ? 'Uptrend' : 'Downtrend'} #{index + 1}</h4>
                 <div className="fib-data">
                   <span>Start:</span>
@@ -508,6 +680,12 @@ const FibonacciRetracement = ({ chartData, onDrawingsUpdate, part, chartCount, i
           )}
         </FibPanel>
       </ChartWrapper>
+      
+      {/* Educational Guidelines */}
+      <FibGuidelinesWrapper $isDarkMode={isDarkMode}>
+        <h3>Fibonacci Retracement Guidelines</h3>
+        <p>{getFibGuidelines(part)}</p>
+      </FibGuidelinesWrapper>
     </div>
   );
 };
