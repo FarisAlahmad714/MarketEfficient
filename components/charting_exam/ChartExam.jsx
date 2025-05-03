@@ -123,7 +123,7 @@ const ChartExam = ({ examType }) => {
   const [timeframe, setTimeframe] = useState('');
   const [submitting, setSubmitting] = useState(false);
   
-  // Fetch chart data
+  // Fetch chart data with improved data processing
   const fetchChartData = async () => {
     setLoading(true);
     try {
@@ -131,12 +131,52 @@ const ChartExam = ({ examType }) => {
       const data = await response.json();
       
       if (data.chart_data && data.chart_data.length > 0) {
-        setChartData(data.chart_data);
+        // Process the chart data to ensure it's in a consistent format
+        const processedData = data.chart_data.map(candle => {
+          // Ensure we have a numeric timestamp
+          let timeValue = candle.time;
+          if (!timeValue && candle.date) {
+            try {
+              timeValue = Math.floor(new Date(candle.date).getTime() / 1000);
+            } catch (e) {
+              console.error('Invalid date format:', candle.date);
+              timeValue = Math.floor(Date.now() / 1000) - (86400 * 30);
+            }
+          }
+          
+          return {
+            time: timeValue,
+            open: candle.open,
+            high: candle.high,
+            low: candle.low,
+            close: candle.close,
+            // Include the original date if it exists
+            date: candle.date || new Date(timeValue * 1000).toISOString()
+          };
+        }).sort((a, b) => a.time - b.time); // Ensure sorted by time
+        
+        setChartData(processedData);
         setSymbol(data.symbol || 'Unknown');
         setTimeframe(data.timeframe || '1h');
+        
+        // Store the chart data in session storage for backup
+        try {
+          sessionStorage.setItem('current_chart_data', JSON.stringify(processedData));
+        } catch (e) {
+          console.warn('Failed to store chart data in session storage:', e);
+        }
       } else {
         // Handle error
         console.error('Failed to fetch valid chart data');
+        // Try to load from session storage as backup
+        const savedData = sessionStorage.getItem('current_chart_data');
+        if (savedData) {
+          try {
+            setChartData(JSON.parse(savedData));
+          } catch (e) {
+            console.error('Failed to parse saved chart data:', e);
+          }
+        }
       }
     } catch (error) {
       console.error('Error fetching chart data:', error);
@@ -145,9 +185,10 @@ const ChartExam = ({ examType }) => {
     }
   };
   
-  // Validate user drawings
+  // Validate user drawings with chart data included in payload
   const validateDrawings = async () => {
-    if (drawings.length === 0 && !drawings[0]?.no_fvgs_found) {
+    // Check if there are drawings to validate
+    if (drawings.length === 0 && !drawings[0]?.no_fvgs_found && !drawings[0]?.no_swings_found) {
       alert('Please mark at least one point before submitting.');
       return;
     }
@@ -167,6 +208,8 @@ const ChartExam = ({ examType }) => {
         throw new Error(`Unknown exam type: ${examType}`);
       }
       
+      // IMPORTANT: Include chartData in the request payload
+      // This ensures backend validation uses the same data as frontend
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
@@ -174,6 +217,7 @@ const ChartExam = ({ examType }) => {
         },
         body: JSON.stringify({
           drawings,
+          chartData, // Send chart data to backend for validation
           chartCount,
           part: examType === 'fibonacci-retracement' ? part : 
                 examType === 'fair-value-gaps' ? part : null
@@ -181,6 +225,14 @@ const ChartExam = ({ examType }) => {
       });
       
       const data = await response.json();
+      
+      // Handle validation failures more gracefully
+      if (data.error) {
+        console.error('Validation error:', data.error, data.message);
+        alert(`Validation error: ${data.message || 'Something went wrong'}`);
+        setSubmitting(false);
+        return;
+      }
       
       // Update scores
       if (examType === 'swing-analysis') {
@@ -196,6 +248,9 @@ const ChartExam = ({ examType }) => {
           setScores(updatedScores);
         }
       }
+      
+      // Log validation results for debugging
+      console.log(`Validation results: ${data.score}/${data.totalExpectedPoints} points`);
       
       // Set results and show panel
       setResults(data);
@@ -285,7 +340,9 @@ const ChartExam = ({ examType }) => {
       chartData,
       onDrawingsUpdate: handleDrawingsUpdate,
       isDarkMode: darkMode,
-      chartCount
+      chartCount,
+      // Pass the validation results if they exist
+      validationResults: results
     };
     
     if (examType === 'swing-analysis') {
