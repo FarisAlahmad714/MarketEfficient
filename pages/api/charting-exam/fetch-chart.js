@@ -1,6 +1,6 @@
 // pages/api/charting-exam/fetch-chart.js
 
-import { fetchChartData } from '../lib/chart-data-service';
+import { fetchChartData } from '../../../lib/data-service';
 
 export default async function handler(req, res) {
   try {
