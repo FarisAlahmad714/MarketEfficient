@@ -54,6 +54,57 @@ export default async function handler(req, res) {
 }
 
 /**
+ * Determine the timeframe of chart data
+ * @param {Array} chartData - Chart data
+ * @returns {String} Timeframe code (1h, 4h, 1d, 1w)
+ */
+function determineTimeframe(chartData) {
+  if (!chartData || chartData.length < 2) return '1d';
+  
+  // Get timestamps, handling different possible formats
+  const timestamps = [];
+  
+  for (let i = 0; i < Math.min(chartData.length, 10); i++) {
+    const candle = chartData[i];
+    let time;
+    
+    if (typeof candle.time === 'number') {
+      time = candle.time;
+    } else if (candle.date) {
+      if (typeof candle.date === 'number') {
+        time = candle.date;
+      } else if (typeof candle.date === 'string') {
+        time = new Date(candle.date).getTime() / 1000;
+      }
+    }
+    
+    if (time && !isNaN(time)) timestamps.push(time);
+  }
+  
+  if (timestamps.length < 2) return '1d';
+  
+  // Calculate average interval between candles
+  let sumIntervals = 0;
+  let countIntervals = 0;
+  
+  for (let i = 1; i < timestamps.length; i++) {
+    const interval = Math.abs(timestamps[i] - timestamps[i-1]);
+    if (interval > 0) {
+      sumIntervals += interval;
+      countIntervals++;
+    }
+  }
+  
+  const avgInterval = countIntervals > 0 ? sumIntervals / countIntervals : 86400;
+  
+  // Determine timeframe based on average interval
+  if (avgInterval < 7200) return '1h';       // < 2 hours
+  if (avgInterval < 21600) return '4h';      // < 6 hours
+  if (avgInterval < 172800) return '1d';     // < 2 days
+  return '1w';                               // >= 2 days
+}
+
+/**
  * Validate user Fibonacci retracement against expected
  * @param {Array} drawings - User's Fibonacci drawings
  * @param {Object} expected - Expected Fibonacci retracement
@@ -64,10 +115,32 @@ export default async function handler(req, res) {
 function validateFibonacciRetracement(drawings, expected, chartData, part) {
   // Calculate price range for tolerance
   const priceRange = Math.max(...chartData.map(c => c.high)) - 
-                   Math.min(...chartData.map(c => c.low));
+                    Math.min(...chartData.map(c => c.low));
   
-  const priceTolerance = priceRange * 0.03; // 3% of the total price range
-  const timeTolerance = 3 * 86400; // 3 days in seconds
+  // Determine timeframe for appropriate tolerances
+  const timeframe = determineTimeframe(chartData);
+  console.log(`Detected timeframe for validation: ${timeframe}`);
+  
+  // Timeframe-specific price tolerances (% of range)
+  const priceTolerances = {
+    '1h': 0.02,  // 2% for 1-hour charts (more precise)
+    '4h': 0.025, // 2.5% for 4-hour charts
+    '1d': 0.03,  // 3% for daily charts
+    '1w': 0.04   // 4% for weekly charts (more forgiving)
+  };
+  
+  // Timeframe-specific time tolerances
+  const timeTolerances = {
+    '1h': 6 * 3600,     // 6 hours
+    '4h': 24 * 3600,    // 24 hours
+    '1d': 3 * 86400,    // 3 days
+    '1w': 7 * 86400     // 7 days
+  };
+  
+  const priceTolerance = priceRange * (priceTolerances[timeframe] || 0.03);
+  const timeTolerance = timeTolerances[timeframe] || (3 * 86400);
+  
+  console.log(`Validation tolerances: price=${priceTolerance.toFixed(4)}, time=${timeTolerance/3600}h`);
   
   const totalCredits = 2; // 1 for start point, 1 for end point
   let creditsEarned = 0;
@@ -122,6 +195,21 @@ function validateFibonacciRetracement(drawings, expected, chartData, part) {
         continue;
       }
       
+      // Calculate percentage price difference for better feedback
+      const startPriceDiffPercent = Math.abs(drawing.start.price - expected.start.price) / expected.start.price * 100;
+      const endPriceDiffPercent = Math.abs(drawing.end.price - expected.end.price) / expected.end.price * 100;
+      
+      // Log detailed validation info for debugging
+      console.log(`Validating drawing: 
+        Direction: ${userDirection}
+        User Start: time=${drawing.start.time}, price=${drawing.start.price}
+        Expected Start: time=${expected.start.time}, price=${expected.start.price}
+        Start Diff: time=${Math.abs(drawing.start.time - expected.start.time)}s, price=${startPriceDiffPercent.toFixed(2)}%
+        User End: time=${drawing.end.time}, price=${drawing.end.price}
+        Expected End: time=${expected.end.time}, price=${expected.end.price}
+        End Diff: time=${Math.abs(drawing.end.time - expected.end.time)}s, price=${endPriceDiffPercent.toFixed(2)}%
+      `);
+      
       // Check start point
       const startTimeMatch = Math.abs(drawing.start.time - expected.start.time) < timeTolerance;
       const startPriceMatch = Math.abs(drawing.start.price - expected.start.price) < priceTolerance;
@@ -150,21 +238,60 @@ function validateFibonacciRetracement(drawings, expected, chartData, part) {
       
       // Add feedback based on accuracy
       if (startCredits > 0 || endCredits > 0) {
+        // Generate detailed feedback for partial matches
+        let startFeedback, endFeedback;
+        
+        if (startExact) {
+          startFeedback = 'Exact match';
+        } else if (startClose) {
+          startFeedback = startTimeMatch ? 
+            `Time is correct, price is close (${startPriceDiffPercent.toFixed(1)}% off)` : 
+            startPriceMatch ? 
+              `Price is correct, time is a bit off` : 
+              `Close enough (${startPriceDiffPercent.toFixed(1)}% price diff)`;
+        } else {
+          startFeedback = 'Incorrect';
+        }
+        
+        if (endExact) {
+          endFeedback = 'Exact match';
+        } else if (endClose) {
+          endFeedback = endTimeMatch ? 
+            `Time is correct, price is close (${endPriceDiffPercent.toFixed(1)}% off)` : 
+            endPriceMatch ? 
+              `Price is correct, time is a bit off` : 
+              `Close enough (${endPriceDiffPercent.toFixed(1)}% price diff)`;
+        } else {
+          endFeedback = 'Incorrect';
+        }
+        
         feedback.correct.push({
           direction: userDirection,
           startPrice: drawing.start.price,
           endPrice: drawing.end.price,
           startCredits,
           endCredits,
-          advice: `Start Point: ${startCredits}/1 (${startExact ? 'Exact' : startClose ? 'Close' : 'Incorrect'}), End Point: ${endCredits}/1 (${endExact ? 'Exact' : endClose ? 'Close' : 'Incorrect'})`
+          advice: `Start Point: ${startCredits}/1 (${startFeedback}), End Point: ${endCredits}/1 (${endFeedback})`
         });
       } else {
+        // Provide specific feedback about why the drawing was incorrect
+        let advice;
+        
+        if (Math.abs(drawing.start.time - expected.start.time) > timeTolerance * 3 && 
+            Math.abs(drawing.end.time - expected.end.time) > timeTolerance * 3) {
+          advice = `Your Fibonacci points are in a completely different area of the chart than the expected ${expected.direction}.`;
+        } else if (startPriceDiffPercent > 10 && endPriceDiffPercent > 10) {
+          advice = `Your price levels are significantly off (${Math.min(startPriceDiffPercent, endPriceDiffPercent).toFixed(1)}% difference).`;
+        } else {
+          advice = `Your Fibonacci points don't match the significant ${expected.direction} move in this chart.`;
+        }
+        
         feedback.incorrect.push({
           type: 'completely_wrong',
           direction: userDirection,
           startPrice: drawing.start.price,
           endPrice: drawing.end.price,
-          advice: `Your Fibonacci points don't match the significant ${expected.direction} move in this chart.`
+          advice
         });
       }
     }
