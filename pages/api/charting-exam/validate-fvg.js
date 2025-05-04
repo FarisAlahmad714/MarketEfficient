@@ -1,4 +1,5 @@
-import { detectFairValueGaps } from './utils/fvg-detection.js';
+// pages/api/charting-exam/validate-fvg.js
+import { detectFairValueGaps } from './utils/fvg-detection';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -12,8 +13,12 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Invalid drawings data' });
     }
     
-    // Get chart data from session or fetch new
-    const chartData = req.session?.chartData || await getChartData();
+    // Get chart data from session
+    const chartData = req.session?.chartData;
+    
+    if (!chartData || chartData.length === 0) {
+      return res.status(400).json({ error: 'No chart data available in session' });
+    }
     
     // Detect expected FVGs
     const gapType = part === 1 ? 'bullish' : 'bearish';
@@ -21,6 +26,26 @@ export default async function handler(req, res) {
     
     // Validate user drawings against expected gaps
     const validationResult = validateFairValueGaps(drawings, expectedGaps, chartData, gapType);
+    
+    // Update session with scores if needed
+    if (req.session) {
+      if (!req.session.scores) {
+        req.session.scores = [];
+      }
+      
+      if (part === 1) {
+        req.session.scores.push({ bullish: validationResult.score });
+      } else {
+        // Part 2 - update the last score with bearish result
+        const lastIndex = req.session.scores.length - 1;
+        if (lastIndex >= 0) {
+          req.session.scores[lastIndex].bearish = validationResult.score;
+        }
+      }
+      
+      // Save session
+      await req.session.save();
+    }
     
     return res.status(200).json({
       success: true,
@@ -39,13 +64,6 @@ export default async function handler(req, res) {
       message: error.message 
     });
   }
-}
-
-// Get chart data (from cache or generate new)
-async function getChartData() {
-  // Implementation depends on your data strategy
-  // For simplicity, this example uses a placeholder
-  return [];
 }
 
 // Validate user FVG markings against expected gaps
@@ -107,7 +125,14 @@ function validateFairValueGaps(drawings, expectedGaps, chartData, gapType) {
                     Math.min(...chartData.map(c => c.low));
   
   const priceTolerance = priceRange * 0.015; // 1.5% of the price range
-  const timeTolerance = 3 * 86400; // 3 days in seconds
+  
+  // Get time increment based on chart data
+  const timePoints = chartData.map(c => c.time || Math.floor(new Date(c.date).getTime() / 1000)).sort();
+  const avgTimeIncrement = timePoints.length > 1 
+    ? (timePoints[timePoints.length - 1] - timePoints[0]) / timePoints.length 
+    : 86400; // 1 day in seconds
+  
+  const timeTolerance = avgTimeIncrement * 3;
   
   let matched = 0;
   const feedback = { correct: [], incorrect: [] };

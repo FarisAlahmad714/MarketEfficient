@@ -1,3 +1,5 @@
+// pages/api/charting-exam/utils/fvg-detection.js
+
 // Detect Fair Value Gaps in chart data
 export function detectFairValueGaps(chartData, gapType = 'bullish', minGapPercent = 0.005) {
     if (!chartData || chartData.length < 3) {
@@ -23,8 +25,8 @@ export function detectFairValueGaps(chartData, gapType = 'bullish', minGapPercen
         
         if (gapSize > 0 && gapSize >= minGapSize) {
           gaps.push({
-            startTime: firstCandle.time,
-            endTime: thirdCandle.time,
+            startTime: firstCandle.time || Math.floor(new Date(firstCandle.date).getTime() / 1000),
+            endTime: thirdCandle.time || Math.floor(new Date(thirdCandle.date).getTime() / 1000),
             topPrice: thirdCandle.low,
             bottomPrice: firstCandle.high,
             type: 'bullish',
@@ -39,8 +41,8 @@ export function detectFairValueGaps(chartData, gapType = 'bullish', minGapPercen
         
         if (gapSize > 0 && gapSize >= minGapSize) {
           gaps.push({
-            startTime: firstCandle.time,
-            endTime: thirdCandle.time,
+            startTime: firstCandle.time || Math.floor(new Date(firstCandle.date).getTime() / 1000),
+            endTime: thirdCandle.time || Math.floor(new Date(thirdCandle.date).getTime() / 1000),
             topPrice: firstCandle.low,
             bottomPrice: thirdCandle.high,
             type: 'bearish',
