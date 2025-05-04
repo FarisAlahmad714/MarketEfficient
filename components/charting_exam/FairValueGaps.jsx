@@ -3,7 +3,7 @@ import { createChart, CrosshairMode, LineStyle } from 'lightweight-charts';
 import styled from 'styled-components';
 import ToolPanel from './common/ToolPanel';
 
-// Styled components remain unchanged
+// Styled components
 const ChartWrapper = styled.div`
   position: relative;
   width: 100%;
@@ -139,6 +139,19 @@ const LoadingText = styled.div`
   color: #333;
 `;
 
+const DrawingModeIndicator = styled.div`
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: ${props => props.$isDarkMode ? 'rgba(33, 150, 243, 0.8)' : 'rgba(33, 150, 243, 0.8)'};
+  color: white;
+  padding: 5px 10px;
+  border-radius: 4px;
+  font-weight: bold;
+  z-index: 100;
+  pointer-events: none;
+`;
+
 const FairValueGaps = ({
   chartData,
   onDrawingsUpdate,
@@ -171,17 +184,15 @@ const FairValueGaps = ({
   const colors = {
     bullish: 'rgba(76, 175, 80, 0.3)',
     bearish: 'rgba(244, 67, 54, 0.3)',
-    correctBullish: 'rgba(255, 152, 0, 0.6)',
-    correctBearish: 'rgba(244, 67, 54, 0.6)'
+    correctBullish: 'rgba(255, 152, 0, 0.6)', // Orange
+    correctBearish: 'rgba(244, 67, 54, 0.6)'   // Red
   };
 
-  useEffect(() => {
-    console.log("Current drawing mode:", drawingMode);
-  }, [drawingMode]);
-
+  // Initialize chart
   useEffect(() => {
     if (!chartContainerRef.current || !chartData || chartData.length === 0) return;
 
+    // Create chart
     const chart = createChart(chartContainerRef.current, {
       width: chartContainerRef.current.clientWidth,
       height: chartContainerRef.current.clientHeight,
@@ -201,6 +212,7 @@ const FairValueGaps = ({
       }
     });
 
+    // Add candlestick series
     const candleSeries = chart.addCandlestickSeries();
     candleSeries.setData(chartData);
     chart.timeScale().fitContent();
@@ -208,6 +220,7 @@ const FairValueGaps = ({
     chartRef.current = chart;
     candleSeriesRef.current = candleSeries;
 
+    // Handle resize
     const handleResize = () => {
       if (chartRef.current) {
         chartRef.current.applyOptions({
@@ -218,41 +231,35 @@ const FairValueGaps = ({
     };
     window.addEventListener('resize', handleResize);
 
-    const handleContainerClick = (e) => {
-      if (!chartRef.current || !candleSeriesRef.current) return;
-      const rect = chartContainerRef.current.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-      const time = chartRef.current.timeScale().coordinateToTime(x);
-      const price = candleSeriesRef.current.coordinateToPrice(y);
-      if (time && price) {
-        handleChartClick({
-          point: { x, y },
-          time,
-          price
-        });
-      }
-    };
-    chartContainerRef.current.addEventListener('click', handleContainerClick);
-
     return () => {
+      window.removeEventListener('resize', handleResize);
       if (chartRef.current) {
         chartRef.current.remove();
         chartRef.current = null;
       }
-      window.removeEventListener('resize', handleResize);
-      if (chartContainerRef.current) {
-        chartContainerRef.current.removeEventListener('click', handleContainerClick);
-      }
     };
   }, [chartData, isDarkMode]);
 
+  // Update dark mode
+  useEffect(() => {
+    if (!chartRef.current) return;
+    
+    chartRef.current.applyOptions({
+      layout: {
+        background: { color: isDarkMode ? '#1e1e1e' : '#ffffff' },
+        textColor: isDarkMode ? '#d1d4dc' : '#333333'
+      }
+    });
+  }, [isDarkMode]);
+
+  // Notify parent about drawings update
   useEffect(() => {
     if (onDrawingsUpdate) {
       onDrawingsUpdate(userFVGs);
     }
   }, [userFVGs, onDrawingsUpdate]);
 
+  // Process validation results
   useEffect(() => {
     if (validationResults && chartRef.current && candleSeriesRef.current) {
       clearFVGVisualElements();
@@ -260,44 +267,52 @@ const FairValueGaps = ({
     }
   }, [validationResults]);
 
-  const handleChartClick = (param) => {
-    console.log("Chart clicked, drawing mode:", drawingMode);
-    if (!drawingMode || !param || !chartRef.current || !candleSeriesRef.current) return;
+  // Find candle by time
+  const findCandleByTime = (time) => {
+    if (!chartData || !time) return null;
+    
+    // Find the closest candle if exact match not found
+    const exactMatch = chartData.find(candle => candle.time === time);
+    if (exactMatch) return exactMatch;
+    
+    // Sort by time difference to find closest
+    return [...chartData].sort((a, b) => 
+      Math.abs(a.time - time) - Math.abs(b.time - time)
+    )[0];
+  };
 
-    let price, time;
-    if (param.price) {
-      price = param.price;
-    } else if (param.point && param.point.y !== undefined) {
-      price = candleSeriesRef.current.coordinateToPrice(param.point.y);
-    }
-    if (param.time) {
-      time = param.time;
-    } else if (param.point && param.point.x !== undefined) {
-      time = chartRef.current.timeScale().coordinateToTime(param.point.x);
-    }
-    if (!price || !time) {
-      console.error("Could not determine price or time from click", param);
-      return;
-    }
-
-    const nearestCandle = findCandleByTime(time);
-    if (!nearestCandle) {
-      console.error("No candle found at time:", time);
-      return;
-    }
-
+  // Handle chart click for drawing
+  const handleChartClick = (e) => {
+    if (!chartRef.current || !candleSeriesRef.current || !drawingMode) return;
+    
+    // Get coordinates
+    const rect = chartContainerRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    // Convert to chart coordinates
+    const price = candleSeriesRef.current.coordinateToPrice(y);
+    const timePoint = chartRef.current.timeScale().coordinateToTime(x);
+    
+    if (!price || !timePoint) return;
+    
+    // Find nearest candle
+    const nearestCandle = findCandleByTime(timePoint);
+    if (!nearestCandle) return;
+    
+    // Reset "No FVGs" state
     resetNoFvgsState();
-
+    
     if (drawingMode === 'draw-rectangle') {
       if (!startPoint) {
-        console.log("Setting start point:", { time: nearestCandle.time, price });
+        // First click - set start point
         setStartPoint({ time: nearestCandle.time, price });
       } else {
-        console.log("Drawing rectangle from", startPoint, "to", { time: nearestCandle.time, price });
+        // Second click - complete rectangle
         const fvgType = part === 1 ? 'bullish' : 'bearish';
         const topPrice = Math.max(startPoint.price, price);
         const bottomPrice = Math.min(startPoint.price, price);
-
+        
         const newRect = drawRectangle(
           startPoint.time,
           nearestCandle.time,
@@ -305,7 +320,7 @@ const FairValueGaps = ({
           bottomPrice,
           fvgType
         );
-
+        
         if (newRect) {
           setRectangles(prev => [...prev, newRect]);
           setUserFVGs(prev => [...prev, {
@@ -313,17 +328,18 @@ const FairValueGaps = ({
             endTime: nearestCandle.time,
             topPrice: topPrice,
             bottomPrice: bottomPrice,
-           倉type: fvgType
+            type: fvgType
           }]);
         }
-
+        
+        // Reset start point
         setStartPoint(null);
       }
     } else if (drawingMode === 'draw-hline') {
-      console.log("Drawing h-line at price:", price);
+      // Horizontal line
       const fvgType = part === 1 ? 'bullish' : 'bearish';
       const newLine = drawHLine(nearestCandle.time, price, fvgType);
-
+      
       if (newLine) {
         setHlines(prev => [...prev, newLine]);
         setUserFVGs(prev => [...prev, {
@@ -338,18 +354,16 @@ const FairValueGaps = ({
     }
   };
 
-  const findCandleByTime = (time) => {
-    if (!chartData || !time) return null;
-    return chartData.find(candle => candle.time === time);
-  };
-
+  // Draw rectangle on chart - FIXED VERSION TO SORT MARKERS
   const drawRectangle = (startTime, endTime, topPrice, bottomPrice, type = 'bullish') => {
     if (!chartRef.current || !candleSeriesRef.current) return null;
     
     const color = type === 'bullish' ? colors.bullish : colors.bearish;
     
+    // Ensure startTime is less than endTime
     const [actualStartTime, actualEndTime] = startTime < endTime ? [startTime, endTime] : [endTime, startTime];
     
+    // Add markers
     const newMarkers = [
       {
         time: actualStartTime,
@@ -367,9 +381,14 @@ const FairValueGaps = ({
       }
     ];
     
+    // Get existing markers, combine with new ones, and SORT by time
     const existingMarkers = candleSeriesRef.current.markers() || [];
-    candleSeriesRef.current.setMarkers([...existingMarkers, ...newMarkers]);
+    const allMarkers = [...existingMarkers, ...newMarkers].sort((a, b) => a.time - b.time);
     
+    // Set the sorted markers
+    candleSeriesRef.current.setMarkers(allMarkers);
+    
+    // Draw top and bottom lines
     const topLine = candleSeriesRef.current.createPriceLine({
       price: topPrice,
       color: color,
@@ -399,12 +418,14 @@ const FairValueGaps = ({
     };
   };
 
+  // Draw horizontal line on chart - FIXED VERSION TO SORT MARKERS
   const drawHLine = (time, price, type = 'bullish') => {
     if (!chartRef.current || !candleSeriesRef.current) return null;
     
     const color = type === 'bullish' ? colors.bullish : colors.bearish;
     const title = type === 'bullish' ? 'Bullish FVG' : 'Bearish FVG';
     
+    // Create price line
     const hline = candleSeriesRef.current.createPriceLine({
       price: price,
       color: color,
@@ -414,6 +435,7 @@ const FairValueGaps = ({
       title: title
     });
     
+    // Add marker
     const marker = {
       time: time,
       position: 'inBar',
@@ -422,8 +444,12 @@ const FairValueGaps = ({
       text: type === 'bullish' ? 'B' : 'S'
     };
     
+    // Get existing markers, combine with new one, and SORT by time
     const existingMarkers = candleSeriesRef.current.markers() || [];
-    candleSeriesRef.current.setMarkers([...existingMarkers, marker]);
+    const allMarkers = [...existingMarkers, marker].sort((a, b) => a.time - b.time);
+    
+    // Set the sorted markers
+    candleSeriesRef.current.setMarkers(allMarkers);
     
     return {
       line: hline,
@@ -434,44 +460,52 @@ const FairValueGaps = ({
     };
   };
 
+  // Remove last drawing - FIXED VERSION TO SORT MARKERS
   const removeLastDrawing = () => {
     if (!chartRef.current || !candleSeriesRef.current) return false;
     
     if (rectangles.length > 0) {
       const lastRect = rectangles[rectangles.length - 1];
       
+      // Remove price lines
       if (lastRect.lines) {
         lastRect.lines.forEach(line => {
           candleSeriesRef.current.removePriceLine(line);
         });
       }
       
+      // Update markers
       const currentMarkers = candleSeriesRef.current.markers() || [];
-      const updatedMarkers = currentMarkers.filter(marker => {
-        return !lastRect.markers.some(m => 
-          m.time === marker.time && 
-          m.position === marker.position && 
-          m.text === marker.text
-        );
-      });
+      const updatedMarkers = currentMarkers
+        .filter(marker => {
+          return !lastRect.markers.some(m => 
+            m.time === marker.time && 
+            m.position === marker.position && 
+            m.text === marker.text
+          );
+        })
+        .sort((a, b) => a.time - b.time); // Sort markers by time
       
       candleSeriesRef.current.setMarkers(updatedMarkers);
-      setRectangles(rectangles.slice(0, -1));
+      setRectangles(prev => prev.slice(0, -1));
       
       return true;
     } else if (hlines.length > 0) {
       const lastLine = hlines[hlines.length - 1];
       candleSeriesRef.current.removePriceLine(lastLine.line);
       
+      // Update markers
       const currentMarkers = candleSeriesRef.current.markers() || [];
-      const updatedMarkers = currentMarkers.filter(marker => {
-        return !(marker.time === lastLine.time && 
-                marker.position === lastLine.marker.position && 
-                marker.text === lastLine.marker.text);
-      });
+      const updatedMarkers = currentMarkers
+        .filter(marker => {
+          return !(marker.time === lastLine.time && 
+                  marker.position === lastLine.marker.position && 
+                  marker.text === lastLine.marker.text);
+        })
+        .sort((a, b) => a.time - b.time); // Sort markers by time
       
       candleSeriesRef.current.setMarkers(updatedMarkers);
-      setHlines(hlines.slice(0, -1));
+      setHlines(prev => prev.slice(0, -1));
       
       return true;
     }
@@ -479,9 +513,11 @@ const FairValueGaps = ({
     return false;
   };
 
+  // Clear all drawings
   const clearAllDrawings = () => {
     if (!chartRef.current || !candleSeriesRef.current) return;
     
+    // Clear rectangles
     rectangles.forEach(rect => {
       if (rect.lines) {
         rect.lines.forEach(line => {
@@ -491,18 +527,23 @@ const FairValueGaps = ({
     });
     setRectangles([]);
     
+    // Clear horizontal lines
     hlines.forEach(line => {
       candleSeriesRef.current.removePriceLine(line.line);
     });
     setHlines([]);
     
+    // Clear markers
     candleSeriesRef.current.setMarkers([]);
     
+    // Clear user FVGs
     setUserFVGs([]);
     
+    // Reset "No FVGs" state
     resetNoFvgsState();
   };
 
+  // Mark "No FVGs Found"
   const markNoFvgsFound = () => {
     clearAllDrawings();
     
@@ -518,15 +559,16 @@ const FairValueGaps = ({
     setDrawingMode(null);
   };
 
+  // Reset "No FVGs Found" state
   const resetNoFvgsState = () => {
     if (userFVGs.length === 1 && userFVGs[0].no_fvgs_found) {
       setUserFVGs([]);
     }
   };
 
+  // Clear FVG visual elements
   const clearFVGVisualElements = () => {
-    if (!chartContainerRef.current) return;
-    
+    // Remove hover areas
     fvgHoverAreas.forEach(area => {
       if (area && area.parentNode) {
         area.parentNode.removeChild(area);
@@ -534,6 +576,7 @@ const FairValueGaps = ({
     });
     setFvgHoverAreas([]);
     
+    // Remove labels
     fvgLabels.forEach(label => {
       if (label && label.parentNode) {
         label.parentNode.removeChild(label);
@@ -541,6 +584,7 @@ const FairValueGaps = ({
     });
     setFvgLabels([]);
     
+    // Remove line series
     fvgLineSeries.forEach(series => {
       try {
         if (series && chartRef.current) {
@@ -553,6 +597,7 @@ const FairValueGaps = ({
     setFvgLineSeries([]);
   };
 
+  // Create hover areas for FVG visualization
   const createFVGHoverAreas = () => {
     if (!chartRef.current || !candleSeriesRef.current || !chartContainerRef.current) return;
     
@@ -570,17 +615,20 @@ const FairValueGaps = ({
       const fvgNumber = index + 1;
       const color = gap.type === 'bullish' ? '#FF9800' : '#F44336';
       
+      // Add gap lines
       const seriesPair = addGapLines(gap, fvgNumber, color);
       if (seriesPair) {
         newLineSeries.push(...seriesPair);
       }
       
+      // Calculate positions
       const candleX = chartRef.current.timeScale().timeToCoordinate(gap.endTime);
       const topY = candleSeriesRef.current.priceToCoordinate(gap.topPrice);
       const bottomY = candleSeriesRef.current.priceToCoordinate(gap.bottomPrice);
       
       if (!candleX || !topY || !bottomY) return;
       
+      // Create hover area
       const hoverArea = document.createElement('div');
       hoverArea.className = 'fvg-hover-area';
       hoverArea.dataset.time = gap.endTime;
@@ -598,6 +646,7 @@ const FairValueGaps = ({
       hoverArea.style.cursor = 'pointer';
       hoverArea.style.backgroundColor = 'transparent';
       
+      // Create label
       const label = document.createElement('div');
       label.className = 'fvg-label';
       label.style.position = 'absolute';
@@ -616,6 +665,7 @@ const FairValueGaps = ({
       label.textContent = `Correct FVG ${fvgNumber}`;
       label.dataset.fvgNumber = fvgNumber;
       
+      // Add hover events
       hoverArea.addEventListener('mouseenter', () => {
         label.style.opacity = '1';
         hoverArea.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
@@ -626,6 +676,7 @@ const FairValueGaps = ({
         hoverArea.style.backgroundColor = 'transparent';
       });
       
+      // Add to DOM
       chartContainerRef.current.appendChild(hoverArea);
       chartContainerRef.current.appendChild(label);
       
@@ -635,21 +686,22 @@ const FairValueGaps = ({
     
     setFvgHoverAreas(newHoverAreas);
     setFvgLabels(newLabels);
-    setFvgLineSeries(prevSeries => [...prevSeries, ...newLineSeries]);
+    setFvgLineSeries(newLineSeries);
     
     updateFVGPositions();
-    
     setupChartEventListeners();
   };
 
+  // Add gap lines
   const addGapLines = (gap, fvgNumber, color) => {
     if (!chartRef.current || !chartData) return null;
     
     try {
+      // Create top and bottom line series
       const topSeries = chartRef.current.addLineSeries({
         color: color,
         lineWidth: 2,
-        lineStyle: 2,
+        lineStyle: 2, // Dashed
         lastValueVisible: false,
         priceLineVisible: false,
         crosshairMarkerVisible: false
@@ -658,14 +710,16 @@ const FairValueGaps = ({
       const bottomSeries = chartRef.current.addLineSeries({
         color: color,
         lineWidth: 2,
-        lineStyle: 2,
+        lineStyle: 2, // Dashed
         lastValueVisible: false,
         priceLineVisible: false,
         crosshairMarkerVisible: false
       });
       
-      const rightEdge = Math.max(...chartData.map(d => d.time)) + 86400;
+      // Draw from FVG end time to right edge
+      const rightEdge = Math.max(...chartData.map(d => d.time)) + 86400; // Add one day
       
+      // Set data points
       topSeries.setData([
         { time: gap.endTime, value: gap.topPrice },
         { time: rightEdge, value: gap.topPrice }
@@ -683,15 +737,18 @@ const FairValueGaps = ({
     }
   };
 
+  // Update FVG positions
   const updateFVGPositions = () => {
     if (!chartRef.current || !candleSeriesRef.current || !chartContainerRef.current) return;
     
     if (!chartRef.current.timeScale().timeToCoordinate || !candleSeriesRef.current.priceToCoordinate) return;
     
+    // Get chart dimensions
     const chartRect = chartContainerRef.current.getBoundingClientRect();
     const chartWidth = chartRect.width;
     const chartHeight = chartRect.height;
     
+    // Update each hover area and label
     for (let i = 0; i < fvgHoverAreas.length; i++) {
       const hoverArea = fvgHoverAreas[i];
       const label = fvgLabels.find(l => l.dataset.fvgNumber === hoverArea.dataset.fvgNumber);
@@ -705,32 +762,38 @@ const FairValueGaps = ({
         
         if (isNaN(time) || isNaN(topPrice) || isNaN(bottomPrice)) continue;
         
+        // Get coordinates
         const candleX = chartRef.current.timeScale().timeToCoordinate(time);
         const topY = candleSeriesRef.current.priceToCoordinate(topPrice);
         const bottomY = candleSeriesRef.current.priceToCoordinate(bottomPrice);
         
         if (candleX === null || topY === null || bottomY === null) {
+          // Hide if out of view
           hoverArea.style.display = 'none';
           label.style.display = 'none';
           continue;
         }
         
+        // Update hover area
         hoverArea.style.display = '';
         hoverArea.style.left = candleX + 'px';
         hoverArea.style.top = topY + 'px';
         hoverArea.style.height = Math.max(1, bottomY - topY) + 'px';
         hoverArea.style.width = '20px';
         
+        // Update label
         label.style.display = '';
         const labelRect = label.getBoundingClientRect();
         const labelWidth = labelRect.width || 100;
         const labelHeight = labelRect.height || 20;
         
+        // Calculate position
         const labelY = topY + (bottomY - topY) / 2;
         
         let labelX = candleX + 25;
         let adjustedY = labelY - (labelHeight / 2);
         
+        // Keep within boundaries
         if (labelX + labelWidth > chartWidth) {
           labelX = candleX - labelWidth - 5;
         }
@@ -749,6 +812,7 @@ const FairValueGaps = ({
     }
   };
 
+  // Draw fixed FVG lines
   const drawFixedFVGLines = () => {
     try {
       clearFVGVisualElements();
@@ -758,13 +822,16 @@ const FairValueGaps = ({
     }
   };
 
+  // Setup chart event listeners
   const setupChartEventListeners = () => {
     if (!chartRef.current) return;
     
     try {
+      // Subscribe to chart movements
       chartRef.current.timeScale().subscribeVisibleTimeRangeChange(updateFVGPositions);
       
       try {
+        // This may not be available in all versions
         chartRef.current.priceScale('right').subscribeVisiblePriceRangeChange(updateFVGPositions);
       } catch (e) {
         console.log('Price scale events not supported in this version');
@@ -772,12 +839,15 @@ const FairValueGaps = ({
       
       chartRef.current.subscribeCrosshairMove(updateFVGPositions);
       
+      // Update on resize
+      window.removeEventListener('resize', updateFVGPositions);
       window.addEventListener('resize', updateFVGPositions);
     } catch (error) {
       console.error('Error in setupChartEventListeners:', error);
     }
   };
 
+  // Handle panel dragging
   const startPanelDragging = (e) => {
     if (e.target.className.includes('panel-header')) {
       setIsDragging(true);
@@ -811,22 +881,18 @@ const FairValueGaps = ({
     setIsDragging(false);
   };
 
+  // Handle tool selection
   const handleToolSelect = (toolId) => {
-    console.log("Tool selected:", toolId, "Previous drawing mode:", drawingMode);
     if (toolId === drawingMode) {
-      console.log("Turning off drawing mode");
       setDrawingMode(null);
     } else {
-      console.log("Setting drawing mode to:", toolId);
       setDrawingMode(toolId);
       setStartPoint(null);
       resetNoFvgsState();
     }
-    setTimeout(() => {
-      console.log("Drawing mode is now:", drawingMode);
-    }, 0);
   };
 
+  // Handle undo action
   const handleUndoDrawing = () => {
     if (removeLastDrawing() && userFVGs.length > 0) {
       setUserFVGs(prev => prev.slice(0, -1));
@@ -837,6 +903,7 @@ const FairValueGaps = ({
     }
   };
 
+  // Handle submission
   const handleSubmit = () => {
     if (userFVGs.length === 0) {
       alert("Please mark at least one Fair Value Gap or use the 'No FVGs Found' button before submitting.");
@@ -846,19 +913,22 @@ const FairValueGaps = ({
     setIsLoading(true);
     
     if (onSubmit) {
-      onSubmit(userFVGs, chartData, chartCount, part)
+      onSubmit(userFVGs)
         .finally(() => {
           setIsLoading(false);
         });
     } else {
+      // Mock submission for testing
       setTimeout(() => {
         setIsLoading(false);
       }, 1000);
     }
   };
 
+  // Check if "No FVGs" button should be disabled
   const isNoFVGsDisabled = userFVGs.length === 1 && userFVGs[0].no_fvgs_found;
 
+  // Configure tools
   const toolsConfig = [
     {
       id: 'draw-rectangle',
@@ -874,6 +944,7 @@ const FairValueGaps = ({
     }
   ];
 
+  // Configure actions
   const actionsConfig = [
     {
       id: 'undo',
@@ -908,23 +979,17 @@ const FairValueGaps = ({
   return (
     <div>
       <ChartWrapper $isDarkMode={isDarkMode}>
-        <ChartContainer ref={chartContainerRef} />
+        <ChartContainer 
+          ref={chartContainerRef} 
+          onClick={handleChartClick}
+        />
+        
         {drawingMode && (
-          <div style={{
-            position: 'absolute',
-            top: '10px',
-            right: '10px',
-            background: isDarkMode ? 'rgba(33, 150, 243, 0.8)' : 'rgba(33, 150, 243, 0.8)',
-            color: 'white',
-            padding: '5px 10px',
-            borderRadius: '4px',
-            fontWeight: 'bold',
-            zIndex: 100,
-            pointerEvents: 'none'
-          }}>
+          <DrawingModeIndicator $isDarkMode={isDarkMode}>
             {drawingMode === 'draw-rectangle' ? 'Drawing Rectangle' : 'Drawing H-Line'}
-          </div>
+          </DrawingModeIndicator>
         )}
+        
         <FVGPanel
           ref={panelRef}
           style={{ left: `${panelOffset.x}px`, top: `${panelOffset.y}px` }}
@@ -992,18 +1057,9 @@ const FairValueGaps = ({
         onToolSelect={handleToolSelect}
         tools={toolsConfig}
         onClearAll={clearAllDrawings}
-        onUndoDrawing={handleUndoDrawing}
-        onNoFvgsFound={markNoFvgsFound}
-        onSubmit={handleSubmit}
         isDarkMode={isDarkMode}
         noFvgsOption={true}
-        chartInfo={{
-          symbol,
-          timeframe,
-          chartCount,
-          totalCharts: 5,
-          part
-        }}
+        onNoFvgsFound={markNoFvgsFound}
       />
       
       <LoadingOverlay $isActive={isLoading}>
