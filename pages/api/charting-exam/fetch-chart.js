@@ -1,9 +1,22 @@
-// pages/api/charting-exam/fetch-chart.js
-import { fetchChartData } from '../../../lib/data-service';
+import { fetchAssetOHLCData } from '../../../lib/data-service';
 import fs from 'fs';
 import path from 'path';
 
-// Fallback to sample data from JSON file
+// Define assets and timeframes to match Flask app
+const ASSETS = [
+  { type: 'crypto', symbol: 'btc', apiId: 'bitcoin' },
+  { type: 'crypto', symbol: 'eth', apiId: 'ethereum' },
+  { type: 'crypto', symbol: 'bnb', apiId: 'binancecoin' },
+  { type: 'crypto', symbol: 'sol', apiId: 'solana' },
+  { type: 'crypto', symbol: 'cosmos', apiId: 'cosmos' },
+  { type: 'crypto', symbol: 'xrp', apiId: 'ripple' },
+  { type: 'crypto', symbol: 'ltc', apiId: 'litecoin' },
+  { type: 'crypto', symbol: 'link', apiId: 'chainlink' }
+];
+
+const TIMEFRAMES = ['1h', '4h', '1d', '1w'];
+
+// Fallback sample data
 const getSampleChartData = () => {
   try {
     const dataPath = path.join(process.cwd(), 'data', 'chart-data.json');
@@ -17,81 +30,94 @@ const getSampleChartData = () => {
 
 export default async function handler(req, res) {
   try {
-    // Get chart count from session if available
     const chartCount = req.session?.chartCount || 1;
-    
-    // Try to fetch chart data with API first (with fallback enabled)
+
+    // Randomly select asset and timeframe
+    const asset = ASSETS[Math.floor(Math.random() * ASSETS.length)];
+    const timeframe = TIMEFRAMES[Math.floor(Math.random() * TIMEFRAMES.length)];
+
+    // Map timeframe to API parameters
+    let apiTimeframe, days;
+    switch (timeframe) {
+      case '1h':
+        apiTimeframe = 'hourly';
+        days = 1;
+        break;
+      case '4h':
+        apiTimeframe = 'hourly';
+        days = 7;
+        break;
+      case '1d':
+        apiTimeframe = 'daily';
+        days = 30;
+        break;
+      case '1w':
+        apiTimeframe = 'daily';
+        days = 365;
+        break;
+      default:
+        apiTimeframe = 'daily';
+        days = 30;
+    }
+
+    console.log(`Fetching data for ${asset.apiId} on timeframe ${timeframe} (${apiTimeframe}, ${days} days)`);
+
     let chartData;
     try {
-      chartData = await fetchChartData({ useApi: true });
+      const ohlcData = await fetchAssetOHLCData(asset, apiTimeframe, days);
+      chartData = {
+        chart_data: ohlcData.map(candle => ({
+          time: Math.floor(new Date(candle.date).getTime() / 1000),
+          open: candle.open,
+          high: candle.high,
+          low: candle.low,
+          close: candle.close
+        })),
+        symbol: asset.symbol.toUpperCase(),
+        timeframe: timeframe,
+        chart_count: chartCount
+      };
     } catch (error) {
-      console.warn('API fetch failed, trying fallback:', error.message);
-      // Try direct fallback if the data service fails
+      console.warn('Data fetch failed, using sample data:', error.message);
       chartData = getSampleChartData();
     }
-    
-    // Validate the chart data
+
+    // Fallback to mock data if needed
     if (!chartData || !chartData.chart_data || chartData.chart_data.length < 20) {
-      console.warn('Insufficient chart data from primary sources, using generated data');
-      
-      // Use utility function to generate random chart data as last resort
+      console.warn('Insufficient data, generating mock data');
       const now = Math.floor(Date.now() / 1000);
-      const oneDay = 86400;
+      const interval = timeframe === '1h' ? 3600 : timeframe === '4h' ? 14400 : timeframe === '1d' ? 86400 : 604800;
       const generatedData = [];
-      
       let basePrice = 100;
       const volatility = 5;
-      
-      // Generate 100 days of candles
+
       for (let i = 0; i < 100; i++) {
-        const time = now - (100 - i) * oneDay;
+        const time = now - (100 - i) * interval;
         const open = basePrice;
         const change = (Math.random() - 0.5) * volatility;
         const close = basePrice + change;
         const high = Math.max(open, close) + Math.random() * volatility * 0.5;
         const low = Math.min(open, close) - Math.random() * volatility * 0.5;
-        
-        generatedData.push({
-          time,
-          open,
-          high,
-          low,
-          close
-        });
-        
+
+        generatedData.push({ time, open, high, low, close });
         basePrice = close;
       }
-      
-      chartData = {
-        chart_data: generatedData,
-        symbol: 'GENERATED',
-        timeframe: '1d',
-        chart_count: chartCount
-      };
+
+      chartData = { chart_data: generatedData, symbol: 'MOCK', timeframe, chart_count: chartCount };
     }
-    
-    // Ensure data is properly formatted
+
+    // Process and validate data
     const processedData = {
       ...chartData,
       chart_data: chartData.chart_data
-        .filter(candle => (
-          candle && 
-          typeof candle.open === 'number' &&
-          typeof candle.high === 'number' &&
-          typeof candle.low === 'number' &&
-          typeof candle.close === 'number'
-        ))
+        .filter(candle => candle && ['open', 'high', 'low', 'close'].every(key => typeof candle[key] === 'number' && !isNaN(candle[key])))
         .map(candle => ({
           ...candle,
-          // Ensure time is a valid number
-          time: typeof candle.time === 'number' && !isNaN(candle.time) 
-            ? candle.time 
-            : Math.floor(Date.now() / 1000) - (Math.random() * 86400 * 30)
+          time: typeof candle.time === 'number' && !isNaN(candle.time) ? candle.time : Math.floor(Date.now() / 1000) - Math.random() * 86400 * 30
         }))
-        .sort((a, b) => a.time - b.time) // Sort by time
+        .sort((a, b) => a.time - b.time)
     };
-    
-    // Return the chart data with metadata
+
     res.status(200).json({
       chart_data: processedData.chart_data,
       symbol: processedData.symbol || 'UNKNOWN',
@@ -99,10 +125,7 @@ export default async function handler(req, res) {
       chart_count: chartCount
     });
   } catch (error) {
-    console.error("Error in fetch-chart API:", error);
-    res.status(500).json({
-      error: "Failed to fetch chart data",
-      message: error.message
-    });
+    console.error('Error in fetch-chart API:', error);
+    res.status(500).json({ error: 'Failed to fetch chart data', message: error.message });
   }
 }

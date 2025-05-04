@@ -1,4 +1,4 @@
-import React, { useContext, useState } from 'react';
+import React, { useContext, useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { ThemeContext } from '../contexts/ThemeContext';
 import Link from 'next/link';
@@ -7,24 +7,25 @@ const ChartExamIntro = () => {
   const { darkMode } = useContext(ThemeContext);
   const router = useRouter();
   const [selectedExam, setSelectedExam] = useState(null);
+  const [currentIndex, setCurrentIndex] = useState(0);
 
   const examTypes = [
     {
-      id: 'swing-analysis',  // Changed from 'swing-points'
+      id: 'swing-analysis',
       title: 'Swing Point Analysis',
       description: 'Learn to identify key swing points (highs and lows) in chart patterns. Swing points are crucial for determining market structure and potential reversal zones.',
       image: '/images/swing.jpg',
       difficulty: 'Beginner'
     },
     {
-      id: 'fibonacci-retracement',  // Changed from 'fibonacci'
+      id: 'fibonacci-retracement',
       title: 'Fibonacci Retracements',
       description: 'Master the use of Fibonacci retracement levels to identify potential support and resistance zones. These mathematical ratios help predict where price might reverse.',
       image: '/images/fib.jpg',
       difficulty: 'Intermediate'
     },
     {
-      id: 'fair-value-gaps',  // Changed from 'fvg'
+      id: 'fair-value-gaps',
       title: 'Fair Value Gaps (FVG)',
       description: 'Understand how to spot and trade Fair Value Gaps - areas where price makes a significant move leaving an imbalance that often gets filled later.',
       image: '/images/fvg.jpg',
@@ -37,6 +38,29 @@ const ChartExamIntro = () => {
       router.push(`/chart-exam/${selectedExam}`);
     }
   };
+
+  const nextSlide = () => {
+    setCurrentIndex((prevIndex) => 
+      prevIndex === examTypes.length - 1 ? 0 : prevIndex + 1
+    );
+  };
+
+  const prevSlide = () => {
+    setCurrentIndex((prevIndex) => 
+      prevIndex === 0 ? examTypes.length - 1 : prevIndex - 1
+    );
+  };
+
+  const goToSlide = (index) => {
+    setCurrentIndex(index);
+  };
+
+  // If the selected exam isn't currently visible, select the currently visible one
+  useEffect(() => {
+    if (selectedExam !== examTypes[currentIndex].id) {
+      setSelectedExam(examTypes[currentIndex].id);
+    }
+  }, [currentIndex, examTypes]);
 
   return (
     <div style={{ 
@@ -73,7 +97,7 @@ const ChartExamIntro = () => {
           color: darkMode ? '#b0b0b0' : '#555'
         }}>
           Our chart exams help you practice and improve your technical analysis skills using real market data. 
-          Select an exam type below to begin, and test your ability to identify key patterns and make accurate market predictions.
+          Navigate through the exam types below to begin, and test your ability to identify key patterns and make accurate market predictions.
         </p>
         <div style={{
           display: 'flex',
@@ -116,89 +140,329 @@ const ChartExamIntro = () => {
         </div>
       </div>
 
+      {/* 3D Carousel Container */}
       <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
-        gap: '30px',
-        marginBottom: '40px'
+        position: 'relative',
+        marginBottom: '40px',
+        height: '580px', // Increased height to accommodate 3D effect
+        perspective: '1000px',
+        transformStyle: 'preserve-3d'
       }}>
-        {examTypes.map(exam => (
-          <div 
-            key={exam.id}
-            style={{
-              backgroundColor: selectedExam === exam.id 
-                ? (darkMode ? '#1a237e' : '#e8eaf6') 
-                : (darkMode ? '#262626' : 'white'),
-              borderRadius: '12px',
-              overflow: 'hidden',
-              boxShadow: darkMode ? '0 4px 20px rgba(0,0,0,0.3)' : '0 4px 20px rgba(0,0,0,0.1)',
-              transition: 'all 0.3s ease',
-              border: selectedExam === exam.id 
-                ? `2px solid ${darkMode ? '#5c6bc0' : '#3f51b5'}`
-                : `2px solid transparent`,
-              cursor: 'pointer'
-            }}
-            onClick={() => setSelectedExam(exam.id)}
-          >
-            <div style={{
-              height: '180px',
-              backgroundColor: darkMode ? '#333' : '#f5f5f5',
-              backgroundImage: `url(${exam.image})`,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center'
-            }}>
-              <div style={{
+        {/* Carousel Navigation - Previous Button */}
+        <button 
+          onClick={prevSlide}
+          style={{
+            position: 'absolute',
+            left: '10px',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            zIndex: 20, // Increased z-index
+            padding: '12px 16px',
+            backgroundColor: darkMode ? 'rgba(33, 150, 243, 0.8)' : 'rgba(33, 150, 243, 0.9)',
+            color: 'white',
+            border: 'none',
+            borderRadius: '50%',
+            cursor: 'pointer',
+            fontSize: '18px',
+            boxShadow: '0 2px 10px rgba(0,0,0,0.2)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '50px',
+            height: '50px'
+          }}
+        >
+          &#10094;
+        </button>
+        
+        {/* Carousel Track - Contains all slides */}
+        <div style={{
+          position: 'absolute',
+          width: '100%',
+          height: '100%',
+          transformStyle: 'preserve-3d',
+          transition: 'transform 0.5s ease'
+        }}>
+          {/* Previous Slide (Left) */}
+          {examTypes.length > 1 && (
+            <div 
+              style={{
                 position: 'absolute',
-                top: '10px',
-                right: '10px',
-                padding: '5px 10px',
-                backgroundColor: exam.difficulty === 'Beginner' 
-                  ? '#4CAF50' 
-                  : exam.difficulty === 'Intermediate'
-                    ? '#FF9800'
-                    : '#F44336',
-                color: 'white',
-                borderRadius: '4px',
-                fontSize: '0.8rem',
-                fontWeight: 'bold'
-              }}>
-                {exam.difficulty}
-              </div>
-            </div>
-            <div style={{ padding: '20px' }}>
-              <h3 style={{ 
-                marginBottom: '15px',
-                color: darkMode ? '#e0e0e0' : '#333'
-              }}>
-                {exam.title}
-              </h3>
-              <p style={{ 
-                marginBottom: '20px',
-                color: darkMode ? '#b0b0b0' : '#666',
-                fontSize: '0.95rem',
-                lineHeight: '1.5'
-              }}>
-                {exam.description}
-              </p>
+                left: '50%',
+                top: '50%',
+                width: '500px',
+                height: '590px',
+                transform: 'translate(-50%, -50%) translateX(-65%) translateZ(-200px) rotateY(25deg)',
+                opacity: 0.6,
+                transition: 'all 0.5s ease',
+                pointerEvents: 'none'
+              }}
+            >
               <div style={{
+                width: '100%',
+                height: '100%',
+                backgroundColor: darkMode ? '#262626' : 'white',
+                borderRadius: '12px',
+                overflow: 'hidden',
+                boxShadow: darkMode ? '0 4px 20px rgba(0,0,0,0.3)' : '0 4px 20px rgba(0,0,0,0.1)',
                 display: 'flex',
-                justifyContent: 'flex-end'
+                flexDirection: 'column'
               }}>
                 <div style={{
-                  padding: '8px 12px',
-                  backgroundColor: darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
-                  borderRadius: '6px',
-                  color: darkMode ? '#e0e0e0' : '#333',
-                  fontSize: '0.9rem'
+                  height: '300px', // Increased image height
+                  backgroundColor: darkMode ? '#333' : '#f5f5f5',
+                  backgroundImage: `url(${examTypes[currentIndex === 0 ? examTypes.length - 1 : currentIndex - 1].image})`,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                  position: 'relative'
                 }}>
-                  Select
+                  <div style={{
+                    position: 'absolute',
+                    top: '10px',
+                    right: '10px',
+                    padding: '5px 10px',
+                    backgroundColor: examTypes[currentIndex === 0 ? examTypes.length - 1 : currentIndex - 1].difficulty === 'Beginner' 
+                      ? '#4CAF50' 
+                      : examTypes[currentIndex === 0 ? examTypes.length - 1 : currentIndex - 1].difficulty === 'Intermediate'
+                        ? '#FF9800'
+                        : '#F44336',
+                    color: 'white',
+                    borderRadius: '4px',
+                    fontSize: '0.8rem',
+                    fontWeight: 'bold'
+                  }}>
+                    {examTypes[currentIndex === 0 ? examTypes.length - 1 : currentIndex - 1].difficulty}
+                  </div>
+                </div>
+                <div style={{ padding: '25px', flex: 1 }}>
+                  <h3 style={{ 
+                    marginBottom: '15px',
+                    color: darkMode ? '#e0e0e0' : '#333',
+                    fontSize: '1.4rem'
+                  }}>
+                    {examTypes[currentIndex === 0 ? examTypes.length - 1 : currentIndex - 1].title}
+                  </h3>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Main Carousel Item - Current Exam */}
+          <div 
+            style={{
+              position: 'absolute',
+              left: '50%',
+              top: '50%',
+              width: '500px',
+                              height: '590px',
+              transform: 'translate(-50%, -50%)',
+              zIndex: 10,
+              transition: 'all 0.5s ease',
+              cursor: 'pointer'
+            }}
+            onClick={() => setSelectedExam(examTypes[currentIndex].id)}
+          >
+            <div 
+              style={{
+                width: '100%',
+                height: '100%',
+                backgroundColor: selectedExam === examTypes[currentIndex].id 
+                  ? (darkMode ? '#1a237e' : '#e8eaf6') 
+                  : (darkMode ? '#262626' : 'white'),
+                borderRadius: '12px',
+                overflow: 'hidden',
+                boxShadow: darkMode ? '0 8px 30px rgba(0,0,0,0.5)' : '0 8px 30px rgba(0,0,0,0.2)',
+                transition: 'all 0.3s ease',
+                border: selectedExam === examTypes[currentIndex].id 
+                  ? `2px solid ${darkMode ? '#5c6bc0' : '#3f51b5'}`
+                  : `2px solid transparent`,
+                display: 'flex',
+                flexDirection: 'column'
+              }}
+            >
+              <div style={{
+                height: '380px', // Further increased image height
+                backgroundColor: darkMode ? '#333' : '#f5f5f5',
+                backgroundImage: `url(${examTypes[currentIndex].image})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                position: 'relative'
+              }}>
+                <div style={{
+                  position: 'absolute',
+                  top: '10px',
+                  right: '10px',
+                  padding: '5px 10px',
+                  backgroundColor: examTypes[currentIndex].difficulty === 'Beginner' 
+                    ? '#4CAF50' 
+                    : examTypes[currentIndex].difficulty === 'Intermediate'
+                      ? '#FF9800'
+                      : '#F44336',
+                  color: 'white',
+                  borderRadius: '4px',
+                  fontSize: '0.8rem',
+                  fontWeight: 'bold'
+                }}>
+                  {examTypes[currentIndex].difficulty}
+                </div>
+              </div>
+              <div style={{ padding: '25px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                <h3 style={{ 
+                  marginBottom: '15px',
+                  color: darkMode ? '#e0e0e0' : '#333',
+                  fontSize: '1.4rem'
+                }}>
+                  {examTypes[currentIndex].title}
+                </h3>
+                <p style={{ 
+                  marginBottom: '20px',
+                  color: darkMode ? '#b0b0b0' : '#666',
+                  fontSize: '1.1rem',
+                  lineHeight: '1.6',
+                  flex: 1
+                }}>
+                  {examTypes[currentIndex].description}
+                </p>
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'center'
+                }}>
+                  <div style={{
+                    padding: '10px 20px',
+                    backgroundColor: darkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)',
+                    borderRadius: '6px',
+                    color: darkMode ? '#e0e0e0' : '#333',
+                    fontSize: '1rem',
+                    fontWeight: 'bold'
+                  }}>
+                    Selected
+                  </div>
                 </div>
               </div>
             </div>
           </div>
+
+          {/* Next Slide (Right) */}
+          {examTypes.length > 1 && (
+            <div 
+              style={{
+                position: 'absolute',
+                left: '50%',
+                top: '50%',
+                width: '500px',
+                height: '590px',
+                transform: 'translate(-50%, -50%) translateX(65%) translateZ(-200px) rotateY(-25deg)',
+                opacity: 0.6,
+                transition: 'all 0.5s ease',
+                pointerEvents: 'none'
+              }}
+            >
+              <div style={{
+                width: '100%',
+                height: '100%',
+                backgroundColor: darkMode ? '#262626' : 'white',
+                borderRadius: '12px',
+                overflow: 'hidden',
+                boxShadow: darkMode ? '0 4px 20px rgba(0,0,0,0.3)' : '0 4px 20px rgba(0,0,0,0.1)',
+                display: 'flex',
+                flexDirection: 'column'
+              }}>
+                <div style={{
+                  height: '300px', // Increased image height
+                  backgroundColor: darkMode ? '#333' : '#f5f5f5',
+                  backgroundImage: `url(${examTypes[currentIndex === examTypes.length - 1 ? 0 : currentIndex + 1].image})`,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                  position: 'relative'
+                }}>
+                  <div style={{
+                    position: 'absolute',
+                    top: '10px',
+                    right: '10px',
+                    padding: '5px 10px',
+                    backgroundColor: examTypes[currentIndex === examTypes.length - 1 ? 0 : currentIndex + 1].difficulty === 'Beginner' 
+                      ? '#4CAF50' 
+                      : examTypes[currentIndex === examTypes.length - 1 ? 0 : currentIndex + 1].difficulty === 'Intermediate'
+                        ? '#FF9800'
+                        : '#F44336',
+                    color: 'white',
+                    borderRadius: '4px',
+                    fontSize: '0.8rem',
+                    fontWeight: 'bold'
+                  }}>
+                    {examTypes[currentIndex === examTypes.length - 1 ? 0 : currentIndex + 1].difficulty}
+                  </div>
+                </div>
+                <div style={{ padding: '25px', flex: 1 }}>
+                  <h3 style={{ 
+                    marginBottom: '15px',
+                    color: darkMode ? '#e0e0e0' : '#333',
+                    fontSize: '1.4rem'
+                  }}>
+                    {examTypes[currentIndex === examTypes.length - 1 ? 0 : currentIndex + 1].title}
+                  </h3>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Carousel Navigation - Next Button */}
+        <button 
+          onClick={nextSlide}
+          style={{
+            position: 'absolute',
+            right: '10px',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            zIndex: 20, // Increased z-index
+            padding: '12px 16px',
+            backgroundColor: darkMode ? 'rgba(33, 150, 243, 0.8)' : 'rgba(33, 150, 243, 0.9)',
+            color: 'white',
+            border: 'none',
+            borderRadius: '50%',
+            cursor: 'pointer',
+            fontSize: '18px',
+            boxShadow: '0 2px 10px rgba(0,0,0,0.2)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '50px',
+            height: '50px'
+          }}
+        >
+          &#10095;
+        </button>
+      </div>
+
+      {/* Carousel Indicators */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        marginBottom: '30px'
+      }}>
+        {examTypes.map((_, index) => (
+          <button
+            key={index}
+            onClick={() => goToSlide(index)}
+            style={{
+              width: '12px',
+              height: '12px',
+              borderRadius: '50%',
+              backgroundColor: currentIndex === index 
+                ? '#2196F3' 
+                : darkMode ? '#555' : '#ccc',
+              margin: '0 6px',
+              border: 'none',
+              cursor: 'pointer',
+              transition: 'all 0.3s ease'
+            }}
+            aria-label={`Go to slide ${index + 1}`}
+          />
         ))}
       </div>
 
+      {/* Action Button */}
       <div style={{
         display: 'flex',
         justifyContent: 'center',
@@ -227,4 +491,4 @@ const ChartExamIntro = () => {
   );
 };
 
-export default ChartExamIntro; 
+export default ChartExamIntro;
