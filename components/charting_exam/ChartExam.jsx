@@ -187,6 +187,8 @@ const ChartExam = ({ examType }) => {
   
   // Validate user drawings with chart data included in payload
   const validateDrawings = async () => {
+    console.log("Validating drawings:", drawings);
+
     // Check if there are drawings to validate
     if (drawings.length === 0 && !drawings[0]?.no_fvgs_found && !drawings[0]?.no_swings_found) {
       alert('Please mark at least one point before submitting.');
@@ -311,6 +313,8 @@ const ChartExam = ({ examType }) => {
   // Handle drawings update from child components
  // In components/charting_exam/ChartExam.jsx - only the updated function needed
 const handleDrawingsUpdate = (newDrawings) => {
+  console.log("Drawings update received:", newDrawings);
+
   // Store drawings without causing unnecessary rerenders
   setDrawings(prevDrawings => {
     // Only update if drawings have actually changed
@@ -378,6 +382,8 @@ useEffect(() => {
   
   // Render the appropriate exam component
   const renderExamComponent = () => {
+    console.log("Rendering exam component:", examType);
+
     const props = {
       chartData,
       onDrawingsUpdate: handleDrawingsUpdate,
