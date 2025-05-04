@@ -7,17 +7,16 @@ export default async function handler(req, res) {
   }
   
   try {
-    const { drawings, chartCount, part } = req.body;
+    // Get the data from the request body instead of relying on session
+    const { drawings, chartData, chartCount, part } = req.body;
     
     if (!drawings) {
       return res.status(400).json({ error: 'Invalid drawings data' });
     }
     
-    // Get chart data from session
-    const chartData = req.session?.chartData;
-    
-    if (!chartData || chartData.length === 0) {
-      return res.status(400).json({ error: 'No chart data available in session' });
+    // Validate chart data is provided in the request
+    if (!chartData || !Array.isArray(chartData) || chartData.length === 0) {
+      return res.status(400).json({ error: 'No chart data provided in request' });
     }
     
     // Detect expected FVGs
@@ -26,26 +25,6 @@ export default async function handler(req, res) {
     
     // Validate user drawings against expected gaps
     const validationResult = validateFairValueGaps(drawings, expectedGaps, chartData, gapType);
-    
-    // Update session with scores if needed
-    if (req.session) {
-      if (!req.session.scores) {
-        req.session.scores = [];
-      }
-      
-      if (part === 1) {
-        req.session.scores.push({ bullish: validationResult.score });
-      } else {
-        // Part 2 - update the last score with bearish result
-        const lastIndex = req.session.scores.length - 1;
-        if (lastIndex >= 0) {
-          req.session.scores[lastIndex].bearish = validationResult.score;
-        }
-      }
-      
-      // Save session
-      await req.session.save();
-    }
     
     return res.status(200).json({
       success: true,
@@ -122,7 +101,7 @@ function validateFairValueGaps(drawings, expectedGaps, chartData, gapType) {
   
   // Calculate price range for tolerance
   const priceRange = Math.max(...chartData.map(c => c.high)) - 
-                    Math.min(...chartData.map(c => c.low));
+                   Math.min(...chartData.map(c => c.low));
   
   const priceTolerance = priceRange * 0.015; // 1.5% of the price range
   
@@ -142,6 +121,9 @@ function validateFairValueGaps(drawings, expectedGaps, chartData, gapType) {
   for (const drawing of drawings) {
     const drawingType = drawing.type || gapType;
     
+    // Skip the No FVGs Found entry which was handled earlier
+    if (drawing.no_fvgs_found) continue;
+    
     if (drawingType !== gapType) {
       feedback.incorrect.push({
         type: 'incorrect_type',
@@ -159,7 +141,7 @@ function validateFairValueGaps(drawings, expectedGaps, chartData, gapType) {
       
       const gap = expectedGaps[i];
       const isHLine = drawing.drawingType === 'hline' || 
-                     Math.abs(drawing.topPrice - drawing.bottomPrice) < priceTolerance / 10;
+                    Math.abs(drawing.topPrice - drawing.bottomPrice) < priceTolerance / 10;
       
       if (isHLine) {
         // For horizontal lines, check if line is in the gap area
@@ -169,7 +151,7 @@ function validateFairValueGaps(drawings, expectedGaps, chartData, gapType) {
         
         // Time should be within the FVG timeframe
         const timeMatch = drawing.startTime >= gap.startTime - timeTolerance && 
-                         drawing.startTime <= gap.endTime + timeTolerance;
+                        drawing.startTime <= gap.endTime + timeTolerance;
         
         if (priceMatch && timeMatch) {
           matched++;
@@ -188,10 +170,10 @@ function validateFairValueGaps(drawings, expectedGaps, chartData, gapType) {
       } else {
         // For rectangle drawings, check price and time boundaries
         const priceMatch = Math.abs(drawing.topPrice - gap.topPrice) <= priceTolerance &&
-                          Math.abs(drawing.bottomPrice - gap.bottomPrice) <= priceTolerance;
+                         Math.abs(drawing.bottomPrice - gap.bottomPrice) <= priceTolerance;
         
         const timeMatch = Math.abs(drawing.startTime - gap.startTime) <= timeTolerance &&
-                         Math.abs(drawing.endTime - gap.endTime) <= timeTolerance;
+                        Math.abs(drawing.endTime - gap.endTime) <= timeTolerance;
         
         if (priceMatch && timeMatch) {
           matched++;

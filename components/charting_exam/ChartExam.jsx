@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect ,useRef} from 'react';
 import { useRouter } from 'next/router';
 import styled from 'styled-components';
 import SwingAnalysis from './SwingAnalysis';
@@ -122,7 +122,7 @@ const ChartExam = ({ examType }) => {
   const [symbol, setSymbol] = useState('');
   const [timeframe, setTimeframe] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  
+  const chartRef = useRef(null);
   // Fetch chart data with improved data processing
   const fetchChartData = async () => {
     setLoading(true);
@@ -309,10 +309,52 @@ const ChartExam = ({ examType }) => {
   };
   
   // Handle drawings update from child components
-  const handleDrawingsUpdate = (newDrawings) => {
-    setDrawings(newDrawings);
-  };
-  
+ // In components/charting_exam/ChartExam.jsx - only the updated function needed
+const handleDrawingsUpdate = (newDrawings) => {
+  // Store drawings without causing unnecessary rerenders
+  setDrawings(prevDrawings => {
+    // Only update if drawings have actually changed
+    if (JSON.stringify(prevDrawings) !== JSON.stringify(newDrawings)) {
+      return newDrawings;
+    }
+    return prevDrawings;
+  });
+};
+useEffect(() => {
+  // Only recreate chart when absolutely necessary
+  if (chartRef.current && chartData) {
+    try {
+      // Update data without recreating chart
+      const chart = chartRef.current.getChart();
+      if (chart && chart.series && chart.series[0]) {
+        // Update data without triggering view reset
+        const currentExtremes = {
+          xAxis: chart.xAxis[0].getExtremes(),
+          yAxis: chart.yAxis[0].getExtremes()
+        };
+        
+        // Update data
+        chart.series[0].setData(chartData, false);
+        
+        // Restore view
+        chart.xAxis[0].setExtremes(
+          currentExtremes.xAxis.min,
+          currentExtremes.xAxis.max, 
+          false
+        );
+        chart.yAxis[0].setExtremes(
+          currentExtremes.yAxis.min,
+          currentExtremes.yAxis.max,
+          false
+        );
+        
+        chart.redraw(false);
+      }
+    } catch (error) {
+      console.error("Error updating chart data:", error);
+    }
+  }
+}, [chartData]);
   // Fetch initial chart data
   useEffect(() => {
     fetchChartData();
