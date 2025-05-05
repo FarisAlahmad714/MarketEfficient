@@ -7,7 +7,6 @@ import Link from 'next/link';
 import LoadingScreen from '../../components/LoadingScreen';
 import CryptoLoader from '../../components/CryptoLoader';
 import { ThemeContext } from '../../contexts/ThemeContext';
-import TradingAnalysis from '../../components/TradingAnalysis'; // Import the TradingAnalysis component
 
 // Import CandlestickChart with SSR disabled
 const CandlestickChart = dynamic(
@@ -24,6 +23,8 @@ export default function AssetTestPage() {
   const [error, setError] = useState(null);
   const [userAnswers, setUserAnswers] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [reasoningInputs, setReasoningInputs] = useState({}); // Store reasoning inputs
+  const [validationError, setValidationError] = useState(""); // For validation messages
   const cryptoLoaderRef = useRef(null);
   const { darkMode } = useContext(ThemeContext);
 
@@ -51,12 +52,15 @@ export default function AssetTestPage() {
         setChartsLoading(true);
         const response = await axios.get(`/api/test/${assetSymbol}?timeframe=${timeframe}`);
         setTestData(response.data);
-        // Initialize userAnswers with empty values
+        // Initialize userAnswers and reasoningInputs with empty values
         const initialAnswers = {};
+        const initialReasoning = {};
         response.data.questions.forEach(q => {
           initialAnswers[q.id] = '';
+          initialReasoning[q.id] = '';
         });
         setUserAnswers(initialAnswers);
+        setReasoningInputs(initialReasoning);
         setLoading(false);
         
         // Set a small timeout to simulate charts loading
@@ -85,7 +89,54 @@ export default function AssetTestPage() {
     }));
   };
 
+  // Handle reasoning input changes
+  const handleReasoningChange = (questionId, reasoning) => {
+    setReasoningInputs(prev => ({
+      ...prev,
+      [questionId]: reasoning
+    }));
+  };
+
+  // Validate all answers before submission
+  const validateAnswers = () => {
+    let isValid = true;
+    let message = "";
+
+    // Check if all questions have been answered with predictions
+    for (const questionId in userAnswers) {
+      if (!userAnswers[questionId]) {
+        isValid = false;
+        message = "Please answer all questions with Bullish or Bearish.";
+        break;
+      }
+    }
+
+    // If predictions are valid, check if all have reasoning
+    if (isValid) {
+      for (const questionId in reasoningInputs) {
+        if (!reasoningInputs[questionId].trim()) {
+          isValid = false;
+          message = "Please provide reasoning for all your predictions.";
+          break;
+        }
+      }
+    }
+
+    setValidationError(message);
+    return isValid;
+  };
+
   const handleSubmitTest = async () => {
+    // Validate answers and reasoning
+    if (!validateAnswers()) {
+      // Scroll to the validation error
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
+      return;
+    }
+
     // Show loader
     setIsSubmitting(true);
     
@@ -95,13 +146,20 @@ export default function AssetTestPage() {
     }
     
     try {
-      // Format the answers data from the userAnswers state
-      const formattedAnswers = Object.entries(userAnswers).map(([testId, prediction]) => ({
+      // Format the answers data with predictions AND reasoning
+      const formattedAnswers = Object.keys(userAnswers).map(testId => ({
         test_id: parseInt(testId, 10),
-        prediction: prediction
+        prediction: userAnswers[testId],
+        reasoning: reasoningInputs[testId]
       }));
       
-      const response = await axios.post(`/api/test/${assetSymbol}?session_id=${testData.session_id}`, formattedAnswers);
+      const response = await axios.post(`/api/test/${assetSymbol}?session_id=${testData.session_id}`, {
+        answers: formattedAnswers,
+        chartData: testData.questions.reduce((acc, q) => {
+          acc[q.id] = q.ohlc_data;
+          return acc;
+        }, {})
+      });
       
       // Wait for animation to complete
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -226,8 +284,25 @@ export default function AssetTestPage() {
           color: darkMode ? '#b0b0b0' : '#555'
         }}>
           For each chart below, analyze the price pattern and predict if the market will be Bullish or Bearish after the last candle shown.
+          Provide your reasoning for each prediction. After submitting, you'll receive an AI analysis of your trading decisions.
         </p>
       </div>
+      
+      {/* Validation Error Message */}
+      {validationError && (
+        <div style={{ 
+          backgroundColor: darkMode ? '#3f1f1f' : '#ffebee', 
+          color: darkMode ? '#ff8a80' : '#c62828', 
+          padding: '12px', 
+          borderRadius: '8px', 
+          marginBottom: '20px', 
+          textAlign: 'center', 
+          fontWeight: '500' 
+        }}>
+          <i className="fas fa-exclamation-circle" style={{ marginRight: '8px' }}></i>
+          {validationError}
+        </div>
+      )}
       
       {testData.questions.map((question, index) => {
         const lastCandle = getLastCandle(question.ohlc_data);
@@ -264,7 +339,7 @@ export default function AssetTestPage() {
               ) : (
                 question.ohlc_data && question.ohlc_data.length > 0 ? (
                   <>
-                    {/* Add ID to chart container for screenshot capture */}
+                    {/* Add ID to chart container for possible screenshot capture */}
                     <div id={`chart-${question.id}`}>
                       <CandlestickChart data={question.ohlc_data} height={400} />
                     </div>
@@ -395,13 +470,47 @@ export default function AssetTestPage() {
               </button>
             </div>
             
-            {/* Add Trading Analysis Component - only shows after user makes a selection */}
+            {/* Add reasoning input after making a prediction */}
             {userAnswers[question.id] && (
-              <TradingAnalysis 
-                chartData={question.ohlc_data}
-                prediction={userAnswers[question.id]}
-                questionId={question.id}
-              />
+              <div style={{ marginTop: '20px' }}>
+                <h3 style={{ 
+                  fontSize: '16px', 
+                  marginBottom: '10px',
+                  color: darkMode ? '#e0e0e0' : '#333'
+                }}>
+                  Why do you think the market will be {userAnswers[question.id]}?
+                </h3>
+                
+                <textarea
+                  value={reasoningInputs[question.id]}
+                  onChange={(e) => handleReasoningChange(question.id, e.target.value)}
+                  placeholder="Explain your analysis and reasoning..."
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    borderRadius: '8px',
+                    border: `1px solid ${darkMode ? '#444' : '#ddd'}`,
+                    backgroundColor: darkMode ? '#333' : 'white',
+                    color: darkMode ? '#e0e0e0' : '#333',
+                    height: '100px',
+                    resize: 'vertical',
+                    marginBottom: '10px',
+                    fontFamily: 'inherit',
+                    fontSize: '14px',
+                    lineHeight: '1.5'
+                  }}
+                />
+                
+                {/* Small hint for users */}
+                <p style={{ 
+                  fontSize: '12px', 
+                  color: darkMode ? '#999' : '#666',
+                  marginTop: '5px'
+                }}>
+                  <i className="fas fa-info-circle" style={{ marginRight: '5px' }}></i>
+                  Your reasoning will be analyzed by AI after submission to help improve your trading skills.
+                </p>
+              </div>
             )}
           </div>
         );
@@ -423,7 +532,7 @@ export default function AssetTestPage() {
             opacity: isSubmitting ? 0.7 : 1
           }}
         >
-          {isSubmitting ? 'Submitting...' : 'Submit Answers'}
+          {isSubmitting ? 'Submitting...' : 'Submit Answers & Get Analysis'}
         </button>
       </div>
     </div>
