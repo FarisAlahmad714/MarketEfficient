@@ -7,6 +7,7 @@ import Link from 'next/link';
 import LoadingScreen from '../../components/LoadingScreen';
 import CryptoLoader from '../../components/CryptoLoader';
 import { ThemeContext } from '../../contexts/ThemeContext';
+import TradingAnalysis from '../../components/TradingAnalysis'; // Import the TradingAnalysis component
 
 // Import CandlestickChart with SSR disabled
 const CandlestickChart = dynamic(
@@ -263,7 +264,10 @@ export default function AssetTestPage() {
               ) : (
                 question.ohlc_data && question.ohlc_data.length > 0 ? (
                   <>
-                    <CandlestickChart data={question.ohlc_data} height={400} />
+                    {/* Add ID to chart container for screenshot capture */}
+                    <div id={`chart-${question.id}`}>
+                      <CandlestickChart data={question.ohlc_data} height={400} />
+                    </div>
                     
                     {/* Last Candle OHLC Data */}
                     {lastCandle && (
@@ -390,6 +394,15 @@ export default function AssetTestPage() {
                 Bearish
               </button>
             </div>
+            
+            {/* Add Trading Analysis Component - only shows after user makes a selection */}
+            {userAnswers[question.id] && (
+              <TradingAnalysis 
+                chartData={question.ohlc_data}
+                prediction={userAnswers[question.id]}
+                questionId={question.id}
+              />
+            )}
           </div>
         );
       })}
