@@ -265,6 +265,32 @@ const ChartExam = ({ examType }) => {
       setSubmitting(false);
     }
   };
+  const saveResultsAndRedirect = (finalScores, examType) => {
+    try {
+      // Store results in sessionStorage
+      const resultData = {
+        scores: finalScores,
+        examType: examType,
+        timestamp: new Date().toISOString(),
+      };
+      
+      // Save to sessionStorage
+      sessionStorage.setItem('chartExamResults', JSON.stringify(resultData));
+      
+      // Build URL with fallback query parameters in case sessionStorage isn't available later
+      const queryParams = new URLSearchParams({
+        examType: examType,
+        scores: JSON.stringify(finalScores)
+      }).toString();
+      
+      // Redirect to results page
+      router.push(`/chart-exam/results?${queryParams}`);
+    } catch (error) {
+      console.error('Error saving results:', error);
+      // Fallback to direct navigation if storage fails
+      router.push('/chart-exam/results');
+    }
+  };
   
   // Continue to next part or chart
   const continueExam = async () => {
@@ -282,7 +308,7 @@ const ChartExam = ({ examType }) => {
       
       // Check if we've completed all charts
       if (chartCount >= 5) {
-        // Show final results
+        // Calculate total score
         const totalScore = scores.reduce((sum, score) => {
           if (typeof score === 'number') {
             return sum + score;
@@ -297,9 +323,8 @@ const ChartExam = ({ examType }) => {
           examType === 'fair-value-gaps' ? 10 : 0
         );
         
-        // Redirect to results page or show final results
-        alert(`Exam complete! Your final score: ${totalScore}/${totalPossible}`);
-        router.push('/chart-exam'); // FIXED: Correct route
+        // Instead of alert, save results and redirect
+        saveResultsAndRedirect(scores, examType);
         return;
       }
       
