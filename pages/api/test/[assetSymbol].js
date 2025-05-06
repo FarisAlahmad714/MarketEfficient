@@ -17,6 +17,41 @@ setInterval(() => {
   });
 }, 15 * 60 * 1000); // Check every 15 minutes
 
+// FIXED: Get AI analysis for a trading decision with correct parameter order
+async function getAIAnalysis(chartData, outcomeData, prediction, reasoning) {
+  try {
+    // Check if we have OpenAI API key
+    if (!process.env.OPENAI_API_KEY) {
+      console.warn('OPENAI_API_KEY not set, skipping AI analysis');
+      return null;
+    }
+    
+    // Call analyze-trading-gpt4o endpoint
+    const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || process.env.BASE_URL || 'http://localhost:3000'}/api/analyze-trading-gpt4o`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        chartData,
+        outcomeData,
+        prediction,
+        reasoning
+      }),
+    });
+    
+    if (!response.ok) {
+      throw new Error(`AI analysis failed with status: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    return data.analysis;
+  } catch (error) {
+    console.error('Error getting AI analysis:', error);
+    return null;
+  }
+}
+
 // Asset definitions
 const assets = [
   { id: 1, symbol: 'btc', name: 'Bitcoin', apiId: 'bitcoin', type: 'crypto', basePrice: 60000 },
@@ -280,19 +315,26 @@ export default async function handler(req, res) {
     return res.status(404).json({ error: `Asset with symbol ${assetSymbol} not found` });
   }
   
-  // Check if we're getting test results for an existing session
-  // Only if we're not forcing a new session
-  if (!forceNewSession && req.query.session_id) {
-    // First, check if we have processed results for this session
-    if (sessions[req.query.session_id] && sessions[req.query.session_id].answers) {
-      console.log(`Returning existing processed results for ${req.query.session_id}`);
-      return res.status(200).json(sessions[req.query.session_id]);
+  // ENHANCED: Comprehensive check for existing results with improved logging
+  if (!forceNewSession) {
+    // First, check if we already have results for this session
+    if (sessions[sessionId] && sessions[sessionId].answers) {
+      console.log(`Found existing results for session ${sessionId}, returning those`);
+      return res.status(200).json(sessions[sessionId]);
     }
     
-    // If no processed results, check for test session
-    const testSessionKey = req.query.session_id + '_test';
-    if (sessions[testSessionKey]) {
-      console.log(`Found test session ${testSessionKey}, but no processed results yet`);
+    // If requesting results with explicit session_id
+    if (req.query.session_id) {
+      if (sessions[req.query.session_id] && sessions[req.query.session_id].answers) {
+        console.log(`Returning existing processed results for ${req.query.session_id}`);
+        return res.status(200).json(sessions[req.query.session_id]);
+      }
+      
+      // If no processed results, check for test session
+      const testSessionKey = req.query.session_id + '_test';
+      if (sessions[testSessionKey]) {
+        console.log(`Found test session ${testSessionKey}, but no processed results yet`);
+      }
     }
   }
   
@@ -317,8 +359,9 @@ export default async function handler(req, res) {
         correct_answer: q.correct_answer 
       })));
       
-      // Process answers
-      const resultAnswers = answers.map(answer => {
+      // Process answers with AI analysis
+      const { chartData } = req.body;
+      const resultAnswersPromises = answers.answers.map(async function(answer) {
         const question = testSession.questions.find(q => q.id === answer.test_id);
         
         if (!question) {
@@ -326,6 +369,8 @@ export default async function handler(req, res) {
           return {
             test_id: answer.test_id,
             user_prediction: answer.prediction,
+            user_reasoning: answer.reasoning || null,
+            ai_analysis: null,
             correct_answer: 'Unknown',
             is_correct: false,
             timeframe: timeframe,
@@ -341,9 +386,34 @@ export default async function handler(req, res) {
           score++;
         }
         
+        // Get AI analysis if reasoning is provided
+        let aiAnalysis = null;
+        if (answer.reasoning) {
+          try {
+            // Use the chart data provided in the request or from the question
+            const questionChartData = chartData && chartData[answer.test_id] 
+              ? chartData[answer.test_id] 
+              : question.ohlc_data;
+              
+            console.log(`Getting AI analysis for answer ${answer.test_id}`);
+            // FIXED: Corrected parameter order in function call
+            aiAnalysis = await getAIAnalysis(
+              questionChartData,
+              question.outcome_data,
+              answer.prediction, 
+              answer.reasoning
+            );
+            console.log(`AI analysis received for answer ${answer.test_id}: ${aiAnalysis ? 'success' : 'empty'}`);
+          } catch (error) {
+            console.error(`Error getting AI analysis for answer ${answer.test_id}:`, error);
+          }
+        }
+        
         return {
           test_id: answer.test_id,
           user_prediction: answer.prediction,
+          user_reasoning: answer.reasoning || null,
+          ai_analysis: aiAnalysis,
           correct_answer: question.correct_answer,
           is_correct: isCorrect,
           timeframe: question.timeframe,
@@ -352,18 +422,21 @@ export default async function handler(req, res) {
         };
       });
       
+      // Wait for all analyses to complete
+      const resultAnswers = await Promise.all(resultAnswersPromises);
+      
       // Create result object
       const results = {
         asset_name: asset.name,
         asset_symbol: asset.symbol,
         session_id: sessionId,
         score,
-        total: answers.length,
+        total: answers.answers.length,
         answers: resultAnswers,
         timestamp: Date.now() // Add timestamp for session cleanup
       };
       
-      console.log(`Final score: ${score}/${answers.length}`);
+      console.log(`Final score: ${score}/${answers.answers.length}`);
       
       // Store the results
       sessions[sessionId] = results;
@@ -374,6 +447,12 @@ export default async function handler(req, res) {
       console.error('Error processing test answers:', error);
       return res.status(500).json({ error: 'Failed to process test answers' });
     }
+  }
+  
+  // CRITICAL: Do not generate a new test if we already have results for this session
+  if (req.method === 'GET' && sessions[sessionId] && sessions[sessionId].answers) {
+    console.log(`Session ${sessionId} already has results, returning those instead of generating new test`);
+    return res.status(200).json(sessions[sessionId]);
   }
   
   try {

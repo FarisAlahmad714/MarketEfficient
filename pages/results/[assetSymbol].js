@@ -20,10 +20,11 @@ const Results = () => {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
   const [debugInfo, setDebugInfo] = useState(null);
+  const [hasLoadedResults, setHasLoadedResults] = useState(false); // State to prevent refetching
 
   useEffect(() => {
-    // Wait for router to be ready
-    if (!router.isReady) return;
+    // Wait for router to be ready and prevent duplicate fetches
+    if (!router.isReady || hasLoadedResults) return;
     
     const { assetSymbol, session_id } = router.query;
     
@@ -66,6 +67,12 @@ const Results = () => {
           console.log('Answers array length:', response.data.answers.length);
           if (response.data.answers.length > 0) {
             console.log('First answer structure:', response.data.answers[0]);
+            
+            // Add debug info for AI analysis format checking
+            if (response.data.answers[0].ai_analysis) {
+              console.log('AI Analysis format sample (first 100 chars):', 
+                response.data.answers[0].ai_analysis.substring(0, 100));
+            }
           }
         } else {
           console.warn('No answers found in response data');
@@ -73,10 +80,12 @@ const Results = () => {
             message: "No answers in results data",
             resultsKeys: Object.keys(response.data)
           });
+          return; // Early return to prevent setting hasLoadedResults
         }
         
         console.log('Results data:', response.data);
         setResults(response.data);
+        setHasLoadedResults(true); // Mark as loaded to prevent re-fetching
       } catch (err) {
         console.error('Error fetching results:', err);
         setError(`Failed to load results: ${err.message}`);
@@ -93,9 +102,37 @@ const Results = () => {
     };
     
     fetchResults();
-  }, [router.isReady, router.query]);
+  }, [router.isReady, router.query, hasLoadedResults]); // Add hasLoadedResults to dependency array
+
+  // Debug logging for AI analysis
+  useEffect(() => {
+    if (results && results.answers && results.answers.length > 0) {
+      // Check if any answers have AI analysis
+      const hasAiAnalysis = results.answers.some(answer => answer.ai_analysis);
+      console.log('Has AI analysis:', hasAiAnalysis);
+      
+      // Log the first answer structure 
+      console.log('First answer structure:', results.answers[0]);
+      
+      // Log all properties of each answer for debugging
+      results.answers.forEach((answer, index) => {
+        console.log(`Answer ${index + 1} properties:`, Object.keys(answer));
+        console.log(`Answer ${index + 1} has ai_analysis:`, Boolean(answer.ai_analysis));
+        if (answer.ai_analysis) {
+          // Check if AI analysis has HTML structure
+          const hasHtml = answer.ai_analysis.includes('<h3>') || 
+                         answer.ai_analysis.includes('<p>') || 
+                         answer.ai_analysis.includes('<ul>');
+          console.log(`Answer ${index + 1} has HTML formatting:`, hasHtml);
+        }
+      });
+    }
+  }, [results]);
 
   const handleTakeAnotherTest = () => {
+    // Clear the loaded state before taking a new test
+    setHasLoadedResults(false);
+    
     const { assetSymbol } = router.query;
     // Force a new test by using a random query parameter
     // Include timeframe parameter to ensure proper test generation
@@ -652,6 +689,83 @@ const Results = () => {
                     </p>
                   </div>
                 </div>
+                
+                {/* Your Reasoning Section */}
+                {answer.user_reasoning && (
+                  <div style={{ 
+                    backgroundColor: darkMode ? '#262626' : '#fff', 
+                    padding: '15px', 
+                    borderRadius: '8px',
+                    marginTop: '15px'
+                  }}>
+                    <h4 style={{ 
+                      marginBottom: '10px', 
+                      color: darkMode ? '#e0e0e0' : '#333',
+                      borderBottom: `1px solid ${darkMode ? '#333' : '#eee'}`,
+                      paddingBottom: '5px'
+                    }}>
+                      Your Reasoning
+                    </h4>
+                    <p style={{ 
+                      whiteSpace: 'pre-line', 
+                      color: darkMode ? '#b0b0b0' : '#555',
+                      padding: '5px'
+                    }}>
+                      {answer.user_reasoning}
+                    </p>
+                  </div>
+                )}
+                
+                {/* AI Analysis Section - UPDATED TO RENDER HTML PROPERLY */}
+                {(answer.ai_analysis) ? (
+                  <div style={{ 
+                    backgroundColor: darkMode ? '#103042' : '#e1f5fe', 
+                    padding: '20px', 
+                    borderRadius: '8px',
+                    marginTop: '15px',
+                    border: `1px solid ${darkMode ? '#0d47a1' : '#b3e5fc'}`,
+                    maxWidth: '100%',
+                    margin: '15px auto'
+                  }}>
+                    <h4 style={{ 
+                      display: 'flex',
+                      alignItems: 'center',
+                      marginBottom: '15px', 
+                      color: darkMode ? '#90caf9' : '#0277bd',
+                      borderBottom: `1px solid ${darkMode ? '#1565c0' : '#b3e5fc'}`,
+                      paddingBottom: '10px',
+                      textAlign: 'center',
+                      justifyContent: 'center',
+                      fontSize: '18px'
+                    }}>
+                      <i className="fas fa-robot" style={{ marginRight: '10px', fontSize: '20px' }}></i>
+                      Trading Analysis
+                    </h4>
+                    <div 
+                      className="ai-analysis-content"
+                      style={{ 
+                        color: darkMode ? '#e0e0e0' : '#333',
+                        lineHeight: '1.6',
+                        fontSize: '15px'
+                      }}
+                      dangerouslySetInnerHTML={{ __html: answer.ai_analysis }}
+                    />
+                  </div>
+                ) : (
+                  answer.user_reasoning && (
+                    <div style={{ 
+                      backgroundColor: darkMode ? '#333' : '#f5f5f5', 
+                      padding: '15px', 
+                      borderRadius: '8px',
+                      marginTop: '15px',
+                      fontStyle: 'italic',
+                      color: darkMode ? '#999' : '#666',
+                      textAlign: 'center'
+                    }}>
+                      <p>AI analysis unavailable for this prediction.</p>
+                    </div>
+                  )
+                )}
               </div>
             );
           })}
@@ -703,6 +817,29 @@ const Results = () => {
           Back to Asset Selection
         </Link>
       </div>
+      
+      {/* Additional styles for AI analysis HTML content */}
+      <style jsx global>{`
+        .ai-analysis-content h3 {
+          color: ${darkMode ? '#81c784' : '#2e7d32'};
+          margin-top: 20px;
+          margin-bottom: 10px;
+          font-size: 18px;
+        }
+        
+        .ai-analysis-content p {
+          margin-bottom: 15px;
+        }
+        
+        .ai-analysis-content ul {
+          padding-left: 20px;
+          margin-bottom: 15px;
+        }
+        
+        .ai-analysis-content li {
+          margin-bottom: 8px;
+        }
+      `}</style>
     </div>
   );
 };
