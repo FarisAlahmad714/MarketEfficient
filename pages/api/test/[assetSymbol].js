@@ -18,7 +18,7 @@ setInterval(() => {
 }, 15 * 60 * 1000); // Check every 15 minutes
 
 // FIXED: Get AI analysis for a trading decision with correct parameter order
-async function getAIAnalysis(chartData, outcomeData, prediction, reasoning) {
+async function getAIAnalysis(chartData, outcomeData, prediction, reasoning, correctAnswer, wasCorrect) {
   try {
     // Check if we have OpenAI API key
     if (!process.env.OPENAI_API_KEY) {
@@ -36,7 +36,9 @@ async function getAIAnalysis(chartData, outcomeData, prediction, reasoning) {
         chartData,
         outcomeData,
         prediction,
-        reasoning
+        reasoning,
+        correctAnswer,
+        wasCorrect
       }),
     });
     
@@ -401,7 +403,9 @@ export default async function handler(req, res) {
               questionChartData,
               question.outcome_data,
               answer.prediction, 
-              answer.reasoning
+              answer.reasoning,
+              question.correct_answer,  // Add this
+              question.correct_answer === answer.prediction  // Add this
             );
             console.log(`AI analysis received for answer ${answer.test_id}: ${aiAnalysis ? 'success' : 'empty'}`);
           } catch (error) {
