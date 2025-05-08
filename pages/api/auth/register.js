@@ -1,8 +1,7 @@
-// pages/api/auth/register.js
-import { hash } from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import connectDB from '../../../lib/database';
 import User from '../../../models/User';
+import { generateToken, sendVerificationEmail } from '../../../lib/email-service';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -26,16 +25,22 @@ export default async function handler(req, res) {
       return res.status(409).json({ error: 'User already exists' });
     }
     
-    // Hash password
-    const hashedPassword = await hash(password, 10);
+    // Generate verification token
+    const verificationToken = generateToken();
+    const verificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
     
     // Create new user
     const user = await User.create({
       name,
       email,
-      password: hashedPassword,
+      password,
+      verificationToken,
+      verificationTokenExpires,
       createdAt: new Date()
     });
+    
+    // Send verification email
+    await sendVerificationEmail(user, verificationToken);
     
     // Generate JWT token
     const token = jwt.sign(
@@ -49,13 +54,15 @@ export default async function handler(req, res) {
       user: {
         id: user._id,
         name: user.name,
-        email: user.email
+        email: user.email,
+        isVerified: user.isVerified,
+        isAdmin: user.isAdmin
       },
-      token
+      token,
+      message: 'Registration successful. Please check your email to verify your account.'
     });
   } catch (error) {
     console.error('Registration error:', error);
     return res.status(500).json({ error: 'Registration failed' });
   }
 }
-

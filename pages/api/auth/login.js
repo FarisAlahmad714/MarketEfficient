@@ -1,5 +1,3 @@
-// pages/api/auth/login.js
-import { compare } from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import connectDB from '../../../lib/database';
 import User from '../../../models/User';
@@ -27,9 +25,18 @@ export default async function handler(req, res) {
     }
     
     // Compare password
-    const isPasswordValid = await compare(password, user.password);
+    const isPasswordValid = await user.comparePassword(password);
     if (!isPasswordValid) {
       return res.status(401).json({ error: 'Invalid credentials' });
+    }
+    
+    // Optional: Check if email is verified
+    if (!user.isVerified && process.env.REQUIRE_EMAIL_VERIFICATION === 'true') {
+      return res.status(403).json({ 
+        error: 'Email not verified',
+        message: 'Please verify your email before logging in.',
+        needsVerification: true
+      });
     }
     
     // Generate JWT token
@@ -44,7 +51,9 @@ export default async function handler(req, res) {
       user: {
         id: user._id,
         name: user.name,
-        email: user.email
+        email: user.email,
+        isVerified: user.isVerified,
+        isAdmin: user.isAdmin
       },
       token
     });
@@ -53,16 +62,3 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Login failed' });
   }
 }
-
-// pages/api/auth/logout.js
-export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
-  // API does nothing for logout since we use JWT
-  // Token is handled client-side by removing from localStorage
-  
-  return res.status(200).json({ message: 'Logged out successfully' });
-}
-
