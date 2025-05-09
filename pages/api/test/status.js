@@ -17,8 +17,9 @@ export default async function handler(req, res) {
       
       // For now, let's assume results are almost always ready after a short period
       // In a real implementation, you would have a more sophisticated check
-      const resultsReady = true;
-      
+      const resultsReady = await checkIfResultsExistInSessionStore(session_id);
+
+
       return res.status(200).json({
         resultsReady,
         session_id

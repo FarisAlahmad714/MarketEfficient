@@ -317,27 +317,37 @@ export default async function handler(req, res) {
     return res.status(404).json({ error: `Asset with symbol ${assetSymbol} not found` });
   }
   
-  // ENHANCED: Comprehensive check for existing results with improved logging
-  if (!forceNewSession) {
-    // First, check if we already have results for this session
+  // CRITICAL FIX SECTION: First check if we already have RESULTS for this session
+  if (req.method === 'GET' && !forceNewSession) {
+    // Check for completed results first
     if (sessions[sessionId] && sessions[sessionId].answers) {
       console.log(`Found existing results for session ${sessionId}, returning those`);
+      
+      // Debug log the response structure
+      console.log(`Results structure for ${sessionId}:`, {
+        keys: Object.keys(sessions[sessionId]),
+        answerCount: sessions[sessionId].answers.length,
+        hasAIAnalysis: sessions[sessionId].answers.map(a => !!a.ai_analysis)
+      });
+      
       return res.status(200).json(sessions[sessionId]);
     }
     
-    // If requesting results with explicit session_id
-    if (req.query.session_id) {
-      if (sessions[req.query.session_id] && sessions[req.query.session_id].answers) {
-        console.log(`Returning existing processed results for ${req.query.session_id}`);
-        return res.status(200).json(sessions[req.query.session_id]);
-      }
+    // If we have a request for results but no results yet, check test session
+    const testSessionKey = sessionId + '_test';
+    if (sessions[testSessionKey]) {
+      console.log(`Found test session ${testSessionKey}, but no processed results yet`);
       
-      // If no processed results, check for test session
-      const testSessionKey = req.query.session_id + '_test';
-      if (sessions[testSessionKey]) {
-        console.log(`Found test session ${testSessionKey}, but no processed results yet`);
-      }
+      return res.status(202).json({
+        asset_name: asset.name,
+        asset_symbol: asset.symbol,
+        message: 'Results are still processing. Please try again shortly.',
+        session_id: sessionId,
+        processing: true
+      });
     }
+    
+    console.log(`No results or test data found for session ${sessionId}`);
   }
   
   // Handle POST request for submitting test answers
@@ -371,7 +381,9 @@ export default async function handler(req, res) {
           return {
             test_id: answer.test_id,
             user_prediction: answer.prediction,
+            prediction: answer.prediction, // Add both field names for compatibility  
             user_reasoning: answer.reasoning || null,
+            reasoning: answer.reasoning || null, // Add both field names for compatibility
             ai_analysis: null,
             correct_answer: 'Unknown',
             is_correct: false,
@@ -398,14 +410,13 @@ export default async function handler(req, res) {
               : question.ohlc_data;
               
             console.log(`Getting AI analysis for answer ${answer.test_id}`);
-            // FIXED: Corrected parameter order in function call
             aiAnalysis = await getAIAnalysis(
               questionChartData,
               question.outcome_data,
               answer.prediction, 
               answer.reasoning,
-              question.correct_answer,  // Add this
-              question.correct_answer === answer.prediction  // Add this
+              question.correct_answer,
+              isCorrect
             );
             console.log(`AI analysis received for answer ${answer.test_id}: ${aiAnalysis ? 'success' : 'empty'}`);
           } catch (error) {
@@ -416,7 +427,9 @@ export default async function handler(req, res) {
         return {
           test_id: answer.test_id,
           user_prediction: answer.prediction,
+          prediction: answer.prediction, // Add both field names for compatibility
           user_reasoning: answer.reasoning || null,
+          reasoning: answer.reasoning || null, // Add both field names for compatibility
           ai_analysis: aiAnalysis,
           correct_answer: question.correct_answer,
           is_correct: isCorrect,
@@ -437,14 +450,22 @@ export default async function handler(req, res) {
         score,
         total: answers.answers.length,
         answers: resultAnswers,
-        timestamp: Date.now() // Add timestamp for session cleanup
+        timestamp: Date.now()
       };
       
       console.log(`Final score: ${score}/${answers.answers.length}`);
       
+      // Debug log for AI analysis
+      console.log(`First answer AI analysis exists: ${!!resultAnswers[0].ai_analysis}`);
+      console.log(`All answers have AI analysis: ${resultAnswers.every(a => !!a.ai_analysis)}`);
+      
       // Store the results
       sessions[sessionId] = results;
       console.log(`Stored results for session ${sessionId}`);
+      
+      // CRITICAL FIX: Once we store results, remove the test session to avoid confusion
+      delete sessions[testSessionKey];
+      console.log(`Removed test session ${testSessionKey} to prevent overwriting`);
       
       return res.status(200).json(results);
     } catch (error) {
@@ -453,139 +474,42 @@ export default async function handler(req, res) {
     }
   }
   
-  // CRITICAL: Do not generate a new test if we already have results for this session
-  if (req.method === 'GET' && sessions[sessionId] && sessions[sessionId].answers) {
-    console.log(`Session ${sessionId} already has results, returning those instead of generating new test`);
-    return res.status(200).json(sessions[sessionId]);
-  }
-  
-  try {
-    // Generate questions with market data
-    const questionCount = 5;
-    const SETUP_CANDLES = 25;
-    const OUTCOME_CANDLES = 25; // Make this equal to SETUP_CANDLES for balanced charts
-    
-    // Log randomization parameters
-    const randomSeed = Date.now();
-    console.log(`Generating new test with seed: ${randomSeed}`);
-    
-    // Fetch segmented data for each question
-    const dataSegments = await fetchSegmentedData(asset, timeframe, questionCount);
-    
-    // Create questions from the segments
-    const questions = [];
-    
-    for (let i = 0; i < Math.min(questionCount, dataSegments.length); i++) {
-      const segment = dataSegments[i];
-      const questionTimeframe = timeframe === 'random' 
-        ? ['4h', 'daily', 'weekly', 'monthly'][Math.floor(Math.random() * 4)]
-        : timeframe;
+  // Generate new test data for GET requests that don't have existing results
+  if (req.method === 'GET') {
+    try {
+      // Generate questions with market data
+      const questionCount = 5;
+      const SETUP_CANDLES = 25;
+      const OUTCOME_CANDLES = 25;
       
-      // Split the segment into setup and outcome
-      const setupData = segment.slice(0, SETUP_CANDLES);
-      const outcomeData = segment.slice(SETUP_CANDLES, SETUP_CANDLES + OUTCOME_CANDLES);
+      // Log randomization parameters
+      const randomSeed = Date.now();
+      console.log(`Generating new test with seed: ${randomSeed}`);
       
-      // Determine if the outcome was bullish or bearish
-      const lastSetupCandle = setupData[setupData.length - 1];
-      const lastOutcomeCandle = outcomeData[outcomeData.length - 1];
-      const correctAnswer = lastOutcomeCandle.close > lastSetupCandle.close ? 'Bullish' : 'Bearish';
+      // Fetch segmented data for each question
+      const dataSegments = await fetchSegmentedData(asset, timeframe, questionCount);
       
-      questions.push({
-        id: i + 1,
-        timeframe: questionTimeframe,
-        date: lastSetupCandle.date,
-        ohlc: {
-          open: lastSetupCandle.open,
-          high: lastSetupCandle.high,
-          low: lastSetupCandle.low,
-          close: lastSetupCandle.close
-        },
-        ohlc_data: setupData,
-        correct_answer: correctAnswer,
-        outcome_data: outcomeData
-      });
-    }
-    
-    // Create test session
-    const testData = {
-      asset_name: asset.name,
-      asset_symbol: asset.symbol,
-      session_id: sessionId,
-      selected_timeframe: timeframe,
-      questions: questions,
-      timestamp: Date.now() // Add timestamp for session cleanup
-    };
-    
-    // Store test session for validation of answers later
-    const testSessionKey = sessionId + '_test';
-    sessions[testSessionKey] = testData;
-    console.log(`Stored test session with key: ${testSessionKey}`);
-    
-    // Send only necessary data to client (remove correct answers and outcome data)
-    const clientTestData = {
-      asset_name: asset.name,
-      asset_symbol: asset.symbol,
-      session_id: sessionId,
-      selected_timeframe: timeframe,
-      questions: questions.map(q => ({
-        id: q.id,
-        timeframe: q.timeframe,
-        date: q.date,
-        ohlc: q.ohlc,
-        ohlc_data: q.ohlc_data
-      }))
-    };
-    
-    console.log(`Sending test with ${clientTestData.questions.length} questions to client`);
-    res.status(200).json(clientTestData);
-  } catch (error) {
-    console.error('Error generating test:', error);
-    
-    // Return basic mock test data as fallback
-    const randomSeed = Date.now();
-    // Configure candle counts for mock data
-    const SETUP_CANDLES = 25;
-    const OUTCOME_CANDLES = 25; // Equal to setup for balanced charts
-    
-    const mockTestData = {
-      asset_name: asset.name,
-      asset_symbol: asset.symbol,
-      session_id: sessionId,
-      selected_timeframe: timeframe,
-      questions: Array.from({ length: 5 }, (_, i) => {
-        const seed = randomSeed + i * 1000;
-        const setupData = generateMockOHLCDataWithSeed(
-          asset.basePrice * (0.9 + (Math.random() * 0.2)), 
-          SETUP_CANDLES, 
-          timeframe, 
-          asset.basePrice * 0.05,
-          seed
-        );
+      // Create questions from the segments
+      const questions = [];
+      
+      for (let i = 0; i < Math.min(questionCount, dataSegments.length); i++) {
+        const segment = dataSegments[i];
+        const questionTimeframe = timeframe === 'random' 
+          ? ['4h', 'daily', 'weekly', 'monthly'][Math.floor(Math.random() * 4)]
+          : timeframe;
         
-        // Generate outcome data continuing from setup
+        // Split the segment into setup and outcome
+        const setupData = segment.slice(0, SETUP_CANDLES);
+        const outcomeData = segment.slice(SETUP_CANDLES, SETUP_CANDLES + OUTCOME_CANDLES);
+        
+        // Determine if the outcome was bullish or bearish
         const lastSetupCandle = setupData[setupData.length - 1];
-        const outcomeData = generateMockOHLCDataWithSeed(
-          lastSetupCandle.close, 
-          OUTCOME_CANDLES, 
-          timeframe, 
-          asset.basePrice * 0.05,
-          seed + 500
-        );
+        const lastOutcomeCandle = outcomeData[outcomeData.length - 1];
+        const correctAnswer = lastOutcomeCandle.close > lastSetupCandle.close ? 'Bullish' : 'Bearish';
         
-        // Adjust outcome data dates to be continuous from setup
-        const lastSetupDate = new Date(lastSetupCandle.date);
-        const timeIncrement = getTimeIncrement(timeframe);
-        
-        outcomeData.forEach((candle, j) => {
-          const date = new Date(lastSetupDate.getTime() + ((j + 1) * timeIncrement));
-          candle.date = date.toISOString();
-        });
-        
-        const correctAnswer = outcomeData[outcomeData.length - 1].close > lastSetupCandle.close ? 'Bullish' : 'Bearish';
-        
-        return {
+        questions.push({
           id: i + 1,
-          timeframe: timeframe,
+          timeframe: questionTimeframe,
           date: lastSetupCandle.date,
           ohlc: {
             open: lastSetupCandle.open,
@@ -596,31 +520,125 @@ export default async function handler(req, res) {
           ohlc_data: setupData,
           correct_answer: correctAnswer,
           outcome_data: outcomeData
-        };
-      }),
-      timestamp: Date.now() // Add timestamp for session cleanup
-    };
-    
-    // Store test session for validation of answers later
-    const testSessionKey = sessionId + '_test';
-    sessions[testSessionKey] = mockTestData;
-    
-    // Send only necessary data to client (remove correct answers)
-    const clientTestData = {
-      asset_name: asset.name,
-      asset_symbol: asset.symbol,
-      session_id: sessionId,
-      selected_timeframe: timeframe,
-      questions: mockTestData.questions.map(q => ({
-        id: q.id,
-        timeframe: q.timeframe,
-        date: q.date,
-        ohlc: q.ohlc,
-        ohlc_data: q.ohlc_data
-      }))
-    };
-    
-    console.log(`Sending fallback test with ${clientTestData.questions.length} questions to client`);
-    res.status(200).json(clientTestData);
+        });
+      }
+      
+      // Create test session
+      const testData = {
+        asset_name: asset.name,
+        asset_symbol: asset.symbol,
+        session_id: sessionId,
+        selected_timeframe: timeframe,
+        questions: questions,
+        timestamp: Date.now()
+      };
+      
+      // Store test session for validation of answers later
+      const testSessionKey = sessionId + '_test';
+      sessions[testSessionKey] = testData;
+      console.log(`Stored test session with key: ${testSessionKey}`);
+      
+      // Send only necessary data to client (remove correct answers and outcome data)
+      const clientTestData = {
+        asset_name: asset.name,
+        asset_symbol: asset.symbol,
+        session_id: sessionId,
+        selected_timeframe: timeframe,
+        questions: questions.map(q => ({
+          id: q.id,
+          timeframe: q.timeframe,
+          date: q.date,
+          ohlc: q.ohlc,
+          ohlc_data: q.ohlc_data
+        }))
+      };
+      
+      console.log(`Sending test with ${clientTestData.questions.length} questions to client`);
+      res.status(200).json(clientTestData);
+    } catch (error) {
+      console.error('Error generating test:', error);
+      
+      // Return basic mock test data as fallback
+      const randomSeed = Date.now();
+      // Configure candle counts for mock data
+      const SETUP_CANDLES = 25;
+      const OUTCOME_CANDLES = 25; // Equal to setup for balanced charts
+      
+      const mockTestData = {
+        asset_name: asset.name,
+        asset_symbol: asset.symbol,
+        session_id: sessionId,
+        selected_timeframe: timeframe,
+        questions: Array.from({ length: 5 }, (_, i) => {
+          const seed = randomSeed + i * 1000;
+          const setupData = generateMockOHLCDataWithSeed(
+            asset.basePrice * (0.9 + (Math.random() * 0.2)), 
+            SETUP_CANDLES, 
+            timeframe, 
+            asset.basePrice * 0.05,
+            seed
+          );
+          
+          // Generate outcome data continuing from setup
+          const lastSetupCandle = setupData[setupData.length - 1];
+          const outcomeData = generateMockOHLCDataWithSeed(
+            lastSetupCandle.close, 
+            OUTCOME_CANDLES, 
+            timeframe, 
+            asset.basePrice * 0.05,
+            seed + 500
+          );
+          
+          // Adjust outcome data dates to be continuous from setup
+          const lastSetupDate = new Date(lastSetupCandle.date);
+          const timeIncrement = getTimeIncrement(timeframe);
+          
+          outcomeData.forEach((candle, j) => {
+            const date = new Date(lastSetupDate.getTime() + ((j + 1) * timeIncrement));
+            candle.date = date.toISOString();
+          });
+          
+          const correctAnswer = outcomeData[outcomeData.length - 1].close > lastSetupCandle.close ? 'Bullish' : 'Bearish';
+          
+          return {
+            id: i + 1,
+            timeframe: timeframe,
+            date: lastSetupCandle.date,
+            ohlc: {
+              open: lastSetupCandle.open,
+              high: lastSetupCandle.high,
+              low: lastSetupCandle.low,
+              close: lastSetupCandle.close
+            },
+            ohlc_data: setupData,
+            correct_answer: correctAnswer,
+            outcome_data: outcomeData
+          };
+        }),
+        timestamp: Date.now() // Add timestamp for session cleanup
+      };
+      
+      // Store test session for validation of answers later
+      const testSessionKey = sessionId + '_test';
+      sessions[testSessionKey] = mockTestData;
+      
+      // Send only necessary data to client (remove correct answers)
+      const clientTestData = {
+        asset_name: asset.name,
+        asset_symbol: asset.symbol,
+        session_id: sessionId,
+        selected_timeframe: timeframe,
+        questions: mockTestData.questions.map(q => ({
+          id: q.id,
+          timeframe: q.timeframe,
+          date: q.date,
+          ohlc: q.ohlc,
+          ohlc_data: q.ohlc_data
+        }))
+      };
+      
+      console.log(`Sending fallback test with ${clientTestData.questions.length} questions to client`);
+      res.status(200).json(clientTestData);
+    }
   }
 }
