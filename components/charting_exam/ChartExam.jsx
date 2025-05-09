@@ -188,7 +188,7 @@ const ChartExam = ({ examType }) => {
   // Validate user drawings with chart data included in payload
   const validateDrawings = async () => {
     console.log("Validating drawings:", drawings);
-
+  
     // Check if there are drawings to validate
     if (drawings.length === 0 && !drawings[0]?.no_fvgs_found && !drawings[0]?.no_swings_found) {
       alert('Please mark at least one point before submitting.');
@@ -210,16 +210,19 @@ const ChartExam = ({ examType }) => {
         throw new Error(`Unknown exam type: ${examType}`);
       }
       
-      // IMPORTANT: Include chartData in the request payload
-      // This ensures backend validation uses the same data as frontend
+      // Get auth token from localStorage
+      const token = localStorage.getItem('auth_token');
+      
+      // Include auth token in request headers
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`  // Add this line
         },
         body: JSON.stringify({
           drawings,
-          chartData, // Send chart data to backend for validation
+          chartData,
           chartCount,
           part: examType === 'fibonacci-retracement' ? part : 
                 examType === 'fair-value-gaps' ? part : null

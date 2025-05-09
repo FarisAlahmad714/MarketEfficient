@@ -1,5 +1,8 @@
 // pages/api/charting-exam/validate-fvg.js
 import { detectFairValueGaps } from './utils/fvg-detection';
+import connectDB from '../../../lib/database';
+import TestResults from '../../../models/TestResults';
+import jwt from 'jsonwebtoken';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -7,6 +10,17 @@ export default async function handler(req, res) {
   }
   
   try {
+    // Get Authorization header
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Authorization token required' });
+    }
+    
+    // Extract token and decode user ID
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const userId = decoded.userId;
+    
     // Get the data from the request body instead of relying on session
     const { drawings, chartData, chartCount, part } = req.body;
     
@@ -25,6 +39,30 @@ export default async function handler(req, res) {
     
     // Validate user drawings against expected gaps
     const validationResult = validateFairValueGaps(drawings, expectedGaps, chartData, gapType);
+    
+    // Connect to database before saving the test result
+    await connectDB();
+    
+    // Save test result to database
+    const symbol = chartData.symbol || 'UNKNOWN';
+    
+    const testResult = new TestResults({
+      userId: userId,
+      testType: 'chart-exam',
+      subType: 'fair-value-gaps',
+      assetSymbol: symbol,
+      score: validationResult.score,
+      totalPoints: validationResult.totalExpectedPoints,
+      details: {
+        feedback: validationResult.feedback,
+        expected: { gaps: expectedGaps },
+        part: part
+      },
+      completedAt: new Date()
+    });
+    
+    await testResult.save();
+    console.log(`FVG test result saved for user ${userId}, score: ${validationResult.score}/${validationResult.totalExpectedPoints}`);
     
     return res.status(200).json({
       success: true,
