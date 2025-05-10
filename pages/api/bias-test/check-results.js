@@ -1,4 +1,3 @@
-// pages/api/bias-test/check-results.js
 import connectDB from '../../../lib/database';
 import TestResults from '../../../models/TestResults';
 import jwt from 'jsonwebtoken';
@@ -31,7 +30,7 @@ export default async function handler(req, res) {
       }
     }
     
-    // First check if there are any matching results in the database
+    // Connect to database
     await connectDB();
     
     // If we have a userId, try to find by user and session
@@ -44,47 +43,48 @@ export default async function handler(req, res) {
       });
     }
     
+    // If not found with userId, try to find by session only
+    if (!dbResult) {
+      dbResult = await TestResults.findOne({
+        'details.sessionId': session_id,
+        testType: 'bias-test'
+      });
+    }
+    
     // If we have database results, return them
     if (dbResult) {
       return res.status(200).json({
         ready: true,
         source: 'database',
+        status: dbResult.status,
         score: dbResult.score,
         totalPoints: dbResult.totalPoints,
+        analysisComplete: dbResult.status === 'completed',
         timeframe: dbResult.details.timeframe,
-        results: true
+        completedAt: dbResult.completedAt,
+        analysisCompletedAt: dbResult.analysisCompletedAt
       });
     }
     
-    // Next check if results exist on the server (session-based storage)
-    // Make a call to the test API to check results status
-    const testApiUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/test/status?session_id=${session_id}`;
+    // If results are not found in database, check if we have pending test data
+    const testData = await TestResults.findOne({
+      'details.sessionId': `${session_id}_test`,
+      testType: 'bias-test-data'
+    });
     
-    try {
-      const response = await fetch(testApiUrl);
-      const data = await response.json();
-      
-      // If results are ready, tell the client
-      if (data.resultsReady) {
-        return res.status(200).json({
-          ready: true,
-          source: 'session',
-          results: true
-        });
-      }
-      
-      // If results are not ready, tell the client to try again later
+    if (testData) {
       return res.status(200).json({
         ready: false,
-        message: 'Results are still being processed. Please wait a moment and try again.'
-      });
-    } catch (error) {
-      console.error('Error checking test API status:', error);
-      return res.status(200).json({
-        ready: false,
-        message: 'Unable to check results status. Please try again in a moment.'
+        source: 'test-data',
+        message: 'Test has been generated but no results submitted yet.'
       });
     }
+    
+    // If nothing found, return not ready
+    return res.status(200).json({
+      ready: false,
+      message: 'No results found for this session.'
+    });
   } catch (error) {
     console.error('Error checking results status:', error);
     return res.status(500).json({ 

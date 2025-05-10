@@ -1,4 +1,3 @@
-// pages/api/bias-test/save-results.js
 import connectDB from '../../../lib/database';
 import TestResults from '../../../models/TestResults';
 import jwt from 'jsonwebtoken';
@@ -28,7 +27,8 @@ export default async function handler(req, res) {
       totalQuestions, 
       answers, 
       sessionId,
-      results // This is the full results object from the API
+      results, // This is the full results object from the API
+      updateAnalysis // New flag to indicate updating just the analysis
     } = req.body;
     
     if (!sessionId) {
@@ -45,6 +45,26 @@ export default async function handler(req, res) {
       testType: 'bias-test'
     });
     
+    // If this is an analysis update, handle it differently
+    if (updateAnalysis && existingResult) {
+      console.log(`Updating AI analysis for session ${sessionId}`);
+      
+      // Extract just the analysis updates from answers
+      const analysisUpdates = answers.map(answer => ({
+        test_id: answer.test_id,
+        ai_analysis: answer.ai_analysis
+      }));
+      
+      // Update the existing result with new analysis
+      await existingResult.updateAnalysis(analysisUpdates);
+      
+      return res.status(200).json({
+        success: true,
+        message: 'AI analysis updated successfully'
+      });
+    }
+    
+    // If result already exists and we're not updating analysis, return success
     if (existingResult) {
       return res.status(200).json({ 
         success: true, 
@@ -57,6 +77,7 @@ export default async function handler(req, res) {
     let testDetails = [];
     let finalScore = 0;
     let totalPoints = 0;
+    let analysisStatus = 'pending';
     
     // First try to get data from results object (which comes directly from the API)
     if (results && results.answers && Array.isArray(results.answers)) {
@@ -66,11 +87,13 @@ export default async function handler(req, res) {
         correctAnswer: answer.correct_answer,
         isCorrect: answer.is_correct,
         reasoning: answer.user_reasoning || answer.reasoning,
-        aiAnalysis: answer.ai_analysis
+        aiAnalysis: answer.ai_analysis,
+        analysisStatus: answer.ai_analysis ? 'completed' : 'pending'
       }));
       
       finalScore = results.score || 0;
       totalPoints = results.total || results.answers.length || 0;
+      analysisStatus = results.status || 'processing';
     } 
     // Otherwise try to use the answers array that was passed directly
     else if (answers && Array.isArray(answers)) {
@@ -80,77 +103,59 @@ export default async function handler(req, res) {
         correctAnswer: answer.correct_answer,
         isCorrect: answer.is_correct,
         reasoning: answer.user_reasoning || answer.reasoning,
-        aiAnalysis: answer.ai_analysis
+        aiAnalysis: answer.ai_analysis,
+        analysisStatus: answer.ai_analysis ? 'completed' : 'pending'
       }));
       
       finalScore = score || 0;
       totalPoints = totalQuestions || answers.length || 0;
+      analysisStatus = testDetails.every(detail => detail.aiAnalysis) ? 'completed' : 'processing';
     } 
-    // If we don't have either, try to fetch from the test API directly
+    // If we don't have either, return an error
     else {
-      try {
-        const testUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/test/${assetSymbol}?session_id=${sessionId}`;
-        const response = await fetch(testUrl);
-        const data = await response.json();
-        
-        if (data && data.answers && Array.isArray(data.answers)) {
-          testDetails = data.answers.map(answer => ({
-            question: answer.test_id || 0,
-            prediction: answer.user_prediction || answer.prediction,
-            correctAnswer: answer.correct_answer,
-            isCorrect: answer.is_correct,
-            reasoning: answer.user_reasoning || answer.reasoning,
-            aiAnalysis: answer.ai_analysis
-          }));
-          
-          finalScore = data.score || 0;
-          totalPoints = data.total || data.answers.length || 0;
-        } else {
-          console.log('Unable to extract test details from API response');
-          return res.status(400).json({ 
-            error: 'Unable to extract test details',
-            message: 'Results data format is not recognized'
-          });
-        }
-      } catch (error) {
-        console.error('Error fetching test results from API:', error);
-        return res.status(500).json({ 
-          error: 'Failed to fetch test results',
-          message: error.message
-        });
-      }
+      return res.status(400).json({ 
+        error: 'Invalid data format',
+        message: 'No valid answers data provided'
+      });
     }
     
-    // If we still don't have valid test details, return an error
-    if (testDetails.length === 0) {
+    // If we have valid test details, save to database
+    if (testDetails.length > 0) {
+      // Create and save the test result
+      const testResult = new TestResults({
+        userId: userId,
+        testType: 'bias-test',
+        assetSymbol: assetSymbol,
+        score: finalScore,
+        totalPoints: totalPoints,
+        status: analysisStatus,
+        details: {
+          timeframe: timeframe || 'daily',
+          sessionId: sessionId,
+          testDetails: testDetails
+        },
+        completedAt: new Date()
+      });
+      
+      // If all analysis is complete, set analysisCompletedAt
+      if (analysisStatus === 'completed') {
+        testResult.analysisCompletedAt = new Date();
+      }
+      
+      await testResult.save();
+      console.log(`Bias test result saved for user ${userId}, score: ${finalScore}/${totalPoints} for ${assetSymbol}`);
+      
+      return res.status(200).json({
+        success: true,
+        message: 'Results saved to database successfully',
+        status: analysisStatus
+      });
+    } else {
       return res.status(400).json({ 
         error: 'Invalid test details',
         message: 'Unable to process test results'
       });
     }
-    
-    // Save test result to database
-    const testResult = new TestResults({
-      userId: userId,
-      testType: 'bias-test',
-      assetSymbol: assetSymbol,
-      score: finalScore,
-      totalPoints: totalPoints,
-      details: {
-        timeframe: timeframe || 'daily',
-        sessionId: sessionId,
-        testDetails: testDetails
-      },
-      completedAt: new Date()
-    });
-    
-    await testResult.save();
-    console.log(`Bias test result saved for user ${userId}, score: ${finalScore}/${totalPoints} for ${assetSymbol}`);
-    
-    return res.status(200).json({
-      success: true,
-      message: 'Results saved to database successfully'
-    });
   } catch (error) {
     console.error('Error saving bias test results:', error);
     return res.status(500).json({ 

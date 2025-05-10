@@ -1,7 +1,6 @@
-// models/TestResult.js
-import mongoose from 'mongoose';
+const mongoose = require('mongoose');
 
-const TestResultSchema = new mongoose.Schema({
+const TestResultsSchema = new mongoose.Schema({
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -9,17 +8,16 @@ const TestResultSchema = new mongoose.Schema({
   },
   testType: {
     type: String,
-    enum: ['bias-test', 'chart-exam'],
-    required: true
+    required: true,
+    enum: ['bias-test', 'chart-exam', 'swing-analysis', 'fibonacci-retracement', 'fair-value-gaps']
   },
   subType: {
     type: String,
-    enum: ['swing-analysis', 'fibonacci-retracement', 'fair-value-gaps', null],
-    default: null
+    required: false
   },
   assetSymbol: {
     type: String,
-    default: null
+    required: true
   },
   score: {
     type: Number,
@@ -29,18 +27,61 @@ const TestResultSchema = new mongoose.Schema({
     type: Number,
     required: true
   },
+  status: {
+    type: String,
+    enum: ['processing', 'completed', 'error'],
+    default: 'processing'
+  },
   details: {
-    type: mongoose.Schema.Types.Mixed,
-    default: {}
+    timeframe: String,
+    sessionId: String,
+    testDetails: [{
+      question: Number,
+      prediction: String,
+      correctAnswer: String,
+      isCorrect: Boolean,
+      reasoning: String,
+      aiAnalysis: String,
+      analysisStatus: {
+        type: String,
+        enum: ['pending', 'completed', 'failed'],
+        default: 'pending'
+      }
+    }]
   },
   completedAt: {
     type: Date,
     default: Date.now
+  },
+  analysisCompletedAt: {
+    type: Date
   }
 });
 
-// Add indexes for faster queries
-TestResultSchema.index({ userId: 1, completedAt: -1 });
-TestResultSchema.index({ userId: 1, testType: 1, completedAt: -1 });
+// Add index on sessionId for faster queries
+TestResultsSchema.index({ 'details.sessionId': 1 });
 
-export default mongoose.models.TestResult || mongoose.model('TestResult', TestResultSchema);
+// Add index on userId for dashboard queries
+TestResultsSchema.index({ userId: 1, completedAt: -1 });
+
+// Add a method to update AI analysis
+TestResultsSchema.methods.updateAnalysis = async function(answers) {
+  if (!answers || !Array.isArray(answers)) return;
+  
+  // Update each answer's AI analysis
+  if (this.details && this.details.testDetails) {
+    answers.forEach(answer => {
+      const testDetail = this.details.testDetails.find(td => td.question === answer.test_id);
+      if (testDetail && answer.ai_analysis) {
+        testDetail.aiAnalysis = answer.ai_analysis;
+        testDetail.analysisStatus = 'completed';
+      }
+    });
+  }
+  
+  this.status = 'completed';
+  this.analysisCompletedAt = new Date();
+  return this.save();
+};
+
+module.exports = mongoose.models.TestResults || mongoose.model('TestResults', TestResultsSchema);
