@@ -1,6 +1,9 @@
 // pages/api/test/[assetSymbol].js
 import { v4 as uuidv4 } from 'uuid';
 import { fetchAssetOHLCData, generateMockOHLCData } from '../../../lib/data-service';
+import connectDB from '../../../lib/database';
+import TestResults from '../../../models/TestResults';
+import jwt from 'jsonwebtoken';
 
 // Store sessions in memory (in a real app, this would be a database)
 const sessions = {};
@@ -317,6 +320,60 @@ export default async function handler(req, res) {
     return res.status(404).json({ error: `Asset with symbol ${assetSymbol} not found` });
   }
   
+  // NEW: Check if database results were explicitly requested
+  if (req.query.source === 'db' && req.query.session_id) {
+    try {
+      // Connect to database
+      await connectDB();
+      
+      // Find test results by session ID
+      const dbResult = await TestResults.findOne({
+        'details.sessionId': req.query.session_id,
+        'testType': 'bias-test'
+      });
+      
+      if (dbResult) {
+        console.log(`Found test results in database for session ${req.query.session_id}`);
+        
+        // Map test details to answers format
+        const answers = dbResult.details.testDetails.map(detail => {
+          // Try to get ohlc_data and outcome_data from memory if available
+          const sessionData = sessions[req.query.session_id] || {};
+          const sessionAnswer = sessionData.answers?.find(a => a.test_id === detail.question);
+          
+          return {
+            test_id: detail.question,
+            user_prediction: detail.prediction,
+            correct_answer: detail.correctAnswer,
+            is_correct: detail.isCorrect,
+            user_reasoning: detail.reasoning || null,
+            ai_analysis: detail.aiAnalysis || null,
+            timeframe: dbResult.details.timeframe || 'daily',
+            // Use chart data from session if available, otherwise set to empty arrays
+            ohlc_data: sessionAnswer?.ohlc_data || [],
+            outcome_data: sessionAnswer?.outcome_data || []
+          };
+        });
+        
+        // Format the response to match what the client expects
+        const formattedResponse = {
+          asset_name: asset.name,
+          asset_symbol: dbResult.assetSymbol,
+          session_id: req.query.session_id,
+          score: dbResult.score,
+          total: dbResult.totalPoints,
+          answers: answers,
+          source: 'database'
+        };
+        
+        return res.status(200).json(formattedResponse);
+      }
+    } catch (dbError) {
+      console.error('Error fetching from database:', dbError);
+      // Continue to regular process if database fetch fails
+    }
+  }
+  
   // ENHANCED: Comprehensive check for existing results with improved logging
   if (!forceNewSession) {
     // First, check if we already have results for this session
@@ -341,124 +398,185 @@ export default async function handler(req, res) {
   }
   
   // Handle POST request for submitting test answers
-  if (req.method === 'POST') {
-    try {
-      // Get the test data
-      const testSessionKey = sessionId + '_test';
-      const testSession = sessions[testSessionKey];
+  // Handle POST request for submitting test answers
+if (req.method === 'POST') {
+  try {
+    // Get the test data
+    const testSessionKey = sessionId + '_test';
+    const testSession = sessions[testSessionKey];
+    
+    if (!testSession) {
+      console.error(`Test session not found for ${sessionId}`);
+      return res.status(404).json({ error: 'Test session not found' });
+    }
+    
+    // Get Authorization header - EXACTLY LIKE CHARTING EXAM
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Authorization token required' });
+    }
+    
+    // Extract token and decode user ID - EXACTLY LIKE CHARTING EXAM
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const userId = decoded.userId;
+    
+    // CRITICAL FIX: Extract answers from the request body
+    // Handle both structures: either direct array or {answers: [...]} object
+    const { answers = [], chartData = {} } = req.body || {};
+    
+    // Handle both direct array and nested answers array
+    const answersArray = Array.isArray(answers) ? answers : 
+                        (answers.answers && Array.isArray(answers.answers) ? answers.answers : []);
+    
+    console.log('Processing answers:', answersArray);
+    console.log('Test session data:', testSession.questions.map(q => ({ 
+      id: q.id, 
+      correct_answer: q.correct_answer 
+    })));
+    
+    // Track score
+    let score = 0;
+    
+    // Process answers with AI analysis
+    const resultAnswersPromises = answersArray.map(async function(answer) {
+      const question = testSession.questions.find(q => q.id === answer.test_id);
       
-      if (!testSession) {
-        console.error(`Test session not found for ${sessionId}`);
-        return res.status(404).json({ error: 'Test session not found' });
-      }
-      
-      // CRITICAL FIX: Extract answers from the request body
-      // Handle both structures: either direct array or {answers: [...]} object
-      const { answers = [], chartData = {} } = req.body || {};
-      
-      // Handle both direct array and nested answers array
-      const answersArray = Array.isArray(answers) ? answers : 
-                          (answers.answers && Array.isArray(answers.answers) ? answers.answers : []);
-      
-      console.log('Processing answers:', answersArray);
-      console.log('Test session data:', testSession.questions.map(q => ({ 
-        id: q.id, 
-        correct_answer: q.correct_answer 
-      })));
-      
-      // Track score
-      let score = 0;
-      
-      // Process answers with AI analysis
-      const resultAnswersPromises = answersArray.map(async function(answer) {
-        const question = testSession.questions.find(q => q.id === answer.test_id);
-        
-        if (!question) {
-          console.error(`Question ${answer.test_id} not found in test session`);
-          return {
-            test_id: answer.test_id,
-            user_prediction: answer.prediction,
-            user_reasoning: answer.reasoning || null,
-            ai_analysis: null,
-            correct_answer: 'Unknown',
-            is_correct: false,
-            timeframe: timeframe,
-            ohlc_data: [],
-            outcome_data: []
-          };
-        }
-        
-        const isCorrect = question.correct_answer === answer.prediction;
-        console.log(`Question ${answer.test_id}: User=${answer.prediction}, Correct=${question.correct_answer}, Match=${isCorrect}`);
-        
-        if (isCorrect) {
-          score++;
-        }
-        
-        // Get AI analysis if reasoning is provided
-        let aiAnalysis = null;
-        if (answer.reasoning) {
-          try {
-            // Use the chart data provided in the request or from the question
-            const questionChartData = chartData && chartData[answer.test_id] 
-              ? chartData[answer.test_id] 
-              : question.ohlc_data;
-              
-            console.log(`Getting AI analysis for answer ${answer.test_id}`);
-            // Get AI analysis with all required parameters
-            aiAnalysis = await getAIAnalysis(
-              questionChartData,
-              question.outcome_data,
-              answer.prediction, 
-              answer.reasoning,
-              question.correct_answer,
-              question.correct_answer === answer.prediction
-            );
-            console.log(`AI analysis received for answer ${answer.test_id}: ${aiAnalysis ? 'success' : 'empty'}`);
-          } catch (error) {
-            console.error(`Error getting AI analysis for answer ${answer.test_id}:`, error);
-          }
-        }
-        
+      if (!question) {
+        console.error(`Question ${answer.test_id} not found in test session`);
         return {
           test_id: answer.test_id,
           user_prediction: answer.prediction,
           user_reasoning: answer.reasoning || null,
-          ai_analysis: aiAnalysis,
-          correct_answer: question.correct_answer,
-          is_correct: isCorrect,
-          timeframe: question.timeframe,
-          ohlc_data: question.ohlc_data,
-          outcome_data: question.outcome_data
+          ai_analysis: null,
+          correct_answer: 'Unknown',
+          is_correct: false,
+          timeframe: timeframe,
+          ohlc_data: [],
+          outcome_data: []
         };
+      }
+      
+      const isCorrect = question.correct_answer === answer.prediction;
+      console.log(`Question ${answer.test_id}: User=${answer.prediction}, Correct=${question.correct_answer}, Match=${isCorrect}`);
+      
+      if (isCorrect) {
+        score++;
+      }
+      
+      // Get AI analysis if reasoning is provided
+      let aiAnalysis = null;
+      if (answer.reasoning) {
+        try {
+          // Use the chart data provided in the request or from the question
+          const questionChartData = chartData && chartData[answer.test_id] 
+            ? chartData[answer.test_id] 
+            : question.ohlc_data;
+            
+          console.log(`Getting AI analysis for answer ${answer.test_id}`);
+          // Get AI analysis with all required parameters
+          aiAnalysis = await getAIAnalysis(
+            questionChartData,
+            question.outcome_data,
+            answer.prediction, 
+            answer.reasoning,
+            question.correct_answer,
+            question.correct_answer === answer.prediction
+          );
+          console.log(`AI analysis received for answer ${answer.test_id}: ${aiAnalysis ? 'success' : 'empty'}`);
+        } catch (error) {
+          console.error(`Error getting AI analysis for answer ${answer.test_id}:`, error);
+        }
+      }
+      
+      return {
+        test_id: answer.test_id,
+        user_prediction: answer.prediction,
+        user_reasoning: answer.reasoning || null,
+        ai_analysis: aiAnalysis,
+        correct_answer: question.correct_answer,
+        is_correct: isCorrect,
+        timeframe: question.timeframe,
+        ohlc_data: question.ohlc_data,
+        outcome_data: question.outcome_data
+      };
+    });
+    
+    // Wait for all analyses to complete
+    const resultAnswers = await Promise.all(resultAnswersPromises);
+    
+    // Create result object
+    const results = {
+      asset_name: asset.name,
+      asset_symbol: asset.symbol,
+      session_id: sessionId,
+      score,
+      total: answersArray.length,
+      answers: resultAnswers,
+      timestamp: Date.now() // Add timestamp for session cleanup
+    };
+    
+    console.log(`Final score: ${score}/${answersArray.length}`);
+    
+    // Connect to database before saving the test result - EXACTLY LIKE CHARTING EXAM
+    await connectDB();
+    
+    // Check if result already exists to avoid duplicates
+    const existingResult = await TestResults.findOne({
+      userId: userId,
+      'details.sessionId': sessionId,
+      testType: 'bias-test'
+    });
+    
+    if (!existingResult) {
+      // Create test details array from results
+      const testDetails = resultAnswers.map(answer => ({
+        question: answer.test_id,
+        prediction: answer.user_prediction,
+        correctAnswer: answer.correct_answer,
+        isCorrect: answer.is_correct,
+        reasoning: answer.user_reasoning || null,
+        aiAnalysis: answer.ai_analysis || null,
+        analysisStatus: answer.ai_analysis ? 'completed' : 'pending'
+      }));
+      
+      // Create and save the test result - EXACTLY LIKE CHARTING EXAM
+      const testResult = new TestResults({
+        userId: userId,
+        testType: 'bias-test',
+        assetSymbol: asset.symbol,
+        score: score,
+        totalPoints: answersArray.length,
+        status: testDetails.every(detail => detail.aiAnalysis) ? 'completed' : 'processing',
+        details: {
+          timeframe: timeframe,
+          sessionId: sessionId,
+          testDetails: testDetails
+        },
+        completedAt: new Date()
       });
       
-      // Wait for all analyses to complete
-      const resultAnswers = await Promise.all(resultAnswersPromises);
+      // If all analysis is complete, set analysisCompletedAt
+      if (testDetails.every(detail => detail.aiAnalysis)) {
+        testResult.analysisCompletedAt = new Date();
+      }
       
-      // Create result object
-      const results = {
-        asset_name: asset.name,
-        asset_symbol: asset.symbol,
-        session_id: sessionId,
-        score,
-        total: answersArray.length,
-        answers: resultAnswers,
-        timestamp: Date.now() // Add timestamp for session cleanup
-      };
-      
-      console.log(`Final score: ${score}/${answersArray.length}`);
-      
-      // Store the results
-      sessions[sessionId] = results;
-      console.log(`Stored results for session ${sessionId}`);
-      
-      return res.status(200).json(results);
-    } catch (error) {
-      console.error('Error processing test answers:', error);
-      return res.status(500).json({ error: 'Failed to process test answers' });
+      await testResult.save();
+      console.log(`Bias test result saved to database for user ${userId}, session ${sessionId}`);
+    } else {
+      console.log(`Result already exists in database for user ${userId}, session ${sessionId}`);
     }
+    
+    // Store the results in memory as well
+    sessions[sessionId] = results;
+    console.log(`Stored results for session ${sessionId}`);
+    
+    return res.status(200).json(results);
+  } catch (error) {
+    console.error('Error processing test answers:', error);
+    return res.status(500).json({ error: 'Failed to process test answers' });
   }
+}
   
   // CRITICAL: Do not generate a new test if we already have results for this session
   if (req.method === 'GET' && sessions[sessionId] && sessions[sessionId].answers) {

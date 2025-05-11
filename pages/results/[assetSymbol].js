@@ -48,44 +48,67 @@ const Results = () => {
       try {
         console.log(`Fetching results for ${assetSymbol} with session ${session_id}`);
         
-        // Make the API request
-        const response = await axios.get(`/api/test/${assetSymbol}?session_id=${session_id}`);
-        console.log('Raw API response:', response);
+        // First try to get results from in-memory session
+        let response = await axios.get(`/api/test/${assetSymbol}?session_id=${session_id}`);
         
-        if (!response.data || Object.keys(response.data).length === 0) {
-          setError('No results data found for this session');
-          setDebugInfo({
-            message: "Empty response data",
-            status: response.status,
-            statusText: response.statusText
-          });
+        // If session data exists and has answers, use it
+        if (response.data && response.data.answers && response.data.answers.length > 0) {
+          console.log('Results found in memory session');
+          setResults(response.data);
+          setHasLoadedResults(true); 
+          setLoading(false);
           return;
         }
         
-        // Check if answers array exists and log their structure
-        if (response.data && response.data.answers) {
-          console.log('Answers array length:', response.data.answers.length);
-          if (response.data.answers.length > 0) {
-            console.log('First answer structure:', response.data.answers[0]);
+        // If memory session failed or has incomplete data, try database
+        console.log('Memory session had incomplete or no data, trying database...');
+        
+        // First check if database has results using check-results endpoint
+        const checkResponse = await axios.get(`/api/bias-test/check-results?session_id=${session_id}`);
+        
+        if (checkResponse.data && checkResponse.data.ready) {
+          console.log('Database has results, retrieving full data');
+          
+          try {
+            // Request full results from database via the test endpoint with source=db parameter
+            const dbResponse = await axios.get(`/api/test/${assetSymbol}?session_id=${session_id}&source=db`);
             
-            // Add debug info for AI analysis format checking
-            if (response.data.answers[0].ai_analysis) {
-              console.log('AI Analysis format sample (first 100 chars):', 
-                response.data.answers[0].ai_analysis.substring(0, 100));
+            if (dbResponse.data && dbResponse.data.answers) {
+              console.log('Successfully retrieved results from database');
+              setResults(dbResponse.data);
+              setHasLoadedResults(true);
+              setLoading(false);
+              return;
+            }
+          } catch (dbError) {
+            console.error('Error fetching from database via test endpoint:', dbError);
+            
+            // If the test endpoint with db source fails, try our dedicated get-results endpoint
+            try {
+              const directDbResponse = await axios.get(`/api/bias-test/get-results?session_id=${session_id}`);
+              
+              if (directDbResponse.data) {
+                console.log('Successfully retrieved results from direct database endpoint');
+                setResults(directDbResponse.data);
+                setHasLoadedResults(true);
+                setLoading(false);
+                return;
+              }
+            } catch (directDbError) {
+              console.error('Error fetching from direct database endpoint:', directDbError);
+              // Continue to error handling below
             }
           }
-        } else {
-          console.warn('No answers found in response data');
-          setDebugInfo({
-            message: "No answers in results data",
-            resultsKeys: Object.keys(response.data)
-          });
-          return; // Early return to prevent setting hasLoadedResults
         }
         
-        console.log('Results data:', response.data);
-        setResults(response.data);
-        setHasLoadedResults(true); // Mark as loaded to prevent re-fetching
+        // If we reach here, neither source had complete data
+        setError('Could not retrieve complete test results. Try taking the test again.');
+        setDebugInfo({
+          message: "No complete results found in any source",
+          session_check: Boolean(response.data),
+          db_check: Boolean(checkResponse?.data?.ready),
+          session_id
+        });
       } catch (err) {
         console.error('Error fetching results:', err);
         setError(`Failed to load results: ${err.message}`);
@@ -102,7 +125,7 @@ const Results = () => {
     };
     
     fetchResults();
-  }, [router.isReady, router.query, hasLoadedResults]); // Add hasLoadedResults to dependency array
+  }, [router.isReady, router.query, hasLoadedResults]);
 
   // Debug logging for AI analysis
   useEffect(() => {
@@ -306,6 +329,22 @@ const Results = () => {
         {results.asset_name} Bias Test Results
       </h1>
       
+      {/* Source indicator for debugging */}
+      {results.source && (
+        <div style={{
+          textAlign: 'center',
+          marginBottom: '10px',
+          backgroundColor: darkMode ? '#2c4f4f' : '#e0f7fa',
+          padding: '5px 10px',
+          borderRadius: '4px',
+          display: 'inline-block',
+          fontSize: '14px',
+          color: darkMode ? '#80deea' : '#006064'
+        }}>
+          Results from: {results.source}
+        </div>
+      )}
+      
       <div style={{ 
         display: 'flex', 
         justifyContent: 'center', 
@@ -505,9 +544,18 @@ const Results = () => {
                           display: 'flex', 
                           alignItems: 'center', 
                           justifyContent: 'center', 
-                          color: darkMode ? '#b0b0b0' : '#666' 
+                          color: darkMode ? '#b0b0b0' : '#666',
+                          flexDirection: 'column'
                         }}>
-                          No chart data available
+                          <div style={{ marginBottom: '10px' }}>Chart data not available</div>
+                          <div style={{ 
+                            fontSize: '13px', 
+                            color: darkMode ? '#999' : '#888',
+                            maxWidth: '200px',
+                            textAlign: 'center' 
+                          }}>
+                            (Results from database may not include chart data)
+                          </div>
                         </div>
                       )}
                     </div>
@@ -525,20 +573,22 @@ const Results = () => {
                       color: darkMode ? '#e0e0e0' : 'inherit'
                     }}>
                       <span>Outcome Chart</span>
-                      <span style={{
-                        backgroundColor: change.isPositive 
-                          ? (darkMode ? '#1a2e1a' : '#e8f5e9') 
-                          : (darkMode ? '#3a181a' : '#ffebee'),
-                        color: change.isPositive 
-                          ? (darkMode ? '#81c784' : '#388e3c') 
-                          : (darkMode ? '#ef9a9a' : '#d32f2f'),
-                        padding: '3px 10px',
-                        borderRadius: '20px',
-                        fontSize: '14px',
-                        fontWeight: 'bold'
-                      }}>
-                        {change.isPositive ? '+' : '-'}{change.value}%
-                      </span>
+                      {outcomeData.length > 0 && (
+                        <span style={{
+                          backgroundColor: change.isPositive 
+                            ? (darkMode ? '#1a2e1a' : '#e8f5e9') 
+                            : (darkMode ? '#3a181a' : '#ffebee'),
+                          color: change.isPositive 
+                            ? (darkMode ? '#81c784' : '#388e3c') 
+                            : (darkMode ? '#ef9a9a' : '#d32f2f'),
+                          padding: '3px 10px',
+                          borderRadius: '20px',
+                          fontSize: '14px',
+                          fontWeight: 'bold'
+                        }}>
+                          {change.isPositive ? '+' : '-'}{change.value}%
+                        </span>
+                      )}
                     </h4>
                     <div style={{ 
                       backgroundColor: darkMode ? '#262626' : '#fff', 
@@ -619,9 +669,18 @@ const Results = () => {
                           display: 'flex', 
                           alignItems: 'center', 
                           justifyContent: 'center', 
-                          color: darkMode ? '#b0b0b0' : '#666' 
+                          color: darkMode ? '#b0b0b0' : '#666',
+                          flexDirection: 'column'
                         }}>
-                          No outcome data available
+                          <div style={{ marginBottom: '10px' }}>Outcome data not available</div>
+                          <div style={{ 
+                            fontSize: '13px', 
+                            color: darkMode ? '#999' : '#888',
+                            maxWidth: '200px',
+                            textAlign: 'center' 
+                          }}>
+                            (Results from database may not include chart data)
+                          </div>
                         </div>
                       )}
                     </div>

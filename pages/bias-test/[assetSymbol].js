@@ -129,29 +129,29 @@ export default function AssetTestPage() {
   const handleSubmitTest = async () => {
     // Validate answers and reasoning
     if (!validateAnswers()) {
-      // Scroll to the validation error
       window.scrollTo({
         top: 0,
         behavior: 'smooth'
       });
       return;
     }
-
-    // Show loader
+  
     setIsSubmitting(true);
     
-    // Use the global method if it exists
     if (typeof window !== 'undefined' && window.showGlobalLoader) {
       window.showGlobalLoader();
     }
     
     try {
-      // Format the answers data with predictions AND reasoning
+      // Format answers data
       const formattedAnswers = Object.keys(userAnswers).map(testId => ({
         test_id: parseInt(testId, 10),
         prediction: userAnswers[testId],
         reasoning: reasoningInputs[testId]
       }));
+      
+      // Get auth token from localStorage - JUST LIKE CHARTING EXAM
+      const token = localStorage.getItem('auth_token');
       
       const response = await axios.post(`/api/test/${assetSymbol}?session_id=${testData.session_id}`, {
         answers: formattedAnswers,
@@ -159,18 +159,18 @@ export default function AssetTestPage() {
           acc[q.id] = q.ohlc_data;
           return acc;
         }, {})
+      }, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
       });
       
-      // Wait for animation to complete
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Redirect to results
       router.push(`/results/${assetSymbol}?session_id=${testData.session_id}`);
     } catch (err) {
       console.error('Error submitting test:', err);
       alert('Failed to submit test. Please try again.');
       
-      // Hide loader
       setIsSubmitting(false);
       if (typeof window !== 'undefined' && window.hideGlobalLoader) {
         window.hideGlobalLoader();
