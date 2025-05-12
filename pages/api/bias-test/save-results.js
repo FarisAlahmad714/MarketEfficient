@@ -88,6 +88,9 @@ export default async function handler(req, res) {
         isCorrect: answer.is_correct,
         reasoning: answer.user_reasoning || answer.reasoning,
         aiAnalysis: answer.ai_analysis,
+        // Store chart data for each question
+        ohlcData: answer.ohlc_data || [],
+        outcomeData: answer.outcome_data || [],
         analysisStatus: answer.ai_analysis ? 'completed' : 'pending'
       }));
       
@@ -104,6 +107,9 @@ export default async function handler(req, res) {
         isCorrect: answer.is_correct,
         reasoning: answer.user_reasoning || answer.reasoning,
         aiAnalysis: answer.ai_analysis,
+        // Store chart data for each question
+        ohlcData: answer.ohlc_data || [],
+        outcomeData: answer.outcome_data || [],
         analysisStatus: answer.ai_analysis ? 'completed' : 'pending'
       }));
       

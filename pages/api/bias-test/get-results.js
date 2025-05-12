@@ -1,4 +1,3 @@
-// pages/api/bias-test/get-results.js
 import connectDB from '../../../lib/database';
 import TestResults from '../../../models/TestResults';
 import jwt from 'jsonwebtoken';
@@ -15,41 +14,14 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Session ID is required' });
     }
     
-    // Get Authorization header (optional)
-    const authHeader = req.headers.authorization;
-    let userId = null;
-    
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      try {
-        const token = authHeader.split(' ')[1];
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        userId = decoded.userId;
-      } catch (err) {
-        console.log('Token verification failed, proceeding without user ID');
-      }
-    }
-    
     // Connect to database
     await connectDB();
     
-    // Find test results
-    let dbResult;
-    if (userId) {
-      // Try to find by user and session first
-      dbResult = await TestResults.findOne({
-        userId: userId,
-        'details.sessionId': session_id,
-        testType: 'bias-test'
-      });
-    }
-    
-    if (!dbResult) {
-      // If not found with userId or no userId, try by session only
-      dbResult = await TestResults.findOne({
-        'details.sessionId': session_id,
-        testType: 'bias-test'
-      });
-    }
+    // Find test results (simplified query for debugging)
+    const dbResult = await TestResults.findOne({
+      'details.sessionId': session_id,
+      testType: 'bias-test'
+    });
     
     if (!dbResult) {
       return res.status(404).json({ 
@@ -58,13 +30,25 @@ export default async function handler(req, res) {
       });
     }
     
-    // Get the asset name if possible
-    let assetName = dbResult.assetSymbol;
-    // Could add asset name lookup based on symbol here if needed
+    // DEBUGGING: Log the first question's chart data
+    if (dbResult.details && dbResult.details.testDetails && dbResult.details.testDetails.length > 0) {
+      const firstQuestion = dbResult.details.testDetails[0];
+      console.log('DATABASE CHART DATA CHECK:');
+      console.log('- First question has ohlcData:', 
+        firstQuestion.ohlcData ? 
+        `Yes, ${firstQuestion.ohlcData.length} candles` : 
+        'No'
+      );
+      console.log('- First question has outcomeData:', 
+        firstQuestion.outcomeData ? 
+        `Yes, ${firstQuestion.outcomeData.length} candles` : 
+        'No'
+      );
+    }
     
-    // Convert database model to format expected by results page
+    // Rest of your code as before...
     const formattedResults = {
-      asset_name: assetName,
+      asset_name: dbResult.assetSymbol,
       asset_symbol: dbResult.assetSymbol,
       session_id: session_id,
       score: dbResult.score,
@@ -78,16 +62,25 @@ export default async function handler(req, res) {
         user_reasoning: detail.reasoning || null,
         ai_analysis: detail.aiAnalysis || null,
         timeframe: dbResult.details.timeframe || 'daily',
-        // Note: We can't include ohlc_data and outcome_data here
-        // unless they were also stored in the database
-        ohlc_data: [],
-        outcome_data: []
+        // Return the stored chart data for each question
+        ohlc_data: detail.ohlcData || [],
+        outcome_data: detail.outcomeData || []
       })),
       source: 'database',
       status: dbResult.status,
       completedAt: dbResult.completedAt,
       analysisCompletedAt: dbResult.analysisCompletedAt
     };
+
+    // DEBUGGING: Check formatted data
+    if (formattedResults.answers && formattedResults.answers.length > 0) {
+      console.log('FORMATTED RESULTS CHECK:');
+      console.log('- First answer has ohlc_data:', 
+        formattedResults.answers[0].ohlc_data ? 
+        `Yes, ${formattedResults.answers[0].ohlc_data.length} candles` : 
+        'No'
+      );
+    }
     
     return res.status(200).json(formattedResults);
   } catch (error) {

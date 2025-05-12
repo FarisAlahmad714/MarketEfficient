@@ -42,6 +42,9 @@ const TestResultsSchema = new mongoose.Schema({
       isCorrect: Boolean,
       reasoning: String,
       aiAnalysis: String,
+      // Added fields to store chart data per question
+      ohlcData: Array,  // For setup charts
+      outcomeData: Array, // For outcome charts
       analysisStatus: {
         type: String,
         enum: ['pending', 'completed', 'failed'],

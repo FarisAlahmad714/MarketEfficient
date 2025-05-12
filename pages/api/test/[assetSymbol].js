@@ -537,9 +537,17 @@ if (req.method === 'POST') {
         isCorrect: answer.is_correct,
         reasoning: answer.user_reasoning || null,
         aiAnalysis: answer.ai_analysis || null,
-        analysisStatus: answer.ai_analysis ? 'completed' : 'pending'
+        analysisStatus: answer.ai_analysis ? 'completed' : 'pending',
+        // Add these lines to store chart data
+        ohlcData: answer.ohlc_data || [],
+        outcomeData: answer.outcome_data || []
+        
       }));
-      
+      console.log("CHART DATA DEBUG:");
+resultAnswers.forEach((answer, idx) => {
+  console.log(`Question ${answer.test_id} OHLC data: ${answer.ohlc_data?.length || 0} candles`);
+  console.log(`Question ${answer.test_id} Outcome data: ${answer.outcome_data?.length || 0} candles`);
+});
       // Create and save the test result - EXACTLY LIKE CHARTING EXAM
       const testResult = new TestResults({
         userId: userId,
