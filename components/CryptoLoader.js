@@ -1,9 +1,9 @@
-// components/CryptoLoader.js
+// components/CryptoLoader.js - With synchronized price changes and slower candles
 import React, { useContext, useEffect, useState, useRef } from 'react';
 import styled, { keyframes } from 'styled-components';
 import { ThemeContext } from '../contexts/ThemeContext';
 
-// Animations
+// Animations with full richness
 const pulse = keyframes`
   0% { opacity: 0.4; }
   50% { opacity: 0.8; }
@@ -20,7 +20,7 @@ const drawLine = keyframes`
   100% { width: 100%; }
 `;
 
-// Enhanced dynamic candle pulse animations with more variety
+// Keep the rich candle animations 
 const candlePulseGreen = keyframes`
   0% { transform: scaleY(0.92) rotate(-0.1deg); }
   20% { transform: scaleY(0.98) rotate(0.1deg); }
@@ -50,7 +50,14 @@ const pricePulse = keyframes`
   100% { transform: scale(1); }
 `;
 
-// Styled Components with fixed props (using $ prefix)
+// Enhanced price animation for dramatic effect when new candle appears
+const priceUpdate = keyframes`
+  0% { transform: scale(1); color: inherit; }
+  30% { transform: scale(1.15); color: #4CAF50; }
+  100% { transform: scale(1); color: inherit; }
+`;
+
+// Styled components
 const LoaderContainer = styled.div`
   width: 100%;
   height: ${props => props.height || '400px'};
@@ -108,7 +115,14 @@ const CurrentPrice = styled.span`
   font-weight: bold;
   color: ${props => props.$isDarkMode ? '#e0e0e0' : '#333'};
   margin-bottom: 5px;
-  animation: ${pricePulse} 2s ease-in-out infinite;
+  
+  &.updating {
+    animation: ${priceUpdate} 0.8s ease-out;
+  }
+  
+  &:not(.updating) {
+    animation: ${pricePulse} 2s ease-in-out infinite;
+  }
 `;
 
 const PriceChange = styled.span`
@@ -164,7 +178,6 @@ const CandlesContainer = styled.div`
   justify-content: space-between;
 `;
 
-// Enhanced candle styling with dynamic animations
 const Candle = styled.div`
   width: 6px;
   background-color: ${props => props.$isUp ? '#4CAF50' : '#F44336'};
@@ -175,7 +188,6 @@ const Candle = styled.div`
   animation: ${fadeIn} 0.3s ease-in forwards;
   animation-delay: ${props => props.$delay}s;
   
-  /* Dynamic animation based on candle direction */
   &.animated {
     animation: ${props => props.$isUp ? candlePulseGreen : candlePulseRed} ${props => props.$pulseSpeed}s ease-in-out infinite;
     animation-delay: ${props => props.$delay}s;
@@ -217,41 +229,104 @@ const TrendLine = styled.div`
   animation-delay: 0.5s;
 `;
 
-const StatusText = styled.div`
+// Loading badge that doesn't interfere with chart visualization
+const StatusBadge = styled.div`
   position: absolute;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 0.9rem;
-  color: ${props => props.$isDarkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)'};
-  text-align: center;
-  animation: ${pulse} 2s infinite ease-in-out;
-  z-index: 4;
+  bottom: 15px;
+  right: 15px;
+  padding: 8px 15px;
+  background: ${props => props.$isDarkMode ? 
+    'linear-gradient(135deg, rgba(30, 30, 30, 0.9), rgba(20, 20, 20, 0.95))' : 
+    'linear-gradient(135deg, rgba(250, 250, 250, 0.9), rgba(240, 240, 240, 0.95))'};
+  border-radius: 30px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(5px);
+  border: 1px solid ${props => props.$isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'};
+  z-index: 5;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    background: linear-gradient(45deg, #4CAF50, #2196F3, #4CAF50);
+    border-radius: 32px;
+    z-index: -1;
+    opacity: 0.6;
+    filter: blur(5px);
+    animation: ${pulse} 3s infinite ease-in-out;
+  }
 `;
 
-// ForwardRef for proper ref handling
-const CryptoLoader = React.forwardRef(({ 
-  height = "400px", 
-  message = "Loading chart data...", 
-  minDisplayTime = 2500, // Minimum time to display in milliseconds 
-  candleCount = 32 // More candles for a richer visualization
-}, ref) => {
+const StatusText = styled.div`
+  color: ${props => props.$isDarkMode ? '#e0e0e0' : '#333'};
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-align: center;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+`;
+
+const LoadingDots = styled.span`
+  display: inline-block;
+  margin-left: 5px;
+  
+  &::after {
+    content: '';
+    animation: ${keyframes`
+      0% { content: '.'; }
+      33% { content: '..'; }
+      66% { content: '...'; }
+      100% { content: '.'; }
+    `} 1.5s infinite steps(1);
+  }
+`;
+
+const DataIcon = styled.span`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 6px;
+  
+  svg {
+    animation: ${keyframes`
+      0% { transform: translateY(0); }
+      50% { transform: translateY(-2px); }
+      100% { transform: translateY(0); }
+    `} 1.5s infinite ease-in-out;
+    color: ${props => props.$isDarkMode ? '#4CAF50' : '#1E88E5'};
+  }
+`;
+
+// Fixed forwardRef implementation
+const CryptoLoader = React.forwardRef(function CryptoLoader(props, ref) {
+  const { 
+    height = "400px", 
+    message = "Loading chart data...", 
+    minDisplayTime = 2500,
+    candleCount = 26,
+    lightMode = false
+  } = props;
+  
   const { darkMode } = useContext(ThemeContext);
   
-  // Pre-calculate random price range for initial state
+  // Get initial random price data
   const getRandomPriceData = () => {
     const priceRanges = [
-      { min: 15000, max: 25000 },   // Bitcoin-like range
-      { min: 1000, max: 2500 },     // Ethereum-like range
-      { min: 0.5, max: 2 },         // XRP-like range
-      { min: 50, max: 150 },        // Solana-like range
-      { min: 5, max: 15 }           // Polkadot-like range
+      { min: 15000, max: 25000 },
+      { min: 1000, max: 2500 },
+      { min: 0.5, max: 2 },
+      { min: 50, max: 150 },
+      { min: 5, max: 15 }
     ];
     
     const selectedRange = priceRanges[Math.floor(Math.random() * priceRanges.length)];
     const randomPrice = selectedRange.min + Math.random() * (selectedRange.max - selectedRange.min);
     
-    // Format based on range
     let formattedPrice;
     if (selectedRange.min < 1) {
       formattedPrice = +randomPrice.toFixed(4);
@@ -270,7 +345,6 @@ const CryptoLoader = React.forwardRef(({
   // Get initial random price data
   const initialPriceData = getRandomPriceData();
   
-  // Initialize states with random values
   const [price, setPrice] = useState(initialPriceData.price);
   const [priceRange, setPriceRange] = useState(initialPriceData.priceRange);
   const [priceChange, setPriceChange] = useState(0);
@@ -280,42 +354,40 @@ const CryptoLoader = React.forwardRef(({
   const [priceLabels, setPriceLabels] = useState([]);
   const [timeLabels, setTimeLabels] = useState([]);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isPriceUpdating, setIsPriceUpdating] = useState(false);
+  
   const startTimeRef = useRef(Date.now());
-  const loaderRef = useRef(null);
   const priceIntervalRef = useRef(null);
   const candleAnimationTimerRef = useRef(null);
   const candleUpdateIntervalRef = useRef(null);
   
-  // Combine refs
-  React.useImperativeHandle(ref, () => ({
-    hideLoader: () => {
-      const elapsedTime = Date.now() - startTimeRef.current;
-      if (elapsedTime < minDisplayTime) {
-        // If we haven't shown the loader for the minimum time,
-        // wait before hiding it
-        const remainingTime = minDisplayTime - elapsedTime;
-        setTimeout(() => {
-          setIsVisible(false);
-        }, remainingTime);
-      } else {
-        // We've already displayed it long enough, hide immediately
-        setIsVisible(false);
-      }
+  // Handle ref for external control
+  useEffect(() => {
+    if (ref) {
+      ref.current = {
+        hideLoader: () => {
+          const elapsedTime = Date.now() - startTimeRef.current;
+          if (elapsedTime < minDisplayTime) {
+            setTimeout(() => {
+              setIsLoading(false);
+            }, minDisplayTime - elapsedTime);
+          } else {
+            setIsLoading(false);
+          }
+        }
+      };
     }
-  }));
-  
-  // Clean up intervals on unmount
-  useEffect(() => {
+    
     return () => {
-      if (priceIntervalRef.current) clearInterval(priceIntervalRef.current);
-      if (candleAnimationTimerRef.current) clearTimeout(candleAnimationTimerRef.current);
-      if (candleUpdateIntervalRef.current) clearInterval(candleUpdateIntervalRef.current);
+      if (ref) {
+        ref.current = null;
+      }
     };
-  }, []);
+  }, [minDisplayTime, ref]);
   
-  // Generate time labels
+  // Initialize time labels
   useEffect(() => {
-    // Generate time labels dynamically
     const now = new Date();
     const labels = [];
     for (let i = 0; i < 5; i++) {
@@ -326,7 +398,7 @@ const CryptoLoader = React.forwardRef(({
     setTimeLabels(labels);
   }, []);
   
-  // Generate and animate candles
+  // Generate and animate candles with synchronized price updates
   useEffect(() => {
     startTimeRef.current = Date.now();
     
@@ -336,23 +408,18 @@ const CryptoLoader = React.forwardRef(({
     let trendDirection = Math.random() > 0.5 ? 1 : -1;
     
     for (let i = 0; i < candleCount; i++) {
-      // Add some trend to make it look more realistic
       if (i % 5 === 0) {
-        // Possibly change trend every 5 candles
         if (Math.random() > 0.7) {
           trendDirection *= -1;
         }
       }
       
-      // Add randomness with trend bias
       const randomFactor = (Math.random() - 0.4) * trendDirection;
       const height = baseHeight + randomFactor * 60;
       baseHeight = height;
       
       const isUp = trendDirection > 0 ? Math.random() > 0.4 : Math.random() > 0.6;
-      
-      // Dynamic animation speeds for each candle
-      const pulseSpeed = 2 + Math.random() * 3; // 2-5 seconds
+      const pulseSpeed = 2 + Math.random() * 3;
       
       generatedCandles.push({
         id: i,
@@ -360,69 +427,25 @@ const CryptoLoader = React.forwardRef(({
         isUp,
         wickTop: 2 + Math.random() * 15,
         wickBottom: 2 + Math.random() * 15,
-        delay: i * 0.03, // Faster sequential appearance
+        // SLOWED DOWN candle appearance - important for your request
+        delay: i * 0.18, // Slower sequential appearance 
         pulseSpeed,
-        animated: false // Will be set to true sequentially
+        animated: false
       });
     }
     
     setCandles(generatedCandles);
+    setIsInitialized(true);
     
-    // Start sequential animation of candles
-    let animatedCount = 0;
-    const animateCandles = () => {
-      if (animatedCount < generatedCandles.length) {
-        setCandles(prevCandles => {
-          const newCandles = [...prevCandles];
-          if (newCandles[animatedCount]) {
-            newCandles[animatedCount] = { ...newCandles[animatedCount], animated: true };
-          }
-          return newCandles;
-        });
-        animatedCount++;
-        candleAnimationTimerRef.current = setTimeout(animateCandles, 50);
-      } else {
-        setAnimationStarted(true);
-      }
-    };
-    
-    // Start animation after a small delay
-    setTimeout(animateCandles, 300);
-    
-    // Add some influence from the candles
-    const lastCandlesAvg = generatedCandles
-      .slice(-5)
-      .reduce((sum, candle) => sum + candle.height, 0) / 5;
-    
-    // Adjust price based on candle pattern but keep within the selected range
-    const priceAdjustment = lastCandlesAvg * (priceRange.max - priceRange.min) / 100;
-    let finalPrice = price + priceAdjustment;
-    
-    // Keep within range
-    finalPrice = Math.max(priceRange.min, Math.min(priceRange.max, finalPrice));
-    
-    // Set the price with appropriate decimal places based on the range
-    if (priceRange.min < 1) {
-      // For very low prices (like XRP), use more decimal places
-      setPrice(+finalPrice.toFixed(4));
-    } else if (priceRange.min < 100) {
-      // For medium range prices
-      setPrice(+finalPrice.toFixed(2));
-    } else {
-      // For high value coins like BTC, round to whole numbers
-      setPrice(Math.round(finalPrice));
-    }
-    
-    // Generate dynamic price labels
+    // Generate initial price labels
     const dynamicPriceLabels = [];
     const priceStep = priceRange.min < 1 ? 
       priceRange.max / 4 : 
       (priceRange.max - priceRange.min) / 4;
       
     for (let i = 0; i < 4; i++) {
-      let labelPrice = finalPrice + (2 - i) * priceStep;
+      let labelPrice = price + (2 - i) * priceStep;
       
-      // Format label price based on range
       if (priceRange.min < 1) {
         dynamicPriceLabels.push(+labelPrice.toFixed(4));
       } else if (priceRange.min < 100) {
@@ -433,85 +456,141 @@ const CryptoLoader = React.forwardRef(({
     }
     setPriceLabels(dynamicPriceLabels);
     
-    // Mark as initialized
-    setIsInitialized(true);
-    
-    // Animate the price with random fluctuations more frequently
-    priceIntervalRef.current = setInterval(() => {
-      setPrice(prev => {
-        // More volatile price changes
-        const volatility = 0.005; // 0.5% volatility per update
-        const change = prev * (Math.random() * volatility * 2 - volatility);
-        const newPrice = prev + change;
+    // Start sequential animation of candles with synchronized price updates
+    let animatedCount = 0;
+    const animateCandles = () => {
+      if (animatedCount < generatedCandles.length) {
+        // Update candle animation state
+        setCandles(prevCandles => {
+          const newCandles = [...prevCandles];
+          if (newCandles[animatedCount]) {
+            newCandles[animatedCount] = { ...newCandles[animatedCount], animated: true };
+          }
+          return newCandles;
+        });
+        
+        // KEY CHANGE: Synchronize price change with each new candle appearance
+        const candle = generatedCandles[animatedCount];
+        
+        // Trigger price update animation
+        setIsPriceUpdating(true);
+        setTimeout(() => setIsPriceUpdating(false), 800);
+        
+        // Calculate price change based on candle characteristics
+        const volatilityFactor = 0.005 + (Math.random() * 0.01);
+        const priceDirection = candle.isUp ? 1 : -1;
+        const changeMagnitude = price * volatilityFactor * priceDirection;
+        
+        // Update price with dramatic movement in sync with new candle
+        setPrice(prev => {
+          const newPrice = prev + changeMagnitude;
+          
+          if (prev < 1) {
+            return +newPrice.toFixed(4);
+          } else if (prev < 100) {
+            return +newPrice.toFixed(2);
+          } else {
+            return Math.round(newPrice);
+          }
+        });
         
         // Set price change as percentage
-        const changePercent = (change / prev * 100);
+        const changePercent = (changeMagnitude / price * 100);
         setPriceChange(changePercent.toFixed(2));
         
-        // Format based on price range
-        if (prev < 1) {
-          return +newPrice.toFixed(4);
-        } else if (prev < 100) {
-          return +newPrice.toFixed(2);
-        } else {
-          return Math.round(newPrice);
-        }
-      });
-    }, 800); // More frequent updates
-    
-    // Periodically update some candles to create a dynamic chart effect
-    candleUpdateIntervalRef.current = setInterval(() => {
-      setCandles(prevCandles => {
-        const newCandles = [...prevCandles];
+        animatedCount++;
         
-        // Update 2-4 random candles
-        const numUpdates = 2 + Math.floor(Math.random() * 3);
-        for (let i = 0; i < numUpdates; i++) {
-          const randomIndex = Math.floor(Math.random() * newCandles.length);
-          const candle = newCandles[randomIndex];
-          
-          if (candle) {
-            // Randomly change direction sometimes
-            const newIsUp = Math.random() > 0.6 ? !candle.isUp : candle.isUp;
-            
-            // Adjust height
-            const heightChange = (Math.random() - 0.5) * 30;
-            const newHeight = Math.max(15, candle.height + heightChange);
-            
-            newCandles[randomIndex] = {
-              ...candle,
-              isUp: newIsUp,
-              height: newHeight,
-              pulseSpeed: 1 + Math.random() * 4, // vary animation speed
-              wickTop: 2 + Math.random() * 15,
-              wickBottom: 2 + Math.random() * 15,
-            };
-          }
-        }
+        // Schedule next candle animation with a dramatic pause
+        candleAnimationTimerRef.current = setTimeout(animateCandles, 300);
+      } else {
+        setAnimationStarted(true);
         
-        return newCandles;
-      });
-    }, 1200); // Update candles every 1.2 seconds
-    
-    return () => {
-      clearInterval(priceIntervalRef.current);
-      clearTimeout(candleAnimationTimerRef.current);
-      clearInterval(candleUpdateIntervalRef.current);
+        // After all candles are loaded, start periodic updates
+        if (!lightMode) {
+          candleUpdateIntervalRef.current = setInterval(() => {
+            // Update a random candle
+            setCandles(prevCandles => {
+              const newCandles = [...prevCandles];
+              const randomIndex = Math.floor(Math.random() * newCandles.length);
+              const candle = newCandles[randomIndex];
+              
+              if (candle) {
+                const newIsUp = Math.random() > 0.5;
+                const heightChange = (Math.random() - 0.5) * 30;
+                const newHeight = Math.max(15, candle.height + heightChange);
+                
+                newCandles[randomIndex] = {
+                  ...candle,
+                  isUp: newIsUp,
+                  height: newHeight,
+                  pulseSpeed: 1 + Math.random() * 4,
+                  wickTop: 2 + Math.random() * 15,
+                  wickBottom: 2 + Math.random() * 15,
+                };
+              }
+              
+              return newCandles;
+            });
+            
+            // Trigger price update animation
+            setIsPriceUpdating(true);
+            setTimeout(() => setIsPriceUpdating(false), 800);
+            
+            // Update price with random fluctuations
+            setPrice(prev => {
+              const volatility = 0.005;
+              const change = prev * (Math.random() * volatility * 2 - volatility);
+              const newPrice = prev + change;
+              
+              // Set price change as percentage
+              const changePercent = (change / prev * 100);
+              setPriceChange(changePercent.toFixed(2));
+              
+              if (prev < 1) {
+                return +newPrice.toFixed(4);
+              } else if (prev < 100) {
+                return +newPrice.toFixed(2);
+              } else {
+                return Math.round(newPrice);
+              }
+            });
+          }, 2000);
+        }
+      }
     };
-  }, [candleCount, price, priceRange]);
+    
+    // Start animation after a small delay
+    setTimeout(animateCandles, 300);
+    
+    // Clean up all intervals on unmount
+    return () => {
+      if (priceIntervalRef.current) clearInterval(priceIntervalRef.current);
+      if (candleAnimationTimerRef.current) clearTimeout(candleAnimationTimerRef.current);
+      if (candleUpdateIntervalRef.current) clearInterval(candleUpdateIntervalRef.current);
+    };
+  }, []);  // Only run once on mount
   
-  // If the loader is hidden, return null
   if (!isVisible) return null;
   
-  // Don't render until fully initialized
-  if (!isInitialized) return (
-    <LoaderContainer ref={loaderRef} height={height} $isDarkMode={darkMode} style={{ justifyContent: 'center', alignItems: 'center' }}>
-      {/* Minimal placeholder while initializing */}
-    </LoaderContainer>
-  );
+  if (!isInitialized) {
+    return (
+      <LoaderContainer height={height} $isDarkMode={darkMode}>
+        <StatusText $isDarkMode={darkMode}>
+          <DataIcon $isDarkMode={darkMode}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" strokeWidth="2"/>
+              <path d="M12 7V12L15 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+          </DataIcon>
+          {message}
+          <LoadingDots />
+        </StatusText>
+      </LoaderContainer>
+    );
+  }
   
   return (
-    <LoaderContainer ref={loaderRef} height={height} $isDarkMode={darkMode}>
+    <LoaderContainer height={height} $isDarkMode={darkMode}>
       <ChartGrid>
         <HorizontalLine $isDarkMode={darkMode} style={{ top: '25%' }} />
         <HorizontalLine $isDarkMode={darkMode} style={{ top: '50%' }} />
@@ -524,7 +603,12 @@ const CryptoLoader = React.forwardRef(({
       </ChartGrid>
       
       <ChartPrice>
-        <CurrentPrice $isDarkMode={darkMode}>${price.toLocaleString()}</CurrentPrice>
+        <CurrentPrice 
+          $isDarkMode={darkMode} 
+          className={isPriceUpdating ? 'updating' : ''}
+        >
+          ${price.toLocaleString()}
+        </CurrentPrice>
         <PriceChange $isPositive={parseFloat(priceChange) >= 0}>
           {parseFloat(priceChange) >= 0 ? '+' : ''}{Math.abs(parseFloat(priceChange)).toFixed(2)}%
         </PriceChange>
@@ -547,9 +631,7 @@ const CryptoLoader = React.forwardRef(({
           <Candle 
             key={candle.id}
             $isUp={candle.isUp}
-            style={{ 
-              height: `${candle.height}px`,
-            }}
+            style={{ height: `${candle.height}px` }}
             $wickTop={candle.wickTop}
             $wickBottom={candle.wickBottom}
             $delay={candle.delay}
@@ -561,9 +643,20 @@ const CryptoLoader = React.forwardRef(({
       
       {animationStarted && <TrendLine />}
       
-      <StatusText $isDarkMode={darkMode}>
-        {message}
-      </StatusText>
+      {isLoading && (
+        <StatusBadge $isDarkMode={darkMode}>
+          <StatusText $isDarkMode={darkMode}>
+            <DataIcon $isDarkMode={darkMode}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" strokeWidth="2"/>
+                <path d="M12 7V12L15 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              </svg>
+            </DataIcon>
+            {message}
+            <LoadingDots />
+          </StatusText>
+        </StatusBadge>
+      )}
     </LoaderContainer>
   );
 });

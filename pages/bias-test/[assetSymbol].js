@@ -4,7 +4,7 @@ import { useRouter } from 'next/router';
 import axios from 'axios';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import LoadingScreen from '../../components/LoadingScreen';
+
 import CryptoLoader from '../../components/CryptoLoader';
 import { ThemeContext } from '../../contexts/ThemeContext';
 

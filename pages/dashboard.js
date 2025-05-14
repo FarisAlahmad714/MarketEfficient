@@ -1,9 +1,10 @@
 // pages/dashboard.js
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useEffect, useState, useContext, useRef } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
 import { ThemeContext } from '../contexts/ThemeContext';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
+import CryptoLoader from '../components/CryptoLoader'; 
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   BarChart, Bar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
@@ -19,6 +20,9 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [period, setPeriod] = useState('month');
+  
+  // Add ref for CryptoLoader
+  const cryptoLoaderRef = useRef(null);
   
   useEffect(() => {
     // Redirect if not authenticated
@@ -54,7 +58,17 @@ const Dashboard = () => {
       console.error('Error fetching dashboard metrics:', err);
       setError('Failed to load dashboard data. Please try again.');
     } finally {
-      setLoading(false);
+      // Use the CryptoLoader ref to hide the loader
+      if (cryptoLoaderRef.current) {
+        cryptoLoaderRef.current.hideLoader();
+        
+        // Set loading to false after the loader animation completes
+        setTimeout(() => {
+          setLoading(false);
+        }, 500);
+      } else {
+        setLoading(false);
+      }
     }
   };
   
@@ -64,22 +78,24 @@ const Dashboard = () => {
         display: 'flex', 
         justifyContent: 'center', 
         alignItems: 'center', 
-        height: '70vh' 
+        height: '70vh',
+        padding: '20px'
       }}>
         <div style={{
-          width: '50px',
-          height: '50px',
-          border: `4px solid ${darkMode ? '#333' : '#f3f3f3'}`,
-          borderTop: '4px solid #2196F3',
-          borderRadius: '50%',
-          animation: 'spin 1s linear infinite'
-        }}></div>
-        <style jsx>{`
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-        `}</style>
+          width: '400px',
+          maxWidth: '100%',
+          boxShadow: '0 10px 30px rgba(0, 0, 0, 0.2)',
+          borderRadius: '8px',
+          overflow: 'hidden'
+        }}>
+          <CryptoLoader 
+            ref={cryptoLoaderRef}
+            message="Loading dashboard data..."
+            minDisplayTime={1500}
+            height="350px"
+            key={`dashboard-loader-${Date.now()}`} // Force remount
+          />
+        </div>
       </div>
     );
   }
