@@ -15,57 +15,84 @@ export default async function handler(req, res) {
     if (!reasoning) return res.status(400).json({ error: 'Reasoning is required' });
     if (!correctAnswer) return res.status(400).json({ error: 'Correct answer is required' });
     
-    console.log(`Processing analysis for ${prediction.toUpperCase()} prediction (Correct: ${correctAnswer.toUpperCase()})`);
+    console.log(`Processing analysis for ${prediction.toUpperCase()} prediction (Correct: ${correctAnswer.toUpperCase()}, wasCorrect: ${wasCorrect})`);
 
+    // Get the most recent candle data for explicit reference
+    const lastCandle = chartData[chartData.length - 1];
+    const isBullish = lastCandle.close > lastCandle.open;
+    const candleType = isBullish ? "BULLISH" : "BEARISH";
+    
+    // Get the outcome candle data if available
+    const nextCandle = outcomeData && outcomeData.length > 0 ? outcomeData[0] : null;
+    const nextCandleType = nextCandle ? (nextCandle.close > nextCandle.open ? "BULLISH" : "BEARISH") : correctAnswer;
+    
+    // Extract dates from the candles if available, otherwise use placeholders
+    const lastCandleDate = lastCandle.date || "the latest trading session";
+    const nextCandleDate = nextCandle && nextCandle.date ? nextCandle.date : "the following session";
+    
     // Initialize OpenAI client with GPT-4o
     const openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
     });
 
-    // Prepare messages for GPT-4o with clear instructions about correctness
+    // Prepare messages for GPT-4o with explicit date-based referencing
     const messages = [
       {
         role: "system",
-        content: `You are a professional trading coach and educator specializing in technical analysis and trading psychology. Your goal is to provide specific, personalized feedback on a trader's decision-making process.
+        content: `You are a professional trading analyst providing expert feedback on a trader's market prediction. You will analyze the trader's reasoning and chart analysis with specific attention to detail.
 
-IMPORTANT: This is a next-candle prediction exercise. The trader was shown a chart (setup data) and asked to predict ONLY whether the NEXT CANDLE would be Bullish or Bearish. The trader predicted ${prediction.toUpperCase()} and the correct answer was ${correctAnswer.toUpperCase()}. The trader's prediction was ${wasCorrect ? "CORRECT" : "INCORRECT"}.
+CRITICAL DATA VERIFICATION:
+1. The trader predicted the next candle would be: ${prediction.toUpperCase()}
+2. The actual outcome was: ${correctAnswer.toUpperCase()} 
+3. The trader's prediction was: ${wasCorrect ? "CORRECT" : "INCORRECT"}
+4. Latest complete candle on ${lastCandleDate} was: ${candleType}
 
-Your analysis should focus specifically on why their prediction was ${wasCorrect ? "correct or what they saw correctly" : "incorrect or what they might have missed"}. Be detailed and specific to the chart patterns visible that would influence the immediate next candle's direction. Avoid generic statements.
+ANALYSIS REQUIREMENTS:
+1. Your analysis must be thorough, specific, and tailored to this precise chart and reasoning.
+2. You must examine the trader's exact words and the specific chart patterns visible.
+3. Even when the prediction was correct, you must critically evaluate the reasoning process.
+4. Reference specific dates and chart formations rather than raw numerical data.
+5. Don't focus extensively on the specific price numbers but rather on the patterns, trends, and formations visible on the chart.
 
-Format your response using proper HTML markup as follows:
+FORMAT YOUR ANALYSIS WITH THE FOLLOWING SECTIONS:
 
 <h3>Analysis of Reasoning</h3>
-<p>Provide a detailed examination of the trader's thought process for predicting the next candle, referencing specific chart patterns or signals visible in the setup chart. Explain why their prediction was ${wasCorrect ? "correct" : "incorrect"} based on these signals.</p>
+<p>Provide a detailed examination of the trader's thought process for predicting the next candle, referencing specific chart patterns or signals visible in the setup chart. Explain why their prediction was ${wasCorrect ? "correct" : "incorrect"} based on these signals. Quote parts of their reasoning and connect to specific chart elements.</p>
 
 <h3>Strengths</h3>
 <ul>
-<li>Identify 2-3 specific strengths in their analysis, even if their prediction was incorrect</li>
-<li>Be precise about what they noticed correctly in the setup that influenced the next candle</li>
-<li>Reference specific technical elements they identified correctly</li>
+<li>Identify 2-3 specific strengths in their analysis by DIRECTLY QUOTING sections of their reasoning</li>
+<li>For each strength, explicitly connect it to visible chart patterns by referencing specific candle formations or trend movements</li>
+<li>Even if they were correct, differentiate between sound analysis and lucky guessing based on their reasoning</li>
 </ul>
 
 <h3>Potential Blind Spots</h3>
 <ul>
-<li>Point out 2-3 specific technical elements they may have overlooked that influenced the next candle</li>
-<li>Identify any cognitive biases evident in their reasoning</li>
-<li>Suggest what signals they missed that pointed to the ${correctAnswer.toUpperCase()} outcome</li>
+<li>Point out 2-3 specific technical elements they overlooked by referencing specific dates or patterns</li>
+<li>DIRECTLY QUOTE any contradictions or logical fallacies in their reasoning</li>
+<li>Even if their prediction was correct, identify specifically what critical indicators they missed that could have made the prediction more reliable</li>
 </ul>
 
 <h3>Educational Tips</h3>
 <ul>
-<li>Recommend 2-3 specific technical analysis concepts that would improve their next-candle prediction</li>
-<li>Suggest specific indicators or patterns that would be relevant to this prediction</li>
-<li>Provide actionable advice for similar next-candle predictions in the future</li>
+<li>For THIS SPECIFIC chart scenario (not generic advice), recommend 2-3 technical analysis tools that would improve prediction accuracy</li>
+<li>Suggest indicator settings or analysis techniques that would have revealed the true ${correctAnswer.toUpperCase()} bias in this exact chart</li>
+<li>Provide a step-by-step process tailored to this specific chart pattern they should follow next time</li>
 </ul>
 
 <h3>Psychology Notes</h3>
 <ul>
-<li>Offer 2-3 insights about trading psychology relevant to this prediction</li>
-<li>Identify emotional factors that might have influenced their decision</li>
-<li>Suggest mental frameworks for more objective single-candle analysis</li>
+<li>Identify specific cognitive biases evident in THIS trader's reasoning, quoting their words as evidence</li>
+<li>Analyze emotional language or overconfidence/underconfidence markers in their reasoning</li>
+<li>Suggest a precise mental checklist for this type of chart pattern that would help overcome the specific psychological traps they fell into</li>
 </ul>
 
-Your analysis must be specific to the chart provided, referencing visible patterns and price action as they relate to predicting the NEXT candle only. Be clear about whether their prediction was correct or incorrect throughout your analysis.`
+IMPORTANT RULES:
+- NEVER contradict that the prediction was ${wasCorrect ? "CORRECT" : "INCORRECT"}
+- ALWAYS refer to chart elements by their dates or relative positions (e.g., "the bullish candle on ${lastCandleDate}")
+- ALWAYS quote the trader's exact words when analyzing their reasoning
+- NEVER provide generic trading advice without tying it to specific elements in this chart
+- BE CRITICAL of vague reasoning even when the prediction was correct`
       }
     ];
 
@@ -74,8 +101,7 @@ Your analysis must be specific to the chart provided, referencing visible patter
     
     // Add immediate next candle summary if available
     let nextCandleAnalysis = "";
-    if (outcomeData && outcomeData.length > 0) {
-      const nextCandle = outcomeData[0];
+    if (nextCandle) {
       nextCandleAnalysis = prepareNextCandleAnalysis(chartData, nextCandle);
     }
     
@@ -86,15 +112,22 @@ Your analysis must be specific to the chart provided, referencing visible patter
         content: [
           {
             type: "text",
-            text: `I'm analyzing this price chart and predicted the immediate NEXT candle would be ${prediction.toUpperCase()}.
+            text: `I need your detailed analysis of my trading decision.
 
-My reasoning: "${reasoning}"
+KEY FACTS:
+- Chart: You can see the actual price chart in the attached image
+- My Prediction: I predicted the next candle would be ${prediction.toUpperCase()}
+- My Reasoning: "${reasoning}"
+- Actual Outcome: The next candle was ${correctAnswer.toUpperCase()}
+- Result: My prediction was ${wasCorrect ? "CORRECT" : "INCORRECT"}
 
-${nextCandleAnalysis ? "Here's what actually happened in the next candle: " + nextCandleAnalysis : ""}
+Last Candle Date: ${lastCandleDate}
+Last Candle Type: ${candleType}
 
-The correct prediction was ${correctAnswer.toUpperCase()}, so my prediction was ${wasCorrect ? "CORRECT" : "INCORRECT"}.
+${nextCandle ? `Next Candle Date: ${nextCandleDate}
+Next Candle Type: ${nextCandleType}` : ''}
 
-Please analyze my decision-making process focusing specifically on predicting the direction of the NEXT candle only. Explain why my prediction was ${wasCorrect ? "correct" : "incorrect"} and what I could improve for next time.`
+Please analyze my decision-making process in detail, focusing specifically on what I got right or wrong based on the chart patterns and my reasoning. Be specific to what's visible in the chart and quote my reasoning directly.`
           },
           {
             type: "image_url",
@@ -109,17 +142,23 @@ Please analyze my decision-making process focusing specifically on predicting th
       // If no image, just use the text summary
       messages.push({
         role: "user",
-        content: `I'm analyzing a price chart and predicted the immediate NEXT candle would be ${prediction.toUpperCase()}.
+        content: `I need your detailed analysis of my trading decision.
 
-My reasoning: "${reasoning}"
+KEY FACTS:
+- My Prediction: I predicted the next candle would be ${prediction.toUpperCase()}
+- My Reasoning: "${reasoning}"
+- Actual Outcome: The next candle was ${correctAnswer.toUpperCase()}
+- Result: My prediction was ${wasCorrect ? "CORRECT" : "INCORRECT"}
 
-Chart summary: ${chartSummary}
+Chart Summary: ${chartSummary}
 
-${nextCandleAnalysis ? "Here's what actually happened in the next candle: " + nextCandleAnalysis : ""}
+Last Candle Date: ${lastCandleDate}
+Last Candle Type: ${candleType}
 
-The correct prediction was ${correctAnswer.toUpperCase()}, so my prediction was ${wasCorrect ? "CORRECT" : "INCORRECT"}.
+${nextCandle ? `Next Candle Date: ${nextCandleDate}
+Next Candle Type: ${nextCandleType}` : ''}
 
-Please analyze my decision-making process focusing specifically on predicting the direction of the NEXT candle only. Explain why my prediction was ${wasCorrect ? "correct" : "incorrect"} and what I could improve for next time.`
+Please analyze my decision-making process in detail, focusing specifically on what I got right or wrong based on the chart patterns and my reasoning. Be specific and reference candle patterns and dates rather than focusing on exact price levels.`
       });
     }
 
@@ -128,8 +167,8 @@ Please analyze my decision-making process focusing specifically on predicting th
     const completion = await openai.chat.completions.create({
       model: "gpt-4o", // Specifying GPT-4o model
       messages: messages,
-      temperature: 0.7,
-      max_tokens: 1000,
+      temperature: 0.3, // Lower temperature for more consistency and accuracy
+      max_tokens: 1500,
     });
 
     const analysis = completion.choices[0].message.content;
@@ -153,44 +192,28 @@ function prepareChartSummary(chartData) {
       return "Invalid chart data provided";
     }
 
-    // Get the last 5-10 candles as these are most relevant for next-candle prediction
+    // Get the last 10 candles as these are most relevant for next-candle prediction
     const recentCandles = chartData.slice(-10);
     const lastCandle = chartData[chartData.length - 1];
     
-    // Analyze the last candle in detail
-    const bodySize = Math.abs(lastCandle.close - lastCandle.open);
-    const totalRange = lastCandle.high - lastCandle.low;
-    const upperWick = lastCandle.close > lastCandle.open 
-        ? (lastCandle.high - lastCandle.close) 
-        : (lastCandle.high - lastCandle.open);
-    const lowerWick = lastCandle.close > lastCandle.open 
-        ? (lastCandle.open - lastCandle.low) 
-        : (lastCandle.close - lastCandle.low);
+    // Calculate bullish/bearish count
+    const bullishCount = recentCandles.filter(c => c.close > c.open).length;
+    const bearishCount = recentCandles.length - bullishCount;
     
+    // Determine trend direction
+    const trendType = bullishCount > bearishCount ? "bullish" : "bearish";
+    
+    // Identify candle patterns (simplified for this example)
     const lastCandleType = lastCandle.close > lastCandle.open ? "bullish" : "bearish";
-    let lastCandleDesc = "";
     
-    if (bodySize < 0.1 * totalRange) {
-      lastCandleDesc = "a doji indicating indecision";
-    } else if (upperWick > 2 * bodySize && lowerWick < 0.5 * bodySize) {
-      lastCandleDesc = "a long upper wick suggesting selling pressure at higher prices";
-    } else if (lowerWick > 2 * bodySize && upperWick < 0.5 * bodySize) {
-      lastCandleDesc = "a long lower wick suggesting buying pressure at lower prices";
-    } else if (bodySize > 0.7 * totalRange) {
-      lastCandleDesc = `a strong ${lastCandleType} body with minimal wicks`;
-    } else {
-      lastCandleDesc = `a moderate ${lastCandleType} body with balanced wicks`;
-    }
+    // Get last candle date if available
+    const lastCandleDate = lastCandle.date || "the most recent session";
     
-    // Count recent bullish vs bearish candles
-    const recentBullishCount = recentCandles.filter(c => c.close > c.open).length;
-    const recentBearishCount = recentCandles.filter(c => c.close <= c.open).length;
-    
-    // Create a textual summary
+    // Create a more descriptive, less numerical summary
     return `
-      The most recent candle is ${lastCandleType} with ${lastCandleDesc}.
-      Out of the last 10 candles, ${recentBullishCount} were bullish and ${recentBearishCount} were bearish.
-      The closing price of the last visible candle is ${lastCandle.close.toFixed(2)}.
+      The most recent candle on ${lastCandleDate} formed a ${lastCandleType} pattern.
+      Out of the last 10 candles, ${bullishCount} showed bullish movement and ${bearishCount} showed bearish movement.
+      The overall trend over these recent sessions appears to be ${trendType}.
     `;
   } catch (error) {
     console.error('Error preparing chart summary:', error);
@@ -207,21 +230,19 @@ function prepareNextCandleAnalysis(chartData, nextCandle) {
     
     const lastSetupCandle = chartData[chartData.length - 1];
     
-    // Calculate change from last candle to next candle
-    const openChange = ((nextCandle.open - lastSetupCandle.close) / lastSetupCandle.close) * 100;
-    const closeChange = ((nextCandle.close - nextCandle.open) / nextCandle.open) * 100;
-    const overallChange = ((nextCandle.close - lastSetupCandle.close) / lastSetupCandle.close) * 100;
+    // Determine candle types
+    const nextCandleType = nextCandle.close > nextCandle.open ? "bullish" : "bearish";
+    const lastCandleType = lastSetupCandle.close > lastSetupCandle.open ? "bullish" : "bearish";
     
-    // Determine if the next candle was bullish or bearish
-    const candleType = nextCandle.close > nextCandle.open ? "bullish" : "bearish";
-    const overallDirection = nextCandle.close > lastSetupCandle.close ? "bullish" : "bearish";
+    // Get dates if available
+    const lastCandleDate = lastSetupCandle.date || "the previous session";
+    const nextCandleDate = nextCandle.date || "the following session";
     
-    // Create summary of the next candle
+    // Create a more descriptive, less numerical summary
     return `
-      The next candle opened ${openChange > 0 ? 'up' : 'down'} ${Math.abs(openChange).toFixed(2)}% from the previous close.
-      It was a ${candleType} candle (${candleType === 'bullish' ? 'close > open' : 'close < open'}), moving ${Math.abs(closeChange).toFixed(2)}% ${closeChange > 0 ? 'up' : 'down'} from its open price.
-      Overall from the previous close to this candle's close, the price moved ${overallChange > 0 ? 'up' : 'down'} ${Math.abs(overallChange).toFixed(2)}%.
-      This makes the outcome ${overallDirection.toUpperCase()} relative to the previous candle.
+      The next candle on ${nextCandleDate} formed a ${nextCandleType} pattern, 
+      following the ${lastCandleType} candle from ${lastCandleDate}.
+      Overall, the price movement between these two sessions showed a ${nextCandleType} bias.
     `;
   } catch (error) {
     console.error('Error preparing next candle analysis:', error);
