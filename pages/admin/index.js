@@ -1,3 +1,4 @@
+// pages/admin/index.js
 import { useState, useEffect, useContext } from 'react';
 import { useRouter } from 'next/router';
 import { AuthContext } from '../../contexts/AuthContext';
@@ -15,6 +16,12 @@ const AdminPanel = () => {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [search, setSearch] = useState('');
+  
+  // New state for delete confirmation
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [userToDelete, setUserToDelete] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState(null);
   
   useEffect(() => {
     // Check if user is admin, redirect if not
@@ -61,6 +68,45 @@ const AdminPanel = () => {
   const handleSearch = (e) => {
     e.preventDefault();
     setPage(1); // Reset to first page on new search
+  };
+
+  // Handler for delete button click
+  const handleDeleteClick = (user) => {
+    setUserToDelete(user);
+    setShowDeleteModal(true);
+    setDeleteError(null);
+  };
+
+  // Handler for confirming user deletion
+  const confirmDelete = async () => {
+    if (!userToDelete) return;
+    
+    setDeleteLoading(true);
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`/api/admin/users?userId=${userToDelete._id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to delete user');
+      }
+      
+      // Remove user from the list
+      setUsers(users.filter(u => u._id !== userToDelete._id));
+      
+      // Close modal
+      setShowDeleteModal(false);
+      setUserToDelete(null);
+    } catch (err) {
+      setDeleteError(err.message || 'An error occurred while deleting the user');
+    } finally {
+      setDeleteLoading(false);
+    }
   };
   
   return (
@@ -198,21 +244,39 @@ const AdminPanel = () => {
                         {new Date(user.createdAt).toLocaleDateString()}
                       </td>
                       <td style={{ padding: '15px', textAlign: 'center' }}>
-                        <button
-                          style={{
-                            padding: '5px 10px',
-                            backgroundColor: darkMode ? '#333' : '#f5f5f5',
-                            color: darkMode ? '#e0e0e0' : '#333',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            marginRight: '5px'
-                          }}
-                          onClick={() => {/* Implement view user details */}}
-                        >
-                          View
-                        </button>
-                        {/* Additional action buttons could go here */}
+                        <div style={{ display: 'flex', justifyContent: 'center', gap: '5px' }}>
+                          <button
+                            style={{
+                              padding: '5px 10px',
+                              backgroundColor: darkMode ? '#333' : '#f5f5f5',
+                              color: darkMode ? '#e0e0e0' : '#333',
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: 'pointer'
+                            }}
+                            onClick={() => {/* Implement view user details */}}
+                          >
+                            View
+                          </button>
+                          
+                          {/* Delete button - Skip delete for admin users */}
+                          {!user.isAdmin && (
+                            <button
+                              style={{
+                                padding: '5px 10px',
+                                backgroundColor: darkMode ? '#3A1A1A' : '#ffebee',
+                                color: '#F44336',
+                                border: 'none',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                transition: 'background-color 0.2s ease'
+                              }}
+                              onClick={() => handleDeleteClick(user)}
+                            >
+                              Delete
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -281,6 +345,102 @@ const AdminPanel = () => {
             </div>
           )}
         </>
+      )}
+
+      {/* Delete confirmation modal */}
+      {showDeleteModal && userToDelete && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            backgroundColor: darkMode ? '#1e1e1e' : 'white',
+            padding: '30px',
+            borderRadius: '8px',
+            maxWidth: '500px',
+            width: '90%',
+            boxShadow: darkMode ? '0 4px 20px rgba(0,0,0,0.5)' : '0 4px 20px rgba(0,0,0,0.2)'
+          }}>
+            <h3 style={{
+              color: darkMode ? '#e0e0e0' : '#333',
+              marginTop: 0,
+              marginBottom: '20px'
+            }}>
+              Confirm User Deletion
+            </h3>
+            
+            <p style={{
+              color: darkMode ? '#b0b0b0' : '#666',
+              marginBottom: '20px'
+            }}>
+              Are you sure you want to delete the user <strong style={{ color: darkMode ? '#e0e0e0' : '#333' }}>{userToDelete.name}</strong> with email <strong style={{ color: darkMode ? '#e0e0e0' : '#333' }}>{userToDelete.email}</strong>?
+            </p>
+            
+            <p style={{
+              color: '#F44336',
+              marginBottom: '30px',
+              fontWeight: 500
+            }}>
+              This action cannot be undone. All user data will be permanently deleted.
+            </p>
+
+            {deleteError && (
+              <div style={{
+                padding: '10px 15px',
+                backgroundColor: darkMode ? 'rgba(244, 67, 54, 0.1)' : '#ffebee',
+                color: '#f44336',
+                borderRadius: '4px',
+                marginBottom: '20px'
+              }}>
+                {deleteError}
+              </div>
+            )}
+            
+            <div style={{
+              display: 'flex',
+              justifyContent: 'flex-end',
+              gap: '10px'
+            }}>
+              <button 
+                onClick={() => setShowDeleteModal(false)}
+                style={{
+                  padding: '10px 20px',
+                  backgroundColor: darkMode ? '#333' : '#e0e0e0',
+                  color: darkMode ? '#e0e0e0' : '#333',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+              
+              <button 
+                onClick={confirmDelete}
+                disabled={deleteLoading}
+                style={{
+                  padding: '10px 20px',
+                  backgroundColor: '#F44336',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: deleteLoading ? 'default' : 'pointer',
+                  opacity: deleteLoading ? 0.7 : 1
+                }}
+              >
+                {deleteLoading ? 'Deleting...' : 'Delete User'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
