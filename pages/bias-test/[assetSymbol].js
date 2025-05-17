@@ -14,6 +14,28 @@ const CandlestickChart = dynamic(
   { ssr: false }
 );
 
+// Import VolumeChart with SSR disabled
+const VolumeChart = dynamic(
+  () => import('../../components/charts/VolumeChart'),
+  { 
+    ssr: false,
+    loading: ({ height }) => (
+      <div style={{ 
+        height: height || '120px', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        backgroundColor: '#1e1e1e',
+        color: '#888',
+        fontSize: '14px',
+        borderRadius: '4px'
+      }}>
+        Loading volume data...
+      </div>
+    )
+  }
+);
+
 export default function AssetTestPage() {
   const router = useRouter();
   const { assetSymbol, timeframe } = router.query;
@@ -25,8 +47,30 @@ export default function AssetTestPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [reasoningInputs, setReasoningInputs] = useState({}); // Store reasoning inputs
   const [validationError, setValidationError] = useState(""); // For validation messages
+  const [showVolume, setShowVolume] = useState(true); // State to toggle volume display
   const cryptoLoaderRef = useRef(null);
   const { darkMode } = useContext(ThemeContext);
+
+  // Helper functions for volume display
+  const getVolumeTimeframeLabel = (timeframe) => {
+    switch(timeframe) {
+      case '4h': return 'Volume(4h)';
+      case 'daily': return 'Volume(1d)';
+      case 'weekly': return 'Volume(1w)';
+      case 'monthly': return 'Volume(1m)';
+      default: return 'Volume';
+    }
+  };
+
+  const getVolumeTooltip = (timeframe) => {
+    switch(timeframe) {
+      case '4h': return 'Trading volume during this 4-hour period';
+      case 'daily': return 'Trading volume for this 24-hour period';
+      case 'weekly': return 'Total trading volume for this week';
+      case 'monthly': return 'Total trading volume for this month';
+      default: return 'Trading volume for this period';
+    }
+  };
 
   useEffect(() => {
     // Add FontAwesome script if it's not already present
@@ -95,6 +139,11 @@ export default function AssetTestPage() {
       ...prev,
       [questionId]: reasoning
     }));
+  };
+
+  // Toggle volume display
+  const toggleVolumeDisplay = () => {
+    setShowVolume(!showVolume);
   };
 
   // Validate all answers before submission
@@ -248,6 +297,12 @@ export default function AssetTestPage() {
     return data[data.length - 1];
   };
 
+  // Check if any data has volume information
+  const hasAnyVolumeData = testData.questions.some(question => 
+    question.ohlc_data && 
+    question.ohlc_data.some(candle => candle.volume > 0)
+  );
+
   return (
     <div style={{ 
       maxWidth: '1200px', 
@@ -286,6 +341,31 @@ export default function AssetTestPage() {
           For each chart below, analyze the price pattern and predict if the market will be Bullish or Bearish after the last candle shown.
           Provide your reasoning for each prediction. After submitting, you'll receive an AI analysis of your trading decisions.
         </p>
+        
+        {/* Volume Toggle Button - only show if we have volume data */}
+        {hasAnyVolumeData && (
+          <div style={{ textAlign: 'center', marginTop: '15px' }}>
+            <button
+              onClick={toggleVolumeDisplay}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: darkMode ? '#333' : '#e0e0e0',
+                color: darkMode ? '#e0e0e0' : '#333',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontWeight: '500',
+                fontSize: '14px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+            >
+              <i className={`fas ${showVolume ? 'fa-toggle-on' : 'fa-toggle-off'}`}></i>
+              {showVolume ? 'Hide Volume' : 'Show Volume'}
+            </button>
+          </div>
+        )}
       </div>
       
       {/* Validation Error Message */}
@@ -306,6 +386,8 @@ export default function AssetTestPage() {
       
       {testData.questions.map((question, index) => {
         const lastCandle = getLastCandle(question.ohlc_data);
+        // Check if this question has volume data
+        const hasVolumeData = question.ohlc_data && question.ohlc_data.some(candle => candle.volume > 0);
         
         return (
           <div key={question.id} style={{ 
@@ -319,15 +401,30 @@ export default function AssetTestPage() {
               marginBottom: '20px',
               color: darkMode ? '#e0e0e0' : '#333',
               borderBottom: `1px solid ${darkMode ? '#444' : '#eee'}`,
-              paddingBottom: '10px'
+              paddingBottom: '10px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
             }}>
-              Chart {index + 1}
+              <span>Chart {index + 1}</span>
+              {hasVolumeData && (
+                <span style={{ 
+                  fontSize: '14px', 
+                  fontWeight: 'normal',
+                  padding: '4px 10px',
+                  borderRadius: '4px',
+                  backgroundColor: darkMode ? '#333' : '#f0f0f0',
+                  color: showVolume ? (darkMode ? '#81c784' : '#4caf50') : (darkMode ? '#bbbbbb' : '#888888')
+                }}>
+                  <i className={`fas fa-chart-bar`} style={{ marginRight: '5px' }}></i>
+                  Volume: {showVolume ? 'Visible' : 'Hidden'}
+                </span>
+              )}
             </h2>
             
             <div style={{ 
               marginBottom: '20px', 
-              position: 'relative', 
-              minHeight: '400px'
+              position: 'relative'
             }}>
               {chartsLoading ? (
                 <CryptoLoader 
@@ -341,10 +438,22 @@ export default function AssetTestPage() {
                   <>
                     {/* Add ID to chart container for possible screenshot capture */}
                     <div id={`chart-${question.id}`}>
-                      <CandlestickChart data={question.ohlc_data} height={400} />
+                      {/* Main price chart */}
+                      <CandlestickChart 
+                        data={question.ohlc_data} 
+                        height={400} 
+                      />
+                      
+                      {/* Separate volume chart */}
+                      {showVolume && hasVolumeData && (
+                        <VolumeChart 
+                          data={question.ohlc_data} 
+                          height={120} 
+                        />
+                      )}
                     </div>
                     
-                    {/* Last Candle OHLC Data */}
+                    {/* Last Candle OHLC Data with volume */}
                     {lastCandle && (
                       <div style={{ 
                         marginTop: '15px',
@@ -358,11 +467,11 @@ export default function AssetTestPage() {
                           marginBottom: '10px',
                           color: darkMode ? '#81c784' : '#2e7d32'
                         }}>
-                          Last Candle OHLC Data:
+                          Last Candle Data:
                         </p>
                         <div style={{ 
                           display: 'grid', 
-                          gridTemplateColumns: 'repeat(2, 1fr)', 
+                          gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', 
                           gap: '10px'
                         }}>
                           <div style={{ 
@@ -397,6 +506,21 @@ export default function AssetTestPage() {
                           }}>
                             <strong>Close:</strong> {lastCandle.close.toFixed(2)}
                           </div>
+                          {lastCandle.volume > 0 && (
+                            <div 
+                              style={{ 
+                                backgroundColor: darkMode ? '#333' : '#f5f5f5', 
+                                padding: '8px', 
+                                borderRadius: '4px',
+                                color: darkMode ? '#e0e0e0' : 'inherit',
+                                position: 'relative',
+                                cursor: 'help'
+                              }}
+                              title={getVolumeTooltip(question.timeframe)}
+                            >
+                              <strong>{getVolumeTimeframeLabel(question.timeframe)}:</strong> {lastCandle.volume.toLocaleString()}
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}

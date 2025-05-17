@@ -1,5 +1,6 @@
 import React, { useContext, useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image'; // Added Image import
 import { ThemeContext } from '../contexts/ThemeContext';
 import { AuthContext } from '../contexts/AuthContext';
 import { useRouter } from 'next/router';
@@ -60,15 +61,18 @@ const Navbar = () => {
           alignItems: 'center',
           transition: 'color 0.3s ease'
         }}>
-          <span style={{
-            display: 'inline-block',
-            width: '32px',
-            height: '32px',
-            background: 'linear-gradient(135deg, #4CAF50, #2196F3)',
-            borderRadius: '8px',
-            marginRight: '10px'
-          }}></span>
-          Trading Platform
+          {/* Replaced gradient span with Image component */}
+          <Image 
+            src="/images/logo.webp" 
+            alt="ChartSense Logo" 
+            width={32} 
+            height={32} 
+            style={{
+              borderRadius: '8px',
+              marginRight: '10px'
+            }}
+          />
+          ChartSense
         </Link>
 
         <div style={{ display: 'flex', alignItems: 'center' }}>

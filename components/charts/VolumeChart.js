@@ -1,42 +1,33 @@
-// components/charts/CandlestickChart.js
-import React, { useContext } from 'react';
-import dynamic from 'next/dynamic';
+// components/charts/VolumeChart.js
+import React, { useContext, useEffect, useRef } from 'react';
 import { ThemeContext } from '../../contexts/ThemeContext';
-import CryptoLoader from '../CryptoLoader';
 
-// The loading component stays exactly the same
-const LoadingChart = ({ height = 400 }) => {
-  return <CryptoLoader height={`${height}px`} message="Loading chart data..." minDisplayTime={2000} />;
-};
-
-// The main chart component - this will be client-side only
-const CandlestickChartComponent = ({ data, height = 400 }) => {
+const VolumeChart = ({ data, height = 120, width = '100%' }) => {
   const { darkMode } = useContext(ThemeContext);
-  const containerRef = React.useRef(null);
-  const chartRef = React.useRef(null);
-  
-  // Early return if no data - exactly like your original
-  if (!data || data.length === 0) {
+  const containerRef = useRef(null);
+  const chartRef = useRef(null);
+
+  // Early return if no data or no volume data
+  if (!data || data.length === 0 || !data.some(item => item.volume > 0)) {
     return (
-      <div 
-        style={{ 
-          height: `${height}px`, 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center',
-          backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5',
-          color: darkMode ? '#e0e0e0' : '#666',
-          borderRadius: '4px',
-          transition: 'all 0.3s ease'
-        }}
-      >
-        No chart data available
+      <div style={{ 
+        height: `${height}px`, 
+        width: width,
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5',
+        color: darkMode ? '#e0e0e0' : '#666',
+        borderRadius: '4px',
+        transition: 'all 0.3s ease'
+      }}>
+        No volume data available
       </div>
     );
   }
 
   // Initialize chart once when component mounts
-  React.useEffect(() => {
+  useEffect(() => {
     const initializeChart = async () => {
       try {
         // Import TradingView library
@@ -51,7 +42,7 @@ const CandlestickChartComponent = ({ data, height = 400 }) => {
         // Make sure container exists
         if (!containerRef.current) return;
         
-        // Create chart with theme colors
+        // Create chart specifically for volume
         chartRef.current = createChart(containerRef.current, {
           width: containerRef.current.clientWidth,
           height: height,
@@ -66,9 +57,6 @@ const CandlestickChartComponent = ({ data, height = 400 }) => {
             vertLines: { color: darkMode ? '#2e2e2e' : '#f0f0f0' },
             horzLines: { color: darkMode ? '#2e2e2e' : '#f0f0f0' },
           },
-          crosshair: {
-            mode: 1,
-          },
           timeScale: {
             timeVisible: true,
             borderColor: darkMode ? '#555' : '#ddd',
@@ -76,28 +64,30 @@ const CandlestickChartComponent = ({ data, height = 400 }) => {
             barSpacing: 6,
           },
           rightPriceScale: {
+            scaleMargins: {
+              top: 0.1,
+              bottom: 0.1,
+            },
             borderColor: darkMode ? '#555' : '#ddd',
           },
         });
         
-        // Add candlestick series with colors matching your Plotly theme
-        const candlestickSeries = chartRef.current.addCandlestickSeries({
-          upColor: '#66bb6a',
-          downColor: '#ef5350',
-          borderUpColor: '#66bb6a',
-          borderDownColor: '#ef5350',
-          wickUpColor: '#66bb6a',
-          wickDownColor: '#ef5350',
+        // Add volume histogram series
+        const volumeSeries = chartRef.current.addHistogramSeries({
+          color: '#26a69a',
+          priceFormat: {
+            type: 'volume',
+          },
+          priceScaleId: 'right',
         });
         
-        // Format data - carefully handling time values
-        const formattedData = data.map(item => {
+        // Format volume data
+        const volumeData = data.map(item => {
           let timeValue;
           
           if (typeof item.time === 'number') {
             timeValue = item.time;
           } else if (item.date) {
-            // Handle date strings
             try {
               if (typeof item.date === 'string') {
                 timeValue = Math.floor(new Date(item.date).getTime() / 1000);
@@ -106,25 +96,23 @@ const CandlestickChartComponent = ({ data, height = 400 }) => {
               }
             } catch (e) {
               console.error('Invalid date format:', item.date);
-              // Fallback
               timeValue = Math.floor(Date.now() / 1000) - (86400 * 30);
             }
           } else {
-            // Default fallback
             timeValue = Math.floor(Date.now() / 1000) - (86400 * 30);
           }
           
+          // Determine color based on price movement (green for up, red for down)
+          const isUp = item.close >= item.open;
           return {
             time: timeValue,
-            open: item.open,
-            high: item.high,
-            low: item.low,
-            close: item.close
+            value: item.volume || 0,
+            color: isUp ? '#66bb6a' : '#ef5350',
           };
         });
         
         // Set data and fit to view
-        candlestickSeries.setData(formattedData);
+        volumeSeries.setData(volumeData);
         chartRef.current.timeScale().fitContent();
         
         // Handle window resize
@@ -144,7 +132,7 @@ const CandlestickChartComponent = ({ data, height = 400 }) => {
           window.removeEventListener('resize', handleResize);
         };
       } catch (error) {
-        console.error('Failed to initialize chart:', error);
+        console.error('Failed to initialize volume chart:', error);
       }
     };
     
@@ -165,19 +153,13 @@ const CandlestickChartComponent = ({ data, height = 400 }) => {
       style={{
         position: 'relative', 
         height: `${height}px`,
-        width: '100%',
+        width: width,
         borderRadius: '4px',
-        backgroundColor: darkMode ? '#1e1e1e' : '#ffffff'
+        backgroundColor: darkMode ? '#1e1e1e' : '#ffffff',
+        marginTop: '2px', // Small gap between charts
       }}
     />
   );
 };
 
-// Use the same dynamic import pattern as your original code
-export default dynamic(
-  () => Promise.resolve(CandlestickChartComponent),
-  { 
-    ssr: false,
-    loading: LoadingChart
-  }
-);
+export default VolumeChart;

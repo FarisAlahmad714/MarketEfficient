@@ -5,6 +5,13 @@ import connectDB from '../../../lib/database';
 import TestResults from '../../../models/TestResults';
 import jwt from 'jsonwebtoken';
 
+// ⚠️ IMPORTANT: This is a server-side API file - do NOT import React components or client-side modules here ⚠️
+// Remove these imports:
+// import CryptoLoader from '../../components/CryptoLoader';
+// import { ThemeContext } from '../../contexts/ThemeContext';
+// import CandlestickChart from ...
+// import VolumeChart from ...
+
 // Store sessions in memory (in a real app, this would be a database)
 const sessions = {};
 
@@ -273,12 +280,19 @@ function generateMockOHLCDataWithSeed(basePrice, count, timeframe, volatility, s
     const high = Math.max(open, close) + (prng() * volatility * 0.5);
     const low = Math.min(open, close) - (prng() * volatility * 0.5);
     
+    // Generate mock volume - higher on bigger price moves
+    const priceMove = Math.abs(close - open);
+    const baseVolume = basePrice * 1000; // Base volume proportional to price
+    const volumeVariance = prng() * 0.7 + 0.3; // 0.3 to 1.0 multiplier
+    const volume = baseVolume * (1 + priceMove / basePrice * 10) * volumeVariance;
+    
     data.push({
       date: date.toISOString(),
       open,
       high,
       low,
-      close
+      close,
+      volume
     });
     
     currentPrice = close;
@@ -657,7 +671,8 @@ export default async function handler(req, res) {
           open: lastSetupCandle.open,
           high: lastSetupCandle.high,
           low: lastSetupCandle.low,
-          close: lastSetupCandle.close
+          close: lastSetupCandle.close,
+          volume: lastSetupCandle.volume || 0
         },
         ohlc_data: setupData,
         correct_answer: correctAnswer,
@@ -777,7 +792,8 @@ export default async function handler(req, res) {
             open: lastSetupCandle.open,
             high: lastSetupCandle.high,
             low: lastSetupCandle.low,
-            close: lastSetupCandle.close
+            close: lastSetupCandle.close,
+            volume: lastSetupCandle.volume || 0
           },
           ohlc_data: setupData,
           correct_answer: correctAnswer,
