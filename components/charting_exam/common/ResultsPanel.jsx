@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaTimes, FaCheck, FaTimes as FaX, FaExclamationTriangle, FaEye, FaEyeSlash } from 'react-icons/fa';
+import { FaTimes, FaCheck, FaTimes as FaX, FaExclamationTriangle, FaEye, FaEyeSlash, FaRuler } from 'react-icons/fa';
 
 // Background overlay - now passes clicks through when transparent
 const Overlay = styled(motion.div)`
@@ -30,7 +30,7 @@ const ResultsContainer = styled(motion.div)`
   max-height: 90vh;
   background-color: ${props => props.$transparent 
     ? 'rgba(0, 0, 0, 0)'  
-    : (props.theme.darkMode ? '#262626' : '#f5f5f5')};
+    : (props.$isDarkMode ? '#262626' : '#f5f5f5')};
   border-radius: 12px;
   box-shadow: ${props => props.$transparent 
     ? 'none' 
@@ -56,14 +56,14 @@ const TransparencyToggle = styled(motion.button)`
   height: 48px;
   border-radius: 50%;
   background-color: ${props => props.$transparent
-    ? (props.theme.darkMode ? '#3f51b5' : '#2196F3')
-    : (props.theme.darkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)')};
+    ? (props.$isDarkMode ? '#3f51b5' : '#2196F3')
+    : (props.$isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)')};
   border: ${props => props.$transparent ? '2px solid white' : 'none'};
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: ${props => props.$transparent ? 'white' : (props.theme.darkMode ? '#b0b0b0' : '#666')};
+  color: ${props => props.$transparent ? 'white' : (props.$isDarkMode ? '#b0b0b0' : '#666')};
   transition: all 0.2s ease;
   z-index: 102;
   box-shadow: ${props => props.$transparent ? '0 0 15px rgba(255, 255, 255, 0.5)' : 'none'};
@@ -73,8 +73,8 @@ const TransparencyToggle = styled(motion.button)`
   
   &:hover {
     background-color: ${props => props.$transparent
-      ? (props.theme.darkMode ? '#303f9f' : '#1976D2')
-      : (props.theme.darkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)')};
+      ? (props.$isDarkMode ? '#303f9f' : '#1976D2')
+      : (props.$isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)')};
     transform: scale(1.1);
   }
 `;
@@ -84,7 +84,7 @@ const TransparencyMessage = styled(motion.div)`
   top: 20px;
   left: 50%;
   transform: translateX(-50%);
-  background-color: ${props => props.theme.darkMode ? '#333' : '#333'};
+  background-color: #333;
   color: white;
   padding: 10px 20px;
   border-radius: 50px;
@@ -104,19 +104,19 @@ const CloseButton = styled.button`
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background-color: ${props => props.theme.darkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)'};
+  background-color: ${props => props.$isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)'};
   border: none;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: ${props => props.theme.darkMode ? '#b0b0b0' : '#666'};
+  color: ${props => props.$isDarkMode ? '#b0b0b0' : '#666'};
   transition: all 0.2s ease;
   z-index: 2;
   
   &:hover {
-    background-color: ${props => props.theme.darkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)'};
-    color: ${props => props.theme.darkMode ? '#e0e0e0' : '#333'};
+    background-color: ${props => props.$isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)'};
+    color: ${props => props.$isDarkMode ? '#e0e0e0' : '#333'};
   }
 `;
 
@@ -126,7 +126,7 @@ const ContinueFloatingButton = styled(motion.button)`
   bottom: 20px;
   right: 20px;
   padding: 12px 25px;
-  background-color: ${props => props.theme.darkMode ? '#3f51b5' : '#2196F3'};
+  background-color: ${props => props.$isDarkMode ? '#3f51b5' : '#2196F3'};
   color: white;
   border: none;
   border-radius: 8px;
@@ -144,7 +144,7 @@ const ContinueFloatingButton = styled(motion.button)`
   gap: 8px;
   
   &:hover {
-    background-color: ${props => props.theme.darkMode ? '#303f9f' : '#1976D2'};
+    background-color: ${props => props.$isDarkMode ? '#303f9f' : '#1976D2'};
     transform: translateY(-2px);
   }
 `;
@@ -157,7 +157,7 @@ const ResultsHeader = styled.div`
 const ResultsTitle = styled.h3`
   font-size: 1.6rem;
   margin-bottom: 10px;
-  color: ${props => props.theme.darkMode ? '#e0e0e0' : '#333'};
+  color: ${props => props.$isDarkMode ? '#e0e0e0' : '#333'};
 `;
 
 const ScoreSummary = styled.div`
@@ -166,13 +166,13 @@ const ScoreSummary = styled.div`
   align-items: center;
   margin-bottom: 15px;
   padding: 15px;
-  background-color: ${props => props.theme.darkMode ? 'rgba(0, 0, 0, 0.2)' : 'rgba(0, 0, 0, 0.05)'};
+  background-color: ${props => props.$isDarkMode ? 'rgba(0, 0, 0, 0.2)' : 'rgba(0, 0, 0, 0.05)'};
   border-radius: 10px;
 `;
 
 const ScoreLabel = styled.span`
   font-size: 1.1rem;
-  color: ${props => props.theme.darkMode ? '#e0e0e0' : '#333'};
+  color: ${props => props.$isDarkMode ? '#e0e0e0' : '#333'};
 `;
 
 const ScoreValue = styled.span`
@@ -184,7 +184,7 @@ const ScoreValue = styled.span`
 const ProgressBar = styled.div`
   width: 100%;
   height: 8px;
-  background-color: ${props => props.theme.darkMode ? '#333' : '#ddd'};
+  background-color: ${props => props.$isDarkMode ? '#333' : '#ddd'};
   border-radius: 4px;
   margin-bottom: 20px;
   overflow: hidden;
@@ -202,16 +202,20 @@ const FeedbackSection = styled.div`
   padding: 15px;
   border-radius: 10px;
   background-color: ${props => props.type === 'correct' 
-    ? (props.theme.darkMode ? 'rgba(76, 175, 80, 0.1)' : 'rgba(76, 175, 80, 0.05)') 
+    ? (props.$isDarkMode ? 'rgba(76, 175, 80, 0.1)' : 'rgba(76, 175, 80, 0.05)') 
     : props.type === 'incorrect' 
-      ? (props.theme.darkMode ? 'rgba(244, 67, 54, 0.1)' : 'rgba(244, 67, 54, 0.05)')
-      : (props.theme.darkMode ? 'rgba(255, 152, 0, 0.1)' : 'rgba(255, 152, 0, 0.05)')
+      ? (props.$isDarkMode ? 'rgba(244, 67, 54, 0.1)' : 'rgba(244, 67, 54, 0.05)')
+      : props.type === 'info'
+        ? (props.$isDarkMode ? 'rgba(33, 150, 243, 0.1)' : 'rgba(33, 150, 243, 0.05)')
+        : (props.$isDarkMode ? 'rgba(255, 152, 0, 0.1)' : 'rgba(255, 152, 0, 0.05)')
   };
   border: 1px solid ${props => props.type === 'correct' 
     ? '#4CAF50' 
     : props.type === 'incorrect' 
       ? '#F44336'
-      : '#FF9800'
+      : props.type === 'info'
+        ? '#2196F3'
+        : '#FF9800'
   };
 `;
 
@@ -222,7 +226,9 @@ const SectionTitle = styled.h4`
     ? '#4CAF50' 
     : props.type === 'incorrect' 
       ? '#F44336'
-      : '#FF9800'
+      : props.type === 'info'
+        ? '#2196F3'
+        : '#FF9800'
   };
   display: flex;
   align-items: center;
@@ -232,7 +238,7 @@ const SectionTitle = styled.h4`
 const FeedbackCard = styled.div`
   padding: 12px;
   margin-bottom: 12px;
-  background-color: ${props => props.theme.darkMode ? 'rgba(0, 0, 0, 0.2)' : 'rgba(255, 255, 255, 0.7)'};
+  background-color: ${props => props.$isDarkMode ? 'rgba(0, 0, 0, 0.2)' : 'rgba(255, 255, 255, 0.7)'};
   border-radius: 8px;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
   transition: transform 0.2s ease;
@@ -264,7 +270,7 @@ const FeedbackType = styled.span`
 const FeedbackPrice = styled.div`
   font-size: 0.95rem;
   margin-bottom: 8px;
-  color: ${props => props.theme.darkMode ? '#e0e0e0' : '#333'};
+  color: ${props => props.$isDarkMode ? '#e0e0e0' : '#333'};
   font-family: 'Roboto Mono', monospace;
 `;
 
@@ -272,14 +278,72 @@ const FeedbackAdvice = styled.p`
   font-size: 0.9rem;
   margin: 0;
   font-style: italic;
-  color: ${props => props.theme.darkMode ? '#b0b0b0' : '#666'};
+  color: ${props => props.$isDarkMode ? '#b0b0b0' : '#666'};
   line-height: 1.5;
+`;
+
+// Fibonacci answer display
+const FibonacciAnswerGrid = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 10px;
+  
+  @media (max-width: 460px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const FibonacciLevelItem = styled(motion.div)`
+  padding: 10px;
+  background-color: ${props => props.$isDarkMode ? 'rgba(0, 0, 0, 0.2)' : 'rgba(255, 255, 255, 0.7)'};
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  
+  h5 {
+    margin: 0 0 8px 0;
+    font-size: 0.9rem;
+    color: ${props => props.$isDarkMode ? '#e0e0e0' : '#333'};
+  }
+  
+  .level-price {
+    font-family: 'Roboto Mono', monospace;
+    font-weight: ${props => props.isKey ? 'bold' : 'normal'};
+    font-size: 0.9rem;
+    margin-bottom: 4px;
+    color: ${props => props.isKey 
+      ? '#F0B90B' 
+      : (props.$isDarkMode ? '#e0e0e0' : '#333')};
+    display: flex;
+    justify-content: space-between;
+    
+    span:last-child {
+      opacity: ${props => props.isKey ? 1 : 0.7};
+    }
+  }
+  
+  .level-date {
+    font-size: 0.8rem;
+    color: ${props => props.$isDarkMode ? '#b0b0b0' : '#666'};
+  }
+`;
+
+const KeyLevelBadge = styled.span`
+  display: inline-block;
+  padding: 2px 6px;
+  background-color: ${props => props.$isDarkMode ? 'rgba(240, 185, 11, 0.2)' : 'rgba(240, 185, 11, 0.1)'};
+  border: 1px solid #F0B90B;
+  border-radius: 3px;
+  margin-left: 8px;
+  font-size: 0.7rem;
+  color: #F0B90B;
+  font-weight: bold;
 `;
 
 const ContinueButton = styled(motion.button)`
   width: 100%;
   padding: 14px;
-  background-color: ${props => props.theme.darkMode ? '#3f51b5' : '#2196F3'};
+  background-color: ${props => props.$isDarkMode ? '#3f51b5' : '#2196F3'};
   color: white;
   border: none;
   border-radius: 8px;
@@ -294,7 +358,7 @@ const ContinueButton = styled(motion.button)`
   margin-top: 10px;
   
   &:hover {
-    background-color: ${props => props.theme.darkMode ? '#303f9f' : '#1976D2'};
+    background-color: ${props => props.$isDarkMode ? '#303f9f' : '#1976D2'};
   }
 `;
 
@@ -330,6 +394,21 @@ const buttonPulseVariants = {
   }
 };
 
+// Animation variants for Fibonacci levels
+const fibItemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: custom => ({ 
+    opacity: 1, 
+    y: 0, 
+    transition: { 
+      delay: custom * 0.1,
+      type: 'spring',
+      damping: 15, 
+      stiffness: 200 
+    } 
+  })
+};
+
 const ResultsPanel = ({ results, onContinue, examType, part, chartCount, isDarkMode }) => {
   const [transparent, setTransparent] = useState(false);
   const [showTransparencyMessage, setShowTransparencyMessage] = useState(false);
@@ -363,32 +442,54 @@ const ResultsPanel = ({ results, onContinue, examType, part, chartCount, isDarkM
     return () => window.removeEventListener('keydown', handleEscape);
   }, [onContinue]);
   
-  const getFeedbackTypeTitle = (feedback) => {
-    if (!feedback || !feedback.type) return 'Unknown';
-    
-    // Handle different feedback types
-    switch (feedback.type) {
-      case 'high':
-        return 'HIGH';
-      case 'low':
-        return 'LOW';
-      case 'bullish':
-        return 'BULLISH';
-      case 'bearish':
-        return 'BEARISH';
-      case 'uptrend':
-        return 'UPTREND';
-      case 'downtrend':
-        return 'DOWNTREND';
-      case 'missed_point':
-      case 'missed_gap':
-      case 'missed_retracement':
-        return 'MISSED';
-      case 'no_gaps':
-        return 'CORRECT';
-      default:
-        return feedback.type.toUpperCase();
+  // Format date
+  const formatDate = (time) => {
+    if (!time) return "N/A";
+    try {
+      const date = new Date(time * 1000);
+      return date.toLocaleDateString();
+    } catch (err) {
+      return "Invalid Date";
     }
+  };
+  
+  // Fixed getFeedbackTypeTitle function to properly handle Fibonacci retracement feedback
+  const getFeedbackTypeTitle = (feedback) => {
+    if (!feedback) return 'Unknown';
+    
+    // First try to use the type property
+    if (feedback.type) {
+      switch (feedback.type) {
+        case 'high':
+          return 'HIGH';
+        case 'low':
+          return 'LOW';
+        case 'bullish':
+          return 'BULLISH';
+        case 'bearish':
+          return 'BEARISH';
+        case 'uptrend':
+          return 'UPTREND';
+        case 'downtrend':
+          return 'DOWNTREND';
+        case 'missed_point':
+        case 'missed_gap':
+        case 'missed_retracement':
+          return 'MISSED';
+        case 'no_gaps':
+          return 'CORRECT';
+        default:
+          return feedback.type.toUpperCase();
+      }
+    }
+    
+    // If type is missing, try to use direction (used by Fibonacci retracement)
+    if (feedback.direction) {
+      return feedback.direction.toUpperCase();
+    }
+    
+    // If neither exists, return Unknown
+    return 'Unknown';
   };
   
   // Get appropriate continue button text
@@ -399,6 +500,11 @@ const ResultsPanel = ({ results, onContinue, examType, part, chartCount, isDarkM
       return 'Finish Exam';
     }
     return 'Continue';
+  };
+  
+  // Check if a Fibonacci level is a key level
+  const isKeyFibLevel = (level) => {
+    return [0.5, 0.618, 0.705].includes(level);
   };
   
   return (
@@ -425,6 +531,7 @@ const ResultsPanel = ({ results, onContinue, examType, part, chartCount, isDarkM
           }} 
           title={transparent ? "Show results" : "Show chart"}
           $transparent={transparent}
+          $isDarkMode={isDarkMode}
           as={motion.button}
           animate={transparent ? "pulse" : ""}
           variants={buttonPulseVariants}
@@ -439,6 +546,7 @@ const ResultsPanel = ({ results, onContinue, examType, part, chartCount, isDarkM
               e.stopPropagation(); // Prevent click from bubbling
               onContinue();
             }}
+            $isDarkMode={isDarkMode}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
@@ -470,16 +578,17 @@ const ResultsPanel = ({ results, onContinue, examType, part, chartCount, isDarkM
           exit="hidden"
           variants={modalVariants}
           $transparent={transparent}
+          $isDarkMode={isDarkMode}
           onClick={(e) => e.stopPropagation()}
         >
-          {!transparent && <CloseButton onClick={onContinue}><FaTimes /></CloseButton>}
+          {!transparent && <CloseButton $isDarkMode={isDarkMode} onClick={onContinue}><FaTimes /></CloseButton>}
           
           <ResultsHeader>
-            <ResultsTitle>Analysis Results</ResultsTitle>
+            <ResultsTitle $isDarkMode={isDarkMode}>Analysis Results</ResultsTitle>
           </ResultsHeader>
           
-          <ScoreSummary>
-            <ScoreLabel>
+          <ScoreSummary $isDarkMode={isDarkMode}>
+            <ScoreLabel $isDarkMode={isDarkMode}>
               {examType === 'fibonacci-retracement'
                 ? `Part ${part} Analysis`
                 : examType === 'fair-value-gaps'
@@ -491,7 +600,7 @@ const ResultsPanel = ({ results, onContinue, examType, part, chartCount, isDarkM
             </ScoreValue>
           </ScoreSummary>
           
-          <ProgressBar>
+          <ProgressBar $isDarkMode={isDarkMode}>
             <ProgressFill 
               percentage={scorePercentage}
               initial="hidden"
@@ -510,155 +619,267 @@ const ResultsPanel = ({ results, onContinue, examType, part, chartCount, isDarkM
             {scorePercentage.toFixed(1)}% Correct
           </div>
           
-          {/* Correct Feedback */}
-          {results.feedback && results.feedback.correct && results.feedback.correct.length > 0 && (
-            <FeedbackSection type="correct">
-              <SectionTitle type="correct">
-                <FaCheck />
-                {examType === 'fibonacci-retracement'
-                  ? 'Your Retracement'
-                  : examType === 'fair-value-gaps'
-                    ? 'Correctly Identified Gaps'
-                    : 'Correct Points'}
+          {/* Correct Fibonacci Retracement Answer Section */}
+          {examType === 'fibonacci-retracement' && results.expected && (
+            <FeedbackSection type="info" $isDarkMode={isDarkMode}>
+              <SectionTitle type="info">
+                <FaRuler />
+                Correct {part === 1 ? 'Uptrend' : 'Downtrend'} Fibonacci Points
               </SectionTitle>
               
-              {results.feedback.correct.map((feedback, index) => (
-                <FeedbackCard key={`correct-${index}`} isDarkMode={isDarkMode}>
-                  <FeedbackType type={feedback.type || feedback.direction}>
-                    {getFeedbackTypeTitle(feedback)}
-                  </FeedbackType>
-                  
-                  {feedback.price && (
-                    <FeedbackPrice isDarkMode={isDarkMode}>
-                      Price: {feedback.price.toFixed(4)}
-                    </FeedbackPrice>
-                  )}
-                  
-                  {(feedback.topPrice || feedback.bottomPrice) && (
-                    <FeedbackPrice isDarkMode={isDarkMode}>
-                      Range: {feedback.bottomPrice?.toFixed(4)} - {feedback.topPrice?.toFixed(4)}
-                    </FeedbackPrice>
-                  )}
-                  
-                  {(feedback.startPrice || feedback.endPrice) && (
-                    <FeedbackPrice isDarkMode={isDarkMode}>
-                      From {feedback.startPrice?.toFixed(4)} to {feedback.endPrice?.toFixed(4)}
-                    </FeedbackPrice>
-                  )}
-                  
-                  <FeedbackAdvice isDarkMode={isDarkMode}>
-                    {feedback.advice || 'Good job!'}
-                  </FeedbackAdvice>
-                </FeedbackCard>
-              ))}
+              <FibonacciAnswerGrid>
+                <FibonacciLevelItem 
+                  $isDarkMode={isDarkMode} 
+                  isKey={true}
+                  variants={fibItemVariants}
+                  initial="hidden"
+                  animate="visible"
+                  custom={0}
+                >
+                  <h5>Start Point (Level 1.0)</h5>
+                  <div className="level-price">
+                    <span>Price:</span>
+                    <span>{results.expected.start.price.toFixed(2)}</span>
+                  </div>
+                  <div className="level-date">
+                    Date: {formatDate(results.expected.start.time)}
+                  </div>
+                </FibonacciLevelItem>
+                
+                <FibonacciLevelItem 
+                  $isDarkMode={isDarkMode} 
+                  isKey={true}
+                  variants={fibItemVariants}
+                  initial="hidden"
+                  animate="visible"
+                  custom={1}
+                >
+                  <h5>End Point (Level 0.0)</h5>
+                  <div className="level-price">
+                    <span>Price:</span>
+                    <span>{results.expected.end.price.toFixed(2)}</span>
+                  </div>
+                  <div className="level-date">
+                    Date: {formatDate(results.expected.end.time)}
+                  </div>
+                </FibonacciLevelItem>
+              </FibonacciAnswerGrid>
+              
+              <h5 style={{ 
+                marginTop: '15px', 
+                marginBottom: '10px',
+                fontSize: '0.95rem',
+                color: isDarkMode ? '#b0b0b0' : '#666'
+              }}>
+                Key Fibonacci Levels
+              </h5>
+              
+              <FibonacciAnswerGrid>
+                {results.expected.levels && 
+                 results.expected.levels
+                   .filter(level => [0, 0.382, 0.5, 0.618, 0.786, 1].includes(level.level))
+                   .map((level, index) => (
+                    <FibonacciLevelItem 
+                      key={level.level} 
+                      $isDarkMode={isDarkMode} 
+                      isKey={isKeyFibLevel(level.level)}
+                      variants={fibItemVariants}
+                      initial="hidden"
+                      animate="visible"
+                      custom={index + 2}
+                    >
+                      <h5>
+                        Level {level.label}
+                        {isKeyFibLevel(level.level) && <KeyLevelBadge $isDarkMode={isDarkMode}>KEY</KeyLevelBadge>}
+                      </h5>
+                      <div className="level-price">
+                        <span>Price:</span>
+                        <span>{level.price.toFixed(2)}</span>
+                      </div>
+                    </FibonacciLevelItem>
+                  ))
+                }
+              </FibonacciAnswerGrid>
             </FeedbackSection>
           )}
           
-          {/* Incorrect Feedback */}
-          {results.feedback && results.feedback.incorrect && 
-           results.feedback.incorrect.filter(f => f.type !== 'missed_point' && 
-                                                f.type !== 'missed_gap' && 
-                                                f.type !== 'missed_retracement').length > 0 && (
-            <FeedbackSection type="incorrect">
-              <SectionTitle type="incorrect">
-                <FaX />
-                {examType === 'fibonacci-retracement'
-                  ? 'Incorrect Aspects'
-                  : examType === 'fair-value-gaps'
-                    ? 'Incorrect Markings'
-                    : 'Incorrect Points'}
-              </SectionTitle>
+          {/* Helper function to filter feedback based on current part */}
+          {(() => {
+            // For Fibonacci retracement, filter feedback based on direction matching the current part
+            const filterFibonacciFeedback = (feedbackArray) => {
+              if (!feedbackArray || !Array.isArray(feedbackArray)) return [];
+              if (examType !== 'fibonacci-retracement') return feedbackArray;
               
-              {results.feedback.incorrect
-                .filter(f => f.type !== 'missed_point' && 
-                            f.type !== 'missed_gap' && 
-                            f.type !== 'missed_retracement')
-                .map((feedback, index) => (
-                  <FeedbackCard key={`incorrect-${index}`} isDarkMode={isDarkMode}>
-                    <FeedbackType type={feedback.type || feedback.direction}>
-                      {getFeedbackTypeTitle(feedback)}
-                    </FeedbackType>
-                    
-                    {feedback.price && (
-                      <FeedbackPrice isDarkMode={isDarkMode}>
-                        Price: {feedback.price.toFixed(4)}
-                      </FeedbackPrice>
-                    )}
-                    
-                    {(feedback.topPrice || feedback.bottomPrice) && (
-                      <FeedbackPrice isDarkMode={isDarkMode}>
-                        Range: {feedback.bottomPrice?.toFixed(4)} - {feedback.topPrice?.toFixed(4)}
-                      </FeedbackPrice>
-                    )}
-                    
-                    {(feedback.startPrice || feedback.endPrice) && (
-                      <FeedbackPrice isDarkMode={isDarkMode}>
-                        From {feedback.startPrice?.toFixed(4)} to {feedback.endPrice?.toFixed(4)}
-                      </FeedbackPrice>
-                    )}
-                    
-                    <FeedbackAdvice isDarkMode={isDarkMode}>
-                      {feedback.advice || 'This marking was incorrect.'}
-                    </FeedbackAdvice>
-                  </FeedbackCard>
-              ))}
-            </FeedbackSection>
-          )}
-          
-          {/* Missed Points */}
-          {results.feedback && results.feedback.incorrect && 
-           results.feedback.incorrect.filter(f => f.type === 'missed_point' || 
-                                                f.type === 'missed_gap' || 
-                                                f.type === 'missed_retracement').length > 0 && (
-            <FeedbackSection type="missed">
-              <SectionTitle type="missed">
-                <FaExclamationTriangle />
-                {examType === 'fibonacci-retracement'
-                  ? 'Missed Retracement'
-                  : examType === 'fair-value-gaps'
-                    ? 'Missed Gaps'
-                    : 'Missed Points'}
-              </SectionTitle>
+              const expectedDirection = part === 1 ? 'uptrend' : 'downtrend';
+              return feedbackArray.filter(feedback => {
+                // Keep feedback if it matches the expected direction
+                // or if it has no direction but is specifically for this part
+                return feedback.direction === expectedDirection || 
+                       (feedback.type === 'missed_retracement' && 
+                        (!feedback.direction || feedback.direction === expectedDirection));
+              });
+            };
+
+            // Apply filters to correct and incorrect arrays
+            const filteredCorrect = results.feedback?.correct ? 
+              filterFibonacciFeedback(results.feedback.correct) : [];
+            
+            const filteredIncorrect = results.feedback?.incorrect ? 
+              filterFibonacciFeedback(results.feedback.incorrect) : [];
               
-              {results.feedback.incorrect
-                .filter(f => f.type === 'missed_point' || 
-                            f.type === 'missed_gap' || 
-                            f.type === 'missed_retracement')
-                .map((feedback, index) => (
-                  <FeedbackCard key={`missed-${index}`} isDarkMode={isDarkMode}>
-                    <FeedbackType type="missed">
-                      MISSED
-                    </FeedbackType>
+            const incorrectNonMissed = filteredIncorrect.filter(f => 
+              f.type !== 'missed_point' && 
+              f.type !== 'missed_gap' && 
+              f.type !== 'missed_retracement'
+            );
+            
+            const missedPoints = filteredIncorrect.filter(f => 
+              f.type === 'missed_point' || 
+              f.type === 'missed_gap' || 
+              f.type === 'missed_retracement'
+            );
+
+            return (
+              <>
+                {/* Correct Feedback */}
+                {filteredCorrect.length > 0 && (
+                  <FeedbackSection type="correct" $isDarkMode={isDarkMode}>
+                    <SectionTitle type="correct">
+                      <FaCheck />
+                      {examType === 'fibonacci-retracement'
+                        ? 'Your Retracement'
+                        : examType === 'fair-value-gaps'
+                          ? 'Correctly Identified Gaps'
+                          : 'Correct Points'}
+                    </SectionTitle>
                     
-                    {feedback.price && (
-                      <FeedbackPrice isDarkMode={isDarkMode}>
-                        Price: {feedback.price.toFixed(4)}
-                      </FeedbackPrice>
-                    )}
+                    {filteredCorrect.map((feedback, index) => (
+                      <FeedbackCard key={`correct-${index}`} $isDarkMode={isDarkMode}>
+                        <FeedbackType type={feedback.type || feedback.direction}>
+                          {getFeedbackTypeTitle(feedback)}
+                        </FeedbackType>
+                        
+                        {feedback.price && (
+                          <FeedbackPrice $isDarkMode={isDarkMode}>
+                            Price: {feedback.price.toFixed(4)}
+                          </FeedbackPrice>
+                        )}
+                        
+                        {(feedback.topPrice || feedback.bottomPrice) && (
+                          <FeedbackPrice $isDarkMode={isDarkMode}>
+                            Range: {feedback.bottomPrice?.toFixed(4)} - {feedback.topPrice?.toFixed(4)}
+                          </FeedbackPrice>
+                        )}
+                        
+                        {(feedback.startPrice || feedback.endPrice) && (
+                          <FeedbackPrice $isDarkMode={isDarkMode}>
+                            From {feedback.startPrice?.toFixed(4)} to {feedback.endPrice?.toFixed(4)}
+                          </FeedbackPrice>
+                        )}
+                        
+                        <FeedbackAdvice $isDarkMode={isDarkMode}>
+                          {feedback.advice || 'Good job!'}
+                        </FeedbackAdvice>
+                      </FeedbackCard>
+                    ))}
+                  </FeedbackSection>
+                )}
+                
+                {/* Incorrect Feedback */}
+                {incorrectNonMissed.length > 0 && (
+                  <FeedbackSection type="incorrect" $isDarkMode={isDarkMode}>
+                    <SectionTitle type="incorrect">
+                      <FaX />
+                      {examType === 'fibonacci-retracement'
+                        ? 'Incorrect Aspects'
+                        : examType === 'fair-value-gaps'
+                          ? 'Incorrect Markings'
+                          : 'Incorrect Points'}
+                    </SectionTitle>
                     
-                    {(feedback.topPrice || feedback.bottomPrice) && (
-                      <FeedbackPrice isDarkMode={isDarkMode}>
-                        Range: {feedback.bottomPrice?.toFixed(4)} - {feedback.topPrice?.toFixed(4)}
-                      </FeedbackPrice>
-                    )}
+                    {incorrectNonMissed.map((feedback, index) => (
+                      <FeedbackCard key={`incorrect-${index}`} $isDarkMode={isDarkMode}>
+                        <FeedbackType type={feedback.type || feedback.direction}>
+                          {getFeedbackTypeTitle(feedback)}
+                        </FeedbackType>
+                        
+                        {feedback.price && (
+                          <FeedbackPrice $isDarkMode={isDarkMode}>
+                            Price: {feedback.price.toFixed(4)}
+                          </FeedbackPrice>
+                        )}
+                        
+                        {(feedback.topPrice || feedback.bottomPrice) && (
+                          <FeedbackPrice $isDarkMode={isDarkMode}>
+                            Range: {feedback.bottomPrice?.toFixed(4)} - {feedback.topPrice?.toFixed(4)}
+                          </FeedbackPrice>
+                        )}
+                        
+                        {(feedback.startPrice || feedback.endPrice) && (
+                          <FeedbackPrice $isDarkMode={isDarkMode}>
+                            From {feedback.startPrice?.toFixed(4)} to {feedback.endPrice?.toFixed(4)}
+                          </FeedbackPrice>
+                        )}
+                        
+                        <FeedbackAdvice $isDarkMode={isDarkMode}>
+                          {feedback.advice || 'This marking was incorrect.'}
+                        </FeedbackAdvice>
+                      </FeedbackCard>
+                    ))}
+                  </FeedbackSection>
+                )}
+                
+                {/* Missed Points */}
+                {missedPoints.length > 0 && (
+                  <FeedbackSection type="missed" $isDarkMode={isDarkMode}>
+                    <SectionTitle type="missed">
+                      <FaExclamationTriangle />
+                      {examType === 'fibonacci-retracement'
+                        ? 'Missed Retracement'
+                        : examType === 'fair-value-gaps'
+                          ? 'Missed Gaps'
+                          : 'Missed Points'}
+                    </SectionTitle>
                     
-                    {(feedback.startPrice || feedback.endPrice) && (
-                      <FeedbackPrice isDarkMode={isDarkMode}>
-                        From {feedback.startPrice?.toFixed(4)} to {feedback.endPrice?.toFixed(4)}
-                      </FeedbackPrice>
-                    )}
-                    
-                    <FeedbackAdvice isDarkMode={isDarkMode}>
-                      {feedback.advice || 'You missed this point.'}
-                    </FeedbackAdvice>
-                  </FeedbackCard>
-              ))}
-            </FeedbackSection>
-          )}
+                    {missedPoints.map((feedback, index) => (
+                      <FeedbackCard key={`missed-${index}`} $isDarkMode={isDarkMode}>
+                        <FeedbackType type="missed">
+                          MISSED
+                        </FeedbackType>
+                        
+                        {feedback.price && (
+                          <FeedbackPrice $isDarkMode={isDarkMode}>
+                            Price: {feedback.price.toFixed(4)}
+                          </FeedbackPrice>
+                        )}
+                        
+                        {(feedback.topPrice || feedback.bottomPrice) && (
+                          <FeedbackPrice $isDarkMode={isDarkMode}>
+                            Range: {feedback.bottomPrice?.toFixed(4)} - {feedback.topPrice?.toFixed(4)}
+                          </FeedbackPrice>
+                        )}
+                        
+                        {(feedback.startPrice || feedback.endPrice) && (
+                          <FeedbackPrice $isDarkMode={isDarkMode}>
+                            From {feedback.startPrice?.toFixed(4)} to {feedback.endPrice?.toFixed(4)}
+                          </FeedbackPrice>
+                        )}
+                        
+                        <FeedbackAdvice $isDarkMode={isDarkMode}>
+                          {feedback.advice || 'You missed this point.'}
+                        </FeedbackAdvice>
+                      </FeedbackCard>
+                    ))}
+                  </FeedbackSection>
+                )}
+              </>
+            );
+          })()}
           
           {!transparent && (
             <ContinueButton 
               onClick={onContinue} 
+              $isDarkMode={isDarkMode}
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
             >

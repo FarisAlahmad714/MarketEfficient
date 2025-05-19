@@ -165,30 +165,34 @@ function validateFibonacciRetracement(drawings, expected, chartData, part) {
   const timeframe = determineTimeframe(chartData);
   console.log(`Detected timeframe for validation: ${timeframe}`);
   
-  // Timeframe-specific price tolerances (% of range)
+  // MODIFIED: Increased tolerance percentages to be more forgiving
   const priceTolerances = {
-    '1h': 0.02,  // 2% for 1-hour charts (more precise)
-    '4h': 0.025, // 2.5% for 4-hour charts
-    '1d': 0.03,  // 3% for daily charts
-    '1w': 0.04   // 4% for weekly charts (more forgiving)
+    '1h': 0.04,  // Increased from 0.02 to 4%
+    '4h': 0.05,  // Increased from 0.025 to 5%
+    '1d': 0.06,  // Increased from 0.03 to 6%
+    '1w': 0.08   // Increased from 0.04 to 8%
   };
   
-  // Timeframe-specific time tolerances
+  // MODIFIED: Increased time tolerances to be more forgiving
   const timeTolerances = {
-    '1h': 6 * 3600,     // 6 hours
-    '4h': 24 * 3600,    // 24 hours
-    '1d': 3 * 86400,    // 3 days
-    '1w': 7 * 86400     // 7 days
+    '1h': 12 * 3600,    // Increased from 6 to 12 hours
+    '4h': 48 * 3600,    // Increased from 24 to 48 hours
+    '1d': 5 * 86400,    // Increased from 3 to 5 days
+    '1w': 14 * 86400    // Increased from 7 to 14 days
   };
   
-  const priceTolerance = priceRange * (priceTolerances[timeframe] || 0.03);
-  const timeTolerance = timeTolerances[timeframe] || (3 * 86400);
+  const priceTolerance = priceRange * (priceTolerances[timeframe] || 0.06);
+  const timeTolerance = timeTolerances[timeframe] || (5 * 86400);
   
   console.log(`Validation tolerances: price=${priceTolerance.toFixed(4)}, time=${timeTolerance/3600}h`);
   
   const totalCredits = 2; // 1 for start point, 1 for end point
   let creditsEarned = 0;
   const feedback = { correct: [], incorrect: [] };
+  
+  // ADDED: Check for potential special cases or alternative valid retracements
+  // Sometimes there can be multiple valid ways to interpret a chart
+  let alternativeRetracements = findAlternativeRetracements(chartData, part);
   
   if (expected.start.time === 0 || expected.end.time === 0) {
     // No valid expected retracement found
@@ -225,7 +229,8 @@ function validateFibonacciRetracement(drawings, expected, chartData, part) {
         continue;
       }
       
-      const userDirection = drawing.end.price > drawing.start.price ? 'uptrend' : 'downtrend';
+      // Check direction based on price difference
+      const userDirection = drawing.start.price > drawing.end.price ? 'uptrend' : 'downtrend';
       const directionMatched = userDirection === expected.direction;
       
       if (!directionMatched) {
@@ -254,6 +259,10 @@ function validateFibonacciRetracement(drawings, expected, chartData, part) {
         End Diff: time=${Math.abs(drawing.end.time - expected.end.time)}s, price=${endPriceDiffPercent.toFixed(2)}%
       `);
       
+      // First check against primary expected retracement
+      let startCredits = 0;
+      let endCredits = 0;
+      
       // Check start point
       const startTimeMatch = Math.abs(drawing.start.time - expected.start.time) < timeTolerance;
       const startPriceMatch = Math.abs(drawing.start.price - expected.start.price) < priceTolerance;
@@ -264,8 +273,7 @@ function validateFibonacciRetracement(drawings, expected, chartData, part) {
       const startClose = (Math.abs(drawing.start.time - expected.start.time) < timeTolerance * 2 &&
                         Math.abs(drawing.start.price - expected.start.price) < priceTolerance * 2);
       
-      const startCredits = startExact ? 1 : (startClose ? 0.5 : 0);
-      creditsEarned += startCredits;
+      startCredits = startExact ? 1 : (startClose ? 0.5 : 0);
       
       // Check end point
       const endTimeMatch = Math.abs(drawing.end.time - expected.end.time) < timeTolerance;
@@ -277,34 +285,60 @@ function validateFibonacciRetracement(drawings, expected, chartData, part) {
       const endClose = (Math.abs(drawing.end.time - expected.end.time) < timeTolerance * 2 &&
                       Math.abs(drawing.end.price - expected.end.price) < priceTolerance * 2);
       
-      const endCredits = endExact ? 1 : (endClose ? 0.5 : 0);
-      creditsEarned += endCredits;
+      endCredits = endExact ? 1 : (endClose ? 0.5 : 0);
+      
+      // NEW: Check alternative retracements if available
+      if ((startCredits + endCredits) < 1 && alternativeRetracements.length > 0) {
+        // Try checking against alternative retracements
+        for (const alt of alternativeRetracements) {
+          const altStartTimeMatch = Math.abs(drawing.start.time - alt.start.time) < timeTolerance;
+          const altStartPriceMatch = Math.abs(drawing.start.price - alt.start.price) < priceTolerance;
+          const altStartExact = altStartTimeMatch && altStartPriceMatch;
+          
+          const altStartClose = (Math.abs(drawing.start.time - alt.start.time) < timeTolerance * 2 &&
+                           Math.abs(drawing.start.price - alt.start.price) < priceTolerance * 2);
+          
+          const altStartCredits = altStartExact ? 1 : (altStartClose ? 0.5 : 0);
+          
+          const altEndTimeMatch = Math.abs(drawing.end.time - alt.end.time) < timeTolerance;
+          const altEndPriceMatch = Math.abs(drawing.end.price - alt.end.price) < priceTolerance;
+          const altEndExact = altEndTimeMatch && altEndPriceMatch;
+          
+          const altEndClose = (Math.abs(drawing.end.time - alt.end.time) < timeTolerance * 2 &&
+                         Math.abs(drawing.end.price - alt.end.price) < priceTolerance * 2);
+          
+          const altEndCredits = altEndExact ? 1 : (altEndClose ? 0.5 : 0);
+          
+          // Use alternative if better than primary expected retracement
+          if ((altStartCredits + altEndCredits) > (startCredits + endCredits)) {
+            startCredits = altStartCredits;
+            endCredits = altEndCredits;
+            // Update the expected retracement reference to the better matching alternative
+            expected = alt;
+          }
+        }
+      }
+      
+      // Add credits to total
+      creditsEarned += startCredits + endCredits;
       
       // Add feedback based on accuracy
       if (startCredits > 0 || endCredits > 0) {
         // Generate detailed feedback for partial matches
         let startFeedback, endFeedback;
         
-        if (startExact) {
+        if (startCredits >= 1) {
           startFeedback = 'Exact match';
-        } else if (startClose) {
-          startFeedback = startTimeMatch ? 
-            `Time is correct, price is close (${startPriceDiffPercent.toFixed(1)}% off)` : 
-            startPriceMatch ? 
-              `Price is correct, time is a bit off` : 
-              `Close enough (${startPriceDiffPercent.toFixed(1)}% price diff)`;
+        } else if (startCredits > 0) {
+          startFeedback = `Close enough (${startPriceDiffPercent.toFixed(1)}% price diff)`;
         } else {
           startFeedback = 'Incorrect';
         }
         
-        if (endExact) {
+        if (endCredits >= 1) {
           endFeedback = 'Exact match';
-        } else if (endClose) {
-          endFeedback = endTimeMatch ? 
-            `Time is correct, price is close (${endPriceDiffPercent.toFixed(1)}% off)` : 
-            endPriceMatch ? 
-              `Price is correct, time is a bit off` : 
-              `Close enough (${endPriceDiffPercent.toFixed(1)}% price diff)`;
+        } else if (endCredits > 0) {
+          endFeedback = `Close enough (${endPriceDiffPercent.toFixed(1)}% price diff)`;
         } else {
           endFeedback = 'Incorrect';
         }
@@ -321,7 +355,10 @@ function validateFibonacciRetracement(drawings, expected, chartData, part) {
         // Provide specific feedback about why the drawing was incorrect
         let advice;
         
-        if (Math.abs(drawing.start.time - expected.start.time) > timeTolerance * 3 && 
+        // NEW: Special feedback for points near the correct area but still outside tolerance
+        if (startPriceDiffPercent <= 15 || endPriceDiffPercent <= 15) {
+          advice = `Your points are close, but not quite matching the significant ${expected.direction} retracement. Try adjusting to the major swing points.`;
+        } else if (Math.abs(drawing.start.time - expected.start.time) > timeTolerance * 3 && 
             Math.abs(drawing.end.time - expected.end.time) > timeTolerance * 3) {
           advice = `Your Fibonacci points are in a completely different area of the chart than the expected ${expected.direction}.`;
         } else if (startPriceDiffPercent > 10 && endPriceDiffPercent > 10) {
@@ -352,8 +389,16 @@ function validateFibonacciRetracement(drawings, expected, chartData, part) {
     });
   }
   
-  // Round to nearest 0.5
-  creditsEarned = Math.round(creditsEarned * 2) / 2;
+  // NEW: Be more generous with partial credit
+  // Round to nearest 0.5, but ensure at least 0.5 point if they got anything right
+  if (creditsEarned > 0 && creditsEarned < 0.5) {
+    creditsEarned = 0.5;
+  } else {
+    creditsEarned = Math.round(creditsEarned * 2) / 2;
+  }
+  
+  // Cap at maximum points
+  creditsEarned = Math.min(creditsEarned, totalCredits);
   
   const success = creditsEarned > 0;
   
@@ -374,4 +419,123 @@ function validateFibonacciRetracement(drawings, expected, chartData, part) {
     totalExpectedPoints: totalCredits,
     feedback
   };
+}
+
+/**
+ * Find alternative valid Fibonacci retracements in the chart
+ * This helps identify multiple potential retracements that could be valid
+ * @param {Array} chartData - OHLC chart data
+ * @param {Number} part - Exam part (1 for uptrend, 2 for downtrend)
+ * @returns {Array} Array of alternative retracements
+ */
+function findAlternativeRetracements(chartData, part) {
+  // Prepare results array
+  const alternatives = [];
+  
+  // Calculate min/max range for reference
+  const maxPrice = Math.max(...chartData.map(c => c.high));
+  const minPrice = Math.min(...chartData.map(c => c.low));
+  const priceRange = maxPrice - minPrice;
+  
+  // If chart data is insufficient, return empty array
+  if (!chartData || !Array.isArray(chartData) || chartData.length < 10) {
+    return alternatives;
+  }
+  
+  try {
+    // Find local extremes (potential swing points)
+    const localHighs = [];
+    const localLows = [];
+    
+    // Simple algorithm to find local extremes with a lookback window
+    const lookbackWindow = 3;
+    
+    for (let i = lookbackWindow; i < chartData.length - lookbackWindow; i++) {
+      // Check for local high
+      let isHigh = true;
+      for (let j = i - lookbackWindow; j <= i + lookbackWindow; j++) {
+        if (j !== i && chartData[j].high > chartData[i].high) {
+          isHigh = false;
+          break;
+        }
+      }
+      
+      if (isHigh) {
+        localHighs.push({
+          time: chartData[i].time,
+          price: chartData[i].high,
+          index: i,
+          significance: (chartData[i].high - minPrice) / priceRange
+        });
+      }
+      
+      // Check for local low
+      let isLow = true;
+      for (let j = i - lookbackWindow; j <= i + lookbackWindow; j++) {
+        if (j !== i && chartData[j].low < chartData[i].low) {
+          isLow = false;
+          break;
+        }
+      }
+      
+      if (isLow) {
+        localLows.push({
+          time: chartData[i].time,
+          price: chartData[i].low,
+          index: i,
+          significance: (maxPrice - chartData[i].low) / priceRange
+        });
+      }
+    }
+    
+    // Sort by significance
+    localHighs.sort((a, b) => b.significance - a.significance);
+    localLows.sort((a, b) => b.significance - a.significance);
+    
+    // Generate alternative retracements based on combinations of significant swing points
+    // Consider top 5 most significant highs and lows
+    const topHighs = localHighs.slice(0, 5);
+    const topLows = localLows.slice(0, 5);
+    
+    if (part === 1) { // Uptrend retracement (high to low)
+      // Create all combinations of significant highs to lows that occur after them
+      for (const high of topHighs) {
+        for (const low of topLows) {
+          // Only consider valid time sequence (low after high for uptrend)
+          if (low.time > high.time) {
+            alternatives.push({
+              start: high,
+              end: low,
+              direction: 'uptrend',
+              significance: (high.price - low.price) / priceRange * (high.significance + low.significance)
+            });
+          }
+        }
+      }
+    } else { // Downtrend retracement (low to high)
+      // Create all combinations of significant lows to highs that occur after them
+      for (const low of topLows) {
+        for (const high of topHighs) {
+          // Only consider valid time sequence (high after low for downtrend)
+          if (high.time > low.time) {
+            alternatives.push({
+              start: low,
+              end: high,
+              direction: 'downtrend',
+              significance: (high.price - low.price) / priceRange * (high.significance + low.significance)
+            });
+          }
+        }
+      }
+    }
+    
+    // Sort alternatives by significance
+    alternatives.sort((a, b) => b.significance - a.significance);
+    
+    // Return top alternatives (limit to 3 to avoid excessive checking)
+    return alternatives.slice(0, 3);
+  } catch (error) {
+    console.error('Error finding alternative retracements:', error);
+    return [];
+  }
 }

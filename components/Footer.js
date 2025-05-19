@@ -325,7 +325,7 @@ const Footer = () => {
                   transformOrigin: 'top',
                 }}></div>
               </div> 
-              in CA
+              in California 
             </div>
           </div>
         </div>
