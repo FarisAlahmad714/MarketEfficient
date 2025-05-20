@@ -622,7 +622,7 @@ const FairValueGaps = ({
     });
     setFvgPermanentLabels([]);
     
-    // Remove line series
+    // Remove line series and marker series
     fvgLineSeries.forEach(series => {
       try {
         if (series && chartRef.current) {
@@ -635,7 +635,7 @@ const FairValueGaps = ({
     setFvgLineSeries([]);
   };
 
-  // UPDATED: Draw FVG lines with proper visualization 
+  // UPDATED: Draw FVG lines with proper visualization that connects to the first candle
   const drawFVGLines = () => {
     try {
       clearFVGVisualElements();
@@ -679,22 +679,21 @@ const FairValueGaps = ({
             crosshairMarkerVisible: false
           });
           
-          // Draw from the endTime (third candle where the gap forms) to right edge
+          // Draw from the first candle time to right edge
           const rightEdge = Math.max(...chartData.map(d => d.time)) + 86400; // Add one day
           
-          // IMPORTANT: Use gap.endTime for where the gap visually starts
-          // This corresponds to the 3rd candle in the FVG pattern
+          // IMPORTANT FIX: Use startTime (first candle) as the line starting point!
           topSeries.setData([
-            { time: gap.endTime, value: gap.topPrice },
+            { time: gap.startTime, value: gap.topPrice },
             { time: rightEdge, value: gap.topPrice }
           ]);
           
           bottomSeries.setData([
-            { time: gap.endTime, value: gap.bottomPrice },
+            { time: gap.startTime, value: gap.bottomPrice },
             { time: rightEdge, value: gap.bottomPrice }
           ]);
           
-          // Create area fill
+          // Create area fill - using startTime as beginning point too!
           const areaSeries = chartRef.current.addAreaSeries({
             topColor: colorPalette.fill,
             bottomColor: colorPalette.fill,
@@ -705,11 +704,11 @@ const FairValueGaps = ({
           });
           
           areaSeries.setData([
-            { time: gap.endTime, value: gap.topPrice },
+            { time: gap.startTime, value: gap.topPrice },
             { time: rightEdge, value: gap.topPrice }
           ].concat([
             { time: rightEdge, value: gap.bottomPrice },
-            { time: gap.endTime, value: gap.bottomPrice }
+            { time: gap.startTime, value: gap.bottomPrice }
           ]));
           
           newLineSeries.push(topSeries, bottomSeries, areaSeries);
@@ -728,14 +727,14 @@ const FairValueGaps = ({
           // Create hover area
           const hoverArea = document.createElement('div');
           hoverArea.className = 'fvg-hover-area';
-          hoverArea.dataset.endTime = gap.endTime; // Use endTime for positioning
+          hoverArea.dataset.endTime = gap.endTime; // Keep using endTime for hover area positioning
           hoverArea.dataset.topPrice = gap.topPrice;
           hoverArea.dataset.bottomPrice = gap.bottomPrice;
           hoverArea.dataset.fvgNumber = fvgNumber;
           hoverArea.dataset.type = gap.type;
           
           hoverArea.style.position = 'absolute';
-          hoverArea.style.left = endCandleX + 'px'; // Position at endTime
+          hoverArea.style.left = endCandleX + 'px'; // Position hover area at endTime
           hoverArea.style.top = topY + 'px';
           hoverArea.style.height = (bottomY - topY) + 'px';
           hoverArea.style.width = '60px';
@@ -769,36 +768,62 @@ const FairValueGaps = ({
           `;
           label.dataset.fvgNumber = fvgNumber;
           
-          // Create mini-label (always visible number badge)
-          const miniLabel = document.createElement('div');
-          miniLabel.className = 'fvg-mini-label';
-          miniLabel.dataset.fvgNumber = fvgNumber;
-          
-          miniLabel.style.position = 'absolute';
-          miniLabel.style.backgroundColor = colorPalette.line;
-          miniLabel.style.color = 'white';
-          miniLabel.style.width = '22px';
-          miniLabel.style.height = '22px';
-          miniLabel.style.borderRadius = '50%';
-          miniLabel.style.display = 'flex';
-          miniLabel.style.alignItems = 'center';
-          miniLabel.style.justifyContent = 'center';
-          miniLabel.style.fontWeight = 'bold';
-          miniLabel.style.fontSize = '12px';
-          miniLabel.style.zIndex = '950';
-          miniLabel.style.boxShadow = '0 1px 3px rgba(0,0,0,0.3)';
-          // Position at the ENDTIME where the gap appears
-          miniLabel.style.left = endCandleX + 'px';
-          miniLabel.style.top = (topY + (bottomY - topY) / 2 - 11) + 'px';
-          miniLabel.textContent = fvgNumber;
+          // Create mini-label (always visible number badge) - Use lightweight-charts overlay API instead of direct DOM
+  const createFvgMarkersOnPane = (gap, fvgNumber, colorPalette) => {
+    try {
+      // We need to create a custom pricemark series that respects the chart's layering system
+      // First get coordinates
+      const startTime = gap.startTime;
+      const topPrice = gap.topPrice;
+      const bottomPrice = gap.bottomPrice;
+      const midPrice = (topPrice + bottomPrice) / 2;
+      
+      // Create a markers series with lower z-index that will be properly hidden by modal overlays
+      const markerSeries = chartRef.current.addLineSeries({
+        lastValueVisible: false,
+        priceLineVisible: false,
+        crosshairMarkerVisible: false,
+        lineVisible: false,
+        // Make sure this has a lower z-index than what the modal would use (typically modal z-index > 1000)
+        zIndex: 100
+      });
+      
+      // Add a single point marker at the start of the FVG
+      markerSeries.setData([
+        { 
+          time: startTime, 
+          value: midPrice,
+          marker: {
+            color: colorPalette.line,
+            shape: 'circle',
+            size: 1.5,
+            text: fvgNumber.toString()
+          }
+        }
+      ]);
+      
+      return markerSeries;
+    } catch (error) {
+      console.error('Error creating FVG marker:', error);
+      return null;
+    }
+  };
           
           // Add hover events for highlighting effect
           hoverArea.addEventListener('mouseenter', () => {
             label.style.opacity = '1';
             label.style.transform = 'scale(1)';
-            miniLabel.style.transform = 'scale(1.2)';
-            miniLabel.style.boxShadow = `0 0 0 3px ${colorPalette.fill}`;
-            miniLabel.style.transition = 'transform 0.2s, box-shadow 0.2s';
+            
+            // Find the corresponding miniLabel using the dataset
+            const miniLabelElement = fvgPermanentLabels.find(ml => 
+              ml.dataset.fvgNumber === hoverArea.dataset.fvgNumber
+            );
+            
+            if (miniLabelElement) {
+              miniLabelElement.style.transform = 'scale(1.2)';
+              miniLabelElement.style.boxShadow = `0 0 0 3px ${colorPalette.fill}`;
+              miniLabelElement.style.transition = 'transform 0.2s, box-shadow 0.2s';
+            }
             
             // Create highlight effect for the gap area
             hoverArea.style.backgroundColor = colorPalette.fill;
@@ -808,8 +833,16 @@ const FairValueGaps = ({
           hoverArea.addEventListener('mouseleave', () => {
             label.style.opacity = '0';
             label.style.transform = 'scale(0.95)';
-            miniLabel.style.transform = 'scale(1)';
-            miniLabel.style.boxShadow = '0 1px 3px rgba(0,0,0,0.3)';
+            
+            // Find the corresponding miniLabel using the dataset
+            const miniLabelElement = fvgPermanentLabels.find(ml => 
+              ml.dataset.fvgNumber === hoverArea.dataset.fvgNumber
+            );
+            
+            if (miniLabelElement) {
+              miniLabelElement.style.transform = 'scale(1)';
+              miniLabelElement.style.boxShadow = '0 1px 3px rgba(0,0,0,0.3)';
+            }
             
             // Remove highlight
             hoverArea.style.backgroundColor = 'transparent';
@@ -895,7 +928,7 @@ const FairValueGaps = ({
       if (!hoverArea) continue;
       
       try {
-        // Using endTime for positioning - this is where the gap visually begins
+        // Using endTime for positioning the hover area
         const endTime = parseInt(hoverArea.dataset.endTime);
         const topPrice = parseFloat(hoverArea.dataset.topPrice);
         const bottomPrice = parseFloat(hoverArea.dataset.bottomPrice);
@@ -903,7 +936,7 @@ const FairValueGaps = ({
         
         if (isNaN(endTime) || isNaN(topPrice) || isNaN(bottomPrice)) continue;
         
-        // Get coordinates
+        // Get coordinates for endTime (for hover area and main label)
         const endX = chartRef.current.timeScale().timeToCoordinate(endTime);
         const topY = candleSeriesRef.current.priceToCoordinate(topPrice);
         const bottomY = candleSeriesRef.current.priceToCoordinate(bottomPrice);
@@ -916,14 +949,14 @@ const FairValueGaps = ({
           continue;
         }
         
-        // Update hover area
+        // Update hover area - still at endTime
         hoverArea.style.display = '';
         hoverArea.style.left = endX + 'px';
         hoverArea.style.top = topY + 'px';
         hoverArea.style.height = Math.max(1, bottomY - topY) + 'px';
         hoverArea.style.width = '60px';
         
-        // Update tooltip label
+        // Update tooltip label - still at endTime
         if (label) {
           label.style.display = '';
           const labelRect = label.getBoundingClientRect();
@@ -949,11 +982,26 @@ const FairValueGaps = ({
           label.style.top = adjustedY + 'px';
         }
         
-        // Update mini badge label
+        // Update mini badge label - NOW AT STARTTIME to match the FVG lines
         if (miniLabel) {
-          miniLabel.style.display = '';
-          miniLabel.style.left = endX + 'px';
-          miniLabel.style.top = (topY + (bottomY - topY) / 2 - 11) + 'px';
+          // Get the startTime from the dataset
+          const startTime = parseInt(miniLabel.dataset.startTime);
+          if (!isNaN(startTime)) {
+            // Get coordinate for startTime
+            const startX = chartRef.current.timeScale().timeToCoordinate(startTime);
+            if (startX !== null) {
+              miniLabel.style.display = '';
+              miniLabel.style.left = startX + 'px';
+              miniLabel.style.top = (topY + (bottomY - topY) / 2 - 11) + 'px';
+            } else {
+              miniLabel.style.display = 'none';
+            }
+          } else {
+            // Fallback if startTime is not available
+            miniLabel.style.display = '';
+            miniLabel.style.left = endX + 'px';
+            miniLabel.style.top = (topY + (bottomY - topY) / 2 - 11) + 'px';
+          }
         }
       } catch (error) {
         console.error('Error updating FVG position:', error);

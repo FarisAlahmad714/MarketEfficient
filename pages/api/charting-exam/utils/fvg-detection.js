@@ -13,23 +13,134 @@
  */
 
 /**
+ * Calculate adaptive minimum gap percentage based on asset volatility and timeframe
+ * @param {Array} chartData - OHLC chart data
+ * @param {string} timeframe - Timeframe of the chart (1h, 4h, 1d, 1w)
+ * @param {string} assetSymbol - Symbol of the asset being analyzed
+ * @returns {number} - Adaptive minimum gap percentage
+ */
+export function calculateAdaptiveMinGapPercent(chartData, timeframe = '1d', assetSymbol = 'UNKNOWN') {
+  // Calculate historical volatility (using ATR-like approach)
+  const volatility = calculateVolatility(chartData);
+  
+  // Base minimum gap percentages by timeframe
+  const timeframeBasePercentages = {
+    '1h': 0.003,  // Lower threshold for shorter timeframes
+    '4h': 0.004,
+    '1d': 0.005,  // Default value (0.5%)
+    '1w': 0.008   // Higher threshold for higher timeframes
+  };
+  
+  // Get base percentage based on timeframe (default to daily if not found)
+  const basePercentage = timeframeBasePercentages[timeframe] || 0.005;
+  
+  // Asset-specific adjustments (optional enhancement)
+  const assetMultiplier = getAssetVolatilityMultiplier(assetSymbol);
+  
+  // Calculate final adaptive gap percentage
+  // Scale by volatility - more volatile markets need larger gaps to be significant
+  const adaptivePercentage = basePercentage * (volatility * 0.8 + 0.6) * assetMultiplier;
+  
+  // Ensure we have reasonable bounds
+  const finalPercentage = Math.max(0.002, Math.min(0.015, adaptivePercentage));
+  
+  // Log details for monitoring
+  console.log(`[FVG Adaptive Detection] Asset=${assetSymbol}, Timeframe=${timeframe}, ` +
+              `Base=${basePercentage.toFixed(4)}, Volatility=${volatility.toFixed(2)}, ` +
+              `AssetMult=${assetMultiplier.toFixed(2)}, Final=${finalPercentage.toFixed(4)}`);
+              
+  return finalPercentage;
+}
+
+/**
+ * Calculate volatility using a simple ATR-like approach
+ * @param {Array} chartData - Chart data array
+ * @returns {number} - Normalized volatility score (1.0 is average)
+ */
+function calculateVolatility(chartData) {
+  if (!chartData || chartData.length < 5) return 1.0; // Default to neutral
+  
+  // Calculate true ranges
+  const trueRanges = [];
+  
+  for (let i = 1; i < chartData.length; i++) {
+    const current = chartData[i];
+    const previous = chartData[i-1];
+    
+    const tr1 = current.high - current.low; // Current candle range
+    const tr2 = Math.abs(current.high - previous.close); // High vs previous close
+    const tr3 = Math.abs(current.low - previous.close); // Low vs previous close
+    
+    trueRanges.push(Math.max(tr1, tr2, tr3));
+  }
+  
+  // Calculate average true range
+  const atr = trueRanges.reduce((sum, tr) => sum + tr, 0) / trueRanges.length;
+  
+  // Normalize by price to get percentage volatility
+  const averagePrice = chartData.reduce((sum, candle) => sum + (candle.high + candle.low) / 2, 0) / chartData.length;
+  
+  return (atr / averagePrice) * 100; // As a percentage of price
+}
+
+/**
+ * Get volatility multiplier based on asset type
+ * @param {string} assetSymbol - Symbol of the asset
+ * @returns {number} - Multiplier for the base percentage
+ */
+function getAssetVolatilityMultiplier(assetSymbol) {
+  // Example classifications based on typical asset volatility
+  const highVolatilityAssets = ['BTC', 'ETH', 'SOL', 'LINK']; // Cryptocurrencies
+  const mediumVolatilityAssets = ['NVDA', 'TSLA']; // Growth stocks
+  const lowVolatilityAssets = ['AAPL', 'GLD']; // Blue chips, gold
+  
+  // Convert to uppercase for comparison
+  const symbol = assetSymbol.toUpperCase();
+  
+  if (highVolatilityAssets.includes(symbol)) {
+    return 1.2; // 20% higher threshold
+  } else if (mediumVolatilityAssets.includes(symbol)) {
+    return 1.0; // Neutral
+  } else if (lowVolatilityAssets.includes(symbol)) {
+    return 0.8; // 20% lower threshold
+  }
+  
+  return 1.0; // Default multiplier
+}
+
+/**
  * Detect Fair Value Gaps in chart data
  * @param {Array} chartData - Array of candle data objects
  * @param {string} gapType - Type of gap to detect ('bullish' or 'bearish')
- * @param {number} minGapPercent - Minimum gap size as a percentage of price range
+ * @param {number} minGapPercent - Optional override for minimum gap percentage
+ * @param {string} timeframe - Timeframe of the chart
+ * @param {string} assetSymbol - Symbol of the asset
  * @returns {Array} - Array of detected gaps
  */
-export function detectFairValueGaps(chartData, gapType = 'bullish', minGapPercent = 0.005) {
+export function detectFairValueGaps(
+  chartData, 
+  gapType = 'bullish', 
+  minGapPercent = null,
+  timeframe = '1d',
+  assetSymbol = 'UNKNOWN'
+) {
   if (!chartData || chartData.length < 3) {
     return [];
   }
   
   const gaps = [];
   
+  // If minGapPercent isn't explicitly provided, calculate it adaptively
+  const adaptiveMinGapPercent = minGapPercent || 
+    calculateAdaptiveMinGapPercent(chartData, timeframe, assetSymbol);
+  
   // Calculate minimum gap size for significance
   const priceRange = Math.max(...chartData.map(c => c.high)) - 
                     Math.min(...chartData.map(c => c.low));
-  const minGapSize = priceRange * minGapPercent;
+  const minGapSize = priceRange * adaptiveMinGapPercent;
+  
+  // Log the effective minimum gap size for debugging
+  console.log(`[FVG Detection] ${gapType} FVG search with min gap size: ${minGapSize.toFixed(4)} (${(adaptiveMinGapPercent * 100).toFixed(2)}% of range)`);
   
   // Look for exactly THREE candle patterns
   for (let i = 0; i < chartData.length - 2; i++) {
@@ -82,6 +193,9 @@ export function detectFairValueGaps(chartData, gapType = 'bullish', minGapPercen
   
   // Sort gaps by size (largest first)
   gaps.sort((a, b) => b.size - a.size);
+  
+  // Log found gaps
+  console.log(`[FVG Detection] Found ${gaps.length} ${gapType} FVGs`);
   
   // Limit to the 5 most significant gaps to avoid overcrowding
   return gaps.slice(0, 5);
@@ -154,10 +268,12 @@ export function adjustPartiallyFilledFVG(gap, subsequentCandles) {
  * Find all untested Fair Value Gaps
  * @param {Array} chartData - Full candle data array
  * @param {string} gapType - Type of gaps to find ('bullish' or 'bearish')
+ * @param {string} timeframe - Timeframe of the chart
+ * @param {string} assetSymbol - Symbol of the asset
  * @returns {Array} - Array of untested gaps
  */
-export function findUntestedFVGs(chartData, gapType = 'bullish') {
-  const allGaps = detectFairValueGaps(chartData, gapType);
+export function findUntestedFVGs(chartData, gapType = 'bullish', timeframe = '1d', assetSymbol = 'UNKNOWN') {
+  const allGaps = detectFairValueGaps(chartData, gapType, null, timeframe, assetSymbol);
   const untestedGaps = [];
   
   for (const gap of allGaps) {
@@ -182,5 +298,6 @@ export default {
   detectFairValueGaps,
   checkFVGFilled,
   adjustPartiallyFilledFVG,
-  findUntestedFVGs
+  findUntestedFVGs,
+  calculateAdaptiveMinGapPercent
 };

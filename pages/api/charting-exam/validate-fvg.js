@@ -22,7 +22,7 @@ export default async function handler(req, res) {
     const userId = decoded.userId;
     
     // Get the data from the request body instead of relying on session
-    const { drawings, chartData, chartCount, part } = req.body;
+    const { drawings, chartData, chartCount, part, timeframe } = req.body;
     
     if (!drawings) {
       return res.status(400).json({ error: 'Invalid drawings data' });
@@ -33,9 +33,15 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'No chart data provided in request' });
     }
     
-    // Detect expected FVGs using our corrected detection function
+    // Extract asset symbol and timeframe from the request
+    const symbol = chartData.symbol || req.body.symbol || 'UNKNOWN';
+    const chartTimeframe = timeframe || chartData.timeframe || '1d';
+    
+    console.log(`Validating ${part === 1 ? 'bullish' : 'bearish'} FVGs for ${symbol} on ${chartTimeframe} timeframe`);
+    
+    // Detect expected FVGs with adaptive minimum gap size
     const gapType = part === 1 ? 'bullish' : 'bearish';
-    const expectedGaps = detectFairValueGaps(chartData, gapType);
+    const expectedGaps = detectFairValueGaps(chartData, gapType, null, chartTimeframe, symbol);
     
     // Validate user drawings against expected gaps
     const validationResult = validateFairValueGaps(drawings, expectedGaps, chartData, gapType);
@@ -44,8 +50,6 @@ export default async function handler(req, res) {
     await connectDB();
     
     // Save test result to database
-    const symbol = chartData.symbol || 'UNKNOWN';
-    
     const testResult = new TestResults({
       userId: userId,
       testType: 'chart-exam',
@@ -56,7 +60,8 @@ export default async function handler(req, res) {
       details: {
         feedback: validationResult.feedback,
         expected: { gaps: expectedGaps },
-        part: part
+        part: part,
+        timeframe: chartTimeframe
       },
       completedAt: new Date()
     });

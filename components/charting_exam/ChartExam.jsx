@@ -218,14 +218,15 @@ const ChartExam = ({ examType }) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`  // Add this line
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           drawings,
           chartData,
           chartCount,
           part: examType === 'fibonacci-retracement' ? part : 
-                examType === 'fair-value-gaps' ? part : null
+                examType === 'fair-value-gaps' ? part : null,
+          timeframe: timeframe // Pass the timeframe for adaptive gap sizing
         })
       });
       
@@ -268,6 +269,7 @@ const ChartExam = ({ examType }) => {
       setSubmitting(false);
     }
   };
+  
   const saveResultsAndRedirect = (finalScores, examType) => {
     try {
       // Store results in sessionStorage
