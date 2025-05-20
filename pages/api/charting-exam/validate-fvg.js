@@ -33,7 +33,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'No chart data provided in request' });
     }
     
-    // Detect expected FVGs
+    // Detect expected FVGs using our corrected detection function
     const gapType = part === 1 ? 'bullish' : 'bearish';
     const expectedGaps = detectFairValueGaps(chartData, gapType);
     
@@ -258,7 +258,7 @@ function validateFairValueGaps(drawings, expectedGaps, chartData, gapType) {
         type: 'incorrect_gap',
         topPrice: drawing.topPrice,
         bottomPrice: drawing.bottomPrice,
-        advice: `This is not a valid ${gapType} FVG. Remember: ${gapType.charAt(0).toUpperCase() + gapType.slice(1)} FVGs require the 1st candle to be ${gapType === 'bearish' ? 'bullish' : 'bearish'}, the 3rd candle to be ${gapType === 'bearish' ? 'bearish' : 'bullish'}, and NO OVERLAP between them.`
+        advice: getFVGAdviceMessage(gapType)
       });
     }
   }
@@ -273,7 +273,7 @@ function validateFairValueGaps(drawings, expectedGaps, chartData, gapType) {
         topPrice: gap.topPrice,
         bottomPrice: gap.bottomPrice,
         size: gap.size,
-        advice: `You missed a ${gapType} FVG from ${gap.bottomPrice.toFixed(4)} to ${gap.topPrice.toFixed(4)}. This gap forms between the ${gapType === 'bullish' ? 'high' : 'low'} of the 1st candle and the ${gapType === 'bullish' ? 'low' : 'high'} of the 3rd candle.`
+        advice: `You missed a ${gapType} FVG from ${gap.bottomPrice.toFixed(4)} to ${gap.topPrice.toFixed(4)}. ${getFVGFormationMessage(gapType)}`
       });
     }
   }
@@ -287,4 +287,22 @@ function validateFairValueGaps(drawings, expectedGaps, chartData, gapType) {
     totalExpectedPoints: expectedGaps.length,
     feedback
   };
+}
+
+// Helper function to get detailed advice about FVG formation
+function getFVGAdviceMessage(gapType) {
+  if (gapType === 'bullish') {
+    return "This is not a valid bullish FVG. Remember: A bullish FVG requires a three-candle pattern where: 1) Middle candle's high is above first candle's high AND closes above it, 2) Third candle's low stays above first candle's high (no overlap between them)."
+  } else {
+    return "This is not a valid bearish FVG. Remember: A bearish FVG requires a three-candle pattern where: 1) Middle candle's low is below first candle's low AND closes below it, 2) Third candle's high stays below first candle's low (no overlap between them)."
+  }
+}
+
+// Helper function to get message about FVG formation for missed gaps
+function getFVGFormationMessage(gapType) {
+  if (gapType === 'bullish') {
+    return "This gap forms between the high of the 1st candle and the low of the 3rd candle, with the 2nd candle closing above the 1st candle's high."
+  } else {
+    return "This gap forms between the low of the 1st candle and the high of the 3rd candle, with the 2nd candle closing below the 1st candle's low."
+  }
 }

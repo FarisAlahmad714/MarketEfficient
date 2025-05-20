@@ -294,6 +294,14 @@ const FibonacciAnswerGrid = styled.div`
   }
 `;
 
+// FVG answer display - similar to Fibonacci but adapted for FVGs
+const FVGAnswerGrid = styled.div`
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin-top: 10px;
+`;
+
 const FibonacciLevelItem = styled(motion.div)`
   padding: 10px;
   background-color: ${props => props.$isDarkMode ? 'rgba(0, 0, 0, 0.2)' : 'rgba(255, 255, 255, 0.7)'};
@@ -326,6 +334,42 @@ const FibonacciLevelItem = styled(motion.div)`
     font-size: 0.8rem;
     color: ${props => props.$isDarkMode ? '#b0b0b0' : '#666'};
   }
+`;
+
+const FVGItem = styled(motion.div)`
+  padding: 10px;
+  background-color: ${props => props.$isDarkMode ? 'rgba(0, 0, 0, 0.2)' : 'rgba(255, 255, 255, 0.7)'};
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  border-left: 4px solid ${props => props.type === 'bullish' ? '#4CAF50' : '#F44336'};
+  
+  h5 {
+    margin: 0 0 8px 0;
+    font-size: 0.9rem;
+    color: ${props => props.$isDarkMode ? '#e0e0e0' : '#333'};
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .gap-details {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.9rem;
+    margin-bottom: 4px;
+    color: ${props => props.$isDarkMode ? '#e0e0e0' : '#333'};
+    display: flex;
+    justify-content: space-between;
+  }
+`;
+
+const StatusBadge = styled.span`
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  color: white;
+  background-color: ${props => props.missed ? '#FF9800' : '#4CAF50'};
 `;
 
 const KeyLevelBadge = styled.span`
@@ -400,6 +444,21 @@ const fibItemVariants = {
   visible: custom => ({ 
     opacity: 1, 
     y: 0, 
+    transition: { 
+      delay: custom * 0.1,
+      type: 'spring',
+      damping: 15, 
+      stiffness: 200 
+    } 
+  })
+};
+
+// Animation variants for FVG items
+const fvgItemVariants = {
+  hidden: { opacity: 0, x: -20 },
+  visible: custom => ({ 
+    opacity: 1, 
+    x: 0, 
     transition: { 
       delay: custom * 0.1,
       type: 'spring',
@@ -703,6 +762,86 @@ const ResultsPanel = ({ results, onContinue, examType, part, chartCount, isDarkM
             </FeedbackSection>
           )}
           
+          {/* Correct Fair Value Gaps Answer Section */}
+          {examType === 'fair-value-gaps' && results.expected && results.expected.gaps && (
+            <FeedbackSection type="info" $isDarkMode={isDarkMode}>
+              <SectionTitle type="info">
+                <FaRuler />
+                {part === 1 ? 'Bullish' : 'Bearish'} Fair Value Gaps
+              </SectionTitle>
+              
+              {/* Display all Fair Value Gaps */}
+              <FVGAnswerGrid>
+                {results.expected.gaps.map((gap, index) => {
+                  // Check if this gap was identified correctly
+                  const wasIdentified = results.feedback?.correct?.some(correct => 
+                    // Compare prices (with tolerance) to determine if this was identified
+                    Math.abs(correct.topPrice - gap.topPrice) < 0.01 && 
+                    Math.abs(correct.bottomPrice - gap.bottomPrice) < 0.01
+                  );
+                  
+                  // Determine if this is a missed gap
+                  const wasMissed = !wasIdentified;
+                  
+                  return (
+                    <FVGItem 
+                      key={`gap-${index}`} 
+                      $isDarkMode={isDarkMode}
+                      type={gap.type}
+                      variants={fvgItemVariants}
+                      initial="hidden"
+                      animate="visible"
+                      custom={index}
+                    >
+                      <h5>
+                        <span>FVG #{index + 1}</span>
+                        <StatusBadge missed={wasMissed}>
+                          {wasMissed ? 'MISSED' : 'IDENTIFIED'}
+                        </StatusBadge>
+                      </h5>
+                      
+                      <div className="gap-details">
+                        <span>Type:</span>
+                        <span>{gap.type === 'bullish' ? 'Bullish' : 'Bearish'}</span>
+                      </div>
+                      
+                      <div className="gap-details">
+                        <span>Range:</span>
+                        <span>{gap.bottomPrice.toFixed(2)} - {gap.topPrice.toFixed(2)}</span>
+                      </div>
+                      
+                      <div className="gap-details">
+                        <span>Size:</span>
+                        <span>{(gap.topPrice - gap.bottomPrice).toFixed(2)}</span>
+                      </div>
+                      
+                      <div className="gap-details">
+                        <span>Date:</span>
+                        <span>{formatDate(gap.endTime)}</span>
+                      </div>
+                      
+                      <FeedbackAdvice $isDarkMode={isDarkMode} style={{marginTop: '8px'}}>
+                        {wasMissed 
+                          ? `You missed this ${gap.type} Fair Value Gap.`
+                          : `You correctly identified this ${gap.type} Fair Value Gap.`}
+                      </FeedbackAdvice>
+                    </FVGItem>
+                  );
+                })}
+                
+                {/* Show message if no gaps exist */}
+                {(!results.expected.gaps || results.expected.gaps.length === 0) && (
+                  <FVGItem $isDarkMode={isDarkMode}>
+                    <h5>No Fair Value Gaps</h5>
+                    <FeedbackAdvice $isDarkMode={isDarkMode}>
+                      There were no {part === 1 ? 'bullish' : 'bearish'} Fair Value Gaps in this chart.
+                    </FeedbackAdvice>
+                  </FVGItem>
+                )}
+              </FVGAnswerGrid>
+            </FeedbackSection>
+          )}
+          
           {/* Helper function to filter feedback based on current part */}
           {(() => {
             // For Fibonacci retracement, filter feedback based on direction matching the current part
@@ -738,6 +877,10 @@ const ResultsPanel = ({ results, onContinue, examType, part, chartCount, isDarkM
               f.type === 'missed_gap' || 
               f.type === 'missed_retracement'
             );
+
+            // Only show these sections for exams where we're not already showing detailed results
+            // (e.g., don't repeat missed gaps in this section if we're already showing them in the dedicated FVG section)
+            const shouldShowDetailedSections = examType !== 'fair-value-gaps';
 
             return (
               <>
@@ -829,8 +972,8 @@ const ResultsPanel = ({ results, onContinue, examType, part, chartCount, isDarkM
                   </FeedbackSection>
                 )}
                 
-                {/* Missed Points */}
-                {missedPoints.length > 0 && (
+                {/* Missed Points - only show for non-FVG exams as FVG exam already has detailed view */}
+                {shouldShowDetailedSections && missedPoints.length > 0 && (
                   <FeedbackSection type="missed" $isDarkMode={isDarkMode}>
                     <SectionTitle type="missed">
                       <FaExclamationTriangle />

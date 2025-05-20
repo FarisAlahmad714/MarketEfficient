@@ -1,81 +1,186 @@
-// pages/api/charting-exam/utils/fvg-detection.js
+/**
+ * Fair Value Gap (FVG) Detection Utilities
+ * 
+ * A Fair Value Gap is a three-candlestick sequence where:
+ * 
+ * For Bullish FVG:
+ * 1. Candlestick #2's high must be above Candlestick #1's high AND it must close above it
+ * 2. Candlestick #3's low must stay above Candlestick #1's high (no overlap)
+ * 
+ * For Bearish FVG:
+ * 1. Candlestick #2's low must be below Candlestick #1's low AND it must close below it
+ * 2. Candlestick #3's high must stay below Candlestick #1's low (no overlap)
+ */
 
-// Detect Fair Value Gaps in chart data
+/**
+ * Detect Fair Value Gaps in chart data
+ * @param {Array} chartData - Array of candle data objects
+ * @param {string} gapType - Type of gap to detect ('bullish' or 'bearish')
+ * @param {number} minGapPercent - Minimum gap size as a percentage of price range
+ * @returns {Array} - Array of detected gaps
+ */
 export function detectFairValueGaps(chartData, gapType = 'bullish', minGapPercent = 0.005) {
-    if (!chartData || chartData.length < 3) {
-      return [];
-    }
-    
-    const gaps = [];
-    
-    // Calculate minimum gap size for significance
-    const priceRange = Math.max(...chartData.map(c => c.high)) - 
-                      Math.min(...chartData.map(c => c.low));
-    const minGapSize = priceRange * minGapPercent;
-    
-    // Look for exactly THREE candle patterns
-    for (let i = 0; i < chartData.length - 2; i++) {
-      const firstCandle = chartData[i];
-      const middleCandle = chartData[i + 1];
-      const thirdCandle = chartData[i + 2];
-      
-      if (gapType === 'bullish') {
-        // For bullish FVG: FIRST candle high and THIRD candle low must NOT overlap
-        const gapSize = thirdCandle.low - firstCandle.high;
-        
-        if (gapSize > 0 && gapSize >= minGapSize) {
-          gaps.push({
-            startTime: firstCandle.time || Math.floor(new Date(firstCandle.date).getTime() / 1000),
-            endTime: thirdCandle.time || Math.floor(new Date(thirdCandle.date).getTime() / 1000),
-            topPrice: thirdCandle.low,
-            bottomPrice: firstCandle.high,
-            type: 'bullish',
-            size: gapSize,
-            firstCandleIndex: i,
-            thirdCandleIndex: i + 2
-          });
-        }
-      } else if (gapType === 'bearish') {
-        // For bearish FVG: FIRST candle low and THIRD candle high must NOT overlap
-        const gapSize = firstCandle.low - thirdCandle.high;
-        
-        if (gapSize > 0 && gapSize >= minGapSize) {
-          gaps.push({
-            startTime: firstCandle.time || Math.floor(new Date(firstCandle.date).getTime() / 1000),
-            endTime: thirdCandle.time || Math.floor(new Date(thirdCandle.date).getTime() / 1000),
-            topPrice: firstCandle.low,
-            bottomPrice: thirdCandle.high,
-            type: 'bearish',
-            size: gapSize,
-            firstCandleIndex: i,
-            thirdCandleIndex: i + 2
-          });
-        }
-      }
-    }
-    
-    // Sort gaps by size (largest first)
-    gaps.sort((a, b) => b.size - a.size);
-    
-    // Limit to the 5 most significant gaps to avoid overcrowding
-    return gaps.slice(0, 5);
+  if (!chartData || chartData.length < 3) {
+    return [];
   }
   
-  // Check if an FVG has been filled
-  export function checkFVGFilled(gap, subsequentCandles) {
-    for (const candle of subsequentCandles) {
-      if (gap.type === 'bullish') {
-        // Bullish FVG is filled if price goes back down into the gap
-        if (candle.low <= gap.topPrice) {
-          return true;
-        }
-      } else {
-        // Bearish FVG is filled if price goes back up into the gap
-        if (candle.high >= gap.bottomPrice) {
-          return true;
-        }
+  const gaps = [];
+  
+  // Calculate minimum gap size for significance
+  const priceRange = Math.max(...chartData.map(c => c.high)) - 
+                    Math.min(...chartData.map(c => c.low));
+  const minGapSize = priceRange * minGapPercent;
+  
+  // Look for exactly THREE candle patterns
+  for (let i = 0; i < chartData.length - 2; i++) {
+    const firstCandle = chartData[i];
+    const middleCandle = chartData[i + 1];
+    const thirdCandle = chartData[i + 2];
+    
+    if (gapType === 'bullish') {
+      // For bullish FVG:
+      // 1. Middle candle's high must be above first candle's high AND must close above it
+      // 2. Third candle's low must be above first candle's high (no overlap)
+      
+      const middleCondition = middleCandle.high > firstCandle.high && middleCandle.close > firstCandle.high;
+      const gapSize = thirdCandle.low - firstCandle.high;
+      
+      if (middleCondition && gapSize > 0 && gapSize >= minGapSize) {
+        gaps.push({
+          startTime: firstCandle.time || Math.floor(new Date(firstCandle.date).getTime() / 1000),
+          endTime: thirdCandle.time || Math.floor(new Date(thirdCandle.date).getTime() / 1000),
+          topPrice: thirdCandle.low,
+          bottomPrice: firstCandle.high,
+          type: 'bullish',
+          size: gapSize,
+          firstCandleIndex: i,
+          thirdCandleIndex: i + 2
+        });
+      }
+    } else if (gapType === 'bearish') {
+      // For bearish FVG:
+      // 1. Middle candle's low must be below first candle's low AND must close below it
+      // 2. Third candle's high must be below first candle's low (no overlap)
+      
+      const middleCondition = middleCandle.low < firstCandle.low && middleCandle.close < firstCandle.low;
+      const gapSize = firstCandle.low - thirdCandle.high;
+      
+      if (middleCondition && gapSize > 0 && gapSize >= minGapSize) {
+        gaps.push({
+          startTime: firstCandle.time || Math.floor(new Date(firstCandle.date).getTime() / 1000),
+          endTime: thirdCandle.time || Math.floor(new Date(thirdCandle.date).getTime() / 1000),
+          topPrice: firstCandle.low,
+          bottomPrice: thirdCandle.high,
+          type: 'bearish',
+          size: gapSize,
+          firstCandleIndex: i,
+          thirdCandleIndex: i + 2
+        });
       }
     }
-    
-    return false;
   }
+  
+  // Sort gaps by size (largest first)
+  gaps.sort((a, b) => b.size - a.size);
+  
+  // Limit to the 5 most significant gaps to avoid overcrowding
+  return gaps.slice(0, 5);
+}
+
+/**
+ * Check if an FVG has been filled by subsequent price action
+ * @param {Object} gap - The FVG object to check
+ * @param {Array} subsequentCandles - Array of candles that occurred after the FVG formation
+ * @returns {boolean} - Whether the gap has been filled
+ */
+export function checkFVGFilled(gap, subsequentCandles) {
+  for (const candle of subsequentCandles) {
+    if (gap.type === 'bullish') {
+      // Bullish FVG is filled if price goes back down into the gap
+      if (candle.low <= gap.topPrice) {
+        return true;
+      }
+    } else {
+      // Bearish FVG is filled if price goes back up into the gap
+      if (candle.high >= gap.bottomPrice) {
+        return true;
+      }
+    }
+  }
+  
+  return false;
+}
+
+/**
+ * Determine if a gap has been partially filled and adjust the gap size accordingly
+ * @param {Object} gap - The original FVG object
+ * @param {Array} subsequentCandles - Array of candles after the FVG formation
+ * @returns {Object} - The adjusted gap, or the original if not partially filled
+ */
+export function adjustPartiallyFilledFVG(gap, subsequentCandles) {
+  let adjustedGap = { ...gap };
+  let partiallyFilled = false;
+  
+  for (const candle of subsequentCandles) {
+    if (gap.type === 'bullish') {
+      // If price went into the gap but didn't completely fill it
+      if (candle.low < gap.topPrice && candle.low > gap.bottomPrice) {
+        // Adjust the top of the gap to the lowest point reached
+        adjustedGap.topPrice = Math.min(adjustedGap.topPrice, candle.low);
+        adjustedGap.size = adjustedGap.topPrice - adjustedGap.bottomPrice;
+        partiallyFilled = true;
+      } else if (candle.low <= gap.bottomPrice) {
+        // Completely filled
+        return null;
+      }
+    } else { // bearish gap
+      // If price went into the gap but didn't completely fill it
+      if (candle.high > gap.bottomPrice && candle.high < gap.topPrice) {
+        // Adjust the bottom of the gap to the highest point reached
+        adjustedGap.bottomPrice = Math.max(adjustedGap.bottomPrice, candle.high);
+        adjustedGap.size = adjustedGap.topPrice - adjustedGap.bottomPrice;
+        partiallyFilled = true;
+      } else if (candle.high >= gap.topPrice) {
+        // Completely filled
+        return null;
+      }
+    }
+  }
+  
+  return partiallyFilled ? adjustedGap : gap;
+}
+
+/**
+ * Find all untested Fair Value Gaps
+ * @param {Array} chartData - Full candle data array
+ * @param {string} gapType - Type of gaps to find ('bullish' or 'bearish')
+ * @returns {Array} - Array of untested gaps
+ */
+export function findUntestedFVGs(chartData, gapType = 'bullish') {
+  const allGaps = detectFairValueGaps(chartData, gapType);
+  const untestedGaps = [];
+  
+  for (const gap of allGaps) {
+    // Get all candles that occurred after the FVG formation
+    const subsequentCandles = chartData.slice(gap.thirdCandleIndex + 1);
+    
+    // Check if the gap has been filled
+    if (!checkFVGFilled(gap, subsequentCandles)) {
+      // If not filled, check if it's been partially filled and adjust
+      const adjustedGap = adjustPartiallyFilledFVG(gap, subsequentCandles);
+      
+      if (adjustedGap) {
+        untestedGaps.push(adjustedGap);
+      }
+    }
+  }
+  
+  return untestedGaps;
+}
+
+export default {
+  detectFairValueGaps,
+  checkFVGFilled,
+  adjustPartiallyFilledFVG,
+  findUntestedFVGs
+};

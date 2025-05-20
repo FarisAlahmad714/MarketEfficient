@@ -3,7 +3,7 @@ import { createChart, CrosshairMode, LineStyle } from 'lightweight-charts';
 import styled from 'styled-components';
 import ToolPanel from './common/ToolPanel';
 
-// Styled components
+// Styled components (unchanged)
 const ChartWrapper = styled.div`
   position: relative;
   width: 100%;
@@ -179,13 +179,23 @@ const FairValueGaps = ({
   const [fvgHoverAreas, setFvgHoverAreas] = useState([]);
   const [fvgLabels, setFvgLabels] = useState([]);
   const [fvgLineSeries, setFvgLineSeries] = useState([]);
+  const [fvgPermanentLabels, setFvgPermanentLabels] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Color palette for FVGs to make them visually distinct
+  const fvgColorPalette = [
+    { line: '#FF9800', fill: 'rgba(255, 152, 0, 0.15)', text: '#FF9800' }, // Orange
+    { line: '#2196F3', fill: 'rgba(33, 150, 243, 0.15)', text: '#2196F3' }, // Blue
+    { line: '#4CAF50', fill: 'rgba(76, 175, 80, 0.15)', text: '#4CAF50' }, // Green
+    { line: '#E91E63', fill: 'rgba(233, 30, 99, 0.15)', text: '#E91E63' }, // Pink
+    { line: '#9C27B0', fill: 'rgba(156, 39, 176, 0.15)', text: '#9C27B0' }  // Purple
+  ];
 
   const colors = {
     bullish: 'rgba(76, 175, 80, 0.3)',
     bearish: 'rgba(244, 67, 54, 0.3)',
-    correctBullish: 'rgba(255, 152, 0, 0.6)', // Orange
-    correctBearish: 'rgba(244, 67, 54, 0.6)'   // Red
+    correctBullish: 'rgba(255, 152, 0, 0.6)',
+    correctBearish: 'rgba(244, 67, 54, 0.6)'
   };
 
   // Initialize chart
@@ -259,12 +269,32 @@ const FairValueGaps = ({
     }
   }, [userFVGs, onDrawingsUpdate]);
 
-  // Process validation results
+  // Process validation results with improved robustness
   useEffect(() => {
+    let cleanup = null;
+    
     if (validationResults && chartRef.current && candleSeriesRef.current) {
+      // Clear existing visual elements
       clearFVGVisualElements();
-      drawFixedFVGLines();
+      
+      // Draw new FVG lines and labels
+      cleanup = drawFixedFVGLines();
+      
+      // Force a render cycle to ensure positions are updated
+      requestAnimationFrame(() => {
+        updateFVGPositions();
+        
+        // Force a second update after a brief delay to handle any layout adjustments
+        setTimeout(updateFVGPositions, 100);
+      });
     }
+    
+    // Clean up function
+    return () => {
+      if (cleanup && typeof cleanup === 'function') {
+        cleanup();
+      }
+    };
   }, [validationResults]);
 
   // Find candle by time
@@ -584,6 +614,14 @@ const FairValueGaps = ({
     });
     setFvgLabels([]);
     
+    // Remove permanent labels
+    fvgPermanentLabels.forEach(label => {
+      if (label && label.parentNode) {
+        label.parentNode.removeChild(label);
+      }
+    });
+    setFvgPermanentLabels([]);
+    
     // Remove line series
     fvgLineSeries.forEach(series => {
       try {
@@ -597,147 +635,247 @@ const FairValueGaps = ({
     setFvgLineSeries([]);
   };
 
-  // Create hover areas for FVG visualization
-  const createFVGHoverAreas = () => {
-    if (!chartRef.current || !candleSeriesRef.current || !chartContainerRef.current) return;
-    
-    clearFVGVisualElements();
-    
-    if (!validationResults || !validationResults.expected || !validationResults.expected.gaps) return;
-    
-    const sortedGaps = [...validationResults.expected.gaps].sort((a, b) => b.topPrice - a.topPrice);
-    
-    const newHoverAreas = [];
-    const newLabels = [];
-    const newLineSeries = [];
-    
-    sortedGaps.forEach((gap, index) => {
-      const fvgNumber = index + 1;
-      const color = gap.type === 'bullish' ? '#FF9800' : '#F44336';
+  // UPDATED: Draw FVG lines with proper visualization 
+  const drawFVGLines = () => {
+    try {
+      clearFVGVisualElements();
       
-      // Add gap lines
-      const seriesPair = addGapLines(gap, fvgNumber, color);
-      if (seriesPair) {
-        newLineSeries.push(...seriesPair);
+      if (!validationResults?.expected?.gaps || !chartRef.current || !chartContainerRef.current) {
+        return;
       }
       
-      // Calculate positions
-      const candleX = chartRef.current.timeScale().timeToCoordinate(gap.endTime);
-      const topY = candleSeriesRef.current.priceToCoordinate(gap.topPrice);
-      const bottomY = candleSeriesRef.current.priceToCoordinate(gap.bottomPrice);
+      const sortedGaps = [...validationResults.expected.gaps].sort((a, b) => b.topPrice - a.topPrice);
       
-      if (!candleX || !topY || !bottomY) return;
+      const newHoverAreas = [];
+      const newLabels = [];
+      const newLineSeries = [];
+      const newPermanentLabels = [];
       
-      // Create hover area
-      const hoverArea = document.createElement('div');
-      hoverArea.className = 'fvg-hover-area';
-      hoverArea.dataset.time = gap.endTime;
-      hoverArea.dataset.topPrice = gap.topPrice;
-      hoverArea.dataset.bottomPrice = gap.bottomPrice;
-      hoverArea.dataset.fvgNumber = fvgNumber;
-      hoverArea.dataset.type = gap.type;
-      
-      hoverArea.style.position = 'absolute';
-      hoverArea.style.left = (candleX) + 'px';
-      hoverArea.style.top = topY + 'px';
-      hoverArea.style.height = (bottomY - topY) + 'px';
-      hoverArea.style.width = '20px';
-      hoverArea.style.zIndex = '900';
-      hoverArea.style.cursor = 'pointer';
-      hoverArea.style.backgroundColor = 'transparent';
-      
-      // Create label
-      const label = document.createElement('div');
-      label.className = 'fvg-label';
-      label.style.position = 'absolute';
-      label.style.backgroundColor = color;
-      label.style.color = 'white';
-      label.style.padding = '2px 6px';
-      label.style.borderRadius = '4px';
-      label.style.fontWeight = 'bold';
-      label.style.fontSize = '12px';
-      label.style.zIndex = '1000';
-      label.style.whiteSpace = 'nowrap';
-      label.style.opacity = '0';
-      label.style.transition = 'opacity 0.2s';
-      label.style.pointerEvents = 'none';
-      label.style.boxShadow = '0 1px 3px rgba(0,0,0,0.2)';
-      label.textContent = `Correct FVG ${fvgNumber}`;
-      label.dataset.fvgNumber = fvgNumber;
-      
-      // Add hover events
-      hoverArea.addEventListener('mouseenter', () => {
-        label.style.opacity = '1';
-        hoverArea.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+      sortedGaps.forEach((gap, index) => {
+        // A Fair Value Gap is formed after the 3rd candle
+        // endTime corresponds to the 3rd candle where the gap appears
+        const fvgNumber = index + 1;
+        const colorIndex = (fvgNumber - 1) % fvgColorPalette.length;
+        const colorPalette = fvgColorPalette[colorIndex];
+        
+        // Drawing the lines and area
+        try {
+          // Create top and bottom line series with distinct color
+          const topSeries = chartRef.current.addLineSeries({
+            color: colorPalette.line,
+            lineWidth: 2,
+            lineStyle: 2, // Dashed
+            lastValueVisible: false,
+            priceLineVisible: false,
+            crosshairMarkerVisible: false
+          });
+          
+          const bottomSeries = chartRef.current.addLineSeries({
+            color: colorPalette.line,
+            lineWidth: 2,
+            lineStyle: 2, // Dashed
+            lastValueVisible: false,
+            priceLineVisible: false,
+            crosshairMarkerVisible: false
+          });
+          
+          // Draw from the endTime (third candle where the gap forms) to right edge
+          const rightEdge = Math.max(...chartData.map(d => d.time)) + 86400; // Add one day
+          
+          // IMPORTANT: Use gap.endTime for where the gap visually starts
+          // This corresponds to the 3rd candle in the FVG pattern
+          topSeries.setData([
+            { time: gap.endTime, value: gap.topPrice },
+            { time: rightEdge, value: gap.topPrice }
+          ]);
+          
+          bottomSeries.setData([
+            { time: gap.endTime, value: gap.bottomPrice },
+            { time: rightEdge, value: gap.bottomPrice }
+          ]);
+          
+          // Create area fill
+          const areaSeries = chartRef.current.addAreaSeries({
+            topColor: colorPalette.fill,
+            bottomColor: colorPalette.fill,
+            lineColor: 'transparent',
+            crosshairMarkerVisible: false,
+            lastValueVisible: false,
+            priceLineVisible: false
+          });
+          
+          areaSeries.setData([
+            { time: gap.endTime, value: gap.topPrice },
+            { time: rightEdge, value: gap.topPrice }
+          ].concat([
+            { time: rightEdge, value: gap.bottomPrice },
+            { time: gap.endTime, value: gap.bottomPrice }
+          ]));
+          
+          newLineSeries.push(topSeries, bottomSeries, areaSeries);
+        } catch (error) {
+          console.error('Error creating FVG lines:', error);
+        }
+        
+        // Drawing the label at the endTime (where the gap visually begins)
+        try {
+          const endCandleX = chartRef.current.timeScale().timeToCoordinate(gap.endTime);
+          const topY = candleSeriesRef.current.priceToCoordinate(gap.topPrice);
+          const bottomY = candleSeriesRef.current.priceToCoordinate(gap.bottomPrice);
+          
+          if (!endCandleX || !topY || !bottomY) return;
+          
+          // Create hover area
+          const hoverArea = document.createElement('div');
+          hoverArea.className = 'fvg-hover-area';
+          hoverArea.dataset.endTime = gap.endTime; // Use endTime for positioning
+          hoverArea.dataset.topPrice = gap.topPrice;
+          hoverArea.dataset.bottomPrice = gap.bottomPrice;
+          hoverArea.dataset.fvgNumber = fvgNumber;
+          hoverArea.dataset.type = gap.type;
+          
+          hoverArea.style.position = 'absolute';
+          hoverArea.style.left = endCandleX + 'px'; // Position at endTime
+          hoverArea.style.top = topY + 'px';
+          hoverArea.style.height = (bottomY - topY) + 'px';
+          hoverArea.style.width = '60px';
+          hoverArea.style.zIndex = '900';
+          hoverArea.style.cursor = 'pointer';
+          hoverArea.style.backgroundColor = 'transparent';
+          
+          // Create detailed hover label
+          const label = document.createElement('div');
+          label.className = 'fvg-label';
+          label.style.position = 'absolute';
+          label.style.backgroundColor = colorPalette.line;
+          label.style.color = 'white';
+          label.style.padding = '6px 10px';
+          label.style.borderRadius = '4px';
+          label.style.fontWeight = 'bold';
+          label.style.fontSize = '12px';
+          label.style.zIndex = '1000';
+          label.style.whiteSpace = 'nowrap';
+          label.style.opacity = '0';
+          label.style.transition = 'opacity 0.3s, transform 0.3s';
+          label.style.transform = 'scale(0.95)';
+          label.style.pointerEvents = 'none';
+          label.style.boxShadow = '0 2px 5px rgba(0,0,0,0.3)';
+          
+          // Add more detailed info to the label
+          label.innerHTML = `
+            <div style="font-weight:bold;margin-bottom:3px;">FVG #${fvgNumber} (${gap.type})</div>
+            <div style="font-size:11px;">Range: ${gap.bottomPrice.toFixed(2)} - ${gap.topPrice.toFixed(2)}</div>
+            <div style="font-size:11px;">Size: ${(gap.topPrice - gap.bottomPrice).toFixed(2)}</div>
+          `;
+          label.dataset.fvgNumber = fvgNumber;
+          
+          // Create mini-label (always visible number badge)
+          const miniLabel = document.createElement('div');
+          miniLabel.className = 'fvg-mini-label';
+          miniLabel.dataset.fvgNumber = fvgNumber;
+          
+          miniLabel.style.position = 'absolute';
+          miniLabel.style.backgroundColor = colorPalette.line;
+          miniLabel.style.color = 'white';
+          miniLabel.style.width = '22px';
+          miniLabel.style.height = '22px';
+          miniLabel.style.borderRadius = '50%';
+          miniLabel.style.display = 'flex';
+          miniLabel.style.alignItems = 'center';
+          miniLabel.style.justifyContent = 'center';
+          miniLabel.style.fontWeight = 'bold';
+          miniLabel.style.fontSize = '12px';
+          miniLabel.style.zIndex = '950';
+          miniLabel.style.boxShadow = '0 1px 3px rgba(0,0,0,0.3)';
+          // Position at the ENDTIME where the gap appears
+          miniLabel.style.left = endCandleX + 'px';
+          miniLabel.style.top = (topY + (bottomY - topY) / 2 - 11) + 'px';
+          miniLabel.textContent = fvgNumber;
+          
+          // Add hover events for highlighting effect
+          hoverArea.addEventListener('mouseenter', () => {
+            label.style.opacity = '1';
+            label.style.transform = 'scale(1)';
+            miniLabel.style.transform = 'scale(1.2)';
+            miniLabel.style.boxShadow = `0 0 0 3px ${colorPalette.fill}`;
+            miniLabel.style.transition = 'transform 0.2s, box-shadow 0.2s';
+            
+            // Create highlight effect for the gap area
+            hoverArea.style.backgroundColor = colorPalette.fill;
+            hoverArea.style.borderLeft = `3px solid ${colorPalette.line}`;
+          });
+          
+          hoverArea.addEventListener('mouseleave', () => {
+            label.style.opacity = '0';
+            label.style.transform = 'scale(0.95)';
+            miniLabel.style.transform = 'scale(1)';
+            miniLabel.style.boxShadow = '0 1px 3px rgba(0,0,0,0.3)';
+            
+            // Remove highlight
+            hoverArea.style.backgroundColor = 'transparent';
+            hoverArea.style.borderLeft = 'none';
+          });
+          
+          // Position the tooltip label
+          const chartRect = chartContainerRef.current.getBoundingClientRect();
+          const chartWidth = chartRect.width;
+          const chartHeight = chartRect.height;
+          
+          const labelY = topY + (bottomY - topY) / 2;
+          const labelRect = label.getBoundingClientRect();
+          const labelWidth = labelRect.width || 160;
+          const labelHeight = labelRect.height || 60;
+          
+          let labelX = endCandleX + 30;
+          let adjustedY = labelY - (labelHeight / 2);
+          
+          if (labelX + labelWidth > chartWidth) {
+            labelX = endCandleX - labelWidth - 5;
+          }
+          
+          if (adjustedY < 0) {
+            adjustedY = 0;
+          } else if (adjustedY + labelHeight > chartHeight) {
+            adjustedY = chartHeight - labelHeight;
+          }
+          
+          label.style.left = labelX + 'px';
+          label.style.top = adjustedY + 'px';
+          
+          // Add to DOM
+          chartContainerRef.current.appendChild(hoverArea);
+          chartContainerRef.current.appendChild(label);
+          chartContainerRef.current.appendChild(miniLabel);
+          
+          newHoverAreas.push(hoverArea);
+          newLabels.push(label);
+          newPermanentLabels.push(miniLabel);
+        } catch (error) {
+          console.error('Error creating FVG labels:', error);
+        }
       });
       
-      hoverArea.addEventListener('mouseleave', () => {
-        label.style.opacity = '0';
-        hoverArea.style.backgroundColor = 'transparent';
-      });
+      setFvgHoverAreas(newHoverAreas);
+      setFvgLabels(newLabels);
+      setFvgLineSeries(newLineSeries);
+      setFvgPermanentLabels(newPermanentLabels);
       
-      // Add to DOM
-      chartContainerRef.current.appendChild(hoverArea);
-      chartContainerRef.current.appendChild(label);
-      
-      newHoverAreas.push(hoverArea);
-      newLabels.push(label);
-    });
-    
-    setFvgHoverAreas(newHoverAreas);
-    setFvgLabels(newLabels);
-    setFvgLineSeries(newLineSeries);
-    
-    updateFVGPositions();
-    setupChartEventListeners();
-  };
-
-  // Add gap lines
-  const addGapLines = (gap, fvgNumber, color) => {
-    if (!chartRef.current || !chartData) return null;
-    
-    try {
-      // Create top and bottom line series
-      const topSeries = chartRef.current.addLineSeries({
-        color: color,
-        lineWidth: 2,
-        lineStyle: 2, // Dashed
-        lastValueVisible: false,
-        priceLineVisible: false,
-        crosshairMarkerVisible: false
-      });
-      
-      const bottomSeries = chartRef.current.addLineSeries({
-        color: color,
-        lineWidth: 2,
-        lineStyle: 2, // Dashed
-        lastValueVisible: false,
-        priceLineVisible: false,
-        crosshairMarkerVisible: false
-      });
-      
-      // Draw from FVG end time to right edge
-      const rightEdge = Math.max(...chartData.map(d => d.time)) + 86400; // Add one day
-      
-      // Set data points
-      topSeries.setData([
-        { time: gap.endTime, value: gap.topPrice },
-        { time: rightEdge, value: gap.topPrice }
-      ]);
-      
-      bottomSeries.setData([
-        { time: gap.endTime, value: gap.bottomPrice },
-        { time: rightEdge, value: gap.bottomPrice }
-      ]);
-      
-      return [topSeries, bottomSeries];
+      setupChartEventListeners();
     } catch (error) {
-      console.error('Error adding gap lines:', error);
-      return null;
+      console.error('Error in drawFVGLines:', error);
     }
   };
 
-  // Update FVG positions
+  // Updated to use the new drawing function
+  const drawFixedFVGLines = () => {
+    try {
+      drawFVGLines();
+    } catch (error) {
+      console.error('Error in drawFixedFVGLines:', error);
+    }
+  };
+
+  // Update positions when chart changes
   const updateFVGPositions = () => {
     if (!chartRef.current || !candleSeriesRef.current || !chartContainerRef.current) return;
     
@@ -748,100 +886,132 @@ const FairValueGaps = ({
     const chartWidth = chartRect.width;
     const chartHeight = chartRect.height;
     
-    // Update each hover area and label
+    // Update hover areas, regular labels, and permanent mini-labels
     for (let i = 0; i < fvgHoverAreas.length; i++) {
       const hoverArea = fvgHoverAreas[i];
       const label = fvgLabels.find(l => l.dataset.fvgNumber === hoverArea.dataset.fvgNumber);
+      const miniLabel = fvgPermanentLabels.find(l => l.dataset.fvgNumber === hoverArea.dataset.fvgNumber);
       
-      if (!hoverArea || !label) continue;
+      if (!hoverArea) continue;
       
       try {
-        const time = parseInt(hoverArea.dataset.time);
+        // Using endTime for positioning - this is where the gap visually begins
+        const endTime = parseInt(hoverArea.dataset.endTime);
         const topPrice = parseFloat(hoverArea.dataset.topPrice);
         const bottomPrice = parseFloat(hoverArea.dataset.bottomPrice);
+        const fvgNumber = parseInt(hoverArea.dataset.fvgNumber);
         
-        if (isNaN(time) || isNaN(topPrice) || isNaN(bottomPrice)) continue;
+        if (isNaN(endTime) || isNaN(topPrice) || isNaN(bottomPrice)) continue;
         
         // Get coordinates
-        const candleX = chartRef.current.timeScale().timeToCoordinate(time);
+        const endX = chartRef.current.timeScale().timeToCoordinate(endTime);
         const topY = candleSeriesRef.current.priceToCoordinate(topPrice);
         const bottomY = candleSeriesRef.current.priceToCoordinate(bottomPrice);
         
-        if (candleX === null || topY === null || bottomY === null) {
+        if (endX === null || topY === null || bottomY === null) {
           // Hide if out of view
           hoverArea.style.display = 'none';
-          label.style.display = 'none';
+          if (label) label.style.display = 'none';
+          if (miniLabel) miniLabel.style.display = 'none';
           continue;
         }
         
         // Update hover area
         hoverArea.style.display = '';
-        hoverArea.style.left = candleX + 'px';
+        hoverArea.style.left = endX + 'px';
         hoverArea.style.top = topY + 'px';
         hoverArea.style.height = Math.max(1, bottomY - topY) + 'px';
-        hoverArea.style.width = '20px';
+        hoverArea.style.width = '60px';
         
-        // Update label
-        label.style.display = '';
-        const labelRect = label.getBoundingClientRect();
-        const labelWidth = labelRect.width || 100;
-        const labelHeight = labelRect.height || 20;
-        
-        // Calculate position
-        const labelY = topY + (bottomY - topY) / 2;
-        
-        let labelX = candleX + 25;
-        let adjustedY = labelY - (labelHeight / 2);
-        
-        // Keep within boundaries
-        if (labelX + labelWidth > chartWidth) {
-          labelX = candleX - labelWidth - 5;
+        // Update tooltip label
+        if (label) {
+          label.style.display = '';
+          const labelRect = label.getBoundingClientRect();
+          const labelWidth = labelRect.width || 160;
+          const labelHeight = labelRect.height || 60;
+          
+          const labelY = topY + (bottomY - topY) / 2;
+          
+          let labelX = endX + 30;
+          let adjustedY = labelY - (labelHeight / 2);
+          
+          if (labelX + labelWidth > chartWidth) {
+            labelX = endX - labelWidth - 5;
+          }
+          
+          if (adjustedY < 0) {
+            adjustedY = 0;
+          } else if (adjustedY + labelHeight > chartHeight) {
+            adjustedY = chartHeight - labelHeight;
+          }
+          
+          label.style.left = labelX + 'px';
+          label.style.top = adjustedY + 'px';
         }
         
-        if (adjustedY < 0) {
-          adjustedY = 0;
-        } else if (adjustedY + labelHeight > chartHeight) {
-          adjustedY = chartHeight - labelHeight;
+        // Update mini badge label
+        if (miniLabel) {
+          miniLabel.style.display = '';
+          miniLabel.style.left = endX + 'px';
+          miniLabel.style.top = (topY + (bottomY - topY) / 2 - 11) + 'px';
         }
-        
-        label.style.left = labelX + 'px';
-        label.style.top = adjustedY + 'px';
       } catch (error) {
         console.error('Error updating FVG position:', error);
       }
     }
   };
 
-  // Draw fixed FVG lines
-  const drawFixedFVGLines = () => {
-    try {
-      clearFVGVisualElements();
-      createFVGHoverAreas();
-    } catch (error) {
-      console.error('Error in drawFixedFVGLines:', error);
-    }
-  };
-
-  // Setup chart event listeners
+  // Setup chart event listeners with more robust handling
   const setupChartEventListeners = () => {
     if (!chartRef.current) return;
     
     try {
-      // Subscribe to chart movements
-      chartRef.current.timeScale().subscribeVisibleTimeRangeChange(updateFVGPositions);
+      // CRITICAL: Create robust event listeners for ALL chart navigation events
       
+      // 1. Time scale changes (zooming horizontally, panning left/right)
+      const timeScaleHandler = () => {
+        requestAnimationFrame(updateFVGPositions);
+      };
+      chartRef.current.timeScale().subscribeVisibleTimeRangeChange(timeScaleHandler);
+      
+      // 2. Price scale changes (zooming vertically, panning up/down)
       try {
-        // This may not be available in all versions
-        chartRef.current.priceScale('right').subscribeVisiblePriceRangeChange(updateFVGPositions);
+        const priceScaleHandler = () => {
+          requestAnimationFrame(updateFVGPositions);
+        };
+        chartRef.current.priceScale('right').subscribeVisiblePriceRangeChange(priceScaleHandler);
       } catch (e) {
         console.log('Price scale events not supported in this version');
       }
       
-      chartRef.current.subscribeCrosshairMove(updateFVGPositions);
+      // 3. Crosshair movement (ensures updates during interaction)
+      const crosshairHandler = () => {
+        // Using requestAnimationFrame to prevent excessive updates
+        requestAnimationFrame(updateFVGPositions);
+      };
+      chartRef.current.subscribeCrosshairMove(crosshairHandler);
       
-      // Update on resize
-      window.removeEventListener('resize', updateFVGPositions);
-      window.addEventListener('resize', updateFVGPositions);
+      // 4. Handle resize events for the entire window
+      const resizeHandler = () => {
+        // Delay to ensure chart has fully resized
+        setTimeout(() => {
+          updateFVGPositions();
+        }, 100);
+      };
+      window.removeEventListener('resize', resizeHandler);
+      window.addEventListener('resize', resizeHandler);
+      
+      // Store handlers for cleanup
+      return () => {
+        try {
+          chartRef.current.timeScale().unsubscribeVisibleTimeRangeChange(timeScaleHandler);
+          chartRef.current.priceScale('right').unsubscribeVisiblePriceRangeChange(priceScaleHandler);
+          chartRef.current.unsubscribeCrosshairMove(crosshairHandler);
+          window.removeEventListener('resize', resizeHandler);
+        } catch (e) {
+          console.error('Error cleaning up event handlers:', e);
+        }
+      };
     } catch (error) {
       console.error('Error in setupChartEventListeners:', error);
     }
@@ -928,7 +1098,7 @@ const FairValueGaps = ({
   // Check if "No FVGs" button should be disabled
   const isNoFVGsDisabled = userFVGs.length === 1 && userFVGs[0].no_fvgs_found;
 
-  // Configure tools
+  // Configure tools with undo button included
   const toolsConfig = [
     {
       id: 'draw-rectangle',
@@ -941,18 +1111,18 @@ const FairValueGaps = ({
       label: 'Draw H-Line',
       icon: 'fa-minus',
       active: drawingMode === 'draw-hline'
-    }
-  ];
-
-  // Configure actions
-  const actionsConfig = [
+    },
     {
       id: 'undo',
       label: 'Undo',
       icon: 'fa-undo',
       onClick: handleUndoDrawing,
       disabled: rectangles.length === 0 && hlines.length === 0
-    },
+    }
+  ];
+
+  // Configure actions without the undo button
+  const actionsConfig = [
     {
       id: 'clear-all',
       label: 'Clear All',
@@ -978,6 +1148,21 @@ const FairValueGaps = ({
 
   return (
     <div>
+      {/* ToolPanel now appears ABOVE the chart */}
+      <ToolPanel
+        title={part === 1 ? "Bullish Fair Value Gaps" : "Bearish Fair Value Gaps"}
+        description={part === 1
+          ? "Identify gaps above price where price has yet to return"
+          : "Identify gaps below price where price has yet to return"}
+        selectedTool={drawingMode}
+        onToolSelect={handleToolSelect}
+        tools={toolsConfig}
+        onClearAll={clearAllDrawings}
+        isDarkMode={isDarkMode}
+        noFvgsOption={true}
+        onNoFvgsFound={markNoFvgsFound}
+      />
+      
       <ChartWrapper $isDarkMode={isDarkMode}>
         <ChartContainer 
           ref={chartContainerRef} 
@@ -1047,20 +1232,6 @@ const FairValueGaps = ({
           </NoFVGOverlay>
         )}
       </ChartWrapper>
-      
-      <ToolPanel
-        title={part === 1 ? "Bullish Fair Value Gaps" : "Bearish Fair Value Gaps"}
-        description={part === 1
-          ? "Identify gaps above price where price has yet to return"
-          : "Identify gaps below price where price has yet to return"}
-        selectedTool={drawingMode}
-        onToolSelect={handleToolSelect}
-        tools={toolsConfig}
-        onClearAll={clearAllDrawings}
-        isDarkMode={isDarkMode}
-        noFvgsOption={true}
-        onNoFvgsFound={markNoFvgsFound}
-      />
       
       <LoadingOverlay $isActive={isLoading}>
         <LoadingContent>
