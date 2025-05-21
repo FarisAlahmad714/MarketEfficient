@@ -2,10 +2,12 @@
 import Link from 'next/link';
 import { useEffect, useContext } from 'react';
 import { ThemeContext } from '../contexts/ThemeContext';
+import { AuthContext } from '../contexts/AuthContext';
 import Leaderboard from '../components/Leaderboard';
 
 export default function HomePage() {
   const { darkMode } = useContext(ThemeContext);
+  const { isAuthenticated, user } = useContext(AuthContext);
   
   useEffect(() => {
     console.log('Home page loaded');
@@ -13,6 +15,38 @@ export default function HomePage() {
 
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
+      {/* Show admin link if user is an admin */}
+      {isAuthenticated && user?.isAdmin && (
+        <div style={{
+          padding: '10px 15px',
+          backgroundColor: darkMode ? '#2a2a2a' : '#f0f7ff',
+          borderRadius: '4px',
+          marginBottom: '20px',
+          border: '1px solid #2196F3',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <div>
+            <span style={{ color: darkMode ? '#90caf9' : '#2196F3', fontWeight: 'bold' }}>
+              Admin Mode:
+            </span>
+            <span style={{ color: darkMode ? '#e0e0e0' : '#333', marginLeft: '5px' }}>
+              You're logged in as an administrator
+            </span>
+          </div>
+          <Link href="/admin" style={{
+            padding: '8px 15px',
+            backgroundColor: '#2196F3',
+            color: 'white',
+            textDecoration: 'none',
+            borderRadius: '4px'
+          }}>
+            Go to Admin Panel
+          </Link>
+        </div>
+      )}
+      
       <h1 style={{ 
         textAlign: 'center', 
         marginBottom: '30px',

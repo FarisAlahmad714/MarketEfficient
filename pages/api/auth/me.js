@@ -30,11 +30,13 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: 'User not found' });
     }
     
-    // Return user info (without password)
+    // Return user info (without password) - Include isAdmin and isVerified status
     return res.status(200).json({
       id: user._id,
       name: user.name,
-      email: user.email
+      email: user.email,
+      isAdmin: user.isAdmin || false, // Include admin status
+      isVerified: user.isVerified || false // Include verification status
     });
   } catch (error) {
     if (error.name === 'JsonWebTokenError') {

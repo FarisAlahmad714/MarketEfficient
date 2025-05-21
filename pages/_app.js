@@ -1,6 +1,7 @@
+// pages/_app.js
 import Layout from '../components/Layout';
-import { useEffect, useState } from 'react';
-import { AuthProvider } from '../contexts/AuthContext';
+import { useEffect, useState, useContext } from 'react';
+import { AuthProvider, AuthContext } from '../contexts/AuthContext';
 import { useRouter } from 'next/router';
 
 // Define which routes require authentication
@@ -11,12 +12,22 @@ const protectedRoutes = [
   '/chart-exam/[type]', 
   '/chart-exam/results', 
   '/results/[assetSymbol]',
-  '/admin' 
+  '/profile',
+  '/dashboard'
 ];
 
-function MyApp({ Component, pageProps }) {
+// Add separate list for admin routes
+const adminRoutes = [
+  '/admin',
+  '/admin/users',
+  '/admin/settings',
+  '/admin/test-results'
+];
+
+function AppContent({ Component, pageProps }) {
   const router = useRouter();
   const [authChecked, setAuthChecked] = useState(false);
+  const { user, isAuthenticated, isLoading } = useContext(AuthContext);
   
   useEffect(() => {
     // Add FontAwesome script if it's not already present
@@ -33,10 +44,17 @@ function MyApp({ Component, pageProps }) {
   
   // Listen for route changes to check authentication
   useEffect(() => {
-    // Function to check if current route requires authentication
+    // Don't check auth while auth context is still loading
+    if (isLoading) {
+      return;
+    }
+    
+    // Function to check if current route requires authentication or admin
     const checkAuth = () => {
       const path = router.pathname;
-      const isProtected = protectedRoutes.some(route => {
+      
+      // Check if it's an admin route first
+      const isAdminRoute = adminRoutes.some(route => {
         // Handle dynamic routes by checking if the pattern matches
         if (route.includes('[') && route.includes(']')) {
           const routePattern = route.replace(/\[.*?\]/g, '[^/]+');
@@ -46,12 +64,33 @@ function MyApp({ Component, pageProps }) {
         return route === path;
       });
       
-      if (isProtected) {
-        // Check if user is authenticated
-        const token = localStorage.getItem('auth_token');
-        if (!token) {
-          // Redirect to login if not authenticated
+      if (isAdminRoute) {
+        // Need both authentication and admin status
+        if (!isAuthenticated) {
           router.push('/auth/login');
+          return;
+        }
+        
+        if (isAuthenticated && !user?.isAdmin) {
+          router.push('/');
+          return;
+        }
+      } else {
+        // Otherwise check if it's a protected route
+        const isProtected = protectedRoutes.some(route => {
+          // Handle dynamic routes by checking if the pattern matches
+          if (route.includes('[') && route.includes(']')) {
+            const routePattern = route.replace(/\[.*?\]/g, '[^/]+');
+            const regex = new RegExp(`^${routePattern}$`);
+            return regex.test(path);
+          }
+          return route === path;
+        });
+        
+        if (isProtected && !isAuthenticated) {
+          // Only need authentication
+          router.push('/auth/login');
+          return;
         }
       }
       
@@ -65,10 +104,10 @@ function MyApp({ Component, pageProps }) {
     return () => {
       router.events.off('routeChangeComplete', checkAuth);
     };
-  }, [router]);
+  }, [router, isAuthenticated, user, isLoading]);
   
   // Show loading state while checking authentication
-  if (!authChecked) {
+  if (isLoading || !authChecked) {
     return (
       <div style={{ 
         display: 'flex', 
@@ -95,10 +134,16 @@ function MyApp({ Component, pageProps }) {
   }
   
   return (
+    <Layout>
+      <Component {...pageProps} />
+    </Layout>
+  );
+}
+
+function MyApp({ Component, pageProps }) {
+  return (
     <AuthProvider>
-      <Layout>
-        <Component {...pageProps} />
-      </Layout>
+      <AppContent Component={Component} pageProps={pageProps} />
     </AuthProvider>
   );
 }
