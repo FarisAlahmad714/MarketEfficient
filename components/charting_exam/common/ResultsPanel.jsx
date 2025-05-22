@@ -50,7 +50,7 @@ const ResultsContainer = styled(motion.div)`
 // Toggle button that remains visible even in transparent mode
 const TransparencyToggle = styled(motion.button)`
   position: fixed;
-  top: 20px;
+  top: 90px;
   right: 20px;
   width: 48px;
   height: 48px;

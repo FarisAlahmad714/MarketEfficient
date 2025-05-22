@@ -52,33 +52,53 @@ const Chart = dynamic(
           wickDownColor: '#F44336',
         });
         
+        // CRITICAL FIX: Ensure chart data is sorted by time
+        const sortedChartData = [...chartData]
+          .filter(candle => candle && typeof candle.time === 'number')
+          .sort((a, b) => a.time - b.time);
+        
         // Set the data
-        candlestick.setData(chartData);
+        candlestick.setData(sortedChartData);
         
         // Enhanced marker rendering with better tooltips
         if (options.markers && options.markers.length > 0) {
-          // Custom marker rendering
-          const markers = options.markers.map(marker => {
-            // Determine marker style based on type
-            const isMissed = marker.text && marker.text.includes('Missed');
-            const isIncorrect = marker.text && marker.text.includes('Incorrect');
-            
-            return {
-              ...marker,
-              size: isMissed ? 3 : isIncorrect ? 4 : 2,
-              // Make sure missed points stand out more
-              color: isMissed 
-                ? '#FFDF00' // Brighter yellow for missed
-                : isIncorrect 
-                  ? '#FF4444' // Brighter red for incorrect
-                  : marker.color,
-              // Add border to incorrect and missed points
-              borderColor: isMissed || isIncorrect ? '#FFFFFF' : undefined,
-              borderWidth: isMissed || isIncorrect ? 1 : 0
-            };
-          });
+          // Custom marker rendering with validation
+          const markers = options.markers
+            .filter(marker => {
+              // CRITICAL FIX: Validate marker has valid time
+              return marker && 
+                     typeof marker.time === 'number' && 
+                     !isNaN(marker.time) && 
+                     marker.time > 0;
+            })
+            .map(marker => {
+              // Determine marker style based on type
+              const isMissed = marker.text && marker.text.includes('Missed');
+              const isIncorrect = marker.text && marker.text.includes('Incorrect');
+              
+              return {
+                ...marker,
+                time: marker.time, // Ensure time is properly set
+                size: isMissed ? 3 : isIncorrect ? 4 : 2,
+                // Make sure missed points stand out more
+                color: isMissed 
+                  ? '#FFDF00' // Brighter yellow for missed
+                  : isIncorrect 
+                    ? '#FF4444' // Brighter red for incorrect
+                    : marker.color,
+                // Add border to incorrect and missed points
+                borderColor: isMissed || isIncorrect ? '#FFFFFF' : undefined,
+                borderWidth: isMissed || isIncorrect ? 1 : 0
+              };
+            });
           
-          candlestick.setMarkers(markers);
+          // CRITICAL FIX: Sort markers by time in ascending order before setting them
+          markers.sort((a, b) => a.time - b.time);
+          
+          // Only set markers if we have valid ones
+          if (markers.length > 0) {
+            candlestick.setMarkers(markers);
+          }
           
           // Add marker tooltip functionality
           chart.subscribeCrosshairMove(param => {
@@ -175,7 +195,7 @@ const Chart = dynamic(
                     chartRect.top + param.point.y - tooltipHeight - 10,
                     chartRect.bottom - tooltipHeight - 10
                   )}px`;
-                } // Added missing closing brace for the if (Math.abs(param.point.y - priceValue) < 50) block
+                }
               } else {
                 // Hide tooltip
                 if (tooltipRef.current) {
@@ -456,26 +476,34 @@ const SwingAnalysis = ({ chartData, onDrawingsUpdate, chartCount, isDarkMode, va
       }
     }, [chartData]);
     
-    // Create markers from drawings - FIXED: sort by time
+    // Create markers from drawings - FIXED: sort by time and validate
     const chartMarkers = React.useMemo(() => {
-      if (!drawings) return feedbackMarkers;
+      if (!drawings) return feedbackMarkers.filter(m => m && typeof m.time === 'number' && !isNaN(m.time));
       
       // Handle the special "no swing points" case
       if (drawings.length === 1 && drawings[0].no_swings_found) {
-        return feedbackMarkers;
+        return feedbackMarkers.filter(m => m && typeof m.time === 'number' && !isNaN(m.time)).sort((a, b) => a.time - b.time);
       }
       
-      const userMarkers = drawings.map(point => ({
-        time: point.time,
-        position: point.type === 'high' ? 'aboveBar' : 'belowBar',
-        color: point.type === 'high' ? '#4CAF50' : '#2196F3', // Green for highs, blue for lows
-        shape: 'circle',
-        size: 2,
-        text: point.type === 'high' ? 'HIGH' : 'LOW'
-      }));
+      const userMarkers = drawings
+        .filter(point => point && typeof point.time === 'number' && !isNaN(point.time)) // Validate time
+        .map(point => ({
+          time: point.time,
+          position: point.type === 'high' ? 'aboveBar' : 'belowBar',
+          color: point.type === 'high' ? '#4CAF50' : '#2196F3', // Green for highs, blue for lows
+          shape: 'circle',
+          size: 2,
+          text: point.type === 'high' ? 'HIGH' : 'LOW'
+        }));
+      
+      // CRITICAL FIX: Sort each array individually before combining and validate
+      userMarkers.sort((a, b) => a.time - b.time);
+      const sortedFeedbackMarkers = feedbackMarkers
+        .filter(m => m && typeof m.time === 'number' && !isNaN(m.time)) // Validate feedback markers
+        .sort((a, b) => a.time - b.time);
       
       // Combine user markers with feedback markers, with feedback on top
-      return [...userMarkers, ...feedbackMarkers].sort((a, b) => a.time - b.time);
+      return [...userMarkers, ...sortedFeedbackMarkers].sort((a, b) => a.time - b.time);
     }, [drawings, feedbackMarkers]);
     
     // Add effect to process validation results when received
@@ -486,14 +514,14 @@ const SwingAnalysis = ({ chartData, onDrawingsUpdate, chartCount, isDarkMode, va
       }
     }, [validationResults]);
     
-    // Enhanced processFeedbackMarkers function
+    // Enhanced processFeedbackMarkers function with validation
     const processFeedbackMarkers = (feedback) => {
       const markers = [];
       
       // Add markers for missed points (in yellow)
       if (feedback.incorrect) {
         feedback.incorrect
-          .filter(item => item.type === 'missed_point')
+          .filter(item => item.type === 'missed_point' && item.time && typeof item.time === 'number' && !isNaN(item.time))
           .forEach(point => {
             markers.push({
               time: point.time,
@@ -512,7 +540,7 @@ const SwingAnalysis = ({ chartData, onDrawingsUpdate, chartCount, isDarkMode, va
       // Add markers for incorrect points (in red)
       if (feedback.incorrect) {
         feedback.incorrect
-          .filter(item => item.type !== 'missed_point')
+          .filter(item => item.type !== 'missed_point' && item.time && typeof item.time === 'number' && !isNaN(item.time))
           .forEach(point => {
             markers.push({
               time: point.time,
@@ -530,22 +558,32 @@ const SwingAnalysis = ({ chartData, onDrawingsUpdate, chartCount, isDarkMode, va
       
       // Add markers for correct points (for visual reinforcement)
       if (feedback.correct) {
-        feedback.correct.forEach(point => {
-          markers.push({
-            time: point.time,
-            position: point.type === 'high' ? 'aboveBar' : 'belowBar',
-            color: point.type === 'high' ? '#4CAF50' : '#2196F3', // Keep same colors as user marks
-            shape: 'diamond', // Different shape to distinguish from user marks
-            size: 3,
-            text: `Correct ${point.type?.toUpperCase() || 'Point'}`,
-            advice: point.advice || 'Correctly identified swing point',
-            price: point.price,
-            type: 'correct'
+        feedback.correct
+          .filter(point => point.time && typeof point.time === 'number' && !isNaN(point.time))
+          .forEach(point => {
+            markers.push({
+              time: point.time,
+              position: point.type === 'high' ? 'aboveBar' : 'belowBar',
+              color: point.type === 'high' ? '#4CAF50' : '#2196F3', // Keep same colors as user marks
+              shape: 'diamond', // Different shape to distinguish from user marks
+              size: 3,
+              text: `Correct ${point.type?.toUpperCase() || 'Point'}`,
+              advice: point.advice || 'Correctly identified swing point',
+              price: point.price,
+              type: 'correct'
+            });
           });
-        });
       }
       
-      setFeedbackMarkers(markers);
+      // CRITICAL FIX: Filter out invalid markers and sort by time before setting
+      const validMarkers = markers.filter(marker => 
+        marker && 
+        typeof marker.time === 'number' && 
+        !isNaN(marker.time) && 
+        marker.time > 0
+      );
+      validMarkers.sort((a, b) => a.time - b.time);
+      setFeedbackMarkers(validMarkers);
     };
     
     // Update parent component when drawings change
@@ -563,10 +601,16 @@ const SwingAnalysis = ({ chartData, onDrawingsUpdate, chartCount, isDarkMode, va
     const handlePointClick = (point) => {
       if (!markingMode) return;
       
+      // Validate the point has a valid time
+      if (!point || typeof point.time !== 'number' || isNaN(point.time)) {
+        console.warn('Invalid point clicked:', point);
+        return;
+      }
+      
       // Find the nearest candle
       const candle = chartData.find(c => 
         c.time === point.time || 
-        Math.floor(new Date(c.date).getTime() / 1000) === point.time
+        (c.date && Math.floor(new Date(c.date).getTime() / 1000) === point.time)
       );
       
       if (!candle) {
@@ -600,12 +644,19 @@ const SwingAnalysis = ({ chartData, onDrawingsUpdate, chartCount, isDarkMode, va
       );
       
       if (!isDuplicate) {
-        // Add the new point
-        setDrawings([...drawings, {
+        // Add the new point with validation
+        const newPoint = {
           time: point.time,
           price: pointPrice,
           type: pointType
-        }]);
+        };
+        
+        // Validate the new point before adding
+        if (typeof newPoint.time === 'number' && !isNaN(newPoint.time) && newPoint.time > 0) {
+          setDrawings([...drawings, newPoint]);
+        } else {
+          console.warn('Invalid point data, not adding:', newPoint);
+        }
       } else {
         console.log('Duplicate point detected, ignoring');
       }
