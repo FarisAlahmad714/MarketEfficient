@@ -1,7 +1,7 @@
 // components/CryptoLoader.js - With synchronized price changes and slower candles
 import React, { useContext, useEffect, useState, useRef } from 'react';
 import styled, { keyframes } from 'styled-components';
-import { ThemeContext } from '../contexts/ThemeContext';
+import { useTheme } from '../contexts/ThemeContext';
 
 // Animations with full richness
 const pulse = keyframes`
@@ -312,7 +312,8 @@ const CryptoLoader = React.forwardRef(function CryptoLoader(props, ref) {
     lightMode = false
   } = props;
   
-  const { darkMode } = useContext(ThemeContext);
+  // Safe access to ThemeContext using custom hook
+  const { darkMode } = useTheme();
   
   // Get initial random price data
   const getRandomPriceData = () => {
@@ -476,9 +477,11 @@ const CryptoLoader = React.forwardRef(function CryptoLoader(props, ref) {
         setIsPriceUpdating(true);
         setTimeout(() => setIsPriceUpdating(false), 800);
         
-        // Calculate price change based on candle characteristics
+        // Calculate price change based on candle characteristics (SYNCHRONIZED)
+        // Green candles (isUp: true) = positive price movement
+        // Red candles (isUp: false) = negative price movement
         const volatilityFactor = 0.005 + (Math.random() * 0.01);
-        const priceDirection = candle.isUp ? 1 : -1;
+        const priceDirection = candle.isUp ? 1 : -1; // Sync with candle color
         const changeMagnitude = price * volatilityFactor * priceDirection;
         
         // Update price with dramatic movement in sync with new candle
@@ -508,20 +511,23 @@ const CryptoLoader = React.forwardRef(function CryptoLoader(props, ref) {
         // After all candles are loaded, start periodic updates
         if (!lightMode) {
           candleUpdateIntervalRef.current = setInterval(() => {
-            // Update a random candle
+            // First determine the price movement direction
+            const priceDirection = Math.random() > 0.5 ? 1 : -1; // 1 for up, -1 for down
+            const newIsUp = priceDirection > 0; // Sync candle color with price direction
+            
+            // Update a random candle with synchronized color
             setCandles(prevCandles => {
               const newCandles = [...prevCandles];
               const randomIndex = Math.floor(Math.random() * newCandles.length);
               const candle = newCandles[randomIndex];
               
               if (candle) {
-                const newIsUp = Math.random() > 0.5;
                 const heightChange = (Math.random() - 0.5) * 30;
                 const newHeight = Math.max(15, candle.height + heightChange);
                 
                 newCandles[randomIndex] = {
                   ...candle,
-                  isUp: newIsUp,
+                  isUp: newIsUp, // Use synchronized color
                   height: newHeight,
                   pulseSpeed: 1 + Math.random() * 4,
                   wickTop: 2 + Math.random() * 15,
@@ -536,14 +542,14 @@ const CryptoLoader = React.forwardRef(function CryptoLoader(props, ref) {
             setIsPriceUpdating(true);
             setTimeout(() => setIsPriceUpdating(false), 800);
             
-            // Update price with random fluctuations
+            // Update price with synchronized movement
             setPrice(prev => {
-              const volatility = 0.005;
-              const change = prev * (Math.random() * volatility * 2 - volatility);
-              const newPrice = prev + change;
+              const volatilityFactor = 0.003 + (Math.random() * 0.007); // 0.3% to 1%
+              const changeMagnitude = prev * volatilityFactor * priceDirection; // Use same direction
+              const newPrice = prev + changeMagnitude;
               
-              // Set price change as percentage
-              const changePercent = (change / prev * 100);
+              // Set price change as percentage (synchronized with candle direction)
+              const changePercent = (changeMagnitude / prev * 100);
               setPriceChange(changePercent.toFixed(2));
               
               if (prev < 1) {

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createChart, CrosshairMode, LineStyle } from 'lightweight-charts';
 import styled from 'styled-components';
 import ToolPanel from './common/ToolPanel';
+import CryptoLoader from '../CryptoLoader';
 
 // Styled components
 const ChartWrapper = styled.div`
@@ -113,30 +114,17 @@ const LoadingOverlay = styled.div`
 `;
 
 const LoadingContent = styled.div`
-  background: white;
-  padding: 20px;
-  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   text-align: center;
-`;
-
-const Spinner = styled.div`
-  border: 4px solid #f3f3f3;
-  border-top: 4px solid #4CAF50;
-  border-radius: 50%;
-  width: 30px;
-  height: 30px;
-  animation: spin 1s linear infinite;
-  margin: 0 auto 10px;
-  
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-  }
 `;
 
 const LoadingText = styled.div`
   font-size: 14px;
   color: #333;
+  margin-top: 10px;
 `;
 
 const DrawingModeIndicator = styled.div`
@@ -813,7 +801,7 @@ const FairValueGaps = ({
       </ChartWrapper>
       <LoadingOverlay $isActive={isLoading}>
         <LoadingContent>
-          <Spinner />
+          <CryptoLoader />
           <LoadingText>Analyzing your answers...</LoadingText>
         </LoadingContent>
       </LoadingOverlay>

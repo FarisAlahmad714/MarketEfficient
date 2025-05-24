@@ -1,8 +1,9 @@
 // components/Leaderboard.js
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import { ThemeContext } from '../contexts/ThemeContext';
 import { AuthContext } from '../contexts/AuthContext';
 import { Trophy, Award, Medal, User, Calendar, Activity } from 'lucide-react';
+import CryptoLoader from './CryptoLoader';
 
 const Leaderboard = () => {
   const [leaderboardData, setLeaderboardData] = useState([]);
@@ -15,6 +16,7 @@ const Leaderboard = () => {
 
   const { darkMode } = useContext(ThemeContext);
   const { isAuthenticated, user } = useContext(AuthContext);
+  const cryptoLoaderRef = useRef(null);
 
   const testTypes = [
     { id: 'all', name: 'All Tests' },
@@ -57,10 +59,19 @@ const Leaderboard = () => {
         setLeaderboardData(data.leaderboard);
         setTotalParticipants(data.totalParticipants || 0);
         setCurrentUserRank(data.currentUserRank);
+        
+        // Hide CryptoLoader with a small delay to make the loading animation more noticeable
+        setTimeout(() => {
+          if (cryptoLoaderRef.current) {
+            cryptoLoaderRef.current.hideLoader();
+          }
+          setTimeout(() => {
+            setLoading(false);
+          }, 500);
+        }, 1000);
       } catch (err) {
         console.error('Error fetching leaderboard:', err);
         setError('Unable to load leaderboard data. Please try again later.');
-      } finally {
         setLoading(false);
       }
     };
@@ -233,22 +244,7 @@ const Leaderboard = () => {
             padding: '40px 0',
           }}
         >
-          <div
-            style={{
-              width: '40px',
-              height: '40px',
-              border: `4px solid ${darkMode ? '#333' : '#f3f3f3'}`,
-              borderTop: '4px solid #2196F3',
-              borderRadius: '50%',
-              animation: 'spin 1s linear infinite',
-            }}
-          ></div>
-          <style jsx>{`
-            @keyframes spin {
-              0% { transform: rotate(0deg); }
-              100% { transform: rotate(360deg); }
-            }
-          `}</style>
+          <CryptoLoader ref={cryptoLoaderRef} />
         </div>
       ) : error ? (
         <div

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import styled from 'styled-components';
 import { ThemeContext } from '../../contexts/ThemeContext';
 import { motion } from 'framer-motion';
+import CryptoLoader from '../../components/CryptoLoader';
 
 // Styled components
 const Container = styled.div`
@@ -288,22 +289,7 @@ const ChartExamResults = () => {
     return (
       <Container>
         <div style={{ textAlign: 'center', padding: '100px 0' }}>
-          <div className="spinner" style={{ 
-            width: '50px', 
-            height: '50px', 
-            border: `4px solid ${darkMode ? '#333' : '#f3f3f3'}`,
-            borderTop: `4px solid ${darkMode ? '#3f51b5' : '#2196F3'}`,
-            borderRadius: '50%',
-            margin: '0 auto 20px',
-            animation: 'spin 1s linear infinite'
-          }}></div>
-          <p>Loading your results...</p>
-          <style jsx>{`
-            @keyframes spin {
-              0% { transform: rotate(0deg); }
-              100% { transform: rotate(360deg); }
-            }
-          `}</style>
+          <CryptoLoader />
         </div>
       </Container>
     );

@@ -4,6 +4,7 @@ import Head from 'next/head';
 import { useEffect, useState, useContext } from 'react';
 import { AuthProvider, AuthContext } from '../contexts/AuthContext';
 import { useRouter } from 'next/router';
+import CryptoLoader from '../components/CryptoLoader';
 
 // Define which routes require authentication
 const protectedRoutes = [
@@ -114,22 +115,22 @@ function AppContent({ Component, pageProps }) {
         display: 'flex', 
         justifyContent: 'center', 
         alignItems: 'center', 
-        height: '100vh' 
+        height: '100vh',
+        padding: '20px'
       }}>
         <div style={{
-          width: '40px',
-          height: '40px',
-          border: '4px solid #f3f3f3',
-          borderTop: '4px solid #2196F3',
-          borderRadius: '50%',
-          animation: 'spin 1s linear infinite'
-        }}></div>
-        <style jsx>{`
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-        `}</style>
+          width: '400px',
+          maxWidth: '100%',
+          boxShadow: '0 10px 30px rgba(0, 0, 0, 0.2)',
+          borderRadius: '8px',
+          overflow: 'hidden'
+        }}>
+          <CryptoLoader 
+            message="Initializing application..."
+            minDisplayTime={1500}
+            height="350px"
+          />
+        </div>
       </div>
     );
   }

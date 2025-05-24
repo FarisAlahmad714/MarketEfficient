@@ -3,31 +3,7 @@ import { useEffect, useState } from 'react';
 import ChartExam from '../../components/charting_exam/ChartExam';
 import { useContext } from 'react';
 import { ThemeContext } from '../../contexts/ThemeContext';
-import styled from 'styled-components';
-
-const LoadingContainer = styled.div`
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-  background-color: ${props => props.theme.darkMode ? '#121212' : '#f5f5f5'};
-  color: ${props => props.theme.darkMode ? '#e0e0e0' : '#333'};
-`;
-
-const Spinner = styled.div`
-  border: 4px solid ${props => props.theme.darkMode ? '#333' : '#f3f3f3'};
-  border-top: 4px solid ${props => props.theme.darkMode ? '#3f51b5' : '#2196F3'};
-  border-radius: 50%;
-  width: 40px;
-  height: 40px;
-  animation: spin 1s linear infinite;
-  margin-right: 15px;
-  
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-  }
-`;
+import CryptoLoader from '../../components/CryptoLoader';
 
 const ChartExamPage = () => {
   const router = useRouter();
@@ -43,10 +19,27 @@ const ChartExamPage = () => {
   
   if (!type) {
     return (
-      <LoadingContainer>
-        <Spinner />
-        <div>Loading exam...</div>
-      </LoadingContainer>
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh',
+        padding: '20px'
+      }}>
+        <div style={{
+          width: '400px',
+          maxWidth: '100%',
+          boxShadow: '0 10px 30px rgba(0, 0, 0, 0.2)',
+          borderRadius: '8px',
+          overflow: 'hidden'
+        }}>
+          <CryptoLoader 
+            message="Loading exam..."
+            minDisplayTime={1500}
+            height="350px"
+          />
+        </div>
+      </div>
     );
   }
   

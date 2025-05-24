@@ -1,25 +1,14 @@
 // Enhanced GlobalLoader.js
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import styled, { keyframes } from 'styled-components';
-import { ThemeContext } from '../contexts/ThemeContext';
+import { useTheme } from '../contexts/ThemeContext';
 import CryptoLoader from './CryptoLoader';
 
 // Animations
 const fadeIn = keyframes`
   from { opacity: 0; }
   to { opacity: 1; }
-`;
-
-const pulse = keyframes`
-  0% { opacity: 0.6; }
-  50% { opacity: 1; }
-  100% { opacity: 0.6; }
-`;
-
-const spin = keyframes`
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
 `;
 
 // Styled components
@@ -40,48 +29,24 @@ const LoaderOverlay = styled.div`
   animation: ${fadeIn} 0.2s ease-out;
 `;
 
-const LoaderContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 15px;
-`;
-
-const SimpleLoader = styled.div`
-  width: 40px;
-  height: 40px;
-  border: 3px solid ${props => props.$isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'};
-  border-top: 3px solid #2196F3;
-  border-radius: 50%;
-  animation: ${spin} 1s linear infinite;
-  box-shadow: 0 0 15px rgba(33, 150, 243, 0.2);
-`;
-
-const LoadingText = styled.div`
-  color: ${props => props.$isDarkMode ? 'rgba(255, 255, 255, 0.9)' : 'rgba(255, 255, 255, 0.9)'};
-  font-size: 14px;
-  font-weight: 500;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-  animation: ${pulse} 2s infinite ease-in-out;
-`;
-
-const FancyLoaderContainer = styled.div`
-  width: 300px;
-  max-width: 80vw;
+const CryptoLoaderContainer = styled.div`
+  width: 400px;
+  max-width: 90vw;
+  height: 300px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  overflow: hidden;
 `;
 
 const GlobalLoader = () => {
   const router = useRouter();
-  const { darkMode } = useContext(ThemeContext);
+  // Safe access to ThemeContext using custom hook
+  const { darkMode } = useTheme();
   const [loading, setLoading] = useState(false);
   const [fadeOut, setFadeOut] = useState(false);
-  const [useFancyLoader, setUseFancyLoader] = useState(false);
   const [message, setMessage] = useState("Loading page...");
   
   useEffect(() => {
-    // Add routes that should use the fancy crypto loader
-    const fancyLoaderRoutes = ['/chart-exam', '/bias-test'];
-    
     // Modified global loader API
     if (typeof window !== 'undefined') {
       window.showGlobalLoader = (options = {}) => {
@@ -89,11 +54,6 @@ const GlobalLoader = () => {
           setMessage(options.message);
         } else {
           setMessage("Loading page...");
-        }
-        
-        // Allow explicit setting of loader type
-        if (options.fancy !== undefined) {
-          setUseFancyLoader(options.fancy);
         }
         
         setFadeOut(false);
@@ -112,21 +72,19 @@ const GlobalLoader = () => {
       // Don't show loader for hash changes on the same page
       if (router.asPath.split('#')[0] === url.split('#')[0]) return;
       
-      // Determine whether to use fancy loader based on route
-      const shouldUseFancyLoader = fancyLoaderRoutes.some(route => 
-        url.startsWith(route)
-      );
-      setUseFancyLoader(shouldUseFancyLoader);
-      
-      // Set appropriate message
-      if (shouldUseFancyLoader) {
-        if (url.includes('/chart-exam')) {
-          setMessage("Loading chart examination...");
-        } else if (url.includes('/bias-test')) {
-          setMessage("Preparing bias test...");
-        } else {
-          setMessage("Loading page...");
-        }
+      // Set appropriate message based on route
+      if (url.includes('/chart-exam')) {
+        setMessage("Loading chart examination...");
+      } else if (url.includes('/bias-test')) {
+        setMessage("Preparing bias test...");
+      } else if (url.includes('/dashboard')) {
+        setMessage("Loading dashboard...");
+      } else if (url.includes('/profile')) {
+        setMessage("Loading profile...");
+      } else if (url.includes('/admin')) {
+        setMessage("Loading admin panel...");
+      } else if (url === '/') {
+        setMessage("Loading market data...");
       } else {
         setMessage("Loading page...");
       }
@@ -160,21 +118,15 @@ const GlobalLoader = () => {
   
   return (
     <LoaderOverlay $isFadeOut={fadeOut} $isDarkMode={darkMode} id="global-loader">
-      {useFancyLoader ? (
-        <FancyLoaderContainer>
-          <CryptoLoader 
-            message={message} 
-            minDisplayTime={2000} 
-            lightMode={true}
-            candleCount={22}
-          />
-        </FancyLoaderContainer>
-      ) : (
-        <LoaderContainer>
-          <SimpleLoader $isDarkMode={darkMode} />
-          <LoadingText $isDarkMode={darkMode}>{message}</LoadingText>
-        </LoaderContainer>
-      )}
+      <CryptoLoaderContainer>
+        <CryptoLoader 
+          message={message} 
+          minDisplayTime={1500} 
+          lightMode={false}
+          candleCount={18}
+          height="300px"
+        />
+      </CryptoLoaderContainer>
     </LoaderOverlay>
   );
 };

@@ -44,7 +44,7 @@ export default async function handler(req, res) {
     const expectedGaps = detectFairValueGaps(chartData, gapType, null, chartTimeframe, symbol);
     
     // Validate user drawings against expected gaps
-    const validationResult = validateFairValueGaps(drawings, expectedGaps, chartData, gapType);
+    const validationResult = validateFairValueGaps(drawings, expectedGaps, chartData, gapType, chartTimeframe);
     
     // Connect to database before saving the test result
     await connectDB();
@@ -89,7 +89,7 @@ export default async function handler(req, res) {
 }
 
 // Validate user FVG markings against expected gaps
-function validateFairValueGaps(drawings, expectedGaps, chartData, gapType) {
+function validateFairValueGaps(drawings, expectedGaps, chartData, gapType, chartTimeframe) {
   // Handle "No FVGs Found" case
   if (drawings.length === 1 && drawings[0].no_fvgs_found) {
     if (expectedGaps.length === 0) {

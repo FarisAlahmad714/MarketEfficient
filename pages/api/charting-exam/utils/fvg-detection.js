@@ -19,16 +19,16 @@
  * FIXED: Made calculation deterministic and consistent
  */
 export function calculateAdaptiveMinGapPercent(chartData, timeframe = '1d', assetSymbol = 'UNKNOWN') {
-  // FIXED: Use fixed thresholds instead of volatility-based calculation
-  // This ensures consistent results across multiple runs
+  // FIXED: Improved thresholds for longer timeframes
+  // Longer timeframes typically have larger gaps that are still valid
   const timeframeBasePercentages = {
     '1m': 0.0008,   // 0.08% for 1-minute
     '5m': 0.0012,   // 0.12% for 5-minute
     '15m': 0.0018,  // 0.18% for 15-minute
     '1h': 0.0025,   // 0.25% for hourly
     '4h': 0.003,    // 0.3% for 4-hour
-    '1d': 0.004,    // 0.4% for daily (increased for better detection)
-    '1w': 0.002     // 0.2% for weekly (reduced from previous)
+    '1d': 0.002,    // 0.2% for daily (reduced to catch more FVGs)
+    '1w': 0.001     // 0.1% for weekly (significantly reduced for better detection)
   };
   
   const basePercentage = timeframeBasePercentages[timeframe] || 0.003;
@@ -105,13 +105,23 @@ export function detectFairValueGaps(
   const avgPrice = sortedData.reduce((sum, candle) => 
     sum + (candle.high + candle.low) / 2, 0) / sortedData.length;
   
-  // FIXED: Use average price for gap size to avoid extreme values
-  const minGapSize = avgPrice * adaptiveMinGapPercent;
+  // Use price range-based calculation for longer timeframes
+  let minGapSize;
+  if (timeframe === '1w' || timeframe === '1d') {
+    // For longer timeframes, use price range for more appropriate gap sizing
+    const priceRange = Math.max(...sortedData.map(c => c.high)) - 
+                      Math.min(...sortedData.map(c => c.low));
+    minGapSize = priceRange * adaptiveMinGapPercent;
+  } else {
+    // For shorter timeframes, use average price
+    minGapSize = avgPrice * adaptiveMinGapPercent;
+  }
   
   console.log(`[FVG Detection] Searching for ${gapType} FVGs on ${timeframe} timeframe:`);
   console.log(`- Average price: ${avgPrice.toFixed(2)}`);
   console.log(`- Min gap size: ${minGapSize.toFixed(4)} (${(adaptiveMinGapPercent * 100).toFixed(3)}%)`);
   console.log(`- Total candles: ${sortedData.length}`);
+  console.log(`- Timeframe-specific logic: ${timeframe === '1w' || timeframe === '1d' ? 'LENIENT' : 'STRICT'} momentum checks`);
   
   // Scan for three-candle patterns
   for (let i = 0; i < sortedData.length - 2; i++) {
@@ -133,11 +143,13 @@ export function detectFairValueGaps(
       const candle2IsBullish = candle2.close > candle2.open;
       const candle2BreaksHigher = candle2.high > candle1.high;
       
-      // FIXED: Consistent momentum check for all timeframes
+      // FIXED: Improved momentum check for longer timeframes
       let momentumValid = false;
-      if (timeframe === '1w') {
-        // For weekly, just need candle 2 to break higher
-        momentumValid = candle2BreaksHigher;
+      if (timeframe === '1w' || timeframe === '1d') {
+        // For weekly and daily, more lenient momentum check
+        // Either needs to break higher OR be a strong bullish candle
+        momentumValid = candle2BreaksHigher || 
+                       (candle2IsBullish && (candle2.close - candle2.open) > (candle2.high - candle2.low) * 0.3);
       } else {
         // For other timeframes, need both bullish candle and break higher
         momentumValid = candle2IsBullish && candle2BreaksHigher;
@@ -145,13 +157,22 @@ export function detectFairValueGaps(
       
       // Additional validation: gap should be reasonable (not too large)
       const gapPercentage = gapSize / avgPrice;
-      const maxGapPercentage = adaptiveMinGapPercent * 50; // Max 50x the minimum
+      // FIXED: Increased max gap percentage for longer timeframes
+      let maxGapPercentage;
+      if (timeframe === '1w') {
+        maxGapPercentage = adaptiveMinGapPercent * 200; // Much higher for weekly
+      } else if (timeframe === '1d') {
+        maxGapPercentage = adaptiveMinGapPercent * 100; // Higher for daily
+      } else {
+        maxGapPercentage = adaptiveMinGapPercent * 50;  // Original for intraday
+      }
       
       if (gapExists && gapSize >= minGapSize && momentumValid && gapPercentage <= maxGapPercentage) {
         console.log(`[Bullish FVG Found] Candles ${i+1}-${i+3}:`);
         console.log(`- C1 High: ${candle1.high.toFixed(4)}, C3 Low: ${candle3.low.toFixed(4)}`);
         console.log(`- Gap Size: ${gapSize.toFixed(4)} (${(gapPercentage * 100).toFixed(3)}%)`);
         console.log(`- C2 Bullish: ${candle2IsBullish}, Breaks Higher: ${candle2BreaksHigher}`);
+        console.log(`- Max Gap %: ${(maxGapPercentage * 100).toFixed(3)}%, Min Gap Size: ${minGapSize.toFixed(4)}`);
         
         gaps.push({
           startTime: candle1.time || Math.floor(new Date(candle1.date).getTime() / 1000),
@@ -166,6 +187,12 @@ export function detectFairValueGaps(
           candle2Bullish: candle2IsBullish,
           candle2BreaksHigher: candle2BreaksHigher
         });
+      } else if (gapExists && gapSize >= minGapSize) {
+        // Debug: Show why this FVG was rejected
+        console.log(`[Bullish FVG Rejected] Candles ${i+1}-${i+3}:`);
+        console.log(`- Gap exists: ${gapExists}, Size: ${gapSize.toFixed(4)} (${(gapPercentage * 100).toFixed(3)}%)`);
+        console.log(`- Momentum valid: ${momentumValid} (C2 Bullish: ${candle2IsBullish}, Breaks Higher: ${candle2BreaksHigher})`);
+        console.log(`- Gap % check: ${gapPercentage.toFixed(6)} <= ${maxGapPercentage.toFixed(6)} = ${gapPercentage <= maxGapPercentage}`);
       }
     } else if (gapType === 'bearish') {
       // BEARISH FVG CONDITIONS:
@@ -176,11 +203,13 @@ export function detectFairValueGaps(
       const candle2IsBearish = candle2.close < candle2.open;
       const candle2BreaksLower = candle2.low < candle1.low;
       
-      // FIXED: Consistent momentum check for all timeframes
+      // FIXED: Improved momentum check for longer timeframes
       let momentumValid = false;
-      if (timeframe === '1w') {
-        // For weekly, just need candle 2 to break lower
-        momentumValid = candle2BreaksLower;
+      if (timeframe === '1w' || timeframe === '1d') {
+        // For weekly and daily, more lenient momentum check
+        // Either needs to break lower OR be a strong bearish candle
+        momentumValid = candle2BreaksLower || 
+                       (candle2IsBearish && (candle2.open - candle2.close) > (candle2.high - candle2.low) * 0.3);
       } else {
         // For other timeframes, need both bearish candle and break lower
         momentumValid = candle2IsBearish && candle2BreaksLower;
@@ -188,13 +217,22 @@ export function detectFairValueGaps(
       
       // Additional validation: gap should be reasonable (not too large)
       const gapPercentage = gapSize / avgPrice;
-      const maxGapPercentage = adaptiveMinGapPercent * 50; // Max 50x the minimum
+      // FIXED: Increased max gap percentage for longer timeframes
+      let maxGapPercentage;
+      if (timeframe === '1w') {
+        maxGapPercentage = adaptiveMinGapPercent * 200; // Much higher for weekly
+      } else if (timeframe === '1d') {
+        maxGapPercentage = adaptiveMinGapPercent * 100; // Higher for daily
+      } else {
+        maxGapPercentage = adaptiveMinGapPercent * 50;  // Original for intraday
+      }
       
       if (gapExists && gapSize >= minGapSize && momentumValid && gapPercentage <= maxGapPercentage) {
         console.log(`[Bearish FVG Found] Candles ${i+1}-${i+3}:`);
         console.log(`- C1 Low: ${candle1.low.toFixed(4)}, C3 High: ${candle3.high.toFixed(4)}`);
         console.log(`- Gap Size: ${gapSize.toFixed(4)} (${(gapPercentage * 100).toFixed(3)}%)`);
         console.log(`- C2 Bearish: ${candle2IsBearish}, Breaks Lower: ${candle2BreaksLower}`);
+        console.log(`- Max Gap %: ${(maxGapPercentage * 100).toFixed(3)}%, Min Gap Size: ${minGapSize.toFixed(4)}`);
         
         gaps.push({
           startTime: candle1.time || Math.floor(new Date(candle1.date).getTime() / 1000),
@@ -209,6 +247,12 @@ export function detectFairValueGaps(
           candle2Bearish: candle2IsBearish,
           candle2BreaksLower: candle2BreaksLower
         });
+      } else if (gapExists && gapSize >= minGapSize) {
+        // Debug: Show why this FVG was rejected
+        console.log(`[Bearish FVG Rejected] Candles ${i+1}-${i+3}:`);
+        console.log(`- Gap exists: ${gapExists}, Size: ${gapSize.toFixed(4)} (${(gapPercentage * 100).toFixed(3)}%)`);
+        console.log(`- Momentum valid: ${momentumValid} (C2 Bearish: ${candle2IsBearish}, Breaks Lower: ${candle2BreaksLower})`);
+        console.log(`- Gap % check: ${gapPercentage.toFixed(6)} <= ${maxGapPercentage.toFixed(6)} = ${gapPercentage <= maxGapPercentage}`);
       }
     }
   }

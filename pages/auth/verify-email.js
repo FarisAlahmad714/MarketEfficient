@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { ThemeContext } from '../../contexts/ThemeContext';
 import { useContext } from 'react';
+import CryptoLoader from '../../components/CryptoLoader';
 
 export default function VerifyEmail() {
   const [status, setStatus] = useState('verifying');
@@ -62,26 +63,18 @@ export default function VerifyEmail() {
       </h1>
 
       {status === 'verifying' && (
-        <div>
-          <div style={{
-            display: 'inline-block',
-            width: '40px',
-            height: '40px',
-            border: `4px solid ${darkMode ? '#333' : '#f3f3f3'}`,
-            borderTop: '4px solid #2196F3',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite',
-            marginBottom: '20px'
-          }}></div>
-          <p style={{ color: darkMode ? '#b0b0b0' : '#666' }}>
-            Verifying your email address...
-          </p>
-          <style jsx>{`
-            @keyframes spin {
-              0% { transform: rotate(0deg); }
-              100% { transform: rotate(360deg); }
-            }
-          `}</style>
+        <div style={{
+          width: '100%',
+          height: '300px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}>
+          <CryptoLoader 
+            message="Verifying your email address..."
+            minDisplayTime={2000}
+            height="300px"
+          />
         </div>
       )}
 

@@ -1,6 +1,21 @@
-import React, { createContext, useState, useEffect } from 'react';
+import React, { createContext, useState, useEffect, useContext } from 'react';
 
 export const ThemeContext = createContext();
+
+// Custom hook for safe theme context access
+export const useTheme = () => {
+  const context = useContext(ThemeContext);
+  
+  // Return fallback values if context is not available
+  if (!context) {
+    return {
+      darkMode: false,
+      toggleTheme: () => {}
+    };
+  }
+  
+  return context;
+};
 
 export const ThemeProvider = ({ children }) => {
   const [darkMode, setDarkMode] = useState(true); // Default to dark mode

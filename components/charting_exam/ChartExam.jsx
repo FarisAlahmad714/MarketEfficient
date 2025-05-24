@@ -7,6 +7,7 @@ import FairValueGaps from './FairValueGaps';
 import ExamProgress from './common/ExamProgress';
 import ResultsPanel from './common/ResultsPanel';
 import { ThemeContext } from '../../contexts/ThemeContext';
+import CryptoLoader from '../CryptoLoader';
 
 // Styled components with $-prefixed props to prevent DOM forwarding
 const ExamContainer = styled.div`
@@ -74,36 +75,22 @@ const LoadingOverlay = styled.div`
   position: fixed;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: ${props => props.$isDarkMode ? 'flex' : 'flex'};
   justify-content: center;
   align-items: center;
   z-index: 1000;
   
-  & > div {
-    background-color: ${props => props.$isDarkMode ? '#262626' : 'white'};
-    padding: 20px 30px;
+  > div {
+    background: ${props => props.$isDarkMode ? '#1e1e1e' : 'white'};
+    padding: 30px;
     border-radius: 8px;
+    text-align: center;
     display: flex;
     flex-direction: column;
     align-items: center;
-  }
-`;
-
-const Spinner = styled.div`
-  border: 4px solid ${props => props.$isDarkMode ? '#555' : '#f3f3f3'};
-  border-top: 4px solid ${props => props.$isDarkMode ? '#3f51b5' : '#2196F3'};
-  border-radius: 50%;
-  width: 30px;
-  height: 30px;
-  animation: spin 1s linear infinite;
-  margin-bottom: 10px;
-  
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
   }
 `;
 
@@ -461,8 +448,7 @@ useEffect(() => {
             alignItems: 'center', 
             justifyContent: 'center' 
           }}>
-            <Spinner $isDarkMode={darkMode} />
-            <p>Loading chart data...</p>
+            <CryptoLoader />
           </div>
         ) : (
           renderExamComponent()
@@ -493,7 +479,7 @@ useEffect(() => {
       {submitting && (
         <LoadingOverlay $isDarkMode={darkMode}>
           <div>
-            <Spinner $isDarkMode={darkMode} />
+            <CryptoLoader />
             <p>Analyzing your answers...</p>
           </div>
         </LoadingOverlay>

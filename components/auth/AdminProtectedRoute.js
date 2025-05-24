@@ -2,6 +2,7 @@
 import { useEffect, useContext } from 'react';
 import { useRouter } from 'next/router';
 import { AuthContext } from '../../contexts/AuthContext';
+import CryptoLoader from '../CryptoLoader';
 
 const AdminProtectedRoute = ({ children }) => {
   const { user, isAuthenticated, isLoading } = useContext(AuthContext);
@@ -31,22 +32,22 @@ const AdminProtectedRoute = ({ children }) => {
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
-        height: '100vh'
+        height: '100vh',
+        padding: '20px'
       }}>
         <div style={{
-          width: '40px',
-          height: '40px',
-          border: '4px solid #f3f3f3',
-          borderTop: '4px solid #2196F3',
-          borderRadius: '50%',
-          animation: 'spin 1s linear infinite'
-        }}></div>
-        <style jsx>{`
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-        `}</style>
+          width: '400px',
+          maxWidth: '100%',
+          boxShadow: '0 10px 30px rgba(0, 0, 0, 0.2)',
+          borderRadius: '8px',
+          overflow: 'hidden'
+        }}>
+          <CryptoLoader 
+            message="Verifying admin access..."
+            minDisplayTime={1500}
+            height="350px"
+          />
+        </div>
       </div>
     );
   }
