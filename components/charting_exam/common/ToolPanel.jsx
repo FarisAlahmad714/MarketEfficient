@@ -1,4 +1,3 @@
-// components/charting_exam/common/ToolPanel.jsx
 import React from 'react';
 import styled from 'styled-components';
 
@@ -33,62 +32,107 @@ const ToolsContainer = styled.div`
 `;
 
 const Tool = styled.button`
-  padding: 8px 12px;
-  border-radius: 4px;
-  border: 1px solid ${props => props.$isDarkMode ? '#444' : '#ddd'};
+  padding: 6px 10px;
+  border-radius: 3px;
+  border: 1px solid ${props => props.$isDarkMode ? '#444' : '#eee'};
   background-color: ${props => props.$isSelected 
-    ? (props.$isDarkMode ? '#3f51b5' : '#2196F3') 
-    : (props.$isDarkMode ? '#333' : '#f5f5f5')};
+    ? (props.$isDarkMode ? '#2196F3' : '#4CAF50')
+    : (props.$isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)')};
   color: ${props => props.$isSelected ? 'white' : (props.$isDarkMode ? '#e0e0e0' : '#333')};
-  cursor: pointer;
-  font-size: 0.9rem;
+  cursor: ${props => props.disabled ? 'not-allowed' : 'pointer'};
+  font-size: 0.8rem;
+  font-weight: ${props => props.$isSelected ? 'bold' : 'normal'};
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   transition: all 0.2s ease;
   
   &:hover {
     background-color: ${props => props.$isSelected 
-      ? (props.$isDarkMode ? '#303f9f' : '#1976D2') 
-      : (props.$isDarkMode ? '#444' : '#e0e0e0')};
+      ? (props.$isDarkMode ? '#1e88e5' : '#43a047')
+      : (props.$isDarkMode ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.1)')};
+    color: ${props => props.$isDarkMode ? '#fff' : '#000'};
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
+
+const ActionButton = styled.button`
+  padding: 6px 10px;
+  border-radius: 3px;
+  border: 1px solid ${props => props.$isDarkMode ? '#444' : '#eee'};
+  background-color: ${props => props.$primary 
+    ? (props.$isDarkMode ? '#2196F3' : '#4CAF50') 
+    : (props.$isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)')};
+  color: ${props => props.$primary ? 'white' : (props.$isDarkMode ? '#e0e0e0' : '#333')};
+  cursor: ${props => props.disabled ? 'not-allowed' : 'pointer'};
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background-color: ${props => props.$primary 
+      ? (props.$isDarkMode ? '#1e88e5' : '#43a047') 
+      : (props.$isDarkMode ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.1)')};
+    color: ${props => props.$isDarkMode ? '#fff' : '#000'};
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 `;
 
 const ClearButton = styled.button`
-  padding: 8px 12px;
-  border-radius: 4px;
-  border: 1px solid ${props => props.$isDarkMode ? '#444' : '#ddd'};
-  background-color: ${props => props.$isDarkMode ? '#333' : '#f5f5f5'};
+  padding: 6px 10px;
+  border-radius: 3px;
+  border: 1px solid ${props => props.$isDarkMode ? '#444' : '#eee'};
+  background-color: ${props => props.$isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)'};
   color: ${props => props.$isDarkMode ? '#e0e0e0' : '#333'};
-  cursor: pointer;
-  font-size: 0.9rem;
-  margin-left: auto;
+  cursor: ${props => props.disabled ? 'not-allowed' : 'pointer'};
+  font-size: 0.8rem;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   transition: all 0.2s ease;
   
   &:hover {
-    background-color: ${props => props.$isDarkMode ? '#444' : '#e0e0e0'};
+    background-color: ${props => props.$isDarkMode ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.1)'};
+    color: ${props => props.$isDarkMode ? '#fff' : '#000'};
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 `;
 
 const NoFvgsButton = styled.button`
-  padding: 8px 12px;
-  border-radius: 4px;
-  border: 1px solid ${props => props.$isDarkMode ? '#444' : '#ddd'};
-  background-color: ${props => props.$isDarkMode ? '#333' : '#f5f5f5'};
+  padding: 6px 10px;
+  border-radius: 3px;
+  border: 1px solid ${props => props.$isDarkMode ? '#444' : '#eee'};
+  background-color: ${props => props.$isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)'};
   color: ${props => props.$isDarkMode ? '#e0e0e0' : '#333'};
-  cursor: pointer;
-  font-size: 0.9rem;
-  margin-right: 10px;
+  cursor: ${props => props.disabled ? 'not-allowed' : 'pointer'};
+  font-size: 0.8rem;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   transition: all 0.2s ease;
   
   &:hover {
-    background-color: ${props => props.$isDarkMode ? '#444' : '#e0e0e0'};
+    background-color: ${props => props.$isDarkMode ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.1)'};
+    color: ${props => props.$isDarkMode ? '#fff' : '#000'};
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 `;
 
@@ -101,7 +145,8 @@ const ToolPanel = ({
   onClearAll, 
   isDarkMode,
   noFvgsOption = false, 
-  onNoFvgsFound = null 
+  onNoFvgsFound = null,
+  actions = []
 }) => {
   return (
     <Panel $isDarkMode={isDarkMode}>
@@ -115,10 +160,24 @@ const ToolPanel = ({
             onClick={() => onToolSelect(tool.id)}
             $isSelected={selectedTool === tool.id}
             $isDarkMode={isDarkMode}
+            disabled={tool.disabled || false}
           >
             <i className={`fas ${tool.icon}`}></i>
             {tool.label}
           </Tool>
+        ))}
+        
+        {actions.map(action => (
+          <ActionButton
+            key={action.id}
+            onClick={action.onClick}
+            $primary={action.primary || false}
+            $isDarkMode={isDarkMode}
+            disabled={action.disabled || false}
+          >
+            <i className={`fas ${action.icon}`}></i>
+            {action.label}
+          </ActionButton>
         ))}
         
         <div style={{ flexGrow: 1 }}></div>
@@ -133,13 +192,15 @@ const ToolPanel = ({
           </NoFvgsButton>
         )}
         
-        <ClearButton 
-          onClick={onClearAll}
-          $isDarkMode={isDarkMode}
-        >
-          <i className="fas fa-trash-alt"></i>
-          Clear All
-        </ClearButton>
+        {onClearAll && (
+          <ClearButton 
+            onClick={onClearAll}
+            $isDarkMode={isDarkMode}
+          >
+            <i className="fas fa-trash-alt"></i>
+            Clear All
+          </ClearButton>
+        )}
       </ToolsContainer>
     </Panel>
   );

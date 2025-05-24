@@ -1,5 +1,6 @@
 // pages/_app.js
 import Layout from '../components/Layout';
+import Head from 'next/head';
 import { useEffect, useState, useContext } from 'react';
 import { AuthProvider, AuthContext } from '../contexts/AuthContext';
 import { useRouter } from 'next/router';
@@ -143,6 +144,9 @@ function AppContent({ Component, pageProps }) {
 function MyApp({ Component, pageProps }) {
   return (
     <AuthProvider>
+      <Head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+      </Head>
       <AppContent Component={Component} pageProps={pageProps} />
     </AuthProvider>
   );

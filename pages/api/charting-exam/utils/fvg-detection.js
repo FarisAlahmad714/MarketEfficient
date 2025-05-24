@@ -1,121 +1,101 @@
 /**
- * Fair Value Gap (FVG) Detection Utilities
+ * FIXED Fair Value Gap (FVG) Detection Utilities
  * 
- * A Fair Value Gap is a three-candlestick sequence where:
+ * A Fair Value Gap is a three-candlestick imbalance where:
  * 
  * For Bullish FVG:
- * 1. Candlestick #2's high must be above Candlestick #1's high AND it must close above it
- * 2. Candlestick #3's low must stay above Candlestick #1's high (no overlap)
+ * - The gap exists between Candle 1's HIGH and Candle 3's LOW
+ * - Candle 2 must show bullish momentum (typically a strong bullish candle)
+ * - There must be NO OVERLAP between Candle 1's high and Candle 3's low
  * 
  * For Bearish FVG:
- * 1. Candlestick #2's low must be below Candlestick #1's low AND it must close below it
- * 2. Candlestick #3's high must stay below Candlestick #1's low (no overlap)
+ * - The gap exists between Candle 1's LOW and Candle 3's HIGH  
+ * - Candle 2 must show bearish momentum (typically a strong bearish candle)
+ * - There must be NO OVERLAP between Candle 1's low and Candle 3's high
  */
 
 /**
  * Calculate adaptive minimum gap percentage based on asset volatility and timeframe
- * @param {Array} chartData - OHLC chart data
- * @param {string} timeframe - Timeframe of the chart (1h, 4h, 1d, 1w)
- * @param {string} assetSymbol - Symbol of the asset being analyzed
- * @returns {number} - Adaptive minimum gap percentage
  */
 export function calculateAdaptiveMinGapPercent(chartData, timeframe = '1d', assetSymbol = 'UNKNOWN') {
-  // Calculate historical volatility (using ATR-like approach)
+  // Calculate historical volatility
   const volatility = calculateVolatility(chartData);
   
-  // Base minimum gap percentages by timeframe
+  // REVISED base minimum gap percentages - made less restrictive
   const timeframeBasePercentages = {
-    '1h': 0.003,  // Lower threshold for shorter timeframes
-    '4h': 0.004,
-    '1d': 0.005,  // Default value (0.5%)
-    '1w': 0.008   // Higher threshold for higher timeframes
+    '1m': 0.0005,  // 0.05% for 1-minute
+    '5m': 0.001,   // 0.1% for 5-minute
+    '15m': 0.0015, // 0.15% for 15-minute
+    '1h': 0.002,   // 0.2% for hourly (reduced from 0.3%)
+    '4h': 0.0025,  // 0.25% for 4-hour (reduced from 0.4%)
+    '1d': 0.003,   // 0.3% for daily (reduced from 0.5%)
+    '1w': 0.005    // 0.5% for weekly (reduced from 0.8%)
   };
   
-  // Get base percentage based on timeframe (default to daily if not found)
-  const basePercentage = timeframeBasePercentages[timeframe] || 0.005;
-  
-  // Asset-specific adjustments (optional enhancement)
+  const basePercentage = timeframeBasePercentages[timeframe] || 0.003;
   const assetMultiplier = getAssetVolatilityMultiplier(assetSymbol);
   
-  // Calculate final adaptive gap percentage
-  // Scale by volatility - more volatile markets need larger gaps to be significant
-  const adaptivePercentage = basePercentage * (volatility * 0.8 + 0.6) * assetMultiplier;
+  // Adjusted calculation - less aggressive scaling
+  const adaptivePercentage = basePercentage * (volatility * 0.5 + 0.8) * assetMultiplier;
   
-  // Ensure we have reasonable bounds
-  const finalPercentage = Math.max(0.002, Math.min(0.015, adaptivePercentage));
+  // Tighter bounds to catch more gaps
+  const finalPercentage = Math.max(0.0005, Math.min(0.01, adaptivePercentage));
   
-  // Log details for monitoring
-  console.log(`[FVG Adaptive Detection] Asset=${assetSymbol}, Timeframe=${timeframe}, ` +
-              `Base=${basePercentage.toFixed(4)}, Volatility=${volatility.toFixed(2)}, ` +
-              `AssetMult=${assetMultiplier.toFixed(2)}, Final=${finalPercentage.toFixed(4)}`);
+  console.log(`[FVG Adaptive] Asset=${assetSymbol}, TF=${timeframe}, ` +
+              `Base=${basePercentage.toFixed(4)}, Vol=${volatility.toFixed(2)}, ` +
+              `Final=${finalPercentage.toFixed(4)}`);
               
   return finalPercentage;
 }
 
 /**
- * Calculate volatility using a simple ATR-like approach
- * @param {Array} chartData - Chart data array
- * @returns {number} - Normalized volatility score (1.0 is average)
+ * Calculate volatility using ATR-based approach
  */
 function calculateVolatility(chartData) {
-  if (!chartData || chartData.length < 5) return 1.0; // Default to neutral
+  if (!chartData || chartData.length < 5) return 1.0;
   
-  // Calculate true ranges
   const trueRanges = [];
   
   for (let i = 1; i < chartData.length; i++) {
     const current = chartData[i];
     const previous = chartData[i-1];
     
-    const tr1 = current.high - current.low; // Current candle range
-    const tr2 = Math.abs(current.high - previous.close); // High vs previous close
-    const tr3 = Math.abs(current.low - previous.close); // Low vs previous close
+    const tr1 = current.high - current.low;
+    const tr2 = Math.abs(current.high - previous.close);
+    const tr3 = Math.abs(current.low - previous.close);
     
     trueRanges.push(Math.max(tr1, tr2, tr3));
   }
   
-  // Calculate average true range
   const atr = trueRanges.reduce((sum, tr) => sum + tr, 0) / trueRanges.length;
-  
-  // Normalize by price to get percentage volatility
   const averagePrice = chartData.reduce((sum, candle) => sum + (candle.high + candle.low) / 2, 0) / chartData.length;
   
-  return (atr / averagePrice) * 100; // As a percentage of price
+  return (atr / averagePrice) * 100;
 }
 
 /**
  * Get volatility multiplier based on asset type
- * @param {string} assetSymbol - Symbol of the asset
- * @returns {number} - Multiplier for the base percentage
  */
 function getAssetVolatilityMultiplier(assetSymbol) {
-  // Example classifications based on typical asset volatility
-  const highVolatilityAssets = ['BTC', 'ETH', 'SOL', 'LINK']; // Cryptocurrencies
-  const mediumVolatilityAssets = ['NVDA', 'TSLA']; // Growth stocks
-  const lowVolatilityAssets = ['AAPL', 'GLD']; // Blue chips, gold
+  const highVolatilityAssets = ['BTC', 'ETH', 'DOGE', 'SHIB', 'SOL'];
+  const mediumVolatilityAssets = ['NVDA', 'TSLA', 'AMD', 'NFLX'];
+  const lowVolatilityAssets = ['AAPL', 'MSFT', 'JNJ', 'KO', 'GLD', 'SPY'];
   
-  // Convert to uppercase for comparison
   const symbol = assetSymbol.toUpperCase();
   
-  if (highVolatilityAssets.includes(symbol)) {
-    return 1.2; // 20% higher threshold
-  } else if (mediumVolatilityAssets.includes(symbol)) {
-    return 1.0; // Neutral
-  } else if (lowVolatilityAssets.includes(symbol)) {
-    return 0.8; // 20% lower threshold
+  if (highVolatilityAssets.some(asset => symbol.includes(asset))) {
+    return 1.3; // Higher threshold for crypto
+  } else if (mediumVolatilityAssets.some(asset => symbol.includes(asset))) {
+    return 1.0;
+  } else if (lowVolatilityAssets.some(asset => symbol.includes(asset))) {
+    return 0.7; // Lower threshold for stable assets
   }
   
-  return 1.0; // Default multiplier
+  return 1.0;
 }
 
 /**
- * Detect Fair Value Gaps in chart data
- * @param {Array} chartData - Array of candle data objects
- * @param {string} gapType - Type of gap to detect ('bullish' or 'bearish')
- * @param {number} minGapPercent - Optional override for minimum gap percentage
- * @param {string} timeframe - Timeframe of the chart
- * @param {string} assetSymbol - Symbol of the asset
- * @returns {Array} - Array of detected gaps
+ * FIXED: Detect Fair Value Gaps with corrected logic
  */
 export function detectFairValueGaps(
   chartData, 
@@ -130,174 +110,354 @@ export function detectFairValueGaps(
   
   const gaps = [];
   
-  // If minGapPercent isn't explicitly provided, calculate it adaptively
+  // Calculate adaptive minimum gap
   const adaptiveMinGapPercent = minGapPercent || 
     calculateAdaptiveMinGapPercent(chartData, timeframe, assetSymbol);
   
-  // Calculate minimum gap size for significance
-  const priceRange = Math.max(...chartData.map(c => c.high)) - 
-                    Math.min(...chartData.map(c => c.low));
+  // Use actual price range for gap size calculation
+  const allPrices = chartData.flatMap(c => [c.high, c.low]);
+  const maxPrice = Math.max(...allPrices);
+  const minPrice = Math.min(...allPrices);
+  const priceRange = maxPrice - minPrice;
+  
+  // Calculate minimum gap size
   const minGapSize = priceRange * adaptiveMinGapPercent;
   
-  // Log the effective minimum gap size for debugging
-  console.log(`[FVG Detection] ${gapType} FVG search with min gap size: ${minGapSize.toFixed(4)} (${(adaptiveMinGapPercent * 100).toFixed(2)}% of range)`);
+  console.log(`[FVG Detection] Searching for ${gapType} FVGs:`);
+  console.log(`- Price range: ${minPrice.toFixed(2)} to ${maxPrice.toFixed(2)}`);
+  console.log(`- Min gap size: ${minGapSize.toFixed(4)} (${(adaptiveMinGapPercent * 100).toFixed(3)}%)`);
   
-  // Look for exactly THREE candle patterns
+  // Scan for three-candle patterns
   for (let i = 0; i < chartData.length - 2; i++) {
-    const firstCandle = chartData[i];
-    const middleCandle = chartData[i + 1];
-    const thirdCandle = chartData[i + 2];
+    const candle1 = chartData[i];
+    const candle2 = chartData[i + 1];
+    const candle3 = chartData[i + 2];
+    
+    // Ensure we have valid price data
+    if (!candle1.high || !candle1.low || !candle2.high || !candle2.low || 
+        !candle3.high || !candle3.low || !candle2.close) {
+      continue;
+    }
     
     if (gapType === 'bullish') {
-      // For bullish FVG:
-      // 1. Middle candle's high must be above first candle's high AND must close above it
-      // 2. Third candle's low must be above first candle's high (no overlap)
+      // BULLISH FVG CONDITIONS:
+      // 1. Gap exists between candle1.high and candle3.low (no overlap)
+      // 2. Candle2 shows bullish momentum
       
-      const middleCondition = middleCandle.high > firstCandle.high && middleCandle.close > firstCandle.high;
-      const gapSize = thirdCandle.low - firstCandle.high;
+      const gapExists = candle3.low > candle1.high;
+      const gapSize = candle3.low - candle1.high;
       
-      if (middleCondition && gapSize > 0 && gapSize >= minGapSize) {
+      // Momentum check: Candle 2 should be bullish and break above candle 1
+      const candle2IsBullish = candle2.close > candle2.open;
+      const candle2BreaksHigher = candle2.high > candle1.high;
+      
+      // Additional check: Candle 2's body should extend beyond candle 1's high
+      const candle2BodyAboveCandle1 = Math.min(candle2.open, candle2.close) > candle1.high;
+      
+      if (gapExists && gapSize >= minGapSize && candle2BreaksHigher) {
+        console.log(`[Bullish FVG Found] Candles ${i+1}-${i+3}:`);
+        console.log(`- Candle 1 High: ${candle1.high.toFixed(4)}`);
+        console.log(`- Candle 3 Low: ${candle3.low.toFixed(4)}`);
+        console.log(`- Gap Size: ${gapSize.toFixed(4)}`);
+        console.log(`- Momentum: ${candle2IsBullish ? 'Bullish' : 'Bearish'} candle 2`);
+        
         gaps.push({
-          startTime: firstCandle.time || Math.floor(new Date(firstCandle.date).getTime() / 1000),
-          endTime: thirdCandle.time || Math.floor(new Date(thirdCandle.date).getTime() / 1000),
-          topPrice: thirdCandle.low,
-          bottomPrice: firstCandle.high,
+          startTime: candle1.time || Math.floor(new Date(candle1.date).getTime() / 1000),
+          endTime: candle3.time || Math.floor(new Date(candle3.date).getTime() / 1000),
+          topPrice: candle3.low,      // Top of the gap
+          bottomPrice: candle1.high,   // Bottom of the gap
           type: 'bullish',
           size: gapSize,
           firstCandleIndex: i,
-          thirdCandleIndex: i + 2
+          thirdCandleIndex: i + 2,
+          candle2Bullish: candle2IsBullish,
+          candle2BodyExtends: candle2BodyAboveCandle1
         });
       }
     } else if (gapType === 'bearish') {
-      // For bearish FVG:
-      // 1. Middle candle's low must be below first candle's low AND must close below it
-      // 2. Third candle's high must be below first candle's low (no overlap)
+      // BEARISH FVG CONDITIONS:
+      // 1. Gap exists between candle1.low and candle3.high (no overlap)
+      // 2. Candle2 shows bearish momentum
       
-      const middleCondition = middleCandle.low < firstCandle.low && middleCandle.close < firstCandle.low;
-      const gapSize = firstCandle.low - thirdCandle.high;
+      const gapExists = candle3.high < candle1.low;
+      const gapSize = candle1.low - candle3.high;
       
-      if (middleCondition && gapSize > 0 && gapSize >= minGapSize) {
+      // Momentum check: Candle 2 should be bearish and break below candle 1
+      const candle2IsBearish = candle2.close < candle2.open;
+      const candle2BreaksLower = candle2.low < candle1.low;
+      
+      // Additional check: Candle 2's body should extend below candle 1's low
+      const candle2BodyBelowCandle1 = Math.max(candle2.open, candle2.close) < candle1.low;
+      
+      if (gapExists && gapSize >= minGapSize && candle2BreaksLower) {
+        console.log(`[Bearish FVG Found] Candles ${i+1}-${i+3}:`);
+        console.log(`- Candle 1 Low: ${candle1.low.toFixed(4)}`);
+        console.log(`- Candle 3 High: ${candle3.high.toFixed(4)}`);
+        console.log(`- Gap Size: ${gapSize.toFixed(4)}`);
+        console.log(`- Momentum: ${candle2IsBearish ? 'Bearish' : 'Bullish'} candle 2`);
+        
         gaps.push({
-          startTime: firstCandle.time || Math.floor(new Date(firstCandle.date).getTime() / 1000),
-          endTime: thirdCandle.time || Math.floor(new Date(thirdCandle.date).getTime() / 1000),
-          topPrice: firstCandle.low,
-          bottomPrice: thirdCandle.high,
+          startTime: candle1.time || Math.floor(new Date(candle1.date).getTime() / 1000),
+          endTime: candle3.time || Math.floor(new Date(candle3.date).getTime() / 1000),
+          topPrice: candle1.low,      // Top of the gap
+          bottomPrice: candle3.high,   // Bottom of the gap
           type: 'bearish',
           size: gapSize,
           firstCandleIndex: i,
-          thirdCandleIndex: i + 2
+          thirdCandleIndex: i + 2,
+          candle2Bearish: candle2IsBearish,
+          candle2BodyExtends: candle2BodyBelowCandle1
         });
       }
     }
   }
   
-  // Sort gaps by size (largest first)
+  // Sort gaps by size (largest first) and return top 10
   gaps.sort((a, b) => b.size - a.size);
   
-  // Log found gaps
-  console.log(`[FVG Detection] Found ${gaps.length} ${gapType} FVGs`);
+  console.log(`[FVG Detection] Total ${gapType} FVGs found: ${gaps.length}`);
   
-  // Limit to the 5 most significant gaps to avoid overcrowding
-  return gaps.slice(0, 5);
+  return gaps.slice(0, 10); // Return up to 10 most significant gaps
 }
 
 /**
- * Check if an FVG has been filled by subsequent price action
- * @param {Object} gap - The FVG object to check
- * @param {Array} subsequentCandles - Array of candles that occurred after the FVG formation
- * @returns {boolean} - Whether the gap has been filled
+ * IMPROVED: Validate user FVG markings with better matching logic
  */
-export function checkFVGFilled(gap, subsequentCandles) {
-  for (const candle of subsequentCandles) {
-    if (gap.type === 'bullish') {
-      // Bullish FVG is filled if price goes back down into the gap
-      if (candle.low <= gap.topPrice) {
-        return true;
-      }
+export function validateFairValueGaps(drawings, expectedGaps, chartData, gapType) {
+  // Handle "No FVGs Found" case
+  if (drawings.length === 1 && drawings[0].no_fvgs_found) {
+    if (expectedGaps.length === 0) {
+      return {
+        success: true,
+        message: `Correct! No ${gapType} fair value gaps in this chart.`,
+        score: 1,
+        totalExpectedPoints: 1,
+        feedback: {
+          correct: [{
+            type: 'no_gaps',
+            advice: `You correctly identified that there are no ${gapType} fair value gaps.`
+          }],
+          incorrect: []
+        }
+      };
     } else {
-      // Bearish FVG is filled if price goes back up into the gap
-      if (candle.high >= gap.bottomPrice) {
-        return true;
-      }
+      return {
+        success: false,
+        message: `${expectedGaps.length} ${gapType} FVG(s) were present.`,
+        score: 0,
+        totalExpectedPoints: expectedGaps.length,
+        feedback: {
+          correct: [],
+          incorrect: expectedGaps.map(gap => ({
+            type: 'missed_gap',
+            topPrice: gap.topPrice,
+            bottomPrice: gap.bottomPrice,
+            size: gap.size,
+            advice: getMissedGapAdvice(gap, gapType)
+          }))
+        }
+      };
     }
   }
   
-  return false;
-}
-
-/**
- * Determine if a gap has been partially filled and adjust the gap size accordingly
- * @param {Object} gap - The original FVG object
- * @param {Array} subsequentCandles - Array of candles after the FVG formation
- * @returns {Object} - The adjusted gap, or the original if not partially filled
- */
-export function adjustPartiallyFilledFVG(gap, subsequentCandles) {
-  let adjustedGap = { ...gap };
-  let partiallyFilled = false;
-  
-  for (const candle of subsequentCandles) {
-    if (gap.type === 'bullish') {
-      // If price went into the gap but didn't completely fill it
-      if (candle.low < gap.topPrice && candle.low > gap.bottomPrice) {
-        // Adjust the top of the gap to the lowest point reached
-        adjustedGap.topPrice = Math.min(adjustedGap.topPrice, candle.low);
-        adjustedGap.size = adjustedGap.topPrice - adjustedGap.bottomPrice;
-        partiallyFilled = true;
-      } else if (candle.low <= gap.bottomPrice) {
-        // Completely filled
-        return null;
+  // No gaps expected but user marked some
+  if (expectedGaps.length === 0) {
+    return {
+      success: false,
+      message: `No ${gapType} FVGs detected. Use "No FVGs Found" button.`,
+      score: 0,
+      totalExpectedPoints: 1,
+      feedback: {
+        correct: [],
+        incorrect: drawings.map(d => ({
+          type: 'incorrect_gap',
+          topPrice: d.topPrice,
+          bottomPrice: d.bottomPrice,
+          advice: `No valid ${gapType} FVGs exist in this chart.`
+        }))
       }
-    } else { // bearish gap
-      // If price went into the gap but didn't completely fill it
-      if (candle.high > gap.bottomPrice && candle.high < gap.topPrice) {
-        // Adjust the bottom of the gap to the highest point reached
-        adjustedGap.bottomPrice = Math.max(adjustedGap.bottomPrice, candle.high);
-        adjustedGap.size = adjustedGap.topPrice - adjustedGap.bottomPrice;
-        partiallyFilled = true;
-      } else if (candle.high >= gap.topPrice) {
-        // Completely filled
-        return null;
-      }
-    }
+    };
   }
   
-  return partiallyFilled ? adjustedGap : gap;
-}
-
-/**
- * Find all untested Fair Value Gaps
- * @param {Array} chartData - Full candle data array
- * @param {string} gapType - Type of gaps to find ('bullish' or 'bearish')
- * @param {string} timeframe - Timeframe of the chart
- * @param {string} assetSymbol - Symbol of the asset
- * @returns {Array} - Array of untested gaps
- */
-export function findUntestedFVGs(chartData, gapType = 'bullish', timeframe = '1d', assetSymbol = 'UNKNOWN') {
-  const allGaps = detectFairValueGaps(chartData, gapType, null, timeframe, assetSymbol);
-  const untestedGaps = [];
+  // Calculate tolerances based on actual data
+  const allPrices = chartData.flatMap(c => [c.high, c.low]);
+  const priceRange = Math.max(...allPrices) - Math.min(...allPrices);
+  const avgPrice = allPrices.reduce((a, b) => a + b, 0) / allPrices.length;
   
-  for (const gap of allGaps) {
-    // Get all candles that occurred after the FVG formation
-    const subsequentCandles = chartData.slice(gap.thirdCandleIndex + 1);
+  // Dynamic price tolerance: 2% of price range or 0.5% of average price (whichever is larger)
+  const priceTolerance = Math.max(priceRange * 0.02, avgPrice * 0.005);
+  
+  // Time tolerance: Allow marking anywhere within the 3-candle formation
+  const timePoints = chartData.map(c => c.time || Math.floor(new Date(c.date).getTime() / 1000));
+  const avgTimeIncrement = (timePoints[timePoints.length - 1] - timePoints[0]) / (timePoints.length - 1);
+  const timeTolerance = avgTimeIncrement * 4; // Allow 4 candle periods of tolerance
+  
+  console.log(`[Validation] Price tolerance: ±${priceTolerance.toFixed(4)}, Time tolerance: ±${timeTolerance}s`);
+  
+  let matched = 0;
+  const feedback = { correct: [], incorrect: [] };
+  const usedGaps = new Set();
+  const usedDrawings = new Set();
+  
+  // First pass: Find exact and near-exact matches
+  for (let d = 0; d < drawings.length; d++) {
+    const drawing = drawings[d];
+    if (drawing.no_fvgs_found) continue;
     
-    // Check if the gap has been filled
-    if (!checkFVGFilled(gap, subsequentCandles)) {
-      // If not filled, check if it's been partially filled and adjust
-      const adjustedGap = adjustPartiallyFilledFVG(gap, subsequentCandles);
+    let bestMatch = null;
+    let bestScore = 0;
+    let bestGapIndex = -1;
+    
+    for (let g = 0; g < expectedGaps.length; g++) {
+      if (usedGaps.has(g)) continue;
       
-      if (adjustedGap) {
-        untestedGaps.push(adjustedGap);
+      const gap = expectedGaps[g];
+      
+      // Calculate match score based on price accuracy
+      const topDiff = Math.abs(drawing.topPrice - gap.topPrice);
+      const bottomDiff = Math.abs(drawing.bottomPrice - gap.bottomPrice);
+      
+      // Check if prices are within tolerance
+      if (topDiff <= priceTolerance && bottomDiff <= priceTolerance) {
+        // Score based on accuracy (closer = higher score)
+        const priceScore = 1 - (topDiff + bottomDiff) / (2 * priceTolerance);
+        
+        // Time matching - more lenient
+        const drawingMidTime = (drawing.startTime + drawing.endTime) / 2;
+        const gapMidTime = (gap.startTime + gap.endTime) / 2;
+        const timeDiff = Math.abs(drawingMidTime - gapMidTime);
+        
+        if (timeDiff <= timeTolerance) {
+          const timeScore = 1 - (timeDiff / timeTolerance);
+          const totalScore = (priceScore * 0.8) + (timeScore * 0.2); // Price matters more
+          
+          if (totalScore > bestScore) {
+            bestScore = totalScore;
+            bestMatch = gap;
+            bestGapIndex = g;
+          }
+        }
       }
+      
+      // Also check for horizontal line matches
+      if (drawing.drawingType === 'hline' || 
+          Math.abs(drawing.topPrice - drawing.bottomPrice) < priceTolerance / 10) {
+        const linePrice = (drawing.topPrice + drawing.bottomPrice) / 2;
+        const gapMidPrice = (gap.topPrice + gap.bottomPrice) / 2;
+        
+        if (Math.abs(linePrice - gapMidPrice) <= priceTolerance &&
+            linePrice >= gap.bottomPrice - priceTolerance &&
+            linePrice <= gap.topPrice + priceTolerance) {
+          const score = 0.7; // Horizontal lines get partial credit
+          if (score > bestScore) {
+            bestScore = score;
+            bestMatch = gap;
+            bestGapIndex = g;
+          }
+        }
+      }
+    }
+    
+    if (bestMatch && bestScore > 0.5) {
+      matched++;
+      usedGaps.add(bestGapIndex);
+      usedDrawings.add(d);
+      
+      feedback.correct.push({
+        type: gapType,
+        topPrice: bestMatch.topPrice,
+        bottomPrice: bestMatch.bottomPrice,
+        size: bestMatch.size,
+        accuracy: Math.round(bestScore * 100),
+        advice: getMatchAdvice(bestScore, drawing.drawingType)
+      });
     }
   }
   
-  return untestedGaps;
+  // Second pass: Mark unmatched drawings as incorrect
+  for (let d = 0; d < drawings.length; d++) {
+    if (!usedDrawings.has(d) && !drawings[d].no_fvgs_found) {
+      feedback.incorrect.push({
+        type: 'incorrect_gap',
+        topPrice: drawings[d].topPrice,
+        bottomPrice: drawings[d].bottomPrice,
+        advice: getIncorrectGapAdvice(drawings[d], expectedGaps, gapType)
+      });
+    }
+  }
+  
+  // Third pass: Mark missed gaps
+  for (let g = 0; g < expectedGaps.length; g++) {
+    if (!usedGaps.has(g)) {
+      const gap = expectedGaps[g];
+      feedback.incorrect.push({
+        type: 'missed_gap',
+        topPrice: gap.topPrice,
+        bottomPrice: gap.bottomPrice,
+        size: gap.size,
+        advice: getMissedGapAdvice(gap, gapType)
+      });
+    }
+  }
+  
+  const success = matched === expectedGaps.length && 
+                  feedback.incorrect.filter(f => f.type === 'incorrect_gap').length === 0;
+  
+  return {
+    success,
+    message: `${gapType} FVGs: ${matched}/${expectedGaps.length} correct`,
+    score: matched,
+    totalExpectedPoints: expectedGaps.length,
+    feedback
+  };
 }
 
+// Helper functions for advice messages
+function getMatchAdvice(score, drawingType) {
+  if (score > 0.9) {
+    return "Excellent! Precisely identified FVG.";
+  } else if (score > 0.7) {
+    return drawingType === 'hline' 
+      ? "Good! H-line correctly marks the FVG zone."
+      : "Good! FVG identified with minor boundary differences.";
+  } else {
+    return "Acceptable. Consider more precise boundary marking.";
+  }
+}
+
+function getIncorrectGapAdvice(drawing, expectedGaps, gapType) {
+  // Check if drawing is in wrong location
+  const drawingMid = (drawing.topPrice + drawing.bottomPrice) / 2;
+  
+  for (const gap of expectedGaps) {
+    const gapMid = (gap.topPrice + gap.bottomPrice) / 2;
+    const distance = Math.abs(drawingMid - gapMid);
+    const gapSize = gap.topPrice - gap.bottomPrice;
+    
+    // If drawing is close to a real gap but misaligned
+    if (distance < gapSize * 2) {
+      return `Close to a valid FVG but boundaries are incorrect. Check the 3-candle pattern.`;
+    }
+  }
+  
+  return `No valid ${gapType} FVG at this location. Remember: ${gapType === 'bullish' 
+    ? 'Gap must be between candle 1 high and candle 3 low with no overlap.'
+    : 'Gap must be between candle 1 low and candle 3 high with no overlap.'}`;
+}
+
+function getMissedGapAdvice(gap, gapType) {
+  const gapInfo = `${gap.bottomPrice.toFixed(4)} to ${gap.topPrice.toFixed(4)}`;
+  
+  if (gapType === 'bullish') {
+    return `Missed bullish FVG (${gapInfo}). Look for 3-candle patterns where candle 3's low stays above candle 1's high.`;
+  } else {
+    return `Missed bearish FVG (${gapInfo}). Look for 3-candle patterns where candle 3's high stays below candle 1's low.`;
+  }
+}
+
+// Export all functions
 export default {
   detectFairValueGaps,
-  checkFVGFilled,
-  adjustPartiallyFilledFVG,
-  findUntestedFVGs,
+  validateFairValueGaps,
   calculateAdaptiveMinGapPercent
 };

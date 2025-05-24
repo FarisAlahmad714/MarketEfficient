@@ -1,7 +1,7 @@
 import jwt from 'jsonwebtoken';
 import connectDB from '../../../lib/database';
 import User from '../../../models/User';
-import { generateToken, sendVerificationEmail } from '../../../lib/email-service';
+import { generateToken, sendVerificationEmail, sendWelcomeEmail } from '../../../lib/email-service';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -41,6 +41,9 @@ export default async function handler(req, res) {
     
     // Send verification email
     await sendVerificationEmail(user, verificationToken);
+    
+    // Send welcome email
+    await sendWelcomeEmail(user);
     
     // Generate JWT token
     const token = jwt.sign(

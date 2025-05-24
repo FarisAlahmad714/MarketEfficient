@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import dynamic from 'next/dynamic';
-import { FaCog, FaRuler } from 'react-icons/fa';
-import FibonacciSettings from './FibonacciSettings'; // New import
+import ToolPanel from './common/ToolPanel';
+import FibonacciSettings from './FibonacciSettings';
 
 // Dynamically import chart component to avoid SSR issues
 const Chart = dynamic(
@@ -14,7 +14,6 @@ const Chart = dynamic(
       useEffect(() => {
         if (!container.current) return;
         
-        // Create chart instance
         const chart = createChart(container.current, {
           width: container.current.clientWidth,
           height: 500,
@@ -31,21 +30,18 @@ const Chart = dynamic(
             timeVisible: true,
           },
           crosshair: {
-            mode: 0, // CrosshairMode.Normal
+            mode: 0,
           },
-          // FIX #1: Disable price scale zooming when in drawing mode
           handleScroll: !options.drawingMode,
           handleScale: !options.drawingMode,
         });
         
-        // FIX #1: Additional fix to disable price scale in drawing mode
         if (options.drawingMode) {
           chart.priceScale('right').applyOptions({
             autoScale: false
           });
         }
         
-        // Add candlestick series
         const candlestick = chart.addCandlestickSeries({
           upColor: '#4CAF50',
           downColor: '#F44336',
@@ -54,24 +50,20 @@ const Chart = dynamic(
           wickDownColor: '#F44336',
         });
         
-        // Set the data
         candlestick.setData(chartData);
         
-        // Add line series for Fibonacci levels if provided
         if (options.fibLevels && options.fibLevels.length > 0) {
           options.fibLevels.forEach(level => {
             const lineSeries = chart.addLineSeries({
               color: level.color,
               lineWidth: level.lineWidth || 1,
-              lineStyle: level.lineStyle || 0, // LineStyle.Solid
+              lineStyle: level.lineStyle || 0,
               title: level.title,
             });
             
-            // FIX #2: Ensure times are in ascending order and have sufficient gap
             let timePoint1 = options.startTime;
             let timePoint2 = options.endTime;
             
-            // Ensure times have a minimum gap
             if (Math.abs(timePoint1 - timePoint2) < 60) {
               if (timePoint1 < timePoint2) {
                 timePoint2 = timePoint1 + 60;
@@ -80,7 +72,6 @@ const Chart = dynamic(
               }
             }
             
-            // Create data points in ascending time order
             const data = timePoint1 <= timePoint2 
               ? [
                   { time: timePoint1, value: level.price },
@@ -95,37 +86,29 @@ const Chart = dynamic(
           });
         }
         
-        // Set markers if available
         if (options.markers && options.markers.length > 0) {
-          // Sort markers by time in ascending order to prevent errors
           const sortedMarkers = [...options.markers].sort((a, b) => a.time - b.time);
           
-          // FIX #2: Ensure no duplicate marker times
           for (let i = 1; i < sortedMarkers.length; i++) {
             if (sortedMarkers[i].time <= sortedMarkers[i-1].time) {
-              sortedMarkers[i].time = sortedMarkers[i-1].time + 60; // Add 1 minute gap
+              sortedMarkers[i].time = sortedMarkers[i-1].time + 60;
             }
           }
           
           candlestick.setMarkers(sortedMarkers);
         }
         
-        // Set click handler
         chart.subscribeClick(param => {
           if (onClick && param.time) {
-            // Convert coordinate to price
             const price = candlestick.coordinateToPrice(param.point.y);
             onClick({ time: param.time, price });
           }
         });
         
-        // Store chart reference
         chartRef.current = chart;
         
-        // Fit content
         chart.timeScale().fitContent();
         
-        // Clean up on unmount
         return () => {
           chart.remove();
         };
@@ -169,55 +152,6 @@ const ChartWrapper = styled.div`
   position: relative;
 `;
 
-const ToolBar = styled.div`
-  display: flex;
-  gap: 10px;
-  margin-bottom: 15px;
-  flex-wrap: wrap;
-`;
-
-const Button = styled.button`
-  padding: 8px 16px;
-  background-color: ${props => props.$active 
-    ? (props.$isDarkMode ? '#3f51b5' : '#2196F3') 
-    : (props.$isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)')
-  };
-  color: ${props => props.$active 
-    ? 'white' 
-    : (props.$isDarkMode ? '#e0e0e0' : '#333')
-  };
-  border: none;
-  border-radius: 4px;
-  font-weight: ${props => props.$active ? 'bold' : 'normal'};
-  cursor: pointer;
-  transition: all 0.2s ease;
-  
-  &:hover {
-    background-color: ${props => props.$active 
-      ? (props.$isDarkMode ? '#3f51b5' : '#2196F3') 
-      : (props.$isDarkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)')
-    };
-  }
-`;
-
-const DangerButton = styled(Button)`
-  background-color: ${props => props.$isDarkMode ? '#d32f2f' : '#ffcdd2'};
-  color: ${props => props.$isDarkMode ? 'white' : '#d32f2f'};
-  
-  &:hover {
-    background-color: ${props => props.$isDarkMode ? '#b71c1c' : '#ffb3b3'};
-  }
-`;
-
-// New button for Fibonacci settings
-const SettingsButton = styled(Button)`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-left: auto;
-`;
-
-// MODIFIED: Moved FibPanel from inside chart to outside
 const FibPanel = styled.div`
   margin-top: 20px;
   background-color: ${props => props.$isDarkMode ? 'rgba(30, 30, 30, 0.8)' : 'rgba(255, 255, 255, 0.8)'};
@@ -244,71 +178,6 @@ const FibInfoOverlay = styled.div`
   display: ${props => props.$active ? 'block' : 'none'};
 `;
 
-const StatusBadge = styled.div`
-  display: inline-flex;
-  align-items: center;
-  margin-top: 5px;
-  margin-bottom: 15px;
-  padding: 5px 10px;
-  border-radius: 15px;
-  font-size: 0.85rem;
-  background-color: ${props => props.$active
-    ? (props.$isDarkMode ? 'rgba(76, 175, 80, 0.2)' : 'rgba(76, 175, 80, 0.1)')
-    : 'transparent'
-  };
-  color: ${props => props.$active
-    ? '#4CAF50'
-    : (props.$isDarkMode ? '#b0b0b0' : '#666')
-  };
-  border: 1px solid ${props => props.$active ? '#4CAF50' : 'transparent'};
-`;
-
-const FibItem = styled.div`
-  padding: 8px;
-  margin-bottom: 10px;
-  background-color: ${props => props.$isDarkMode ? 'rgba(0, 0, 0, 0.2)' : 'rgba(0, 0, 0, 0.05)'};
-  border-radius: 4px;
-  
-  h4 {
-    margin: 0 0 8px 0;
-    color: ${props => props.$isDarkMode ? '#e0e0e0' : '#333'};
-    font-size: 0.95rem;
-  }
-  
-  .fib-data {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 5px;
-    font-size: 0.85rem;
-    
-    span:first-child {
-      color: ${props => props.$isDarkMode ? '#b0b0b0' : '#666'};
-    }
-    
-    span:last-child {
-      color: ${props => props.$isDarkMode ? '#e0e0e0' : '#333'};
-      font-weight: bold;
-    }
-  }
-  
-  .fib-remove {
-    text-align: right;
-    
-    button {
-      background: none;
-      border: none;
-      color: ${props => props.$isDarkMode ? '#e0e0e0' : '#555'};
-      cursor: pointer;
-      font-size: 1rem;
-      
-      &:hover {
-        color: ${props => props.$isDarkMode ? '#fff' : '#000'};
-      }
-    }
-  }
-`;
-
-// ADDED: A grid layout for Fib panel and Guidelines
 const FibonacciInfoGrid = styled.div`
   display: grid;
   grid-template-columns: 1fr 2fr;
@@ -341,6 +210,27 @@ const FibGuidelinesWrapper = styled.div`
   
   li {
     margin-bottom: 5px;
+  }
+`;
+
+const ClearNotification = styled.div`
+  position: absolute;
+  top: 50px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: ${props => props.$isDarkMode ? '#333' : '#fff'};
+  color: ${props => props.$isDarkMode ? '#fff' : '#333'};
+  padding: 10px 20px;
+  border-radius: 4px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+  z-index: 1000;
+  animation: fadeInOut 2s ease-in-out;
+  
+  @keyframes fadeInOut {
+    0% { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+    20% { opacity: 1; transform: translateX(-50%) translateY(0); }
+    80% { opacity: 1; transform: translateX(-50%) translateY(0); }
+    100% { opacity: 0; transform: translateX(-50%) translateY(-10px); }
   }
 `;
 
@@ -378,29 +268,22 @@ function enhancePointSelection(point, chartData, part, isEndPoint = false) {
     return point;
   }
   
-  // Find the exact candle at the clicked time
   const exactCandle = chartData.find(c => 
     c && (c.time === point.time || 
     (c.date && Math.floor(new Date(c.date).getTime() / 1000) === point.time))
   );
   
-  if (!exactCandle) return point; // If no candle found at click time, return original point
+  if (!exactCandle) return point;
   
-  // PRECISION ENHANCEMENT: Use the clicked point's price, but ensure it's within the candle range
   const clickedPrice = point.price;
-  
-  // Keep the price within the candle's range for realism
-  // (prevents selecting prices where no actual trading occurred)
   let adjustedPrice = clickedPrice;
   
-  // Check if clicked outside high/low range, and only then adjust
   if (clickedPrice > exactCandle.high) {
     adjustedPrice = exactCandle.high;
   } else if (clickedPrice < exactCandle.low) {
     adjustedPrice = exactCandle.low;
   }
   
-  // Create enhanced point with minimal adjustment
   return {
     time: exactCandle.time || (exactCandle.date && Math.floor(new Date(exactCandle.date).getTime() / 1000)),
     price: adjustedPrice
@@ -413,18 +296,27 @@ const FibonacciRetracement = ({ chartData, onDrawingsUpdate, part, chartCount, i
   const [drawingMode, setDrawingMode] = useState(false);
   const [startPoint, setStartPoint] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
-  
-  // Add state for fibonacci levels with TradingView-like defaults
   const [fibonacciLevels, setFibonacciLevels] = useState(DEFAULT_FIBONACCI_LEVELS);
-  
-  // Force chart recreation when drawing mode changes or settings update
   const [chartKey, setChartKey] = useState(0);
+  const [showClearNotification, setShowClearNotification] = useState(false);
+  const [prevPart, setPrevPart] = useState(part);
+  
+  useEffect(() => {
+    if (prevPart !== part && prevPart !== undefined) {
+      clearAllDrawings();
+      setStartPoint(null);
+      setDrawingMode(false);
+      setPrevPart(part);
+      setShowClearNotification(true);
+      setTimeout(() => setShowClearNotification(false), 2000);
+      console.log(`Cleared Part ${prevPart} drawings, now on Part ${part}`);
+    }
+  }, [part, prevPart]);
   
   useEffect(() => {
     setChartKey(prev => prev + 1);
   }, [drawingMode, fibonacciLevels]);
   
-  // Prepare chart data in the format needed by lightweight-charts
   const formattedChartData = React.useMemo(() => {
     if (!chartData || !Array.isArray(chartData)) return [];
     
@@ -437,28 +329,21 @@ const FibonacciRetracement = ({ chartData, onDrawingsUpdate, part, chartCount, i
     }));
   }, [chartData]);
   
-  // Generate Fibonacci levels for all drawings
   const fibLevels = React.useMemo(() => {
     const levels = [];
     
     drawings.forEach(drawing => {
-      // FIXED: Reverse the price difference calculation so that 
-      // level 1 is always at the start point and level 0 is at the end point
       const priceDiff = drawing.start.price - drawing.end.price;
-      
-      // Only use visible fibonacci levels from settings
       fibonacciLevels
         .filter(fib => fib.visible)
         .forEach(fib => {
           const level = {
-            // FIXED: Changed formula to ensure level 1 is at start point
             price: drawing.end.price + priceDiff * fib.level,
             color: fib.color || 'rgba(255, 255, 255, 0.5)',
-            lineWidth: fib.isKey ? 1.5 : 1, // Make key levels thicker
-            lineStyle: 0, // LineStyle.Solid
+            lineWidth: fib.isKey ? 1.5 : 1,
+            lineStyle: 0,
             title: `Fib ${fib.label}`
           };
-          
           levels.push(level);
         });
     });
@@ -466,22 +351,18 @@ const FibonacciRetracement = ({ chartData, onDrawingsUpdate, part, chartCount, i
     return levels;
   }, [drawings, fibonacciLevels]);
   
-  // Create chart options including Fibonacci levels
   const chartOptions = React.useMemo(() => {
     if (drawings.length === 0) {
       return { 
         isDarkMode,
-        drawingMode  // Pass drawing mode to chart
+        drawingMode
       };
     }
     
     const latestDrawing = drawings[drawings.length - 1];
-    
-    // FIX #2: Ensure start and end times are different
     let startTime = latestDrawing.start.time;
     let endTime = latestDrawing.end.time;
     
-    // Ensure a minimum gap between times
     if (Math.abs(startTime - endTime) < 60) {
       if (startTime < endTime) {
         endTime = startTime + 60;
@@ -492,14 +373,13 @@ const FibonacciRetracement = ({ chartData, onDrawingsUpdate, part, chartCount, i
     
     return {
       isDarkMode,
-      drawingMode,  // Pass drawing mode explicitly
+      drawingMode,
       fibLevels,
       startTime: startTime,
       endTime: endTime
     };
   }, [drawings, fibLevels, isDarkMode, drawingMode]);
   
-  // Create markers from start and end points
   const chartMarkers = React.useMemo(() => {
     const markers = [];
     
@@ -523,58 +403,46 @@ const FibonacciRetracement = ({ chartData, onDrawingsUpdate, part, chartCount, i
       });
     });
     
-    // FIX #2: Ensure no duplicate marker times
     const processedMarkers = [];
     const seen = new Set();
     
-    // Filter out markers with duplicate times
     markers.forEach(marker => {
       if (!seen.has(marker.time)) {
         seen.add(marker.time);
         processedMarkers.push(marker);
       } else {
-        // If duplicate, add a small offset
-        marker.time += 60; // Add 1 minute
+        marker.time += 60;
         seen.add(marker.time);
         processedMarkers.push(marker);
       }
     });
     
-    // Sort markers by time to ensure they're in ascending order
     return processedMarkers.sort((a, b) => a.time - b.time);
   }, [drawings]);
   
-  // Update parent component when drawings change
   useEffect(() => {
     if (onDrawingsUpdate) {
       onDrawingsUpdate(drawings);
     }
   }, [drawings, onDrawingsUpdate]);
   
-  // Enhanced handle point click on chart
   const handlePointClick = (point) => {
     if (!drawingMode) return;
     
     if (!startPoint) {
-      // Set enhanced start point
       const enhancedPoint = enhancePointSelection(point, chartData, part, false);
-      
       setStartPoint({
         time: enhancedPoint.time,
         price: enhancedPoint.price
       });
     } else {
-      // Set enhanced end point and create Fibonacci drawing
       const enhancedPoint = enhancePointSelection(point, chartData, part, true);
-      
-      // FIX #2: Ensure end point time is different from start point time
       let endTime = enhancedPoint.time;
       
       if (Math.abs(endTime - startPoint.time) < 60) {
-        endTime = startPoint.time + 60; // Add 1 minute if too close
+        endTime = startPoint.time + 60;
       }
       
-      // Create new drawing
       const newDrawing = {
         start: startPoint,
         end: {
@@ -584,50 +452,38 @@ const FibonacciRetracement = ({ chartData, onDrawingsUpdate, part, chartCount, i
         direction: part === 1 ? 'uptrend' : 'downtrend'
       };
       
-      // Add new drawing
       setDrawings([...drawings, newDrawing]);
-      
-      // Reset start point
       setStartPoint(null);
     }
   };
   
-  // Toggle drawing mode
   const toggleDrawingMode = () => {
     setDrawingMode(!drawingMode);
     if (drawingMode) {
-      // If turning off drawing mode, clear start point
       setStartPoint(null);
     }
   };
   
-  // Undo last drawing
   const undoLastDrawing = () => {
     if (drawings.length > 0) {
       const newDrawings = [...drawings];
       newDrawings.pop();
       setDrawings(newDrawings);
     }
-    // Also clear startPoint if active
     if (startPoint) {
       setStartPoint(null);
     }
   };
   
-  // Clear all drawings
   const clearAllDrawings = () => {
     setDrawings([]);
     setStartPoint(null);
   };
   
-  // Remove specific drawing
-  const removeDrawing = (index) => {
-    const newDrawings = [...drawings];
-    newDrawings.splice(index, 1);
-    setDrawings(newDrawings);
+  const toggleSettings = () => {
+    setShowSettings(prev => !prev);
   };
   
-  // Format date
   const formatDate = (time) => {
     if (!time) return "N/A";
     try {
@@ -638,79 +494,91 @@ const FibonacciRetracement = ({ chartData, onDrawingsUpdate, part, chartCount, i
     }
   };
 
-  // Handle Fibonacci levels changes from the settings panel
   const handleFibLevelsChange = (newLevels) => {
     setFibonacciLevels(newLevels);
-    // Redraw chart when levels change
     if (drawings.length > 0) {
       setChartKey(prevKey => prevKey + 1);
     }
   };
-  
+
+  const toolsConfig = [
+    {
+      id: 'draw-fibonacci',
+      label: drawingMode ? 'Stop Drawing' : 'Draw Fibonacci',
+      icon: 'fa-ruler',
+      active: drawingMode
+    }
+  ];
+
+  const actionsConfig = [
+    {
+      id: 'undo',
+      label: 'Undo',
+      icon: 'fa-undo',
+      onClick: undoLastDrawing,
+      disabled: drawings.length === 0 && !startPoint
+    },
+    {
+      id: 'clear-all',
+      label: 'Clear All',
+      icon: 'fa-trash-alt',
+      onClick: clearAllDrawings,
+      disabled: drawings.length === 0 && !startPoint
+    },
+    {
+      id: 'customize-levels',
+      label: showSettings ? 'Hide Settings' : 'Customize Levels',
+      icon: 'fa-cog',
+      onClick: toggleSettings
+    }
+  ];
+
+  const handleToolSelect = (toolId) => {
+    if (toolId === 'draw-fibonacci') {
+      toggleDrawingMode();
+    }
+  };
+
   return (
     <div>
-      <ToolBar>
-        <Button 
-          onClick={toggleDrawingMode} 
-          $active={drawingMode}
-          $isDarkMode={isDarkMode}
-        >
-          {drawingMode ? 'Stop Drawing' : 'Draw Fibonacci'}
-        </Button>
-        <Button 
-          onClick={undoLastDrawing} 
-          $isDarkMode={isDarkMode}
-          disabled={drawings.length === 0 && !startPoint}
-        >
-          Undo
-        </Button>
-        <DangerButton 
-          onClick={clearAllDrawings} 
-          $isDarkMode={isDarkMode}
-          disabled={drawings.length === 0 && !startPoint}
-        >
-          Clear All
-        </DangerButton>
-        
-        {/* NEW: Settings button for customizing Fibonacci levels */}
-        <SettingsButton
-          onClick={() => setShowSettings(!showSettings)}
-          $active={showSettings}
-          $isDarkMode={isDarkMode}
-        >
-          <FaCog /> {showSettings ? 'Hide Settings' : 'Customize Levels'}
-        </SettingsButton>
-      </ToolBar>
+      {showClearNotification && (
+        <ClearNotification $isDarkMode={isDarkMode}>
+          Previous drawings cleared for Part {part}
+        </ClearNotification>
+      )}
       
-      <StatusBadge $active={drawingMode} $isDarkMode={isDarkMode}>
-        {drawingMode ? (
-          startPoint ? 
-            'Now click to set the end point' : 
-            'Click on the chart to set the start point'
-        ) : (
-          'Click "Draw Fibonacci" to begin'
-        )}
-      </StatusBadge>
+      <ToolPanel
+        title={part === 1 ? "Uptrend Fibonacci Retracement" : "Downtrend Fibonacci Retracement"}
+        description={part === 1
+          ? "Draw Fibonacci retracement from a swing high to a swing low in an uptrend."
+          : "Draw Fibonacci retracement from a swing low to a swing high in a downtrend."}
+        selectedTool={drawingMode ? 'draw-fibonacci' : null}
+        onToolSelect={handleToolSelect}
+        tools={toolsConfig}
+        actions={actionsConfig}
+        isDarkMode={isDarkMode}
+      />
       
-      {/* NEW: Show settings panel when toggled */}
       {showSettings && (
-        <FibonacciSettings 
-          isDarkMode={isDarkMode}
-          levels={fibonacciLevels}
-          onLevelsChange={handleFibLevelsChange}
-        />
+        <div style={{ margin: '15px 0' }}>
+          <FibonacciSettings 
+            isDarkMode={isDarkMode}
+            levels={fibonacciLevels}
+            onLevelsChange={handleFibLevelsChange}
+          />
+        </div>
       )}
       
       <ChartContainer>
         <ChartWrapper ref={containerRef}>
           {containerRef.current && (
             <Chart 
-              key={chartKey} // Force recreation when drawing mode changes
+              key={chartKey}
               container={containerRef} 
               chartData={formattedChartData} 
               options={{
                 isDarkMode,
-                drawingMode, // Pass drawing mode explicitly
+                drawingMode,
                 markers: chartMarkers,
                 ...chartOptions
               }}
@@ -718,7 +586,6 @@ const FibonacciRetracement = ({ chartData, onDrawingsUpdate, part, chartCount, i
             />
           )}
           
-          {/* Info Overlay during drawing */}
           <FibInfoOverlay
             $isDarkMode={isDarkMode}
             $direction={part === 1 ? 'uptrend' : 'downtrend'}
@@ -750,9 +617,7 @@ const FibonacciRetracement = ({ chartData, onDrawingsUpdate, part, chartCount, i
         </ChartWrapper>
       </ChartContainer>
       
-      {/* MOVED: FibPanel and Guidelines to a grid layout outside the chart */}
       <FibonacciInfoGrid>
-        {/* Panel with user's Fibonacci drawings */}
         <FibPanel $isDarkMode={isDarkMode}>
           <h3 style={{ 
             marginTop: 0, 
@@ -769,29 +634,41 @@ const FibonacciRetracement = ({ chartData, onDrawingsUpdate, part, chartCount, i
             </p>
           ) : (
             drawings.map((drawing, index) => (
-              <FibItem key={index} $isDarkMode={isDarkMode}>
-                <h4>{drawing.direction === 'uptrend' ? 'Uptrend' : 'Downtrend'} #{index + 1}</h4>
-                <div className="fib-data">
-                  <span>Start:</span>
-                  <span>{drawing.start.price.toFixed(2)}</span>
+              <div key={index} style={{ padding: '8px', marginBottom: '10px', backgroundColor: isDarkMode ? 'rgba(0, 0, 0, 0.2)' : 'rgba(0, 0, 0, 0.05)', borderRadius: '4px' }}>
+                <h4 style={{ margin: '0 0 8px 0', color: isDarkMode ? '#e0e0e0' : '#333', fontSize: '0.95rem' }}>
+                  {drawing.direction === 'uptrend' ? 'Uptrend' : 'Downtrend'} #{index + 1}
+                </h4>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px', fontSize: '0.85rem' }}>
+                  <span style={{ color: isDarkMode ? '#b0b0b0' : '#666' }}>Start:</span>
+                  <span style={{ color: isDarkMode ? '#e0e0e0' : '#333', fontWeight: 'bold' }}>{drawing.start.price.toFixed(2)}</span>
                 </div>
-                <div className="fib-data">
-                  <span>End:</span>
-                  <span>{drawing.end.price.toFixed(2)}</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px', fontSize: '0.85rem' }}>
+                  <span style={{ color: isDarkMode ? '#b0b0b0' : '#666' }}>End:</span>
+                  <span style={{ color: isDarkMode ? '#e0e0e0' : '#333', fontWeight: 'bold' }}>{drawing.end.price.toFixed(2)}</span>
                 </div>
-                <div className="fib-data">
-                  <span>Date Range:</span>
-                  <span>{formatDate(drawing.start.time)} - {formatDate(drawing.end.time)}</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px', fontSize: '0.85rem' }}>
+                  <span style={{ color: isDarkMode ? '#b0b0b0' : '#666' }}>Date Range:</span>
+                  <span style={{ color: isDarkMode ? '#e0e0e0' : '#333', fontWeight: 'bold' }}>{formatDate(drawing.start.time)} - {formatDate(drawing.end.time)}</span>
                 </div>
-                <div className="fib-remove">
-                  <button onClick={() => removeDrawing(index)}>×</button>
+                <div style={{ textAlign: 'right' }}>
+                  <button
+                    style={{ background: 'none', border: 'none', color: isDarkMode ? '#e0e0e0' : '#555', cursor: 'pointer', fontSize: '1rem' }}
+                    onClick={() => {
+                      const newDrawings = [...drawings];
+                      newDrawings.splice(index, 1);
+                      setDrawings(newDrawings);
+                    }}
+                    onMouseOver={(e) => e.currentTarget.style.color = isDarkMode ? '#fff' : '#000'}
+                    onMouseOut={(e) => e.currentTarget.style.color = isDarkMode ? '#e0e0e0' : '#555'}
+                  >
+                    ×
+                  </button>
                 </div>
-              </FibItem>
+              </div>
             ))
           )}
         </FibPanel>
         
-        {/* Educational Guidelines - Updated with grading information */}
         <FibGuidelinesWrapper $isDarkMode={isDarkMode}>
           <h3>Fibonacci Retracement Guidelines</h3>
           
