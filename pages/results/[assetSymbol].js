@@ -283,10 +283,14 @@ const Results = () => {
   const formatDate = (dateString) => {
     try {
       const date = new Date(dateString);
-      return date.toLocaleDateString(undefined, { 
+      // Format as: "Jan 5, 2024 at 3:30 PM"
+      return date.toLocaleDateString('en-US', { 
         year: 'numeric', 
         month: 'short', 
-        day: 'numeric' 
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
       });
     } catch (e) {
       return 'N/A';
@@ -778,34 +782,38 @@ const Results = () => {
                 {/* AI Analysis Section - UPDATED TO RENDER HTML PROPERLY */}
                 {(answer.ai_analysis) ? (
                   <div style={{ 
-                    backgroundColor: darkMode ? '#103042' : '#e1f5fe', 
-                    padding: '20px', 
-                    borderRadius: '8px',
-                    marginTop: '15px',
-                    border: `1px solid ${darkMode ? '#0d47a1' : '#b3e5fc'}`,
+                    backgroundColor: darkMode ? '#0a1929' : '#f0f7ff', 
+                    padding: '25px', 
+                    borderRadius: '12px',
+                    marginTop: '20px',
+                    border: `2px solid ${darkMode ? '#1565c0' : '#2196f3'}`,
                     maxWidth: '100%',
-                    margin: '15px auto'
+                    margin: '20px auto',
+                    boxShadow: darkMode 
+                      ? '0 4px 20px rgba(21, 101, 192, 0.2)' 
+                      : '0 4px 20px rgba(33, 150, 243, 0.1)'
                   }}>
                     <h4 style={{ 
                       display: 'flex',
                       alignItems: 'center',
-                      marginBottom: '15px', 
-                      color: darkMode ? '#90caf9' : '#0277bd',
-                      borderBottom: `1px solid ${darkMode ? '#1565c0' : '#b3e5fc'}`,
-                      paddingBottom: '10px',
+                      marginBottom: '20px', 
+                      color: darkMode ? '#90caf9' : '#1976d2',
+                      borderBottom: `2px solid ${darkMode ? '#1565c0' : '#90caf9'}`,
+                      paddingBottom: '12px',
                       textAlign: 'center',
                       justifyContent: 'center',
-                      fontSize: '18px'
+                      fontSize: '20px',
+                      fontWeight: '600'
                     }}>
-                      <i className="fas fa-robot" style={{ marginRight: '10px', fontSize: '20px' }}></i>
-                      Trading Analysis
+                      <i className="fas fa-brain" style={{ marginRight: '12px', fontSize: '24px' }}></i>
+                      AI Trading Analysis
                     </h4>
                     <div 
                       className="ai-analysis-content"
                       style={{ 
-                        color: darkMode ? '#e0e0e0' : '#333',
-                        lineHeight: '1.6',
-                        fontSize: '15px'
+                        color: darkMode ? '#e0e0e0' : '#1a1a1a',
+                        lineHeight: '1.8',
+                        fontSize: '16px'
                       }}
                       dangerouslySetInnerHTML={{ __html: answer.ai_analysis }}
                     />
@@ -880,23 +888,79 @@ const Results = () => {
       {/* Additional styles for AI analysis HTML content */}
       <style jsx global>{`
         .ai-analysis-content h3 {
-          color: ${darkMode ? '#81c784' : '#2e7d32'};
-          margin-top: 20px;
-          margin-bottom: 10px;
-          font-size: 18px;
+          color: ${darkMode ? '#90caf9' : '#1565c0'};
+          margin-top: 28px;
+          margin-bottom: 16px;
+          font-size: 20px;
+          font-weight: 600;
+          display: flex;
+          align-items: center;
+          padding-bottom: 8px;
+          border-bottom: 1px solid ${darkMode ? '#2a3f5f' : '#e3f2fd'};
+        }
+        
+        .ai-analysis-content h3:first-child {
+          margin-top: 0;
         }
         
         .ai-analysis-content p {
-          margin-bottom: 15px;
+          margin-bottom: 16px;
+          text-align: justify;
+          font-size: 15px;
+          line-height: 1.8;
         }
         
         .ai-analysis-content ul {
-          padding-left: 20px;
-          margin-bottom: 15px;
+          padding-left: 24px;
+          margin-bottom: 20px;
         }
         
         .ai-analysis-content li {
-          margin-bottom: 8px;
+          margin-bottom: 12px;
+          line-height: 1.7;
+          list-style-type: none;
+          position: relative;
+          padding-left: 24px;
+        }
+        
+        .ai-analysis-content li:before {
+          content: "▸";
+          position: absolute;
+          left: 0;
+          color: ${darkMode ? '#90caf9' : '#2196f3'};
+          font-weight: bold;
+          font-size: 16px;
+        }
+        
+        .ai-analysis-content li strong {
+          color: ${darkMode ? '#81c784' : '#2e7d32'};
+          font-weight: 600;
+          display: inline-block;
+          margin-right: 8px;
+        }
+        
+        .ai-analysis-content li strong:after {
+          content: "";
+        }
+        
+        /* Highlight quoted text */
+        .ai-analysis-content p:has(> ""),
+        .ai-analysis-content li:has(> "") {
+          background-color: ${darkMode ? 'rgba(144, 202, 249, 0.08)' : 'rgba(33, 150, 243, 0.08)'};
+          padding: 12px;
+          border-left: 3px solid ${darkMode ? '#90caf9' : '#2196f3'};
+          border-radius: 4px;
+          margin: 12px 0;
+        }
+        
+        /* Style for the key takeaway section */
+        .ai-analysis-content h3:last-of-type + p {
+          background-color: ${darkMode ? 'rgba(129, 199, 132, 0.1)' : 'rgba(76, 175, 80, 0.1)'};
+          padding: 16px;
+          border-radius: 8px;
+          border: 1px solid ${darkMode ? '#388e3c' : '#81c784'};
+          font-weight: 500;
+          margin-top: 12px;
         }
       `}</style>
     </div>

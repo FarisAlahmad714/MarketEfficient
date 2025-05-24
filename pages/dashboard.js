@@ -714,78 +714,6 @@ const Dashboard = () => {
             )}
           </div>
           
-          {/* Skills Radar Chart */}
-          <div style={{
-            backgroundColor: darkMode ? '#1e1e1e' : 'white',
-            borderRadius: '8px',
-            padding: '25px',
-            marginBottom: '30px',
-            boxShadow: darkMode ? '0 4px 12px rgba(0,0,0,0.3)' : '0 4px 12px rgba(0,0,0,0.1)'
-          }}>
-            <h2 style={{ 
-              color: darkMode ? '#e0e0e0' : '#333',
-              marginTop: 0,
-              marginBottom: '20px',
-              fontSize: '1.5rem',
-              display: 'flex',
-              alignItems: 'center'
-            }}>
-              Skills Breakdown
-              <InfoTooltip 
-                text="Radar chart showing your performance across different test types, visualizing your strengths and weaknesses in different trading analysis skills." 
-                darkMode={darkMode}
-              />
-            </h2>
-            
-            {!metrics.testTypeBreakdown || metrics.testTypeBreakdown.length < 2 ? (
-              <p style={{ color: darkMode ? '#b0b0b0' : '#666' }}>
-                Take more test types to see your skills breakdown.
-              </p>
-            ) : (
-              <div style={{ width: '100%', height: 300 }}>
-                <ResponsiveContainer>
-                  <RadarChart 
-                    cx="50%" 
-                    cy="50%" 
-                    outerRadius="80%" 
-                    data={metrics.testTypeBreakdown.map(item => ({
-                      subject: formatTestType(item.type),
-                      score: item.averagePercentage,
-                      fullMark: 100
-                    }))}
-                  >
-                    <PolarGrid stroke={darkMode ? '#333' : '#eee'} />
-                    <PolarAngleAxis 
-                      dataKey="subject" 
-                      tick={{ fill: darkMode ? '#b0b0b0' : '#666' }}
-                    />
-                    <PolarRadiusAxis 
-                      angle={30} 
-                      domain={[0, 100]} 
-                      tick={{ fill: darkMode ? '#b0b0b0' : '#666' }}
-                    />
-                    <Radar 
-                      name="Performance" 
-                      dataKey="score" 
-                      stroke="#8884d8" 
-                      fill="#8884d8" 
-                      fillOpacity={0.6}
-                    />
-                    <Legend wrapperStyle={{ color: darkMode ? '#e0e0e0' : '#333' }} />
-                    <Tooltip
-                      contentStyle={{ 
-                        backgroundColor: darkMode ? '#262626' : 'white',
-                        borderColor: darkMode ? '#333' : '#eee',
-                        color: darkMode ? '#e0e0e0' : '#333'
-                      }}
-                      labelStyle={{ color: darkMode ? '#e0e0e0' : '#333' }}
-                    />
-                  </RadarChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-          </div>
-          
           {/* Test Distribution Charts */}
           <div style={{
             backgroundColor: darkMode ? '#1e1e1e' : 'white',
@@ -1373,7 +1301,7 @@ const getGoalsByPeriod = (period, metrics, darkMode) => {
     periodSeed = timeInfo.weekNumber + timeInfo.currentYear * 100;
   } else if (period === 'month') {
     periodSeed = timeInfo.currentMonthNumber + timeInfo.currentYear * 100;
-  } else { // year
+  } else {
     periodSeed = timeInfo.currentYear;
   }
   

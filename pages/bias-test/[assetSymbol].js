@@ -51,6 +51,24 @@ export default function AssetTestPage() {
   const cryptoLoaderRef = useRef(null);
   const { darkMode } = useContext(ThemeContext);
 
+  // Helper function to format dates nicely
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'short', 
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      });
+    } catch (e) {
+      return dateString;
+    }
+  };
+
   // Helper functions for volume display
   const getVolumeTimeframeLabel = (timeframe) => {
     switch(timeframe) {
@@ -467,7 +485,7 @@ export default function AssetTestPage() {
                           marginBottom: '10px',
                           color: darkMode ? '#81c784' : '#2e7d32'
                         }}>
-                          Last Candle Data:
+                          Last Candle Data ({formatDate(lastCandle.date)}):
                         </p>
                         <div style={{ 
                           display: 'grid', 
