@@ -1,5 +1,9 @@
 // pages/api/assets.js
-export default function handler(req, res) {
+// MIGRATED VERSION - Using centralized middleware
+
+import { createApiHandler } from '../../lib/api-handler';
+
+async function assetsHandler(req, res) {
   // Asset data with extended information for the enhanced UI
   const assets = [
     { 
@@ -103,5 +107,11 @@ export default function handler(req, res) {
     },
   ];
 
-  res.status(200).json(assets);
+  return res.status(200).json(assets);
 }
+
+// Export with standard API handler (no auth needed for static data)
+export default createApiHandler(assetsHandler, { 
+  methods: ['GET'],
+  connectDatabase: false // No database needed for static data
+});

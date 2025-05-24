@@ -1,111 +1,93 @@
-// Enhanced API handler for swing analysis validation with test result saving
+// pages/api/charting-exam/validate-swing.js
+// MIGRATED VERSION - Using centralized middleware
+
+import { createApiHandler } from '../../../lib/api-handler';
+import { requireAuth } from '../../../middleware/auth';
+import { composeMiddleware } from '../../../lib/api-handler';
 import { detectSwingPoints } from './utils/swing-detection';
 import { validateSwingPoints } from './utils/validation';
-import connectDB from '../../../lib/database';
 import TestResults from '../../../models/TestResults';
-import jwt from 'jsonwebtoken';
 
-export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+async function validateSwingHandler(req, res) {
+  // User is already authenticated via middleware
+  const userId = req.user.id;
+  
+  const { drawings, chartData, chartCount } = req.body;
+  
+  if (!drawings || !Array.isArray(drawings)) {
+    return res.status(400).json({ 
+      error: 'Invalid drawings data',
+      code: 'INVALID_DRAWINGS',
+      message: 'Missing or invalid drawing data' 
+    });
   }
   
-  try {
-    // Get Authorization header
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'Authorization token required' });
-    }
-    
-    // Extract token and decode user ID
-    const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const userId = decoded.userId;
-    
-    const { drawings, chartData, chartCount } = req.body;
-    
-    if (!drawings || !Array.isArray(drawings)) {
-      return res.status(400).json({ 
-        error: 'Invalid drawings data',
-        message: 'Missing or invalid drawing data' 
-      });
-    }
-    
-    // IMPORTANT: Use the chartData provided from the frontend
-    // This ensures we're validating against the same data shown to the user
-    const dataToAnalyze = chartData || req.session?.chartData || await getChartData();
-    
-    if (!dataToAnalyze || !Array.isArray(dataToAnalyze) || dataToAnalyze.length === 0) {
-      return res.status(400).json({
-        error: 'No chart data available',
-        message: 'Chart data is missing or invalid'
-      });
-    }
-    
-    // Log some info about the data to help with debugging
-    console.log(`Analyzing ${dataToAnalyze.length} candles for swing points`);
-    
-    // Get chart timeframe to adjust detection parameters
-    const timeframe = determineTimeframe(dataToAnalyze);
-    console.log(`Detected timeframe: ${timeframe}`);
-    
-    // Detect swing points with parameters optimized for the timeframe
-    const options = getDetectionOptions(timeframe);
-    const expectedSwingPoints = detectSwingPoints(dataToAnalyze, options);
-    
-    console.log(`Detected ${expectedSwingPoints.highs.length} swing highs and ${expectedSwingPoints.lows.length} swing lows`);
-    
-    // Validate user drawings against expected points
-    const validationResult = validateSwingPoints(drawings, expectedSwingPoints, dataToAnalyze);
-    
-    // Add chart data inspection info to help with debugging (only in development)
-    const debugInfo = process.env.NODE_ENV !== 'production' ? {
-      dataLength: dataToAnalyze.length,
-      dataRange: getDataRange(dataToAnalyze),
-      timeframe,
-      detectionOptions: options
-    } : undefined;
-
-    // Connect to the database before saving test results
-    await connectDB();
-    
-    // IMPORTANT: Save test result to database
-    const symbol = chartData.symbol || 'UNKNOWN';
-    
-    const testResult = new TestResults({
-      userId: userId,
-      testType: 'chart-exam',
-      subType: 'swing-analysis',
-      assetSymbol: symbol,
-      score: validationResult.score,
-      totalPoints: validationResult.totalExpectedPoints,
-      details: {
-        feedback: validationResult.feedback,
-        expected: expectedSwingPoints
-      },
-      completedAt: new Date()
-    });
-    
-    await testResult.save();
-    console.log(`Test result saved for user ${userId}, score: ${validationResult.score}/${validationResult.totalExpectedPoints}`);
-    
-    return res.status(200).json({
-      success: true,
-      message: validationResult.message,
-      score: validationResult.score,
-      totalExpectedPoints: validationResult.totalExpectedPoints,
-      feedback: validationResult.feedback,
-      expected: expectedSwingPoints,
-      chart_count: chartCount,
-      debug: debugInfo
-    });
-  } catch (error) {
-    console.error('Error in validate-swing API:', error);
-    return res.status(500).json({ 
-      error: 'Validation failed',
-      message: error.message 
+  // IMPORTANT: Use the chartData provided from the frontend
+  // This ensures we're validating against the same data shown to the user
+  const dataToAnalyze = chartData || req.session?.chartData || await getChartData();
+  
+  if (!dataToAnalyze || !Array.isArray(dataToAnalyze) || dataToAnalyze.length === 0) {
+    return res.status(400).json({
+      error: 'No chart data available',
+      code: 'MISSING_CHART_DATA',
+      message: 'Chart data is missing or invalid'
     });
   }
+  
+  // Log some info about the data to help with debugging
+  console.log(`Analyzing ${dataToAnalyze.length} candles for swing points`);
+  
+  // Get chart timeframe to adjust detection parameters
+  const timeframe = determineTimeframe(dataToAnalyze);
+  console.log(`Detected timeframe: ${timeframe}`);
+  
+  // Detect swing points with parameters optimized for the timeframe
+  const options = getDetectionOptions(timeframe);
+  const expectedSwingPoints = detectSwingPoints(dataToAnalyze, options);
+  
+  console.log(`Detected ${expectedSwingPoints.highs.length} swing highs and ${expectedSwingPoints.lows.length} swing lows`);
+  
+  // Validate user drawings against expected points
+  const validationResult = validateSwingPoints(drawings, expectedSwingPoints, dataToAnalyze);
+  
+  // Add chart data inspection info to help with debugging (only in development)
+  const debugInfo = process.env.NODE_ENV !== 'production' ? {
+    dataLength: dataToAnalyze.length,
+    dataRange: getDataRange(dataToAnalyze),
+    timeframe,
+    detectionOptions: options
+  } : undefined;
+
+  // IMPORTANT: Save test result to database
+  const symbol = chartData.symbol || 'UNKNOWN';
+  
+  const testResult = new TestResults({
+    userId: userId,
+    testType: 'chart-exam',
+    subType: 'swing-analysis',
+    assetSymbol: symbol,
+    score: validationResult.score,
+    totalPoints: validationResult.totalExpectedPoints,
+    details: {
+      feedback: validationResult.feedback,
+      expected: expectedSwingPoints
+    },
+    completedAt: new Date()
+  });
+  
+  await testResult.save();
+  console.log(`Test result saved for user ${userId}, score: ${validationResult.score}/${validationResult.totalExpectedPoints}`);
+  
+  return res.status(200).json({
+    success: true,
+    message: validationResult.message,
+    score: validationResult.score,
+    totalExpectedPoints: validationResult.totalExpectedPoints,
+    feedback: validationResult.feedback,
+    expected: expectedSwingPoints,
+    chart_count: chartCount,
+    debug: debugInfo
+  });
 }
 
 /**
@@ -200,59 +182,49 @@ function getDetectionOptions(timeframe) {
     case '4h':
       return {
         lookback: 5,
-        minSignificance: 0.01,
+        minSignificance: 0.008,
         minSwings: 3,
         maxSwings: 10
       };
     case '1d':
+    case '3d':
       return {
-        lookback: 5,
-        minSignificance: 0.01,
-        minSwings: 3,
+        lookback: 6,
+        minSignificance: 0.010,     // Higher threshold for daily timeframes
+        minSwings: 2,               // Fewer swings expected
         maxSwings: 8
       };
-    case '3d':
     case '1w':
-      return {
-        lookback: 6,                // Longer lookback for higher timeframes
-        minSignificance: 0.015,     // Higher threshold for major swings
-        minSwings: 2,               // Fewer swing points on higher timeframes
-        maxSwings: 6
-      };
     default:
       return {
-        lookback: 5,                // Default parameters
-        minSignificance: 0.01,
-        minSwings: 3,
-        maxSwings: 10
+        lookback: 8,
+        minSignificance: 0.015,
+        minSwings: 2,
+        maxSwings: 6
       };
   }
 }
 
 /**
- * Get the price range info for debugging
- * @param {Array} chartData - Chart data array
- * @returns {Object} Data range info
+ * Get data range info for debugging
+ * @param {Array} chartData - Chart data
+ * @returns {Object} Data range information
  */
 function getDataRange(chartData) {
-  if (!chartData || chartData.length === 0) return { min: 0, max: 0, range: 0 };
+  if (!chartData || chartData.length === 0) return null;
   
-  const highValues = chartData.map(c => 
-    typeof c.high === 'number' ? c.high : (c.h || c.High || 0)
-  ).filter(v => !isNaN(v));
-  
-  const lowValues = chartData.map(c => 
-    typeof c.low === 'number' ? c.low : (c.l || c.Low || 0)
-  ).filter(v => !isNaN(v));
-  
-  const min = Math.min(...lowValues);
-  const max = Math.max(...highValues);
+  const prices = chartData.flatMap(c => [c.open, c.high, c.low, c.close]).filter(p => p != null);
   
   return {
-    min,
-    max,
-    range: max - min,
-    startDate: new Date(chartData[0].time * 1000).toISOString(),
-    endDate: new Date(chartData[chartData.length-1].time * 1000).toISOString()
+    minPrice: Math.min(...prices),
+    maxPrice: Math.max(...prices),
+    priceRange: Math.max(...prices) - Math.min(...prices),
+    dataPoints: chartData.length
   };
 }
+
+// Export with required auth
+export default createApiHandler(
+  composeMiddleware(requireAuth, validateSwingHandler),
+  { methods: ['POST'] }
+);

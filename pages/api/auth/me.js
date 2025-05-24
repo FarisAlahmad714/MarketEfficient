@@ -1,49 +1,26 @@
 // pages/api/auth/me.js
-import jwt from 'jsonwebtoken';
-import connectDB from '../../../lib/database';
-import User from '../../../models/User';
+// MIGRATED VERSION - Using centralized middleware
 
-export default async function handler(req, res) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+import { createApiHandler } from '../../../lib/api-handler';
+import { requireAuth } from '../../../middleware/auth';
+import { composeMiddleware } from '../../../lib/api-handler';
 
-  try {
-    // Get Authorization header
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'Authorization token required' });
-    }
-    
-    // Extract token
-    const token = authHeader.split(' ')[1];
-    
-    // Verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
-    // Connect to database
-    await connectDB();
-    
-    // Find user
-    const user = await User.findById(decoded.userId);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-    
-    // Return user info (without password) - Include isAdmin and isVerified status
-    return res.status(200).json({
-      id: user._id,
-      name: user.name,
-      email: user.email,
-      isAdmin: user.isAdmin || false, // Include admin status
-      isVerified: user.isVerified || false // Include verification status
-    });
-  } catch (error) {
-    if (error.name === 'JsonWebTokenError') {
-      return res.status(401).json({ error: 'Invalid token' });
-    }
-    
-    console.error('Authentication error:', error);
-    return res.status(500).json({ error: 'Authentication failed' });
-  }
+async function meHandler(req, res) {
+  // User is already authenticated and attached to req.user via middleware
+  // The middleware already fetched the user from the database
+  
+  // Return user info (password already excluded by middleware)
+  return res.status(200).json({
+    id: req.user.id,
+    name: req.user.name,
+    email: req.user.email,
+    isAdmin: req.user.isAdmin,
+    isVerified: req.user.isVerified
+  });
 }
+
+// Export with required auth
+export default createApiHandler(
+  composeMiddleware(requireAuth, meHandler),
+  { methods: ['GET'] }
+);
