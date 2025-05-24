@@ -102,40 +102,62 @@ const Dashboard = () => {
   }, [isAuthenticated, isLoading, router, period]);
   
   const fetchDashboardMetrics = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const token = localStorage.getItem('auth_token');
-      const response = await fetch(`/api/dashboard/user-metrics?period=${period}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch dashboard metrics');
+  try {
+    setLoading(true);
+    setError(null);
+    
+    const token = localStorage.getItem('auth_token');
+    const response = await fetch(`/api/dashboard/user-metrics?period=${period}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
       }
-      
-      const data = await response.json();
-      setMetrics(data);
-    } catch (err) {
-      console.error('Error fetching dashboard metrics:', err);
-      setError('Failed to load dashboard data. Please try again.');
-    } finally {
-      // Use the CryptoLoader ref to hide the loader
-      if (cryptoLoaderRef.current) {
-        cryptoLoaderRef.current.hideLoader();
-        
-        // Set loading to false after the loader animation completes
-        setTimeout(() => {
-          setLoading(false);
-        }, 500);
-      } else {
-        setLoading(false);
-      }
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to fetch dashboard metrics');
     }
-  };
+    
+    const data = await response.json();
+    
+    // BACKUP FILTERING: Remove any test data entries that slipped through
+    if (data && data.recentActivity) {
+  data.recentActivity = data.recentActivity.filter(activity => 
+    activity.testType !== 'bias-test-data' && 
+    activity.testType !== 'Test Data' &&
+    activity.testType !== 'test-data'
+  );
+}
+
+// Also filter testsByType
+if (data && data.summary && data.summary.testsByType) {
+  const filteredTestsByType = {};
+  Object.entries(data.summary.testsByType).forEach(([type, typeData]) => {
+    if (type !== 'bias-test-data' && type !== 'Test Data' && type !== 'test-data') {
+      filteredTestsByType[type] = typeData;
+    }
+  });
+  data.summary.testsByType = filteredTestsByType;
+}
+    
+    console.log('Dashboard data after filtering:', data); // Debug log
+    setMetrics(data);
+  } catch (err) {
+    console.error('Error fetching dashboard metrics:', err);
+    setError('Failed to load dashboard data. Please try again.');
+  } finally {
+    // Use the CryptoLoader ref to hide the loader
+    if (cryptoLoaderRef.current) {
+      cryptoLoaderRef.current.hideLoader();
+      
+      // Set loading to false after the loader animation completes
+      setTimeout(() => {
+        setLoading(false);
+      }, 500);
+    } else {
+      setLoading(false);
+    }
+  }
+};
   
   if (isLoading || loading) {
     return (

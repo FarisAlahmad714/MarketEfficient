@@ -5,12 +5,6 @@ import connectDB from '../../../lib/database';
 import TestResults from '../../../models/TestResults';
 import jwt from 'jsonwebtoken';
 
-// ⚠️ IMPORTANT: This is a server-side API file - do NOT import React components or client-side modules here ⚠️
-// Remove these imports:
-// import CryptoLoader from '../../components/CryptoLoader';
-// import { ThemeContext } from '../../contexts/ThemeContext';
-// import CandlestickChart from ...
-// import VolumeChart from ...
 
 // Store sessions in memory (in a real app, this would be a database)
 const sessions = {};
@@ -695,32 +689,7 @@ export default async function handler(req, res) {
     sessions[testSessionKey] = testData;
     console.log(`Stored test session with key: ${testSessionKey}`);
     
-    // CRITICAL: Also store a backup in the database
-    try {
-      await connectDB();
-      // Create a test data backup
-      const testDataBackup = new TestResults({
-        userId: "000000000000000000000000", // Placeholder user ID
-        testType: 'bias-test-data',
-        assetSymbol: asset.symbol,
-        score: 0,
-        totalPoints: questionCount,
-        details: {
-          sessionId: testSessionKey,
-          timeframe: timeframe,
-          testDetails: questions.map(q => ({
-            question: q.id,
-            ohlcData: q.ohlc_data || [],
-            outcomeData: q.outcome_data || []
-          }))
-        },
-        completedAt: new Date()
-      });
-      await testDataBackup.save();
-      console.log(`Stored test data backup in database for session ${testSessionKey}`);
-    } catch (dbError) {
-      console.error("Could not store test data backup:", dbError);
-    }
+    // Test session stored in memory - database backup removed to avoid validation issues
     
     // Send only necessary data to client (remove correct answers and outcome data)
     const clientTestData = {

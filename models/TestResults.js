@@ -9,6 +9,7 @@ const TestResultsSchema = new mongoose.Schema({
   testType: {
     type: String,
     required: true,
+    // REMOVED 'bias-test-data' - no longer allowed
     enum: ['bias-test', 'chart-exam', 'swing-analysis', 'fibonacci-retracement', 'fair-value-gaps']
   },
   subType: {

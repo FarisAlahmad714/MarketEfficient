@@ -178,7 +178,7 @@ const ScoreLabel = styled.span`
 const ScoreValue = styled.span`
   font-size: 1.3rem;
   font-weight: bold;
-  color: ${props => props.good ? '#4CAF50' : '#F44336'};
+  color: ${props => props.$good ? '#4CAF50' : '#F44336'};
 `;
 
 const ProgressBar = styled.div`
@@ -369,7 +369,7 @@ const StatusBadge = styled.span`
   font-size: 0.8rem;
   font-weight: bold;
   color: white;
-  background-color: ${props => props.missed ? '#FF9800' : '#4CAF50'};
+  background-color: ${props => props.$missed ? '#FF9800' : '#4CAF50'};
 `;
 
 const KeyLevelBadge = styled.span`
@@ -654,7 +654,7 @@ const ResultsPanel = ({ results, onContinue, examType, part, chartCount, isDarkM
                   ? `${part === 1 ? 'Bullish' : 'Bearish'} FVG Analysis`
                   : 'Swing Points Analysis'}
             </ScoreLabel>
-            <ScoreValue good={results.score > 0}>
+            <ScoreValue $good={results.score > 0}>
               {results.score}/{results.totalExpectedPoints}
             </ScoreValue>
           </ScoreSummary>
@@ -795,7 +795,7 @@ const ResultsPanel = ({ results, onContinue, examType, part, chartCount, isDarkM
                     >
                       <h5>
                         <span>FVG #{index + 1}</span>
-                        <StatusBadge missed={wasMissed}>
+                        <StatusBadge $missed={wasMissed}>
                           {wasMissed ? 'MISSED' : 'IDENTIFIED'}
                         </StatusBadge>
                       </h5>

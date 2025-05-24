@@ -30,10 +30,11 @@ async function userMetricsHandler(req, res) {
     return res.status(400).json({ error: 'Invalid period' });
   }
   
-  // Fetch user's test results from database
+  // Fetch user's test results from database (exclude test data entries)
   const testResults = await TestResults.find({
     userId,
-    completedAt: { $gte: startDate }
+    completedAt: { $gte: startDate },
+    testType: { $ne: 'bias-test-data' } // Exclude backup test data entries
   }).sort({ completedAt: 1 });
   
   // Process and aggregate results
@@ -62,14 +63,17 @@ function processTestResults(results, period) {
     };
   }
   
+  // Filter out any remaining test data entries (double safety)
+  const validResults = results.filter(result => result.testType !== 'bias-test-data');
+  
   // Calculate total tests and average score
-  const totalTests = results.length;
-  const totalScore = results.reduce((sum, result) => sum + result.score, 0);
-  const totalPossible = results.reduce((sum, result) => sum + result.totalPoints, 0);
+  const totalTests = validResults.length;
+  const totalScore = validResults.reduce((sum, result) => sum + result.score, 0);
+  const totalPossible = validResults.reduce((sum, result) => sum + result.totalPoints, 0);
   const averageScore = totalPossible > 0 ? (totalScore / totalPossible) * 100 : 0;
   
   // Group tests by type
-  const testsByType = results.reduce((acc, result) => {
+  const testsByType = validResults.reduce((acc, result) => {
     const testType = result.subType || result.testType;
     if (!acc[testType]) {
       acc[testType] = {
@@ -95,11 +99,11 @@ function processTestResults(results, period) {
   });
   
   // Generate time-based trends
-  const dailyData = generateDailyData(results);
-  const weeklyData = generateWeeklyData(results);
+  const dailyData = generateDailyData(validResults);
+  const weeklyData = generateWeeklyData(validResults);
   
   // Get recent activity (last 5 tests)
-  const recentActivity = results
+  const recentActivity = validResults
     .sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt))
     .slice(0, 5)
     .map(result => ({
@@ -123,7 +127,7 @@ function processTestResults(results, period) {
       daily: dailyData,
       weekly: weeklyData
     },
-    testTypeBreakdown: generateTestTypeBreakdown(results),
+    testTypeBreakdown: generateTestTypeBreakdown(validResults),
     recentActivity
   };
 }
