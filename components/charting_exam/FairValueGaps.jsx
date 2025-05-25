@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createChart, CrosshairMode, LineStyle } from 'lightweight-charts';
 import styled from 'styled-components';
 import ToolPanel from './common/ToolPanel';
-import CryptoLoader from '../CryptoLoader';
 
 // Styled components
 const ChartWrapper = styled.div`
@@ -114,17 +113,30 @@ const LoadingOverlay = styled.div`
 `;
 
 const LoadingContent = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
   text-align: center;
+`;
+
+const Spinner = styled.div`
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #4CAF50;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 10px;
+  
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
 `;
 
 const LoadingText = styled.div`
   font-size: 14px;
   color: #333;
-  margin-top: 10px;
 `;
 
 const DrawingModeIndicator = styled.div`
@@ -175,64 +187,43 @@ const FairValueGaps = ({
   const chartContainerRef = useRef(null);
   const chartRef = useRef(null);
   const candleSeriesRef = useRef(null);
-  const priceLineRefs = useRef([]);
   const panelRef = useRef(null);
-  const [drawingMode, setDrawingMode] = useState(false);
+
+  const [drawingMode, setDrawingMode] = useState(null);
   const [startPoint, setStartPoint] = useState(null);
-  const [drawings, setDrawings] = useState([]);
+  const [userFVGs, setUserFVGs] = useState([]);
+  const [rectangles, setRectangles] = useState([]);
+  const [hlines, setHlines] = useState([]);
   const [panelOffset, setPanelOffset] = useState({ x: 10, y: 10 });
   const [isDragging, setIsDragging] = useState(false);
   const [currentCoords, setCurrentCoords] = useState({ x: 0, y: 0 });
-  const [fvgHoverAreas, setFvgHoverAreas] = useState([]);
-  const [fvgLabels, setFvgLabels] = useState([]);
-  const [fvgLineSeries, setFvgLineSeries] = useState([]);
   const [fvgPermanentLabels, setFvgPermanentLabels] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showClearNotification, setShowClearNotification] = useState(false);
   const [prevPart, setPrevPart] = useState(part);
-  const [chartKey, setChartKey] = useState(0);
-  const [hoveredLabel, setHoveredLabel] = useState(null);
-
-  // Color palettes for validation
-  const bullishFVGColors = [
-    { line: '#4CAF50', fill: 'rgba(76, 175, 80, 0.2)', text: '#4CAF50' },
-    { line: '#66BB6A', fill: 'rgba(102, 187, 106, 0.2)', text: '#66BB6A' },
-    { line: '#81C784', fill: 'rgba(129, 199, 132, 0.2)', text: '#81C784' },
-    { line: '#43A047', fill: 'rgba(67, 160, 71, 0.2)', text: '#43A047' },
-    { line: '#388E3C', fill: 'rgba(56, 142, 60, 0.2)', text: '#388E3C' }
-  ];
-
-  const bearishFVGColors = [
-    { line: '#F44336', fill: 'rgba(244, 67, 54, 0.2)', text: '#F44336' },
-    { line: '#EF5350', fill: 'rgba(239, 83, 80, 0.2)', text: '#EF5350' },
-    { line: '#E57373', fill: 'rgba(229, 115, 115, 0.2)', text: '#E57373' },
-    { line: '#E53935', fill: 'rgba(229, 57, 53, 0.2)', text: '#E53935' },
-    { line: '#D32F2F', fill: 'rgba(211, 47, 47, 0.2)', text: '#D32F2F' }
-  ];
 
   const colors = {
     bullish: 'rgba(76, 175, 80, 0.3)',
-    bearish: 'rgba(244, 67, 54, 0.3)'
+    bearish: 'rgba(244, 67, 54, 0.3)',
+    correctBullish: 'rgba(255, 152, 0, 0.6)',
+    correctBearish: 'rgba(244, 67, 54, 0.6)'
   };
 
-  useEffect(() => {
-    setChartKey(prev => prev + 1);
-  }, [drawings.length]);
-
+  // Auto-clear drawings when part changes
   useEffect(() => {
     if (prevPart !== part && prevPart !== undefined) {
-      handleClearAll();
+      clearAllDrawings();
+      setStartPoint(null);
+      setDrawingMode(null);
       setPrevPart(part);
       setShowClearNotification(true);
       setTimeout(() => setShowClearNotification(false), 2000);
-      console.log(`Cleared Part ${prevPart} FVG drawings, now on Part ${part}`);
     }
   }, [part, prevPart]);
 
+  // Initialize chart
   useEffect(() => {
     if (!chartContainerRef.current || !chartData || chartData.length === 0) return;
-
-    priceLineRefs.current = [];
 
     const chart = createChart(chartContainerRef.current, {
       width: chartContainerRef.current.clientWidth,
@@ -260,105 +251,6 @@ const FairValueGaps = ({
     chartRef.current = chart;
     candleSeriesRef.current = candleSeries;
 
-    // Draw all FVGs
-    const markers = [];
-    drawings.forEach((drawing, index) => {
-      if (drawing.no_fvgs_found) return;
-
-      const color = drawing.type === 'bullish' ? colors.bullish : colors.bearish;
-
-      const topLine = candleSeries.createPriceLine({
-        price: drawing.topPrice,
-        color: color,
-        lineWidth: 2,
-        lineStyle: LineStyle.Solid,
-        axisLabelVisible: true,
-        title: `${drawing.type} FVG Top`
-      });
-
-      const bottomLine = candleSeries.createPriceLine({
-        price: drawing.bottomPrice,
-        color: color,
-        lineWidth: 2,
-        lineStyle: LineStyle.Solid,
-        axisLabelVisible: true,
-        title: `${drawing.type} FVG Bottom`
-      });
-
-      priceLineRefs.current.push(topLine, bottomLine);
-
-      markers.push(
-        {
-          time: drawing.startTime,
-          position: 'inBar',
-          color: color,
-          shape: 'square',
-          text: `${drawing.type[0].toUpperCase()}-Start`
-        },
-        {
-          time: drawing.endTime,
-          position: 'inBar',
-          color: color,
-          shape: 'square',
-          text: `${drawing.type[0].toUpperCase()}-End`
-        }
-      );
-    });
-
-    if (markers.length > 0) {
-      candleSeries.setMarkers(markers.sort((a, b) => a.time - b.time));
-    }
-
-    // Handle crosshair movement for hoverable labels
-    const handleCrosshairMove = (param) => {
-      if (
-        !param ||
-        !param.time ||
-        !param.point ||
-        !validationResults?.expected?.gaps ||
-        !candleSeriesRef.current
-      ) {
-        setHoveredLabel(null);
-        return;
-      }
-
-      const time = param.time;
-      const price = candleSeriesRef.current.coordinateToPrice(param.point.y);
-
-      if (!price) {
-        setHoveredLabel(null);
-        return;
-      }
-
-      const fvg = validationResults.expected.gaps.find((gap, index) => {
-        return (
-          time >= gap.startTime &&
-          price >= gap.bottomPrice &&
-          price <= gap.topPrice
-        );
-      });
-
-      if (fvg) {
-        const x = chartRef.current.timeScale().timeToCoordinate(fvg.startTime);
-        const y = candleSeriesRef.current.priceToCoordinate(fvg.topPrice);
-
-        if (x !== null && y !== null) {
-          const index = validationResults.expected.gaps.indexOf(fvg);
-          setHoveredLabel({
-            text: `FVG ${index + 1} (${fvg.type})`,
-            x,
-            y,
-          });
-        } else {
-          setHoveredLabel(null);
-        }
-      } else {
-        setHoveredLabel(null);
-      }
-    };
-
-    chart.subscribeCrosshairMove(handleCrosshairMove);
-
     const handleResize = () => {
       if (chartRef.current) {
         chartRef.current.applyOptions({
@@ -371,16 +263,18 @@ const FairValueGaps = ({
 
     return () => {
       window.removeEventListener('resize', handleResize);
+      clearFVGVisualElements();
       if (chartRef.current) {
-        chartRef.current.unsubscribeCrosshairMove(handleCrosshairMove);
         chartRef.current.remove();
         chartRef.current = null;
       }
     };
-  }, [chartData, isDarkMode, chartKey]);
+  }, [chartData, isDarkMode]);
 
+  // Update dark mode
   useEffect(() => {
     if (!chartRef.current) return;
+    
     chartRef.current.applyOptions({
       layout: {
         background: { color: isDarkMode ? '#1e1e1e' : '#ffffff' },
@@ -389,37 +283,22 @@ const FairValueGaps = ({
     });
   }, [isDarkMode]);
 
+  // Notify parent about drawings update
   useEffect(() => {
     if (onDrawingsUpdate) {
-      const userFVGs = drawings.map(d => ({
-        startTime: d.startTime,
-        endTime: d.endTime,
-        topPrice: d.topPrice,
-        bottomPrice: d.bottomPrice,
-        type: d.type,
-        no_fvgs_found: d.no_fvgs_found || false
-      }));
       onDrawingsUpdate(userFVGs);
     }
-  }, [drawings, onDrawingsUpdate]);
+  }, [userFVGs, onDrawingsUpdate]);
 
+  // Process validation results - add labels to existing FVG visualizations
   useEffect(() => {
-    let cleanup = null;
-    if (validationResults && chartRef.current && candleSeriesRef.current) {
+    if (validationResults && chartRef.current) {
       clearFVGVisualElements();
-      cleanup = drawFixedFVGLines();
-      requestAnimationFrame(() => {
-        updateFVGPositions();
-        setTimeout(updateFVGPositions, 100);
-      });
+      drawFVGLabels();
     }
-    return () => {
-      if (cleanup && typeof cleanup === 'function') {
-        cleanup();
-      }
-    };
   }, [validationResults]);
 
+  // Find candle by time
   const findCandleByTime = (time) => {
     if (!chartData || !time) return null;
     const exactMatch = chartData.find(candle => candle.time === time);
@@ -429,174 +308,466 @@ const FairValueGaps = ({
     )[0];
   };
 
+  // Handle chart click for drawing
   const handleChartClick = (e) => {
     if (!chartRef.current || !candleSeriesRef.current || !drawingMode) return;
+    
     const rect = chartContainerRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
+    
     const price = candleSeriesRef.current.coordinateToPrice(y);
     const timePoint = chartRef.current.timeScale().coordinateToTime(x);
+    
     if (!price || !timePoint) return;
+    
     const nearestCandle = findCandleByTime(timePoint);
     if (!nearestCandle) return;
-    if (!startPoint) {
-      setStartPoint({ time: nearestCandle.time, price });
-      console.log('Start point set:', { time: nearestCandle.time, price });
-    } else {
+    
+    resetNoFvgsState();
+    
+    if (drawingMode === 'draw-rectangle') {
+      if (!startPoint) {
+        setStartPoint({ time: nearestCandle.time, price });
+      } else {
+        const fvgType = part === 1 ? 'bullish' : 'bearish';
+        const topPrice = Math.max(startPoint.price, price);
+        const bottomPrice = Math.min(startPoint.price, price);
+        
+        const newRect = drawRectangle(
+          startPoint.time,
+          nearestCandle.time,
+          topPrice,
+          bottomPrice,
+          fvgType
+        );
+        
+        if (newRect) {
+          setRectangles(prev => [...prev, newRect]);
+          setUserFVGs(prev => [...prev, {
+            startTime: startPoint.time,
+            endTime: nearestCandle.time,
+            topPrice: topPrice,
+            bottomPrice: bottomPrice,
+            type: fvgType
+          }]);
+        }
+        
+        setStartPoint(null);
+      }
+    } else if (drawingMode === 'draw-hline') {
       const fvgType = part === 1 ? 'bullish' : 'bearish';
-      const topPrice = Math.max(startPoint.price, price);
-      const bottomPrice = Math.min(startPoint.price, price);
-      const [startTime, endTime] = startPoint.time < nearestCandle.time 
-        ? [startPoint.time, nearestCandle.time] 
-        : [nearestCandle.time, startPoint.time];
-      const newDrawing = {
-        startTime: startTime,
-        endTime: endTime,
-        topPrice: topPrice,
-        bottomPrice: bottomPrice,
-        type: fvgType
-      };
-      console.log('Creating new FVG:', newDrawing);
-      setDrawings(prev => [...prev, newDrawing]);
-      setStartPoint(null);
+      const newLine = drawHLine(nearestCandle.time, price, fvgType);
+      
+      if (newLine) {
+        setHlines(prev => [...prev, newLine]);
+        setUserFVGs(prev => [...prev, {
+          startTime: nearestCandle.time,
+          endTime: nearestCandle.time,
+          topPrice: price,
+          bottomPrice: price,
+          type: fvgType,
+          drawingType: 'hline'
+        }]);
+      }
     }
   };
 
-  const toggleDrawingMode = () => {
-    setDrawingMode(!drawingMode);
-    if (drawingMode) {
-      setStartPoint(null);
+  // Draw rectangle on chart
+  const drawRectangle = (startTime, endTime, topPrice, bottomPrice, type = 'bullish') => {
+    if (!chartRef.current || !candleSeriesRef.current) return null;
+    
+    const color = type === 'bullish' ? colors.bullish : colors.bearish;
+    const [actualStartTime, actualEndTime] = startTime < endTime ? [startTime, endTime] : [endTime, startTime];
+    
+    const newMarkers = [
+      {
+        time: actualStartTime,
+        position: 'inBar',
+        color: color,
+        shape: 'square',
+        text: type === 'bullish' ? 'B-FVG Start' : 'S-FVG Start'
+      },
+      {
+        time: actualEndTime,
+        position: 'inBar',
+        color: color,
+        shape: 'square',
+        text: type === 'bullish' ? 'B-FVG End' : 'S-FVG End'
+      }
+    ];
+    
+    const existingMarkers = candleSeriesRef.current.markers() || [];
+    const allMarkers = [...existingMarkers, ...newMarkers].sort((a, b) => a.time - b.time);
+    candleSeriesRef.current.setMarkers(allMarkers);
+    
+    const topLine = candleSeriesRef.current.createPriceLine({
+      price: topPrice,
+      color: color,
+      lineWidth: 2,
+      lineStyle: LineStyle.Solid,
+      axisLabelVisible: true,
+      title: `${type} FVG Top`
+    });
+    
+    const bottomLine = candleSeriesRef.current.createPriceLine({
+      price: bottomPrice,
+      color: color,
+      lineWidth: 2,
+      lineStyle: LineStyle.Solid,
+      axisLabelVisible: true,
+      title: `${type} FVG Bottom`
+    });
+    
+    return {
+      startTime: actualStartTime,
+      endTime: actualEndTime,
+      topPrice: topPrice,
+      bottomPrice: bottomPrice,
+      type: type,
+      markers: newMarkers,
+      lines: [topLine, bottomLine]
+    };
+  };
+
+  // Draw horizontal line on chart
+  const drawHLine = (time, price, type = 'bullish') => {
+    if (!chartRef.current || !candleSeriesRef.current) return null;
+    
+    const color = type === 'bullish' ? colors.bullish : colors.bearish;
+    const title = type === 'bullish' ? 'Bullish FVG' : 'Bearish FVG';
+    
+    const hline = candleSeriesRef.current.createPriceLine({
+      price: price,
+      color: color,
+      lineWidth: 2,
+      lineStyle: LineStyle.Solid,
+      axisLabelVisible: true,
+      title: title
+    });
+    
+    const marker = {
+      time: time,
+      position: 'inBar',
+      color: color,
+      shape: 'circle',
+      text: type === 'bullish' ? 'B' : 'S'
+    };
+    
+    const existingMarkers = candleSeriesRef.current.markers() || [];
+    const allMarkers = [...existingMarkers, marker].sort((a, b) => a.time - b.time);
+    candleSeriesRef.current.setMarkers(allMarkers);
+    
+    return {
+      line: hline,
+      time: time,
+      price: price,
+      type: type,
+      marker: marker
+    };
+  };
+
+  // Simple FVG labeling - just add number badges to existing FVG visualizations
+  const drawFVGLabels = () => {
+    try {
+      if (!validationResults?.expected?.gaps || !chartRef.current || !chartContainerRef.current) {
+        return;
+      }
+      
+      const sortedGaps = [...validationResults.expected.gaps].sort((a, b) => b.topPrice - a.topPrice);
+      const newPermanentLabels = [];
+      
+      sortedGaps.forEach((gap, index) => {
+        const fvgNumber = index + 1;
+        const labelColor = gap.type === 'bullish' ? '#4CAF50' : '#F44336';
+        
+        try {
+          const miniLabel = document.createElement('div');
+          miniLabel.className = 'fvg-mini-label';
+          miniLabel.style.position = 'absolute';
+          miniLabel.style.backgroundColor = labelColor;
+          miniLabel.style.color = 'white';
+          miniLabel.style.padding = '2px 6px';
+          miniLabel.style.borderRadius = '10px';
+          miniLabel.style.fontSize = '11px';
+          miniLabel.style.fontWeight = 'bold';
+          miniLabel.style.zIndex = '1000';
+          miniLabel.style.pointerEvents = 'auto';
+          miniLabel.style.cursor = 'pointer';
+          miniLabel.style.boxShadow = '0 1px 3px rgba(0,0,0,0.3)';
+          miniLabel.style.transition = 'transform 0.2s, box-shadow 0.2s';
+          miniLabel.textContent = `#${fvgNumber}`;
+          
+          miniLabel.dataset.fvgNumber = fvgNumber;
+          miniLabel.dataset.startTime = gap.startTime;
+          miniLabel.dataset.topPrice = gap.topPrice;
+          miniLabel.dataset.bottomPrice = gap.bottomPrice;
+          miniLabel.dataset.type = gap.type;
+          
+          const tooltip = document.createElement('div');
+          tooltip.style.position = 'absolute';
+          tooltip.style.backgroundColor = 'rgba(0, 0, 0, 0.9)';
+          tooltip.style.color = 'white';
+          tooltip.style.padding = '8px 12px';
+          tooltip.style.borderRadius = '4px';
+          tooltip.style.fontSize = '12px';
+          tooltip.style.whiteSpace = 'nowrap';
+          tooltip.style.pointerEvents = 'none';
+          tooltip.style.opacity = '0';
+          tooltip.style.transition = 'opacity 0.2s';
+          tooltip.style.zIndex = '1001';
+          tooltip.innerHTML = `
+            <div style="font-weight:bold;margin-bottom:4px;">FVG #${fvgNumber} (${gap.type})</div>
+            <div>Range: ${gap.bottomPrice.toFixed(2)} - ${gap.topPrice.toFixed(2)}</div>
+            <div>Size: ${(gap.topPrice - gap.bottomPrice).toFixed(2)}</div>
+          `;
+          
+          miniLabel.addEventListener('mouseenter', (e) => {
+            miniLabel.style.transform = 'scale(1.2)';
+            miniLabel.style.boxShadow = '0 0 0 3px rgba(255,255,255,0.3)';
+            
+            const rect = miniLabel.getBoundingClientRect();
+            const containerRect = chartContainerRef.current.getBoundingClientRect();
+            
+            tooltip.style.left = `${rect.left - containerRect.left + rect.width + 10}px`;
+            tooltip.style.top = `${rect.top - containerRect.top}px`;
+            tooltip.style.opacity = '1';
+            
+            if (rect.left + rect.width + 200 > containerRect.right) {
+              tooltip.style.left = `${rect.left - containerRect.left - 200}px`;
+            }
+          });
+          
+          miniLabel.addEventListener('mouseleave', () => {
+            miniLabel.style.transform = 'scale(1)';
+            miniLabel.style.boxShadow = '0 1px 3px rgba(0,0,0,0.3)';
+            tooltip.style.opacity = '0';
+          });
+          
+          chartContainerRef.current.appendChild(miniLabel);
+          chartContainerRef.current.appendChild(tooltip);
+          
+          newPermanentLabels.push({ 
+            element: miniLabel, 
+            tooltip: tooltip,
+            gap: gap,
+            index: index
+          });
+          
+        } catch (error) {
+          console.error('Error creating FVG label:', error);
+        }
+      });
+      
+      setFvgPermanentLabels(newPermanentLabels);
+      
+      setTimeout(() => {
+        updateFVGPositions();
+      }, 100);
+      
+      setupChartEventListeners();
+      
+    } catch (error) {
+      console.error('Error in drawFVGLabels:', error);
     }
   };
 
-  const handleUndo = () => {
-    console.log('Undo clicked - Current drawings:', drawings.length);
-    if (drawings.length > 0) {
-      const newDrawings = [...drawings];
-      newDrawings.pop();
-      setDrawings(newDrawings);
-      console.log('After undo - Drawings:', newDrawings.length);
-    }
-    if (startPoint) {
-      setStartPoint(null);
-    }
-  };
-
-  const handleClearAll = () => {
-    console.log('Clear all clicked');
-    setDrawings([]);
-    setStartPoint(null);
-  };
-
-  const handleNoFVGs = () => {
-    setDrawings([{
-      no_fvgs_found: true,
-      type: part === 1 ? 'bullish' : 'bearish',
-      startTime: chartData[0]?.time || 0,
-      endTime: chartData[chartData.length - 1]?.time || 0,
-      topPrice: 0,
-      bottomPrice: 0
-    }]);
-    setDrawingMode(false);
-  };
-
+  // Clear FVG visual elements
   const clearFVGVisualElements = () => {
-    fvgHoverAreas.forEach(area => {
-      if (area && area.parentNode) {
-        area.parentNode.removeChild(area);
+    fvgPermanentLabels.forEach(({ element, tooltip }) => {
+      if (element && element.parentNode) {
+        element.parentNode.removeChild(element);
       }
-    });
-    setFvgHoverAreas([]);
-    fvgLabels.forEach(label => {
-      if (label && label.parentNode) {
-        label.parentNode.removeChild(label);
-      }
-    });
-    setFvgLabels([]);
-    fvgPermanentLabels.forEach(label => {
-      if (label && label.parentNode) {
-        label.parentNode.removeChild(label);
+      if (tooltip && tooltip.parentNode) {
+        tooltip.parentNode.removeChild(tooltip);
       }
     });
     setFvgPermanentLabels([]);
-    fvgLineSeries.forEach(series => {
+    
+    const existingLabels = chartContainerRef.current?.querySelectorAll('.fvg-mini-label');
+    existingLabels?.forEach(label => label.remove());
+  };
+
+  // Update positions when chart changes
+  const updateFVGPositions = () => {
+    if (!chartRef.current || !chartContainerRef.current) return;
+    
+    const timeScale = chartRef.current.timeScale();
+    const priceScale = chartRef.current.priceScale('right');
+    
+    fvgPermanentLabels.forEach(({ element, tooltip, gap }) => {
       try {
-        if (series && chartRef.current) {
-          chartRef.current.removeSeries(series);
+        const x = timeScale.timeToCoordinate(gap.startTime);
+        const midPrice = (gap.topPrice + gap.bottomPrice) / 2;
+        const y = priceScale.priceToCoordinate(midPrice);
+        
+        if (x !== null && y !== null) {
+          element.style.left = `${x + 5}px`;
+          element.style.top = `${y - 10}px`;
+          element.style.display = 'block';
+          
+          if (tooltip.style.opacity === '1') {
+            const rect = element.getBoundingClientRect();
+            const containerRect = chartContainerRef.current.getBoundingClientRect();
+            
+            tooltip.style.left = `${rect.left - containerRect.left + rect.width + 10}px`;
+            tooltip.style.top = `${rect.top - containerRect.top}px`;
+          }
+        } else {
+          element.style.display = 'none';
+          tooltip.style.opacity = '0';
         }
       } catch (error) {
-        console.error('Error removing series:', error);
+        console.error('Error updating label position:', error);
       }
     });
-    setFvgLineSeries([]);
   };
 
-  const drawFVGLines = () => {
-  try {
-    clearFVGVisualElements();
-    if (!validationResults?.expected?.gaps || !chartRef.current || !chartContainerRef.current) {
-      return;
-    }
-    const sortedGaps = [...validationResults.expected.gaps].sort((a, b) => b.topPrice - a.topPrice);
-    const newLineSeries = [];
-
-    // Calculate rightEdge
-    const maxTime = Math.max(...chartData.map((d) => d.time));
-    const rightEdge = maxTime + 86400; // Add one day (86400 seconds)
-
-    sortedGaps.forEach((gap, index) => {
-      const colorIndex = index % 5;
-      const colorPalette = gap.type === 'bullish'
-        ? bullishFVGColors[colorIndex]
-        : bearishFVGColors[colorIndex];
-
-      // Top Line Series
-      const topSeries = chartRef.current.addLineSeries({
-        color: colorPalette.line,
-        lineWidth: 2,
-        lineStyle: 2, // Dashed line
-        lastValueVisible: false,
-        priceLineVisible: false,
-        crosshairMarkerVisible: false,
-      });
-      topSeries.setData([
-        { time: gap.startTime, value: gap.topPrice },
-        { time: rightEdge, value: gap.topPrice },
-      ]);
-
-      // Bottom Line Series
-      const bottomSeries = chartRef.current.addLineSeries({
-        color: colorPalette.line,
-        lineWidth: 2,
-        lineStyle: 2, // Dashed line
-        lastValueVisible: false,
-        priceLineVisible: false,
-        crosshairMarkerVisible: false,
-      });
-      bottomSeries.setData([
-        { time: gap.startTime, value: gap.bottomPrice },
-        { time: rightEdge, value: gap.bottomPrice },
-      ]);
-
-      newLineSeries.push(topSeries, bottomSeries);
-    });
-    setFvgLineSeries(newLineSeries);
-  } catch (error) {
-    console.error('Error in drawFVGLines:', error);
-  }
-};
-  const drawFixedFVGLines = () => {
+  // Setup chart event listeners
+  const setupChartEventListeners = () => {
+    if (!chartRef.current) return;
+    
     try {
-      drawFVGLines();
+      const timeScaleHandler = () => {
+        requestAnimationFrame(updateFVGPositions);
+      };
+      chartRef.current.timeScale().subscribeVisibleTimeRangeChange(timeScaleHandler);
+      
+      try {
+        const priceScaleHandler = () => {
+          requestAnimationFrame(updateFVGPositions);
+        };
+        chartRef.current.priceScale('right').subscribeVisiblePriceRangeChange(priceScaleHandler);
+      } catch (e) {
+        console.log('Price scale events not supported in this version');
+      }
+      
+      const crosshairHandler = () => {
+        requestAnimationFrame(updateFVGPositions);
+      };
+      chartRef.current.subscribeCrosshairMove(crosshairHandler);
+      
+      const resizeHandler = () => {
+        setTimeout(() => {
+          updateFVGPositions();
+        }, 100);
+      };
+      window.removeEventListener('resize', resizeHandler);
+      window.addEventListener('resize', resizeHandler);
+      
+      return () => {
+        try {
+          chartRef.current.timeScale().unsubscribeVisibleTimeRangeChange(timeScaleHandler);
+          chartRef.current.priceScale('right').unsubscribeVisiblePriceRangeChange(priceScaleHandler);
+          chartRef.current.unsubscribeCrosshairMove(crosshairHandler);
+          window.removeEventListener('resize', resizeHandler);
+        } catch (e) {
+          console.error('Error cleaning up event handlers:', e);
+        }
+      };
     } catch (error) {
-      console.error('Error in drawFixedFVGLines:', error);
+      console.error('Error in setupChartEventListeners:', error);
     }
   };
 
-  const updateFVGPositions = () => {
-    // Simplified - no complex positioning needed for now
+  // Remove last drawing
+  const removeLastDrawing = () => {
+    if (!chartRef.current || !candleSeriesRef.current) return false;
+    
+    if (rectangles.length > 0) {
+      const lastRect = rectangles[rectangles.length - 1];
+      
+      if (lastRect.lines) {
+        lastRect.lines.forEach(line => {
+          candleSeriesRef.current.removePriceLine(line);
+        });
+      }
+      
+      const currentMarkers = candleSeriesRef.current.markers() || [];
+      const updatedMarkers = currentMarkers
+        .filter(marker => {
+          return !lastRect.markers.some(m => 
+            m.time === marker.time && 
+            m.position === marker.position && 
+            m.text === marker.text
+          );
+        })
+        .sort((a, b) => a.time - b.time);
+      
+      candleSeriesRef.current.setMarkers(updatedMarkers);
+      setRectangles(prev => prev.slice(0, -1));
+      
+      return true;
+    } else if (hlines.length > 0) {
+      const lastLine = hlines[hlines.length - 1];
+      candleSeriesRef.current.removePriceLine(lastLine.line);
+      
+      const currentMarkers = candleSeriesRef.current.markers() || [];
+      const updatedMarkers = currentMarkers
+        .filter(marker => {
+          return !(marker.time === lastLine.time && 
+                  marker.position === lastLine.marker.position && 
+                  marker.text === lastLine.marker.text);
+        })
+        .sort((a, b) => a.time - b.time);
+      
+      candleSeriesRef.current.setMarkers(updatedMarkers);
+      setHlines(prev => prev.slice(0, -1));
+      
+      return true;
+    }
+    
+    return false;
   };
 
+  // Clear all drawings
+  const clearAllDrawings = () => {
+    if (!chartRef.current || !candleSeriesRef.current) return;
+    
+    rectangles.forEach(rect => {
+      if (rect.lines) {
+        rect.lines.forEach(line => {
+          candleSeriesRef.current.removePriceLine(line);
+        });
+      }
+    });
+    setRectangles([]);
+    
+    hlines.forEach(line => {
+      candleSeriesRef.current.removePriceLine(line.line);
+    });
+    setHlines([]);
+    
+    candleSeriesRef.current.setMarkers([]);
+    setUserFVGs([]);
+    clearFVGVisualElements();
+    resetNoFvgsState();
+  };
+
+  // Mark "No FVGs Found"
+  const markNoFvgsFound = () => {
+    clearAllDrawings();
+    
+    setUserFVGs([{
+      no_fvgs_found: true,
+      type: part === 1 ? 'bullish' : 'bearish',
+      startTime: chartData.length > 0 ? chartData[0].time : 0,
+      endTime: chartData.length > 0 ? chartData[chartData.length - 1].time : 0,
+      topPrice: 0,
+      bottomPrice: 0
+    }]);
+    
+    setDrawingMode(null);
+  };
+
+  // Reset "No FVGs Found" state
+  const resetNoFvgsState = () => {
+    if (userFVGs.length === 1 && userFVGs[0].no_fvgs_found) {
+      setUserFVGs([]);
+    }
+  };
+
+  // Handle panel dragging
   const startPanelDragging = (e) => {
     if (e.target.className.includes('panel-header')) {
       setIsDragging(true);
@@ -612,12 +783,16 @@ const FairValueGaps = ({
       e.preventDefault();
       const x = e.clientX - currentCoords.x;
       const y = e.clientY - currentCoords.y;
+      
       const container = chartContainerRef.current;
       const panel = panelRef.current;
+      
       const maxX = container.offsetWidth - panel.offsetWidth;
       const maxY = container.offsetHeight - panel.offsetHeight;
+      
       const newX = Math.max(0, Math.min(x, maxX));
       const newY = Math.max(0, Math.min(y, maxY));
+      
       setPanelOffset({ x: newX, y: newY });
     }
   };
@@ -626,30 +801,42 @@ const FairValueGaps = ({
     setIsDragging(false);
   };
 
+  // Handle tool selection
   const handleToolSelect = (toolId) => {
-    if (toolId === 'draw-rectangle') {
-      toggleDrawingMode();
+    if (toolId === drawingMode) {
+      setDrawingMode(null);
+    } else {
+      setDrawingMode(toolId);
+      setStartPoint(null);
+      resetNoFvgsState();
     }
   };
 
+  // Handle undo action
+  const handleUndoDrawing = () => {
+    if (removeLastDrawing() && userFVGs.length > 0) {
+      setUserFVGs(prev => prev.slice(0, -1));
+    }
+    
+    if (userFVGs.length <= 1) {
+      resetNoFvgsState();
+    }
+  };
+
+  // Handle submission
   const handleSubmit = () => {
-    if (drawings.length === 0) {
+    if (userFVGs.length === 0) {
       alert("Please mark at least one Fair Value Gap or use the 'No FVGs Found' button before submitting.");
       return;
     }
+    
     setIsLoading(true);
+    
     if (onSubmit) {
-      const userFVGs = drawings.map(d => ({
-        startTime: d.startTime,
-        endTime: d.endTime,
-        topPrice: d.topPrice,
-        bottomPrice: d.bottomPrice,
-        type: d.type,
-        no_fvgs_found: d.no_fvgs_found || false
-      }));
-      onSubmit(userFVGs).finally(() => {
-        setIsLoading(false);
-      });
+      onSubmit(userFVGs)
+        .finally(() => {
+          setIsLoading(false);
+        });
     } else {
       setTimeout(() => {
         setIsLoading(false);
@@ -657,21 +844,27 @@ const FairValueGaps = ({
     }
   };
 
-  const isNoFVGsDisabled = drawings.length === 1 && drawings[0]?.no_fvgs_found;
+  const isNoFVGsDisabled = userFVGs.length === 1 && userFVGs[0].no_fvgs_found;
 
   const toolsConfig = [
     {
       id: 'draw-rectangle',
-      label: 'Draw FVG',
+      label: 'Draw FVG Rectangle',
       icon: 'fa-square',
-      active: drawingMode
+      active: drawingMode === 'draw-rectangle'
+    },
+    {
+      id: 'draw-hline',
+      label: 'Draw H-Line',
+      icon: 'fa-minus',
+      active: drawingMode === 'draw-hline'
     },
     {
       id: 'undo',
       label: 'Undo',
       icon: 'fa-undo',
-      onClick: handleUndo,
-      disabled: drawings.length === 0 && !startPoint
+      onClick: handleUndoDrawing,
+      disabled: rectangles.length === 0 && hlines.length === 0
     }
   ];
 
@@ -680,14 +873,14 @@ const FairValueGaps = ({
       id: 'clear-all',
       label: 'Clear All',
       icon: 'fa-trash',
-      onClick: handleClearAll,
-      disabled: drawings.length === 0 && !startPoint
+      onClick: clearAllDrawings,
+      disabled: rectangles.length === 0 && hlines.length === 0
     },
     {
       id: 'no-fvgs',
       label: 'No FVGs Found',
       icon: 'fa-ban',
-      onClick: handleNoFVGs,
+      onClick: markNoFvgsFound,
       disabled: isNoFVGsDisabled
     },
     {
@@ -706,26 +899,33 @@ const FairValueGaps = ({
           Previous FVG drawings cleared for Part {part}
         </ClearNotification>
       )}
+      
       <ToolPanel
         title={part === 1 ? "Bullish Fair Value Gaps" : "Bearish Fair Value Gaps"}
         description={part === 1
           ? "Identify gaps above price where price has yet to return"
           : "Identify gaps below price where price has yet to return"}
-        selectedTool={drawingMode ? 'draw-rectangle' : null}
+        selectedTool={drawingMode}
         onToolSelect={handleToolSelect}
         tools={toolsConfig}
-        onClearAll={handleClearAll}
+        onClearAll={clearAllDrawings}
         isDarkMode={isDarkMode}
         noFvgsOption={true}
-        onNoFvgsFound={handleNoFVGs}
+        onNoFvgsFound={markNoFvgsFound}
       />
+      
       <ChartWrapper $isDarkMode={isDarkMode}>
-        <ChartContainer ref={chartContainerRef} onClick={handleChartClick} />
+        <ChartContainer 
+          ref={chartContainerRef} 
+          onClick={handleChartClick}
+        />
+        
         {drawingMode && (
           <DrawingModeIndicator $isDarkMode={isDarkMode}>
-            {startPoint ? 'Click to set end point' : 'Click to set start point'}
+            {drawingMode === 'draw-rectangle' ? 'Drawing Rectangle' : 'Drawing H-Line'}
           </DrawingModeIndicator>
         )}
+        
         <FVGPanel
           ref={panelRef}
           style={{ left: `${panelOffset.x}px`, top: `${panelOffset.y}px` }}
@@ -735,15 +935,15 @@ const FairValueGaps = ({
           onMouseLeave={stopPanelDragging}
           $isDarkMode={isDarkMode}
         >
-          <PanelHeader className="panel-header" $isBullish={part === 1}>
+          <PanelHeader $isBullish={part === 1}>
             Fair Value Gaps
           </PanelHeader>
           <PanelContent>
-            {drawings.length === 0 ? (
+            {userFVGs.length === 0 ? (
               <FVGItem $isDarkMode={isDarkMode}>
                 <FVGLabel $isDarkMode={isDarkMode}>No Fair Value Gaps marked yet.</FVGLabel>
               </FVGItem>
-            ) : drawings.length === 1 && drawings[0].no_fvgs_found ? (
+            ) : userFVGs.length === 1 && userFVGs[0].no_fvgs_found ? (
               <FVGItem $isDarkMode={isDarkMode} style={{
                 backgroundColor: isDarkMode ? '#2a2a2a' : '#f8f9fa',
                 borderLeft: '3px solid #ffc107',
@@ -757,14 +957,15 @@ const FairValueGaps = ({
                 </FVGRange>
               </FVGItem>
             ) : (
-              drawings.map((fvg, index) => {
+              userFVGs.map((fvg, index) => {
                 if (fvg.no_fvgs_found) return null;
+                
                 const startDate = new Date(fvg.startTime * 1000).toLocaleDateString();
                 return (
                   <FVGItem key={index} $isDarkMode={isDarkMode}>
                     <FVGLabel $isDarkMode={isDarkMode}>FVG {index + 1} ({fvg.type})</FVGLabel>
                     <FVGRange $isDarkMode={isDarkMode}>
-                      Price Range: {fvg.bottomPrice.toFixed(2)} - {fvg.topPrice.toFixed(2)}
+                      Price Range: {fvg.topPrice.toFixed(2)} - {fvg.bottomPrice.toFixed(2)}
                     </FVGRange>
                     <FVGDate $isDarkMode={isDarkMode}>Date: {startDate}</FVGDate>
                   </FVGItem>
@@ -773,25 +974,8 @@ const FairValueGaps = ({
             )}
           </PanelContent>
         </FVGPanel>
-        {hoveredLabel && (
-          <div
-            style={{
-              position: 'absolute',
-              left: `${hoveredLabel.x}px`,
-              top: `${hoveredLabel.y - 20}px`,
-              backgroundColor: 'rgba(0, 0, 0, 0.7)',
-              color: 'white',
-              padding: '2px 5px',
-              borderRadius: '3px',
-              pointerEvents: 'none',
-              zIndex: 1000,
-              fontSize: '12px',
-            }}
-          >
-            {hoveredLabel.text}
-          </div>
-        )}
-        {drawings.length === 1 && drawings[0]?.no_fvgs_found && (
+        
+        {userFVGs.length === 1 && userFVGs[0].no_fvgs_found && (
           <NoFVGOverlay>
             <NoFVGMessage>
               No {part === 1 ? 'Bullish' : 'Bearish'} FVGs Found
@@ -799,9 +983,10 @@ const FairValueGaps = ({
           </NoFVGOverlay>
         )}
       </ChartWrapper>
+      
       <LoadingOverlay $isActive={isLoading}>
         <LoadingContent>
-          <CryptoLoader />
+          <Spinner />
           <LoadingText>Analyzing your answers...</LoadingText>
         </LoadingContent>
       </LoadingOverlay>
