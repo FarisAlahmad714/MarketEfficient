@@ -37,7 +37,7 @@ async function createAdmin() {
     const adminPassword = process.env.ADMIN_PASSWORD || 'Admin123!';
     const adminName = process.env.ADMIN_NAME || 'Admin User';
     
-    console.log(`Attempting to create/update admin with email: ${adminEmail}`);
+    console.log('Attempting to create/update admin user...');
     
     // Check if admin already exists
     const existingAdmin = await User.findOne({ email: adminEmail });
@@ -47,7 +47,7 @@ async function createAdmin() {
       existingAdmin.isAdmin = true;
       existingAdmin.isVerified = true;
       await existingAdmin.save();
-      console.log(`User ${adminEmail} has been updated to admin status`);
+      console.log('User has been updated to admin status');
     } else {
       // Create new admin user
       const hashedPassword = await bcrypt.hash(adminPassword, 10);
@@ -62,7 +62,7 @@ async function createAdmin() {
       });
       
       await newAdmin.save();
-      console.log(`Admin user ${adminEmail} created successfully`);
+      console.log('Admin user created successfully');
     }
     
     // Close connection

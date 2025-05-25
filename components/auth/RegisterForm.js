@@ -4,6 +4,7 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { ThemeContext } from '../../contexts/ThemeContext';
 import { AuthContext } from '../../contexts/AuthContext';
+import EmailVerificationNotice from './EmailVerificationNotice';
 
 const RegisterForm = () => {
   const [name, setName] = useState('');
@@ -12,6 +13,8 @@ const RegisterForm = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [showEmailVerification, setShowEmailVerification] = useState(false);
+  const [registeredUserData, setRegisteredUserData] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState(0);
   const [passwordMatch, setPasswordMatch] = useState(true);
@@ -19,6 +22,28 @@ const RegisterForm = () => {
   const { darkMode } = useContext(ThemeContext);
   const { register } = useContext(AuthContext);
   const router = useRouter();
+  
+  // Resend verification email function
+  const handleResendEmail = async (userEmail) => {
+    try {
+      const response = await fetch('/api/auth/resend-verification', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ email: userEmail })
+      });
+
+      if (response.ok) {
+        return true;
+      } else {
+        return false;
+      }
+    } catch (error) {
+      console.error('Failed to resend verification email:', error);
+      return false;
+    }
+  };
   
   // Check if passwords match whenever either password field changes
   useEffect(() => {
@@ -65,6 +90,7 @@ const RegisterForm = () => {
     e.preventDefault();
     setError('');
     setSuccess('');
+    setShowEmailVerification(false);
     
     // Validate passwords match
     if (password !== confirmPassword) {
@@ -90,11 +116,15 @@ const RegisterForm = () => {
     try {
       const success = await register(name, email, password);
       if (success) {
-        setSuccess('Registration successful! Please check your email to verify your account.');
-        // Optional: Redirect after a delay
-        setTimeout(() => {
-          router.push('/auth/login');
-        }, 3000);
+        setRegisteredUserData({ name, email });
+        setShowEmailVerification(true);
+        setSuccess('Registration successful!');
+        
+        // Clear form
+        setName('');
+        setEmail('');
+        setPassword('');
+        setConfirmPassword('');
       } else {
         setError('Registration failed. Email may already be in use.');
       }
@@ -104,6 +134,76 @@ const RegisterForm = () => {
       setIsLoading(false);
     }
   };
+  
+  // If email verification notice should be shown
+  if (showEmailVerification && registeredUserData) {
+    return (
+      <div className="auth-form-container" style={{
+        maxWidth: '600px',
+        margin: '40px auto',
+        padding: '30px',
+        borderRadius: '8px',
+        backgroundColor: darkMode ? '#1e1e1e' : 'white',
+        boxShadow: darkMode ? '0 4px 12px rgba(0,0,0,0.3)' : '0 4px 12px rgba(0,0,0,0.1)',
+      }}>
+        <h2 style={{ 
+          textAlign: 'center', 
+          marginBottom: '24px',
+          color: darkMode ? '#e0e0e0' : '#333' 
+        }}>
+          Registration Successful! 🎉
+        </h2>
+
+        <EmailVerificationNotice
+          userEmail={registeredUserData.email}
+          userName={registeredUserData.name}
+          onResendEmail={handleResendEmail}
+          variant="success"
+        />
+
+        <div style={{ 
+          marginTop: '24px', 
+          textAlign: 'center',
+          color: darkMode ? '#b0b0b0' : '#666',
+          fontSize: '14px'
+        }}>
+          Already verified your email?{' '}
+          <Link 
+            href="/auth/login"
+            style={{
+              color: darkMode ? '#90caf9' : '#2196F3',
+              textDecoration: 'none',
+              fontWeight: '500'
+            }}
+          >
+            Login here
+          </Link>
+        </div>
+
+        <div style={{ 
+          marginTop: '16px', 
+          textAlign: 'center'
+        }}>
+          <button
+            onClick={() => {
+              setShowEmailVerification(false);
+              setRegisteredUserData(null);
+            }}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: darkMode ? '#90caf9' : '#2196F3',
+              textDecoration: 'underline',
+              cursor: 'pointer',
+              fontSize: '14px'
+            }}
+          >
+            Register another account
+          </button>
+        </div>
+      </div>
+    );
+  }
   
   return (
     <div className="auth-form-container" style={{
@@ -131,18 +231,6 @@ const RegisterForm = () => {
           marginBottom: '20px'
         }}>
           {error}
-        </div>
-      )}
-      
-      {success && (
-        <div style={{
-          padding: '10px 15px',
-          backgroundColor: darkMode ? 'rgba(76, 175, 80, 0.1)' : '#e8f5e9',
-          color: '#4caf50',
-          borderRadius: '4px',
-          marginBottom: '20px'
-        }}>
-          {success}
         </div>
       )}
       

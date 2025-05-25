@@ -60,6 +60,11 @@ export const AuthProvider = ({ children }) => {
       if (response.ok) {
         const data = await response.json();
         localStorage.setItem('auth_token', data.token);
+        
+        // Store user data for email verification flow
+        localStorage.setItem('pending_verification_email', email);
+        localStorage.setItem('pending_verification_name', name);
+        
         setUser(data.user);
         setIsAuthenticated(true);
         return true;
@@ -83,18 +88,35 @@ export const AuthProvider = ({ children }) => {
         body: JSON.stringify({ email, password })
       });
       
+      const data = await response.json();
+      
       if (response.ok) {
-        const data = await response.json();
         localStorage.setItem('auth_token', data.token);
         setUser(data.user);
         setIsAuthenticated(true);
-        return true;
+        return { success: true };
+      } else {
+        // Handle specific error cases
+        if (response.status === 403 && data.needsVerification) {
+          return { 
+            success: false, 
+            needsVerification: true, 
+            email: email,
+            message: data.message || 'Please verify your email before logging in.'
+          };
+        }
+        
+        return { 
+          success: false, 
+          message: data.error || 'Login failed'
+        };
       }
-      
-      return false;
     } catch (error) {
       console.error('Login failed:', error);
-      throw error;
+      return { 
+        success: false, 
+        message: 'An error occurred during login'
+      };
     }
   };
   

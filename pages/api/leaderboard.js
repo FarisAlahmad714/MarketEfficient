@@ -95,21 +95,23 @@ async function leaderboardHandler(req, res) {
     userMap[user._id] = user;
   });
   
-  // Add user data to results and format
-  const leaderboardData = results.map((result, index) => {
-    const userData = userMap[result._id] || { name: 'Anonymous' };
-    
-    return {
-      rank: index + 1,
-      userId: result._id,
-      name: userData.name,
-      // Mask email for privacy
-      email: userData.email ? `${userData.email.split('@')[0].substring(0, 3)}***@${userData.email.split('@')[1]}` : null,
-      score: parseFloat(result.bestScore.toFixed(1)),
-      testsTaken: result.testsTaken,
-      lastActive: result.latestTest
-    };
-  });
+  // Add user data to results and format - ONLY include users that still exist
+  const leaderboardData = results
+    .filter(result => userMap[result._id]) // Filter out deleted users
+    .map((result, index) => {
+      const userData = userMap[result._id];
+      
+      return {
+        rank: index + 1,
+        userId: result._id,
+        name: userData.name,
+        // Mask email for privacy
+        email: userData.email ? `${userData.email.split('@')[0].substring(0, 3)}***@${userData.email.split('@')[1]}` : null,
+        score: parseFloat(result.bestScore.toFixed(1)),
+        testsTaken: result.testsTaken,
+        lastActive: result.latestTest
+      };
+    });
   
   // Also get the rank of the current user if they're authenticated
   let currentUserRank = null;
@@ -167,7 +169,20 @@ async function leaderboardHandler(req, res) {
   return res.status(200).json({
     leaderboard: leaderboardData,
     currentUserRank,
-    totalParticipants: await TestResults.distinct('userId', query).then(ids => ids.length),
+    totalParticipants: await TestResults.aggregate([
+      { $match: query },
+      { $group: { _id: "$userId" } },
+      { 
+        $lookup: {
+          from: "users",
+          localField: "_id",
+          foreignField: "_id",
+          as: "user"
+        }
+      },
+      { $match: { "user.0": { $exists: true } } }, // Only count if user still exists
+      { $count: "count" }
+    ]).then(result => result.length > 0 ? result[0].count : 0),
     testType: testType || 'all',
     period
   });

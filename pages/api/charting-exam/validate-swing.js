@@ -76,7 +76,7 @@ async function validateSwingHandler(req, res) {
   });
   
   await testResult.save();
-  console.log(`Test result saved for user ${userId}, score: ${validationResult.score}/${validationResult.totalExpectedPoints}`);
+  console.log(`Test result saved, score: ${validationResult.score}/${validationResult.totalExpectedPoints}`);
   
   return res.status(200).json({
     success: true,

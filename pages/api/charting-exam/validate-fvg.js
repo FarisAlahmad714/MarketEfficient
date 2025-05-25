@@ -60,7 +60,7 @@ async function validateFvgHandler(req, res) {
   });
   
   await testResult.save();
-  console.log(`FVG test result saved for user ${userId}, score: ${validationResult.score}/${validationResult.totalExpectedPoints}`);
+  console.log(`FVG test result saved, score: ${validationResult.score}/${validationResult.totalExpectedPoints}`);
   
   return res.status(200).json({
     success: true,

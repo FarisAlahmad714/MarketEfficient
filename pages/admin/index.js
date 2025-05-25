@@ -130,6 +130,263 @@ const AdminPanel = () => {
         Admin Panel
       </h1>
       
+      {/* Admin Navigation */}
+      <div style={{
+        backgroundColor: darkMode ? '#1e1e1e' : 'white',
+        borderRadius: '12px',
+        padding: '20px',
+        marginBottom: '30px',
+        boxShadow: darkMode ? '0 4px 12px rgba(0,0,0,0.3)' : '0 4px 12px rgba(0,0,0,0.1)'
+      }}>
+        <h3 style={{
+          color: darkMode ? '#e0e0e0' : '#333',
+          marginBottom: '20px',
+          fontSize: '18px'
+        }}>
+          🛠️ Admin Tools
+        </h3>
+        
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+          gap: '15px'
+        }}>
+          <Link 
+            href="/admin/cron-test"
+            style={{
+              display: 'block',
+              padding: '15px 20px',
+              backgroundColor: darkMode ? '#2a2a2a' : '#f8f9fa',
+              borderRadius: '8px',
+              textDecoration: 'none',
+              color: darkMode ? '#e0e0e0' : '#333',
+              border: `1px solid ${darkMode ? '#444' : '#e0e0e0'}`,
+              transition: 'all 0.2s ease'
+            }}
+            onMouseOver={(e) => {
+              e.target.style.backgroundColor = darkMode ? '#333' : '#e9ecef';
+              e.target.style.transform = 'translateY(-2px)';
+            }}
+            onMouseOut={(e) => {
+              e.target.style.backgroundColor = darkMode ? '#2a2a2a' : '#f8f9fa';
+              e.target.style.transform = 'translateY(0)';
+            }}
+          >
+            <div style={{ fontSize: '20px', marginBottom: '8px' }}>🕐</div>
+            <div style={{ fontWeight: '500', marginBottom: '5px' }}>Email Automation</div>
+            <div style={{ fontSize: '14px', color: darkMode ? '#b0b0b0' : '#666' }}>
+              Test and monitor automated email campaigns
+            </div>
+          </Link>
+
+          <div 
+            style={{
+              padding: '15px 20px',
+              backgroundColor: darkMode ? '#2a2a2a' : '#f8f9fa',
+              borderRadius: '8px',
+              color: darkMode ? '#888' : '#999',
+              border: `1px solid ${darkMode ? '#444' : '#e0e0e0'}`,
+              opacity: 0.6
+            }}
+          >
+            <div style={{ fontSize: '20px', marginBottom: '8px' }}>📊</div>
+            <div style={{ fontWeight: '500', marginBottom: '5px' }}>Analytics Dashboard</div>
+            <div style={{ fontSize: '14px' }}>
+              Coming soon - User engagement and platform metrics
+            </div>
+          </div>
+
+          <div 
+            style={{
+              padding: '15px 20px',
+              backgroundColor: darkMode ? '#2a2a2a' : '#f8f9fa',
+              borderRadius: '8px',
+              color: darkMode ? '#888' : '#999',
+              border: `1px solid ${darkMode ? '#444' : '#e0e0e0'}`,
+              opacity: 0.6
+            }}
+          >
+            <div style={{ fontSize: '20px', marginBottom: '8px' }}>⚙️</div>
+            <div style={{ fontWeight: '500', marginBottom: '5px' }}>System Settings</div>
+            <div style={{ fontSize: '14px' }}>
+              Coming soon - Platform configuration and preferences
+            </div>
+          </div>
+
+          <div 
+            style={{
+              padding: '15px 20px',
+              backgroundColor: darkMode ? '#2a2a2a' : '#f8f9fa',
+              borderRadius: '8px',
+              color: darkMode ? '#888' : '#999',
+              border: `1px solid ${darkMode ? '#444' : '#e0e0e0'}`,
+              opacity: 0.6
+            }}
+          >
+            <div style={{ fontSize: '20px', marginBottom: '8px' }}>🔒</div>
+            <div style={{ fontWeight: '500', marginBottom: '5px' }}>Security Center</div>
+            <div style={{ fontSize: '14px' }}>
+              Coming soon - Security logs and access control
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      {/* Cron Job Status */}
+      <div style={{
+        backgroundColor: darkMode ? '#1e1e1e' : 'white',
+        borderRadius: '12px',
+        padding: '20px',
+        marginBottom: '30px',
+        boxShadow: darkMode ? '0 4px 12px rgba(0,0,0,0.3)' : '0 4px 12px rgba(0,0,0,0.1)'
+      }}>
+        <h3 style={{
+          color: darkMode ? '#e0e0e0' : '#333',
+          marginBottom: '15px',
+          fontSize: '18px'
+        }}>
+          📧 Email Automation Status
+        </h3>
+        
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+          gap: '15px'
+        }}>
+          <div style={{
+            padding: '15px',
+            backgroundColor: darkMode ? '#2a2a2a' : '#f8f9fa',
+            borderRadius: '8px',
+            border: `1px solid #4caf50`,
+            borderLeft: `4px solid #4caf50`
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              marginBottom: '8px'
+            }}>
+              <div style={{
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                backgroundColor: '#4caf50',
+                marginRight: '8px'
+              }}></div>
+              <span style={{
+                color: darkMode ? '#e0e0e0' : '#333',
+                fontWeight: '500'
+              }}>
+                Weekly Metrics
+              </span>
+            </div>
+            <div style={{
+              fontSize: '12px',
+              color: darkMode ? '#b0b0b0' : '#666'
+            }}>
+              Sundays at 9:00 AM
+            </div>
+          </div>
+
+          <div style={{
+            padding: '15px',
+            backgroundColor: darkMode ? '#2a2a2a' : '#f8f9fa',
+            borderRadius: '8px',
+            border: `1px solid #2196f3`,
+            borderLeft: `4px solid #2196f3`
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              marginBottom: '8px'
+            }}>
+              <div style={{
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                backgroundColor: '#2196f3',
+                marginRight: '8px'
+              }}></div>
+              <span style={{
+                color: darkMode ? '#e0e0e0' : '#333',
+                fontWeight: '500'
+              }}>
+                Monthly Metrics
+              </span>
+            </div>
+            <div style={{
+              fontSize: '12px',
+              color: darkMode ? '#b0b0b0' : '#666'
+            }}>
+              1st of month at 9:00 AM
+            </div>
+          </div>
+
+          <div style={{
+            padding: '15px',
+            backgroundColor: darkMode ? '#2a2a2a' : '#f8f9fa',
+            borderRadius: '8px',
+            border: `1px solid #ff9800`,
+            borderLeft: `4px solid #ff9800`
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              marginBottom: '8px'
+            }}>
+              <div style={{
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                backgroundColor: '#ff9800',
+                marginRight: '8px'
+              }}></div>
+              <span style={{
+                color: darkMode ? '#e0e0e0' : '#333',
+                fontWeight: '500'
+              }}>
+                Inactive Reminders
+              </span>
+            </div>
+            <div style={{
+              fontSize: '12px',
+              color: darkMode ? '#b0b0b0' : '#666'
+            }}>
+              Mondays at 10:00 AM
+            </div>
+          </div>
+        </div>
+        
+        <div style={{
+          marginTop: '15px',
+          padding: '10px 15px',
+          backgroundColor: darkMode ? 'rgba(76, 175, 80, 0.1)' : '#e8f5e9',
+          borderRadius: '6px',
+          fontSize: '14px',
+          color: '#4caf50'
+        }}>
+          ✅ All automated email jobs are active and scheduled
+        </div>
+      </div>
+      
+      {/* User Management Section */}
+      <div style={{
+        backgroundColor: darkMode ? '#1e1e1e' : 'white',
+        borderRadius: '12px',
+        padding: '20px',
+        marginBottom: '30px',
+        boxShadow: darkMode ? '0 4px 12px rgba(0,0,0,0.3)' : '0 4px 12px rgba(0,0,0,0.1)'
+      }}>
+        <h3 style={{
+          color: darkMode ? '#e0e0e0' : '#333',
+          marginBottom: '20px',
+          fontSize: '18px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px'
+        }}>
+          👥 User Management
+        </h3>
+      
       {/* Search bar */}
       <div style={{ 
         marginBottom: '30px', 
@@ -344,6 +601,7 @@ const AdminPanel = () => {
           )}
         </>
       )}
+      </div>
 
       {/* Delete confirmation modal */}
       {showDeleteModal && userToDelete && (

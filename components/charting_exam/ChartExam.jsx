@@ -114,7 +114,7 @@ const ChartExam = ({ examType }) => {
   const fetchChartData = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/charting-exam/fetch-chart');
+      const response = await fetch(`/api/charting-exam/fetch-chart?examType=${examType}`);
       const data = await response.json();
       
       if (data.chart_data && data.chart_data.length > 0) {

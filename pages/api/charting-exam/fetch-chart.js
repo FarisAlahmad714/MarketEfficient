@@ -15,7 +15,8 @@ const ASSETS = [
   { type: 'crypto', symbol: 'link', apiId: 'chainlink' }
 ];
 
-const TIMEFRAMES = ['1h', '4h', '1d', '1w'];
+const TIMEFRAMES_ALL = ['1h', '4h', '1d', '1w'];
+const TIMEFRAMES_FVG = ['1h', '4h', '1d'];
 
 // Fallback sample data
 const getSampleChartData = () => {
@@ -31,10 +32,18 @@ const getSampleChartData = () => {
 
 async function fetchChartHandler(req, res) {
   const chartCount = req.session?.chartCount || 1;
+  
+  // Get examType from query parameters
+  const examType = req.query.examType || req.body?.examType;
+  
+  // Select appropriate timeframes based on exam type
+  const timeframes = examType === 'fair-value-gaps' ? TIMEFRAMES_FVG : TIMEFRAMES_ALL;
+  
+  console.log(`Fetching chart for exam type: ${examType}, available timeframes:`, timeframes);
 
   // Randomly select asset and timeframe
   const asset = ASSETS[Math.floor(Math.random() * ASSETS.length)];
-  const timeframe = TIMEFRAMES[Math.floor(Math.random() * TIMEFRAMES.length)];
+  const timeframe = timeframes[Math.floor(Math.random() * timeframes.length)];
 
   // Map timeframe to API parameters
   let apiTimeframe, days;

@@ -17,11 +17,11 @@ if (process.argv.length > 2 && process.argv[2] === '--help') {
   console.log('\nUsage:');
   console.log('  node scripts/test-migration.js [email] [password]');
   console.log('\nExamples:');
-  console.log('  node scripts/test-migration.js test@example.com Test123!');
-  console.log('  node scripts/test-migration.js your@email.com yourpassword');
+  console.log('  node scripts/test-migration.js [email] [password]');
+  console.log('  node scripts/test-migration.js [your-email] [your-password]');
   console.log('\nOr set in .env.local:');
-  console.log('  TEST_USER_EMAIL=your@email.com');
-  console.log('  TEST_USER_PASSWORD=yourpassword');
+  console.log('  TEST_USER_EMAIL=[your-email]');
+  console.log('  TEST_USER_PASSWORD=[your-password]');
   process.exit(0);
 }
 
@@ -90,7 +90,7 @@ async function runTests() {
   
   // Test 1: Login to get token
   try {
-    log(`Attempting login with: ${TEST_USER.email}`, 'info');
+    log('Attempting login with test credentials...', 'info');
     const loginResponse = await axios.post(`${API_URL}/api/auth/login`, TEST_USER);
     token = loginResponse.data.token;
     log('✅ Login successful', 'success');
@@ -99,10 +99,10 @@ async function runTests() {
     log(`Error: ${error.response?.data?.error || error.message}`, 'error');
     log('\nTo fix this:', 'info');
     log('1. Create a test user: node scripts/create-test-user.js', 'info');
-    log('2. Or use your credentials: node scripts/test-migration.js your@email.com yourpassword', 'info');
+    log('2. Or use your credentials: node scripts/test-migration.js [email] [password]', 'info');
     log('3. Or add to .env.local:', 'info');
-    log('   TEST_USER_EMAIL=your@email.com', 'info');
-    log('   TEST_USER_PASSWORD=yourpassword', 'info');
+    log('   TEST_USER_EMAIL=[your-email]', 'info');
+    log('   TEST_USER_PASSWORD=[your-password]', 'info');
     return;
   }
   

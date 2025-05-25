@@ -16,7 +16,7 @@ setInterval(() => {
   Object.keys(sessions).forEach(key => {
     if (sessions[key].timestamp && (now - sessions[key].timestamp) > SESSION_EXPIRY) {
       delete sessions[key];
-      console.log(`Cleaned up expired session: ${key}`);
+      console.log('Cleaned up expired session');
     }
   });
 }, 15 * 60 * 1000); // Check every 15 minutes

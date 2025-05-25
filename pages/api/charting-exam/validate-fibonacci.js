@@ -71,7 +71,7 @@ export default async function handler(req, res) {
     });
     
     await testResult.save();
-    console.log(`Fibonacci test result saved for user ${userId}, score: ${validationResult.score}/${validationResult.totalExpectedPoints}`);
+    console.log(`Fibonacci test result saved, score: ${validationResult.score}/${validationResult.totalExpectedPoints}`);
     
     return res.status(200).json({
       success: true,

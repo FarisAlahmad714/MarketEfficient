@@ -75,6 +75,20 @@ const UserSchema = new mongoose.Schema({
   },
   lockUntil: Date,
   lastLogin: Date,
+  notifications: {
+    email: {
+      type: Boolean,
+      default: true
+    },
+    metrics: {
+      type: Boolean,
+      default: true
+    },
+    reminders: {
+      type: Boolean,
+      default: true
+    }
+  },
   createdAt: {
     type: Date,
     default: Date.now
@@ -86,7 +100,6 @@ const UserSchema = new mongoose.Schema({
 });
 
 // Index for performance
-UserSchema.index({ email: 1 });
 UserSchema.index({ verificationToken: 1 });
 UserSchema.index({ resetPasswordToken: 1 });
 

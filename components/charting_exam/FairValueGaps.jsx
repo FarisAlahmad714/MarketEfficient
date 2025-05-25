@@ -17,6 +17,7 @@ const ChartWrapper = styled.div`
 const ChartContainer = styled.div`
   width: 100%;
   height: 100%;
+  position: relative;
 `;
 
 const FVGPanel = styled.div`
@@ -197,7 +198,7 @@ const FairValueGaps = ({
   const [panelOffset, setPanelOffset] = useState({ x: 10, y: 10 });
   const [isDragging, setIsDragging] = useState(false);
   const [currentCoords, setCurrentCoords] = useState({ x: 0, y: 0 });
-  const [fvgPermanentLabels, setFvgPermanentLabels] = useState([]);
+  const [expectedFVGMarkers, setExpectedFVGMarkers] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showClearNotification, setShowClearNotification] = useState(false);
   const [prevPart, setPrevPart] = useState(part);
@@ -293,8 +294,15 @@ const FairValueGaps = ({
   // Process validation results - add labels to existing FVG visualizations
   useEffect(() => {
     if (validationResults && chartRef.current) {
+      console.log('Processing validation results with', validationResults.expected?.gaps?.length || 0, 'expected gaps');
+      
+      // Clear existing labels first
       clearFVGVisualElements();
-      drawFVGLabels();
+      
+      // Wait a bit longer to ensure chart is fully ready
+      setTimeout(() => {
+        drawFVGLabels();
+      }, 500);
     }
   }, [validationResults]);
 
@@ -471,101 +479,88 @@ const FairValueGaps = ({
   const drawFVGLabels = () => {
     try {
       if (!validationResults?.expected?.gaps || !chartRef.current || !chartContainerRef.current) {
+        console.log('Missing required data for drawing FVG labels');
         return;
       }
       
-      const sortedGaps = [...validationResults.expected.gaps].sort((a, b) => b.topPrice - a.topPrice);
-      const newPermanentLabels = [];
+      console.log('Drawing', validationResults.expected.gaps.length, 'FVG labels');
       
+      const sortedGaps = [...validationResults.expected.gaps].sort((a, b) => b.topPrice - a.topPrice);
+      const newExpectedMarkers = [];
+      
+      // First, draw visual rectangles for the FVGs
       sortedGaps.forEach((gap, index) => {
-        const fvgNumber = index + 1;
-        const labelColor = gap.type === 'bullish' ? '#4CAF50' : '#F44336';
-        
         try {
-          const miniLabel = document.createElement('div');
-          miniLabel.className = 'fvg-mini-label';
-          miniLabel.style.position = 'absolute';
-          miniLabel.style.backgroundColor = labelColor;
-          miniLabel.style.color = 'white';
-          miniLabel.style.padding = '2px 6px';
-          miniLabel.style.borderRadius = '10px';
-          miniLabel.style.fontSize = '11px';
-          miniLabel.style.fontWeight = 'bold';
-          miniLabel.style.zIndex = '1000';
-          miniLabel.style.pointerEvents = 'auto';
-          miniLabel.style.cursor = 'pointer';
-          miniLabel.style.boxShadow = '0 1px 3px rgba(0,0,0,0.3)';
-          miniLabel.style.transition = 'transform 0.2s, box-shadow 0.2s';
-          miniLabel.textContent = `#${fvgNumber}`;
+          const color = gap.type === 'bullish' ? colors.correctBullish : colors.correctBearish;
           
-          miniLabel.dataset.fvgNumber = fvgNumber;
-          miniLabel.dataset.startTime = gap.startTime;
-          miniLabel.dataset.topPrice = gap.topPrice;
-          miniLabel.dataset.bottomPrice = gap.bottomPrice;
-          miniLabel.dataset.type = gap.type;
-          
-          const tooltip = document.createElement('div');
-          tooltip.style.position = 'absolute';
-          tooltip.style.backgroundColor = 'rgba(0, 0, 0, 0.9)';
-          tooltip.style.color = 'white';
-          tooltip.style.padding = '8px 12px';
-          tooltip.style.borderRadius = '4px';
-          tooltip.style.fontSize = '12px';
-          tooltip.style.whiteSpace = 'nowrap';
-          tooltip.style.pointerEvents = 'none';
-          tooltip.style.opacity = '0';
-          tooltip.style.transition = 'opacity 0.2s';
-          tooltip.style.zIndex = '1001';
-          tooltip.innerHTML = `
-            <div style="font-weight:bold;margin-bottom:4px;">FVG #${fvgNumber} (${gap.type})</div>
-            <div>Range: ${gap.bottomPrice.toFixed(2)} - ${gap.topPrice.toFixed(2)}</div>
-            <div>Size: ${(gap.topPrice - gap.bottomPrice).toFixed(2)}</div>
-          `;
-          
-          miniLabel.addEventListener('mouseenter', (e) => {
-            miniLabel.style.transform = 'scale(1.2)';
-            miniLabel.style.boxShadow = '0 0 0 3px rgba(255,255,255,0.3)';
-            
-            const rect = miniLabel.getBoundingClientRect();
-            const containerRect = chartContainerRef.current.getBoundingClientRect();
-            
-            tooltip.style.left = `${rect.left - containerRect.left + rect.width + 10}px`;
-            tooltip.style.top = `${rect.top - containerRect.top}px`;
-            tooltip.style.opacity = '1';
-            
-            if (rect.left + rect.width + 200 > containerRect.right) {
-              tooltip.style.left = `${rect.left - containerRect.left - 200}px`;
+          // Add markers to show FVG boundaries at specific times (like user drawings)
+          const fvgMarkers = [
+            {
+              time: gap.startTime,
+              position: 'inBar',
+              color: color,
+              shape: 'square',
+              text: `Expected ${gap.type === 'bullish' ? 'B' : 'S'}-FVG #${index + 1} Start`
+            },
+            {
+              time: gap.endTime,
+              position: 'inBar',
+              color: color,
+              shape: 'square',
+              text: `Expected ${gap.type === 'bullish' ? 'B' : 'S'}-FVG #${index + 1} End`
             }
+          ];
+          
+          // Track these markers for later cleanup
+          newExpectedMarkers.push(...fvgMarkers);
+          
+          // Add the markers to the chart
+          const existingMarkers = candleSeriesRef.current.markers() || [];
+          const allMarkers = [...existingMarkers, ...fvgMarkers].sort((a, b) => a.time - b.time);
+          candleSeriesRef.current.setMarkers(allMarkers);
+          
+          // Add horizontal lines that extend from FVG start time to right edge (like the reference code)
+          const rightEdge = Math.max(...chartData.map(d => d.time)) + 86400; // Add one day buffer
+          
+          const topSeries = chartRef.current.addLineSeries({
+            color: color,
+            lineWidth: 2,
+            lineStyle: 0, // Solid
+            lastValueVisible: false,
+            priceLineVisible: false,
+            crosshairMarkerVisible: false
           });
           
-          miniLabel.addEventListener('mouseleave', () => {
-            miniLabel.style.transform = 'scale(1)';
-            miniLabel.style.boxShadow = '0 1px 3px rgba(0,0,0,0.3)';
-            tooltip.style.opacity = '0';
+          const bottomSeries = chartRef.current.addLineSeries({
+            color: color,
+            lineWidth: 2,
+            lineStyle: 0, // Solid
+            lastValueVisible: false,
+            priceLineVisible: false,
+            crosshairMarkerVisible: false
           });
           
-          chartContainerRef.current.appendChild(miniLabel);
-          chartContainerRef.current.appendChild(tooltip);
+          // Set data for lines extending from start time to right edge
+          topSeries.setData([
+            { time: gap.startTime, value: gap.topPrice },
+            { time: rightEdge, value: gap.topPrice }
+          ]);
           
-          newPermanentLabels.push({ 
-            element: miniLabel, 
-            tooltip: tooltip,
-            gap: gap,
-            index: index
-          });
+          bottomSeries.setData([
+            { time: gap.startTime, value: gap.bottomPrice },
+            { time: rightEdge, value: gap.bottomPrice }
+          ]);
+          
+          // Track these series for cleanup
+          newExpectedMarkers.push({ topSeries, bottomSeries, isLineSeries: true });
           
         } catch (error) {
-          console.error('Error creating FVG label:', error);
+          console.error('Error drawing FVG markers:', error);
         }
       });
       
-      setFvgPermanentLabels(newPermanentLabels);
-      
-      setTimeout(() => {
-        updateFVGPositions();
-      }, 100);
-      
-      setupChartEventListeners();
+      setExpectedFVGMarkers(newExpectedMarkers);
+      console.log(`Successfully created FVG visualization without labels`);
       
     } catch (error) {
       console.error('Error in drawFVGLabels:', error);
@@ -574,100 +569,31 @@ const FairValueGaps = ({
 
   // Clear FVG visual elements
   const clearFVGVisualElements = () => {
-    fvgPermanentLabels.forEach(({ element, tooltip }) => {
-      if (element && element.parentNode) {
-        element.parentNode.removeChild(element);
-      }
-      if (tooltip && tooltip.parentNode) {
-        tooltip.parentNode.removeChild(tooltip);
-      }
-    });
-    setFvgPermanentLabels([]);
-    
-    const existingLabels = chartContainerRef.current?.querySelectorAll('.fvg-mini-label');
-    existingLabels?.forEach(label => label.remove());
-  };
-
-  // Update positions when chart changes
-  const updateFVGPositions = () => {
-    if (!chartRef.current || !chartContainerRef.current) return;
-    
-    const timeScale = chartRef.current.timeScale();
-    const priceScale = chartRef.current.priceScale('right');
-    
-    fvgPermanentLabels.forEach(({ element, tooltip, gap }) => {
-      try {
-        const x = timeScale.timeToCoordinate(gap.startTime);
-        const midPrice = (gap.topPrice + gap.bottomPrice) / 2;
-        const y = priceScale.priceToCoordinate(midPrice);
-        
-        if (x !== null && y !== null) {
-          element.style.left = `${x + 5}px`;
-          element.style.top = `${y - 10}px`;
-          element.style.display = 'block';
-          
-          if (tooltip.style.opacity === '1') {
-            const rect = element.getBoundingClientRect();
-            const containerRect = chartContainerRef.current.getBoundingClientRect();
-            
-            tooltip.style.left = `${rect.left - containerRect.left + rect.width + 10}px`;
-            tooltip.style.top = `${rect.top - containerRect.top}px`;
+    // Clear expected FVG markers and line series
+    if (candleSeriesRef.current && expectedFVGMarkers.length > 0) {
+      const currentMarkers = candleSeriesRef.current.markers() || [];
+      const filteredMarkers = currentMarkers.filter(marker => {
+        return !expectedFVGMarkers.some(expectedMarker => 
+          expectedMarker.time === marker.time && 
+          expectedMarker.position === marker.position && 
+          expectedMarker.text === marker.text
+        );
+      });
+      candleSeriesRef.current.setMarkers(filteredMarkers);
+      
+      // Also remove line series
+      expectedFVGMarkers.forEach(item => {
+        if (item.isLineSeries && item.topSeries && item.bottomSeries) {
+          try {
+            chartRef.current.removeSeries(item.topSeries);
+            chartRef.current.removeSeries(item.bottomSeries);
+          } catch (error) {
+            console.error('Error removing line series:', error);
           }
-        } else {
-          element.style.display = 'none';
-          tooltip.style.opacity = '0';
         }
-      } catch (error) {
-        console.error('Error updating label position:', error);
-      }
-    });
-  };
-
-  // Setup chart event listeners
-  const setupChartEventListeners = () => {
-    if (!chartRef.current) return;
-    
-    try {
-      const timeScaleHandler = () => {
-        requestAnimationFrame(updateFVGPositions);
-      };
-      chartRef.current.timeScale().subscribeVisibleTimeRangeChange(timeScaleHandler);
-      
-      try {
-        const priceScaleHandler = () => {
-          requestAnimationFrame(updateFVGPositions);
-        };
-        chartRef.current.priceScale('right').subscribeVisiblePriceRangeChange(priceScaleHandler);
-      } catch (e) {
-        console.log('Price scale events not supported in this version');
-      }
-      
-      const crosshairHandler = () => {
-        requestAnimationFrame(updateFVGPositions);
-      };
-      chartRef.current.subscribeCrosshairMove(crosshairHandler);
-      
-      const resizeHandler = () => {
-        setTimeout(() => {
-          updateFVGPositions();
-        }, 100);
-      };
-      window.removeEventListener('resize', resizeHandler);
-      window.addEventListener('resize', resizeHandler);
-      
-      return () => {
-        try {
-          chartRef.current.timeScale().unsubscribeVisibleTimeRangeChange(timeScaleHandler);
-          chartRef.current.priceScale('right').unsubscribeVisiblePriceRangeChange(priceScaleHandler);
-          chartRef.current.unsubscribeCrosshairMove(crosshairHandler);
-          window.removeEventListener('resize', resizeHandler);
-        } catch (e) {
-          console.error('Error cleaning up event handlers:', e);
-        }
-      };
-    } catch (error) {
-      console.error('Error in setupChartEventListeners:', error);
+      });
     }
+    setExpectedFVGMarkers([]);
   };
 
   // Remove last drawing
@@ -994,4 +920,4 @@ const FairValueGaps = ({
   );
 };
 
-export default FairValueGaps;
+export default FairValueGaps;                

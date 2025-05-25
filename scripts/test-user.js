@@ -39,7 +39,7 @@ async function createTestUser() {
     const existingUser = await User.findOne({ email: testEmail });
     
     if (existingUser) {
-      console.log(`Test user already exists with email: ${testEmail}`);
+      console.log('Test user already exists - updating credentials');
       
       // Update password in case it's different
       const hashedPassword = await bcrypt.hash(testPassword, 10);
@@ -66,8 +66,8 @@ async function createTestUser() {
     }
     
     console.log('\n✅ Test user ready:');
-    console.log(`Email: ${testEmail}`);
-    console.log(`Password: ${testPassword}`);
+    console.log('Email: [HIDDEN FOR SECURITY]');
+    console.log('Password: [HIDDEN FOR SECURITY]');
     console.log('\nYou can now run: node scripts/test-migration.js');
     
     // Close connection

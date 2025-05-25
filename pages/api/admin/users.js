@@ -5,6 +5,7 @@ import { createApiHandler } from '../../../lib/api-handler';
 import { requireAdmin } from '../../../middleware/auth';
 import { composeMiddleware } from '../../../lib/api-handler';
 import User from '../../../models/User';
+import TestResults from '../../../models/TestResults';
 
 async function usersHandler(req, res) {
   // User is already authenticated and verified as admin via middleware
@@ -81,12 +82,12 @@ async function usersHandler(req, res) {
     // Delete the user
     await User.findByIdAndDelete(userId);
     
-    // TODO: Add cascading deletion for related data if needed
-    // Example: await TestResults.deleteMany({ userId });
+    // Cascading deletion for related data
+    await TestResults.deleteMany({ userId });
     
     return res.status(200).json({ 
       success: true, 
-      message: 'User deleted successfully' 
+      message: 'User and all related data deleted successfully' 
     });
   } 
   else {

@@ -131,7 +131,7 @@ async function saveResultsHandler(req, res) {
     }
     
     await testResult.save();
-    console.log(`Bias test result saved for user ${userId}, score: ${finalScore}/${totalPoints} for ${assetSymbol}`);
+    console.log(`Bias test result saved, score: ${finalScore}/${totalPoints} for ${assetSymbol}`);
     
     return res.status(200).json({
       success: true,
