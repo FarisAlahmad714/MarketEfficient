@@ -1,5 +1,5 @@
-import mongoose from 'mongoose';
-import bcrypt from 'bcrypt';
+const mongoose = require('mongoose');
+const bcrypt = require('bcrypt');
 
 const UserSchema = new mongoose.Schema({
   name: {
@@ -88,6 +88,33 @@ const UserSchema = new mongoose.Schema({
       type: Boolean,
       default: true
     }
+  },
+  // Subscription related fields
+  subscriptionStatus: {
+    type: String,
+    enum: ['none', 'active', 'inactive', 'cancelled', 'past_due', 'trialing'],
+    default: 'none'
+  },
+  subscriptionTier: {
+    type: String,
+    enum: ['free', 'monthly', 'annual', 'admin'],
+    default: 'free'
+  },
+  hasActiveSubscription: {
+    type: Boolean,
+    default: false
+  },
+  trialUsed: {
+    type: Boolean,
+    default: false
+  },
+  registrationPromoCode: {
+    type: String,
+    required: false // Store the promo code used during registration
+  },
+  hasReceivedWelcomeEmail: {
+    type: Boolean,
+    default: false
   },
   createdAt: {
     type: Date,
@@ -178,10 +205,28 @@ UserSchema.methods.isPasswordExpired = function() {
   return false;
 };
 
+// Method to update subscription status
+UserSchema.methods.updateSubscriptionStatus = async function(status, tier) {
+  this.subscriptionStatus = status;
+  this.subscriptionTier = tier || this.subscriptionTier;
+  this.hasActiveSubscription = ['active', 'trialing'].includes(status);
+  return this.save();
+};
+
+// Method to check if user has access to premium features
+UserSchema.methods.hasPremiumAccess = function() {
+  return this.isAdmin || this.hasActiveSubscription || this.subscriptionTier === 'admin';
+};
+
+// Method to check if user can start a trial
+UserSchema.methods.canStartTrial = function() {
+  return !this.trialUsed && this.subscriptionStatus === 'none';
+};
+
 // Static method to find user by email (case-insensitive)
 UserSchema.statics.findByEmail = function(email) {
   return this.findOne({ email: email.toLowerCase().trim() });
 };
 
 // Prevent model overwrite during hot reloads
-export default mongoose.models.User || mongoose.model('User', UserSchema);
+module.exports = mongoose.models.User || mongoose.model('User', UserSchema);

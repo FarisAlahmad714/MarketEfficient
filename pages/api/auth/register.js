@@ -16,7 +16,7 @@ export default async function handler(req, res) {
         // Connect to database
         await connectDB();
         
-        const { name, email, password } = req.body;
+        const { name, email, password, promoCode } = req.body;
         
         // Validate input
         if (!name || !email || !password) {
@@ -67,28 +67,177 @@ export default async function handler(req, res) {
           email: email.toLowerCase().trim() 
         });
         if (existingUser) {
-          return res.status(409).json({ error: 'User already exists' });
+          return res.status(409).json({ error: 'An account with this email already exists. Please use a different email or login to your existing account.' });
         }
         
-        // Generate verification token
+        // Also check pending registrations
+        const PendingRegistration = require('../../../models/PendingRegistration');
+        const existingPending = await PendingRegistration.findOne({
+          email: email.toLowerCase().trim()
+        });
+        if (existingPending) {
+          return res.status(409).json({ error: 'A registration with this email is already pending. Please complete the payment or use a different email.' });
+        }
+        
+        // Validate promo code if provided
+        let promoCodeValid = false;
+        let promoCodeData = null;
+        
+        if (promoCode) {
+          try {
+            const PromoCode = require('../../../models/PromoCode');
+            const promoCodeDoc = await PromoCode.findValidCode(promoCode);
+            
+            if (promoCodeDoc && promoCodeDoc.isAvailable) {
+              promoCodeValid = true;
+              promoCodeData = promoCodeDoc;
+            }
+          } catch (error) {
+            console.error('Promo code validation error:', error);
+          }
+        }
+        
+        // If no promo code provided, create pending registration for payment
+        if (!promoCode) {
+          // No promo code - user must pay, create pending registration
+          const PendingRegistration = require('../../../models/PendingRegistration');
+          const bcrypt = require('bcrypt');
+          const passwordHash = await bcrypt.hash(password, 12);
+          
+          const pendingReg = await PendingRegistration.create({
+            name: name.trim(),
+            email: email.toLowerCase().trim(),
+            passwordHash: passwordHash,
+            plan: 'monthly' // Default plan, will be updated during checkout
+            // Don't include promoCode field at all when no promo code
+          });
+          
+          return res.status(201).json({
+            requiresPayment: true,
+            message: 'Registration pending. Please complete payment to activate your account.',
+            pendingRegistrationId: pendingReg._id,
+            promoCodeValid: false,
+            promoCodeData: null
+          });
+        }
+        
+        // Generate verification token (for promo code users only)
         const verificationToken = generateToken();
         const verificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
         
-        // Create new user
+        // Create new user (only for valid promo codes)
         const user = await User.create({
           name: name.trim(),
           email: email.toLowerCase().trim(),
           password,
           verificationToken,
           verificationTokenExpires,
-          createdAt: new Date()
+          registrationPromoCode: promoCodeValid ? promoCode : null,
+          createdAt: new Date(),
+          // Don't set hasActiveSubscription to true yet - wait for payment
+          hasActiveSubscription: false,
+          subscriptionStatus: 'none',
+          subscriptionTier: 'free',
+          hasReceivedWelcomeEmail: false
         });
         
-        // Send verification email
-        await sendVerificationEmail(user, verificationToken);
+        // Check if this is a paid promo code
+        let isPaidPromoCode = false;
+        if (promoCodeValid && promoCodeData) {
+          const { calculatePriceWithPromo } = require('../../../lib/subscriptionUtils');
+          const pricing = await calculatePriceWithPromo('monthly', promoCode);
+          isPaidPromoCode = pricing.finalPrice > 0;
+        }
         
-        // Send welcome email
-        await sendWelcomeEmail(user);
+        // For PAID promo codes - create pending registration instead of user
+        if (isPaidPromoCode) {
+          // Delete the user we just created - we'll create it after payment
+          await User.findByIdAndDelete(user._id);
+          
+          // Create pending registration
+          const PendingRegistration = require('../../../models/PendingRegistration');
+          const bcrypt = require('bcrypt');
+          const passwordHash = await bcrypt.hash(password, 12);
+          
+          // Check if pending registration already exists
+          await PendingRegistration.deleteOne({ email: email.toLowerCase().trim() });
+          
+          const pendingReg = await PendingRegistration.create({
+            name: name.trim(),
+            email: email.toLowerCase().trim(),
+            passwordHash: passwordHash,
+            promoCode: promoCode,
+            plan: 'monthly' // Default plan, will be updated during checkout
+          });
+          
+          // Return special response for paid promo codes
+          return res.status(201).json({
+            requiresPayment: true,
+            message: 'Registration pending. Please complete payment to activate your account.',
+            pendingRegistrationId: pendingReg._id,
+            promoCodeValid: true,
+                      promoCodeData: {
+              code: promoCodeData.code,
+              discountType: promoCodeData.discountType,
+              description: promoCodeData.description
+            }
+          });
+        }
+        
+        // For FREE promo codes - activate subscription immediately
+        if (promoCodeValid && promoCodeData) {
+          const { calculatePriceWithPromo } = require('../../../lib/subscriptionUtils');
+          const pricing = await calculatePriceWithPromo('monthly', promoCode);
+          
+          if (pricing.finalPrice === 0) {
+            // Free promo code - activate subscription
+            const { createOrUpdateSubscription } = require('../../../lib/subscriptionUtils');
+            await createOrUpdateSubscription(user._id, {
+              status: 'active',
+              plan: 'monthly',
+              amount: 0,
+              currency: 'usd',
+              currentPeriodStart: new Date(),
+              currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+              promoCodeUsed: promoCodeData._id,
+              discountAmount: pricing.discountAmount
+            });
+            
+            // Update user subscription status
+            user.hasActiveSubscription = true;
+            user.subscriptionStatus = 'active';
+            user.subscriptionTier = 'monthly';
+            await user.save();
+            
+            // CRITICAL: Mark promo code as used
+            try {
+              await promoCodeData.useCode(
+                user._id, 
+                pricing.originalPrice, 
+                pricing.discountAmount, 
+                pricing.finalPrice
+              );
+              console.log('✅ Promo code marked as used successfully');
+            } catch (useCodeError) {
+              console.error('❌ Error marking promo code as used:', useCodeError.message);
+              // Continue anyway - don't fail registration
+            }
+          }
+        }
+        
+        // Send verification email
+        try {
+          await sendVerificationEmail(user, verificationToken);
+        } catch (emailError) {
+          console.error('Failed to send verification email:', emailError);
+        }
+        
+        // DO NOT send welcome email here - wait for payment confirmation
+        // try {
+        //   await sendWelcomeEmail(user);
+        // } catch (emailError) {
+        //   console.error('Failed to send welcome email:', emailError);
+        // }
         
         // Generate JWT token
         const token = jwt.sign(
@@ -104,9 +253,18 @@ export default async function handler(req, res) {
             name: user.name,
             email: user.email,
             isVerified: user.isVerified,
-            isAdmin: user.isAdmin
+            isAdmin: user.isAdmin,
+            hasActiveSubscription: user.hasActiveSubscription,
+            subscriptionStatus: user.subscriptionStatus,
+            registrationPromoCode: user.registrationPromoCode
           },
           token,
+          promoCodeValid: promoCodeValid,
+          promoCodeData: promoCodeValid ? {
+            code: promoCodeData.code,
+            discountType: promoCodeData.discountType,
+            description: promoCodeData.description
+          } : null,
           message: 'Registration successful. Please check your email to verify your account.'
         });
       } catch (error) {

@@ -47,26 +47,34 @@ export const AuthProvider = ({ children }) => {
   }, []);
   
   // Register function
-  const register = async (name, email, password) => {
+  const register = async (name, email, password, promoCode) => {
     try {
       const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ name, email, password })
+        body: JSON.stringify({ name, email, password, promoCode })
       });
       
       if (response.ok) {
         const data = await response.json();
-        localStorage.setItem('auth_token', data.token);
         
         // Store user data for email verification flow
         localStorage.setItem('pending_verification_email', email);
         localStorage.setItem('pending_verification_name', name);
         
-        setUser(data.user);
-        setIsAuthenticated(true);
+        // Only log in user if user is already verified (email verification is required by default)
+        if (data.user.isVerified) {
+          localStorage.setItem('auth_token', data.token);
+          setUser(data.user);
+          setIsAuthenticated(true);
+        } else {
+          // Don't log in user until email is verified
+          // But still store token for payment processing if needed
+          localStorage.setItem('auth_token', data.token);
+        }
+        
         return true;
       }
       

@@ -6,6 +6,7 @@ import { requireAdmin } from '../../../middleware/auth';
 import { composeMiddleware } from '../../../lib/api-handler';
 import User from '../../../models/User';
 import TestResults from '../../../models/TestResults';
+import Subscription from '../../../models/Subscription';
 
 async function usersHandler(req, res) {
   // User is already authenticated and verified as admin via middleware
@@ -21,6 +22,9 @@ async function usersHandler(req, res) {
     const search = req.query.search || '';
     const searchRegex = new RegExp(search, 'i');
     
+    // Check if promo usage info is requested
+    const includePromoUsage = req.query.includePromoUsage === 'true';
+    
     // Build query
     const query = search 
       ? { $or: [
@@ -30,11 +34,31 @@ async function usersHandler(req, res) {
       : {};
     
     // Get users with pagination
-    const users = await User.find(query)
+    let users = await User.find(query)
       .select('-password -verificationToken -verificationTokenExpires -resetPasswordToken -resetPasswordExpires')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
+    
+    // If promo usage info is requested, get subscription details
+    if (includePromoUsage) {
+      users = await Promise.all(users.map(async (user) => {
+        const subscription = await Subscription.findOne({ userId: user._id })
+          .populate('promoCodeUsed', 'code description discountAmount');
+        
+        return {
+          ...user.toObject(),
+          subscription: subscription ? {
+            plan: subscription.plan,
+            status: subscription.status,
+            amount: subscription.amount,
+            promoCodeUsed: subscription.promoCodeUsed,
+            currentPeriodStart: subscription.currentPeriodStart,
+            currentPeriodEnd: subscription.currentPeriodEnd
+          } : null
+        };
+      }));
+    }
     
     // Get total users count for pagination
     const total = await User.countDocuments(query);

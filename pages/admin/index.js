@@ -152,6 +152,34 @@ const AdminPanel = () => {
           gap: '15px'
         }}>
           <Link 
+            href="/admin/promo-codes"
+            style={{
+              display: 'block',
+              padding: '15px 20px',
+              backgroundColor: darkMode ? '#2a2a2a' : '#f8f9fa',
+              borderRadius: '8px',
+              textDecoration: 'none',
+              color: darkMode ? '#e0e0e0' : '#333',
+              border: `1px solid ${darkMode ? '#444' : '#e0e0e0'}`,
+              transition: 'all 0.2s ease'
+            }}
+            onMouseOver={(e) => {
+              e.target.style.backgroundColor = darkMode ? '#333' : '#e9ecef';
+              e.target.style.transform = 'translateY(-2px)';
+            }}
+            onMouseOut={(e) => {
+              e.target.style.backgroundColor = darkMode ? '#2a2a2a' : '#f8f9fa';
+              e.target.style.transform = 'translateY(0)';
+            }}
+          >
+            <div style={{ fontSize: '20px', marginBottom: '8px' }}>🎫</div>
+            <div style={{ fontWeight: '500', marginBottom: '5px' }}>Promo Code Management</div>
+            <div style={{ fontSize: '14px', color: darkMode ? '#b0b0b0' : '#666' }}>
+              Create and manage promotional codes for discounts
+            </div>
+          </Link>
+
+          <Link 
             href="/admin/cron-test"
             style={{
               display: 'block',

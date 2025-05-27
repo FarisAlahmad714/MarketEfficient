@@ -1,10 +1,12 @@
 // pages/api/dashboard/user-metrics.js
 // MIGRATED VERSION - Using centralized middleware
 
-import { createApiHandler } from '../../../lib/api-handler';
 import { requireAuth } from '../../../middleware/auth';
-import { composeMiddleware } from '../../../lib/api-handler';
+import { requirePremiumAccess } from '../../../middleware/subscription';
+import { createApiHandler, composeMiddleware } from '../../../lib/api-handler';
 import TestResults from '../../../models/TestResults';
+import connectDB from '../../../lib/database';
+import User from '../../../models/User';
 
 async function userMetricsHandler(req, res) {
   // User is already authenticated via middleware
@@ -251,6 +253,6 @@ function generateTestTypeBreakdown(results) {
 
 // Export the wrapped handler with middleware
 export default createApiHandler(
-  composeMiddleware(requireAuth, userMetricsHandler),
+  composeMiddleware(requireAuth, requirePremiumAccess, userMetricsHandler),
   { methods: ['GET'] }
 );
