@@ -24,6 +24,8 @@ export default async function handler(req, res) {
             return await testMonthlyMetrics(req, res, userId);
           case 'inactive-reminders':
             return await testInactiveReminders(req, res);
+            case 'subscription-sync':
+            return await testSubscriptionSync(req, res);
           default:
             return res.status(400).json({ error: 'Invalid test type' });
         }
@@ -35,6 +37,65 @@ export default async function handler(req, res) {
       }
     });
   });
+}
+async function testSubscriptionSync(req, res) {
+  try {
+    const Subscription = require('../../../models/Subscription');
+    const User = require('../../../models/User');
+    const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+    
+    const subscriptions = await Subscription.find({
+      stripeSubscriptionId: { $exists: true, $ne: null },
+      status: { $in: ['active', 'trialing', 'past_due'] }
+    }).limit(10); // Limit for testing
+    
+    const results = [];
+    let updated = 0;
+    
+    for (const subscription of subscriptions) {
+      try {
+        const stripeSubscription = await stripe.subscriptions.retrieve(
+          subscription.stripeSubscriptionId
+        );
+        
+        if (stripeSubscription.status !== subscription.status) {
+          const oldStatus = subscription.status;
+          
+          subscription.status = stripeSubscription.status;
+          subscription.currentPeriodStart = new Date(stripeSubscription.current_period_start * 1000);
+          subscription.currentPeriodEnd = new Date(stripeSubscription.current_period_end * 1000);
+          await subscription.save();
+          
+          const user = await User.findById(subscription.userId);
+          if (user) {
+            await user.updateSubscriptionStatus(stripeSubscription.status, subscription.plan);
+          }
+          
+          updated++;
+          results.push({
+            subscriptionId: subscription._id,
+            email: user?.email,
+            oldStatus,
+            newStatus: stripeSubscription.status
+          });
+        }
+      } catch (error) {
+        results.push({
+          subscriptionId: subscription._id,
+          error: error.message
+        });
+      }
+    }
+    
+    return res.status(200).json({
+      message: 'Subscription sync test completed',
+      checked: subscriptions.length,
+      updated,
+      results
+    });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
 }
 
 async function testWeeklyMetrics(req, res, userId) {

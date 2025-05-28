@@ -4,6 +4,7 @@ import User from '../../../models/User';
 import Subscription from '../../../models/Subscription';
 import Payment from '../../../models/Payment';
 import PromoCode from '../../../models/PromoCode';
+import PaymentHistory from '../../../models/PaymentHistory';
 import connectDB from '../../../lib/database';
 import { sendWelcomeEmail, sendVerificationEmail } from '../../../lib/email-service';
 
@@ -75,6 +76,23 @@ export default async function handler(req, res) {
       case 'payment_intent.payment_failed':
         await handlePaymentIntentFailed(event.data.object);
         break;
+        case 'payment_intent.succeeded':
+    const paymentIntent = event.data.object;
+    await PaymentHistory.create({
+      userId: user._id,
+      stripePaymentIntentId: paymentIntent.id,
+      amount: paymentIntent.amount,
+      currency: paymentIntent.currency,
+      status: 'succeeded',
+      description: `${subscription.plan === 'monthly' ? 'Monthly' : 'Annual'} subscription payment`,
+      paymentMethod: paymentIntent.payment_method,
+      metadata: {
+        subscriptionId: subscription._id,
+        plan: subscription.plan
+      }
+    });
+    break;
+  
 
       default:
         console.log(`Unhandled event type: ${event.type}`);
@@ -400,13 +418,41 @@ async function handleInvoicePaymentFailed(invoice) {
 
 async function handlePaymentIntentSucceeded(paymentIntent) {
   try {
-    // This is mainly for one-time payments (promo codes)
     const metadata = paymentIntent.metadata;
     const userId = metadata?.userId;
 
     if (!userId) {
       console.log('No userId in payment intent metadata');
       return;
+    }
+
+    // Find the user and their subscription
+    const user = await User.findById(userId);
+    if (!user) {
+      console.error('User not found:', userId);
+      return;
+    }
+
+    const subscription = await Subscription.findOne({
+      userId: userId,
+      status: 'active'
+    }).sort({ createdAt: -1 });
+
+    if (subscription) {
+      // Create payment history record
+      await PaymentHistory.create({
+        userId: user._id,
+        stripePaymentIntentId: paymentIntent.id,
+        amount: paymentIntent.amount,
+        currency: paymentIntent.currency,
+        status: 'succeeded',
+        description: `${subscription.plan} subscription payment`,
+        paymentMethod: paymentIntent.payment_method,
+        metadata: {
+          subscriptionId: subscription._id,
+          plan: subscription.plan
+        }
+      });
     }
 
     console.log(`Payment intent succeeded: ${paymentIntent.id} for user ${userId}`);
