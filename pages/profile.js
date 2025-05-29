@@ -1,18 +1,25 @@
 // pages/profile.js
-// pages/profile.js
-import React, { useState, useEffect, useContext, useRef } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
+import { useRouter } from 'next/router';
 import { AuthContext } from '../contexts/AuthContext';
 import { ThemeContext } from '../contexts/ThemeContext';
-import { FaUser, FaCamera, FaCreditCard, FaHistory, FaCheckCircle, 
-         FaExclamationCircle, FaLock, FaSignOutAlt, FaBell } from 'react-icons/fa';
+import { FaUser, FaCamera, FaCreditCard, FaCheckCircle, 
+         FaExclamationCircle, FaLock, FaBell } from 'react-icons/fa';
 import Head from 'next/head';
 import CryptoLoader from '../components/CryptoLoader';
 
 const ProfilePage = () => {
   const { darkMode } = useContext(ThemeContext);
-  const { user, isAuthenticated } = useContext(AuthContext);
+  const { user, isAuthenticated, logout } = useContext(AuthContext);
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState('profile');
   const [profileImage, setProfileImage] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [subscription, setSubscription] = useState(null);
+  const [billingHistory, setBillingHistory] = useState([]);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveError, setSaveError] = useState(null);
+  
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -22,146 +29,64 @@ const ProfilePage = () => {
       app: true
     }
   });
-  const [subscriptionStatus, setSubscriptionStatus] = useState('inactive');
-  const [subscriptionTier, setSubscriptionTier] = useState(null);
-  const [paymentMethods, setPaymentMethods] = useState([]);
-  const [paymentHistory, setPaymentHistory] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [saveSuccess, setSaveSuccess] = useState(false);
-  const [saveError, setSaveError] = useState(null);
-  const [subscriptionData, setSubscriptionData] = useState(null);
 
-  
-  const cryptoLoaderRef = useRef(null);
-
-  // Fetch user data on component mount
   useEffect(() => {
+    if (!isAuthenticated) {
+      router.push('/auth/login');
+      return;
+    }
+    
     if (user) {
       setFormData({
         name: user.name || '',
         email: user.email || '',
         bio: user.bio || '',
-        notifications: user.notifications || {
-          email: true,
-          app: true
-        }
+        notifications: user.notifications || { email: true, app: true }
       });
-
-      // Fetch all data and wait for completion
-      Promise.all([
-        fetchUserSubscription(),
-        fetchPaymentMethods(),
-        fetchPaymentHistory(),
-        fetchProfileImage()
-      ]).then(() => {
-        if (cryptoLoaderRef.current) {
-          cryptoLoaderRef.current.hideLoader();
-          setTimeout(() => {
-            setLoading(false);
-          }, 500);
-        } else {
-          setLoading(false);
-        }
-      }).catch((error) => {
-        console.error('Error fetching profile data:', error);
-        setLoading(false);
-      });
+      fetchUserData();
     }
-  }, [user]);
+  }, [user, isAuthenticated]);
 
-  // Simulated fetch functions returning promises
-  const fetchUserSubscription = async () => {
+  const fetchUserData = async () => {
     try {
-      const response = await fetch('/api/user/subscription', {
+      setLoading(true);
+      const token = localStorage.getItem('auth_token');
+      
+      const response = await fetch('/api/user/subscription/details', {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${token}`
         }
       });
       
       if (!response.ok) throw new Error('Failed to fetch subscription');
       
       const data = await response.json();
-      
-      if (data.subscription) {
-        setSubscriptionStatus(data.subscription.status);
-        setSubscriptionTier(data.subscription.plan);
-        
-        // Store the full subscription data for later use
-        setSubscriptionData(data.subscription);
-      } else {
-        setSubscriptionStatus('inactive');
-        setSubscriptionTier(null);
-      }
-    } catch (error) {
-      console.error('Error fetching subscription:', error);
-      setSubscriptionStatus('inactive');
-      setSubscriptionTier(null);
+      setSubscription(data.subscription);
+      setBillingHistory(data.billingHistory || []);
+    } catch (err) {
+      console.error('Error fetching user data:', err);
+      setSaveError('Failed to load subscription data');
+    } finally {
+      setLoading(false);
     }
-  };
-
-  const fetchPaymentMethods = () => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        setPaymentMethods([
-          { id: 'card_123', type: 'card', last4: '4242', brand: 'Visa', expMonth: 12, expYear: 2025, isDefault: true },
-        ]);
-        resolve();
-      }, 700);
-    });
-  };
-
-  const fetchPaymentHistory = async () => {
-  try {
-    const response = await fetch('/api/user/subscription', {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      }
-    });
-    
-    if (!response.ok) throw new Error('Failed to fetch payment history');
-    
-    const data = await response.json();
-    
-    if (data.billingHistory) {
-      setPaymentHistory(data.billingHistory.map(payment => ({
-        id: payment._id,
-        amount: payment.amount / 100, // Convert cents to dollars
-        date: payment.createdAt,
-        status: payment.status === 'succeeded' ? 'paid' : payment.status,
-        description: payment.description
-      })));
-    }
-  } catch (error) {
-    console.error('Error fetching payment history:', error);
-    setPaymentHistory([]);
-  }
-};
-
-  const fetchProfileImage = () => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        setProfileImage(null); // Default no image
-        resolve();
-      }, 600);
-    });
   };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData({
-      ...formData,
+    setFormData(prev => ({
+      ...prev,
       [name]: value
-    });
+    }));
   };
 
   const handleNotificationChange = (type) => {
-    setFormData({
-      ...formData,
+    setFormData(prev => ({
+      ...prev,
       notifications: {
-        ...formData.notifications,
-        [type]: !formData.notifications[type]
+        ...prev.notifications,
+        [type]: !prev.notifications[type]
       }
-    });
+    }));
   };
 
   const handleImageUpload = (e) => {
@@ -175,168 +100,140 @@ const ProfilePage = () => {
     }
   };
 
-  const handleSaveProfile = () => {
+  const handleSaveProfile = async () => {
     setLoading(true);
-    setTimeout(() => {
+    setSaveError(null);
+    
+    try {
+      // Simulate save - replace with actual API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
       setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (error) {
+      setSaveError('Failed to save profile');
+    } finally {
       setLoading(false);
-      setTimeout(() => {
-        setSaveSuccess(false);
-      }, 3000);
-    }, 1000);
-  };
-
-  const handleSubscribe = () => {
-    console.log('Open subscription modal or redirect to Stripe');
+    }
   };
 
   const handleCancelSubscription = async () => {
-    if (!window.confirm('Are you sure you want to cancel your subscription? You will continue to have access until the end of your billing period.')) {
-      return;
-    }
+    if (!confirm('Are you sure you want to cancel your subscription?')) return;
     
     setLoading(true);
-    
     try {
+      const token = localStorage.getItem('auth_token');
       const response = await fetch('/api/user/subscription/cancel', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
       
       if (!response.ok) throw new Error('Failed to cancel subscription');
       
-      const data = await response.json();
       setSaveSuccess(true);
-      setSaveError(null);
-      
-      // Update local state
-      setSubscriptionData(data.subscription);
-      
-      // Show success message
-      setTimeout(() => {
-        setSaveSuccess(false);
-      }, 5000);
-      
-      // Refresh subscription data
-      await fetchUserSubscription();
+      setTimeout(() => setSaveSuccess(false), 5000);
+      await fetchUserData();
     } catch (error) {
-      console.error('Error canceling subscription:', error);
-      setSaveError('Failed to cancel subscription. Please try again.');
+      setSaveError('Failed to cancel subscription');
     } finally {
       setLoading(false);
     }
   };
-  
+
   const handleReactivateSubscription = async () => {
     setLoading(true);
-    
     try {
+      const token = localStorage.getItem('auth_token');
       const response = await fetch('/api/user/subscription/reactivate', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
       
       if (!response.ok) throw new Error('Failed to reactivate subscription');
       
-      const data = await response.json();
       setSaveSuccess(true);
-      setSaveError(null);
-      
-      // Update local state
-      setSubscriptionData(data.subscription);
-      
-      // Show success message
-      setTimeout(() => {
-        setSaveSuccess(false);
-      }, 5000);
-      
-      // Refresh subscription data
-      await fetchUserSubscription();
+      setTimeout(() => setSaveSuccess(false), 5000);
+      await fetchUserData();
     } catch (error) {
-      console.error('Error reactivating subscription:', error);
-      setSaveError('Failed to reactivate subscription. Please try again.');
+      setSaveError('Failed to reactivate subscription');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleAddPaymentMethod = () => {
-    console.log('Add payment method');
-  };
-
-  const getSubscriptionBadge = () => {
-    if (subscriptionStatus === 'active') {
-      return (
-        <div style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          backgroundColor: darkMode ? 'rgba(76, 175, 80, 0.2)' : 'rgba(76, 175, 80, 0.1)',
-          color: '#4CAF50',
-          padding: '4px 10px',
-          borderRadius: '999px',
-          fontSize: '12px',
-          fontWeight: '500',
-        }}>
-          <FaCheckCircle style={{ marginRight: '5px' }} />
-          Active
-        </div>
-      );
-    } else if (subscriptionStatus === 'trialing') {
-      return (
-        <div style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          backgroundColor: darkMode ? 'rgba(255, 193, 7, 0.2)' : 'rgba(255, 193, 7, 0.1)',
-          color: '#FFC107',
-          padding: '4px 10px',
-          borderRadius: '999px',
-          fontSize: '12px',
-          fontWeight: '500',
-        }}>
-          <FaExclamationCircle style={{ marginRight: '5px' }} />
-          Trial
-        </div>
-      );
-    } else {
-      return (
-        <div style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          backgroundColor: darkMode ? 'rgba(244, 67, 54, 0.2)' : 'rgba(244, 67, 54, 0.1)',
-          color: '#F44336',
-          padding: '4px 10px',
-          borderRadius: '999px',
-          fontSize: '12px',
-          fontWeight: '500',
-        }}>
-          <FaExclamationCircle style={{ marginRight: '5px' }} />
-          Inactive
-        </div>
-      );
+  const handleUpdatePayment = async () => {
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch('/api/user/subscription/update-payment', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) throw new Error('Failed to create payment update session');
+      
+      const { url } = await response.json();
+      
+      // Redirect to Stripe portal
+      window.location.href = url;
+    } catch (error) {
+      setSaveError('Failed to update payment method. Please try again.');
+      setTimeout(() => setSaveError(null), 5000);
+    } finally {
+      setLoading(false);
     }
   };
 
-  if (!isAuthenticated) {
+  const formatPrice = (cents) => {
+    return `$${(cents / 100).toFixed(2)}`;
+  };
+
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+  const getSubscriptionBadge = () => {
+    if (!subscription) return null;
+    
+    const badges = {
+      active: { icon: FaCheckCircle, text: 'Active', color: '#4CAF50' },
+      trialing: { icon: FaExclamationCircle, text: 'Trial', color: '#FFC107' },
+      cancelled: { icon: FaExclamationCircle, text: 'Cancelled', color: '#F44336' },
+      admin_access: { icon: FaCheckCircle, text: 'Admin Access', color: '#9C27B0' },
+      inactive: { icon: FaExclamationCircle, text: 'Inactive', color: '#F44336' }
+    };
+    
+    const badge = badges[subscription.status] || badges.inactive;
+    const Icon = badge.icon;
+    
     return (
       <div style={{
-        maxWidth: '600px',
-        margin: '80px auto',
-        padding: '30px',
-        textAlign: 'center',
-        backgroundColor: darkMode ? '#1e1e1e' : 'white',
-        borderRadius: '8px',
-        boxShadow: darkMode ? '0 4px 12px rgba(0,0,0,0.3)' : '0 4px 12px rgba(0,0,0,0.1)',
+        display: 'inline-flex',
+        alignItems: 'center',
+        backgroundColor: darkMode ? `${badge.color}33` : `${badge.color}1A`,
+        color: badge.color,
+        padding: '4px 10px',
+        borderRadius: '999px',
+        fontSize: '12px',
+        fontWeight: '500',
       }}>
-        <h2 style={{ color: darkMode ? '#e0e0e0' : '#333' }}>Please log in to view your profile</h2>
+        <Icon style={{ marginRight: '5px' }} />
+        {badge.text}
       </div>
     );
-  }
+  };
 
   if (loading) {
     return (
@@ -355,12 +252,9 @@ const ProfilePage = () => {
           overflow: 'hidden'
         }}>
           <CryptoLoader 
-            ref={cryptoLoaderRef}
-            message="Loading profile data..."
+            message="Loading profile..."
             minDisplayTime={1500}
             height="350px"
-            key={`profile-loader-${Date.now()}`}
-            forceDarkMode={darkMode}
           />
         </div>
       </div>
@@ -370,7 +264,7 @@ const ProfilePage = () => {
   return (
     <>
       <Head>
-        <title>Your Profile - Trading Platform</title>
+        <title>Profile - MarketEfficient</title>
         <meta name="description" content="Manage your profile and subscription" />
       </Head>
       
@@ -393,9 +287,8 @@ const ProfilePage = () => {
           flexWrap: 'wrap',
         }}>
           {/* Left sidebar */}
-          <div style={{
-            flex: '0 0 240px',
-          }}>
+          <div style={{ flex: '0 0 240px' }}>
+            {/* Profile Card */}
             <div style={{
               backgroundColor: darkMode ? '#1e1e1e' : 'white',
               borderRadius: '12px',
@@ -470,7 +363,7 @@ const ProfilePage = () => {
               
               {getSubscriptionBadge()}
               
-              {subscriptionTier && (
+              {subscription?.plan && (
                 <div style={{
                   marginTop: '10px',
                   padding: '4px 12px',
@@ -482,148 +375,47 @@ const ProfilePage = () => {
                   fontWeight: '500',
                   textTransform: 'capitalize',
                 }}>
-                  {subscriptionTier} Plan
+                  {subscription.plan} Plan
                 </div>
               )}
             </div>
             
+            {/* Navigation */}
             <div style={{
               backgroundColor: darkMode ? '#1e1e1e' : 'white',
               borderRadius: '12px',
               boxShadow: darkMode ? '0 4px 12px rgba(0,0,0,0.3)' : '0 4px 12px rgba(0,0,0,0.1)',
               overflow: 'hidden',
             }}>
-              <button 
-                onClick={() => setActiveTab('profile')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  width: '100%',
-                  padding: '12px 20px',
-                  backgroundColor: activeTab === 'profile' ? (darkMode ? '#333' : '#f5f7fa') : 'transparent',
-                  borderLeft: activeTab === 'profile' ? '4px solid #2196F3' : 'none',
-                  paddingLeft: activeTab === 'profile' ? '16px' : '20px',
-                  border: 'none',
-                  textAlign: 'left',
-                  cursor: 'pointer',
-                  color: activeTab === 'profile' ? (darkMode ? '#2196F3' : '#2196F3') : (darkMode ? '#e0e0e0' : '#333'),
-                  fontWeight: activeTab === 'profile' ? 'bold' : 'normal',
-                  transition: 'all 0.2s ease',
-                }}
-              >
-                <FaUser style={{ marginRight: '10px', fontSize: '16px' }} />
-                Profile Settings
-              </button>
-              
-              <button 
-                onClick={() => setActiveTab('subscription')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  width: '100%',
-                  padding: '12px 20px',
-                  backgroundColor: activeTab === 'subscription' ? (darkMode ? '#333' : '#f5f7fa') : 'transparent',
-                  borderLeft: activeTab === 'subscription' ? '4px solid #2196F3' : 'none',
-                  paddingLeft: activeTab === 'subscription' ? '16px' : '20px',
-                  border: 'none',
-                  textAlign: 'left',
-                  cursor: 'pointer',
-                  color: activeTab === 'subscription' ? (darkMode ? '#2196F3' : '#2196F3') : (darkMode ? '#e0e0e0' : '#333'),
-                  fontWeight: activeTab === 'subscription' ? 'bold' : 'normal',
-                  transition: 'all 0.2s ease',
-                }}
-              >
-                <FaCreditCard style={{ marginRight: '10px', fontSize: '16px' }} />
-                Subscription
-              </button>
-              
-              <button 
-                onClick={() => setActiveTab('payment')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  width: '100%',
-                  padding: '12px 20px',
-                  backgroundColor: activeTab === 'payment' ? (darkMode ? '#333' : '#f5f7fa') : 'transparent',
-                  borderLeft: activeTab === 'payment' ? '4px solid #2196F3' : 'none',
-                  paddingLeft: activeTab === 'payment' ? '16px' : '20px',
-                  border: 'none',
-                  textAlign: 'left',
-                  cursor: 'pointer',
-                  color: activeTab === 'payment' ? (darkMode ? '#2196F3' : '#2196F3') : (darkMode ? '#e0e0e0' : '#333'),
-                  fontWeight: activeTab === 'payment' ? 'bold' : 'normal',
-                  transition: 'all 0.2s ease',
-                }}
-              >
-                <FaCreditCard style={{ marginRight: '10px', fontSize: '16px' }} />
-                Payment Methods
-              </button>
-              
-              <button 
-                onClick={() => setActiveTab('history')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  width: '100%',
-                  padding: '12px 20px',
-                  backgroundColor: activeTab === 'history' ? (darkMode ? '#333' : '#f5f7fa') : 'transparent',
-                  borderLeft: activeTab === 'history' ? '4px solid #2196F3' : 'none',
-                  paddingLeft: activeTab === 'history' ? '16px' : '20px',
-                  border: 'none',
-                  textAlign: 'left',
-                  cursor: 'pointer',
-                  color: activeTab === 'history' ? (darkMode ? '#2196F3' : '#2196F3') : (darkMode ? '#e0e0e0' : '#333'),
-                  fontWeight: activeTab === 'history' ? 'bold' : 'normal',
-                  transition: 'all 0.2s ease',
-                }}
-              >
-                <FaHistory style={{ marginRight: '10px', fontSize: '16px' }} />
-                Payment History
-              </button>
-              
-              <button 
-                onClick={() => setActiveTab('notifications')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  width: '100%',
-                  padding: '12px 20px',
-                  backgroundColor: activeTab === 'notifications' ? (darkMode ? '#333' : '#f5f7fa') : 'transparent',
-                  borderLeft: activeTab === 'notifications' ? '4px solid #2196F3' : 'none',
-                  paddingLeft: activeTab === 'notifications' ? '16px' : '20px',
-                  border: 'none',
-                  textAlign: 'left',
-                  cursor: 'pointer',
-                  color: activeTab === 'notifications' ? (darkMode ? '#2196F3' : '#2196F3') : (darkMode ? '#e0e0e0' : '#333'),
-                  fontWeight: activeTab === 'notifications' ? 'bold' : 'normal',
-                  transition: 'all 0.2s ease',
-                }}
-              >
-                <FaBell style={{ marginRight: '10px', fontSize: '16px' }} />
-                Notifications
-              </button>
-              
-              <button 
-                onClick={() => setActiveTab('security')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  width: '100%',
-                  padding: '12px 20px',
-                  backgroundColor: activeTab === 'security' ? (darkMode ? '#333' : '#f5f7fa') : 'transparent',
-                  borderLeft: activeTab === 'security' ? '4px solid #2196F3' : 'none',
-                  paddingLeft: activeTab === 'security' ? '16px' : '20px',
-                  border: 'none',
-                  textAlign: 'left',
-                  cursor: 'pointer',
-                  color: activeTab === 'security' ? (darkMode ? '#2196F3' : '#2196F3') : (darkMode ? '#e0e0e0' : '#333'),
-                  fontWeight: activeTab === 'security' ? 'bold' : 'normal',
-                  transition: 'all 0.2s ease',
-                }}
-              >
-                <FaLock style={{ marginRight: '10px', fontSize: '16px' }} />
-                Security
-              </button>
+              {[
+                { id: 'profile', icon: FaUser, label: 'Profile Settings' },
+                { id: 'subscription', icon: FaCreditCard, label: 'Subscription' },
+                { id: 'notifications', icon: FaBell, label: 'Notifications' },
+                { id: 'security', icon: FaLock, label: 'Security' }
+              ].map(tab => (
+                <button 
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    width: '100%',
+                    padding: '12px 20px',
+                    backgroundColor: activeTab === tab.id ? (darkMode ? '#333' : '#f5f7fa') : 'transparent',
+                    borderLeft: activeTab === tab.id ? '4px solid #2196F3' : 'none',
+                    paddingLeft: activeTab === tab.id ? '16px' : '20px',
+                    border: 'none',
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    color: activeTab === tab.id ? '#2196F3' : (darkMode ? '#e0e0e0' : '#333'),
+                    fontWeight: activeTab === tab.id ? 'bold' : 'normal',
+                    transition: 'all 0.2s ease',
+                  }}
+                >
+                  <tab.icon style={{ marginRight: '10px', fontSize: '16px' }} />
+                  {tab.label}
+                </button>
+              ))}
             </div>
           </div>
 
@@ -636,47 +428,48 @@ const ProfilePage = () => {
             padding: '30px',
             minWidth: '300px',
           }}>
+            {/* Success/Error Messages */}
+            {saveSuccess && (
+              <div style={{
+                backgroundColor: darkMode ? 'rgba(76, 175, 80, 0.2)' : 'rgba(76, 175, 80, 0.1)',
+                color: '#4CAF50',
+                padding: '12px',
+                borderRadius: '6px',
+                marginBottom: '20px',
+                display: 'flex',
+                alignItems: 'center',
+              }}>
+                <FaCheckCircle style={{ marginRight: '10px' }} />
+                Changes saved successfully!
+              </div>
+            )}
+            
+            {saveError && (
+              <div style={{
+                backgroundColor: darkMode ? 'rgba(244, 67, 54, 0.2)' : 'rgba(244, 67, 54, 0.1)',
+                color: '#F44336',
+                padding: '12px',
+                borderRadius: '6px',
+                marginBottom: '20px',
+                display: 'flex',
+                alignItems: 'center',
+              }}>
+                <FaExclamationCircle style={{ marginRight: '10px' }} />
+                {saveError}
+              </div>
+            )}
+
+            {/* Profile Tab */}
             {activeTab === 'profile' && (
               <div>
                 <h2 style={{ 
                   color: darkMode ? '#e0e0e0' : '#333',
                   marginTop: 0,
                   marginBottom: '20px',
-                  fontWeight: 'bold',
                   fontSize: '20px',
                 }}>
                   Profile Settings
                 </h2>
-                
-                {saveSuccess && (
-                  <div style={{
-                    backgroundColor: darkMode ? 'rgba(76, 175, 80, 0.2)' : 'rgba(76, 175, 80, 0.1)',
-                    color: '#4CAF50',
-                    padding: '12px',
-                    borderRadius: '6px',
-                    marginBottom: '20px',
-                    display: 'flex',
-                    alignItems: 'center',
-                  }}>
-                    <FaCheckCircle style={{ marginRight: '10px' }} />
-                    Your profile has been updated successfully.
-                  </div>
-                )}
-                
-                {saveError && (
-                  <div style={{
-                    backgroundColor: darkMode ? 'rgba(244, 67, 54, 0.2)' : 'rgba(244, 67, 54, 0.1)',
-                    color: '#F44336',
-                    padding: '12px',
-                    borderRadius: '6px',
-                    marginBottom: '20px',
-                    display: 'flex',
-                    alignItems: 'center',
-                  }}>
-                    <FaExclamationCircle style={{ marginRight: '10px' }} />
-                    {saveError}
-                  </div>
-                )}
                 
                 <div style={{ marginBottom: '20px' }}>
                   <label style={{
@@ -715,9 +508,7 @@ const ProfilePage = () => {
                   </label>
                   <input 
                     type="email"
-                    name="email"
                     value={formData.email}
-                    onChange={handleInputChange}
                     style={{
                       width: '100%',
                       padding: '12px',
@@ -729,14 +520,6 @@ const ProfilePage = () => {
                     }}
                     disabled
                   />
-                  <small style={{ 
-                    color: darkMode ? '#777' : '#999',
-                    fontSize: '12px', 
-                    marginTop: '5px',
-                    display: 'block'
-                  }}>
-                    Email address cannot be changed. Contact support for assistance.
-                  </small>
                 </div>
                 
                 <div style={{ marginBottom: '25px' }}>
@@ -767,437 +550,368 @@ const ProfilePage = () => {
                   />
                 </div>
                 
-                <div style={{ marginTop: '30px' }}>
-                  <button 
-                    onClick={handleSaveProfile}
-                    disabled={loading}
-                    style={{
-                      backgroundColor: '#2196F3',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '6px',
-                      padding: '12px 24px',
-                      fontSize: '16px',
-                      fontWeight: '500',
-                      cursor: loading ? 'not-allowed' : 'pointer',
-                      opacity: loading ? 0.7 : 1,
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    {loading ? 'Saving...' : 'Save Changes'}
-                  </button>
-                </div>
+                <button 
+                  onClick={handleSaveProfile}
+                  disabled={loading}
+                  style={{
+                    backgroundColor: '#2196F3',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    padding: '12px 24px',
+                    fontSize: '16px',
+                    fontWeight: '500',
+                    cursor: loading ? 'not-allowed' : 'pointer',
+                    opacity: loading ? 0.7 : 1,
+                  }}
+                >
+                  {loading ? 'Saving...' : 'Save Changes'}
+                </button>
               </div>
             )}
             
+            {/* Subscription Tab */}
             {activeTab === 'subscription' && (
-  <div>
-    <h2 style={{ 
-      color: darkMode ? '#e0e0e0' : '#333',
-      marginTop: 0,
-      marginBottom: '20px',
-      fontWeight: 'bold',
-      fontSize: '20px',
-    }}>
-      Subscription Plan
-    </h2>
-    
-    {/* Show success/error messages */}
-    {saveSuccess && (
-      <div style={{
-        backgroundColor: darkMode ? 'rgba(76, 175, 80, 0.2)' : 'rgba(76, 175, 80, 0.1)',
-        color: '#4CAF50',
-        padding: '12px',
-        borderRadius: '6px',
-        marginBottom: '20px',
-        display: 'flex',
-        alignItems: 'center',
-      }}>
-        <FaCheckCircle style={{ marginRight: '10px' }} />
-        Your subscription has been updated successfully.
-      </div>
-    )}
-    
-    {saveError && (
-      <div style={{
-        backgroundColor: darkMode ? 'rgba(244, 67, 54, 0.2)' : 'rgba(244, 67, 54, 0.1)',
-        color: '#F44336',
-        padding: '12px',
-        borderRadius: '6px',
-        marginBottom: '20px',
-        display: 'flex',
-        alignItems: 'center',
-      }}>
-        <FaExclamationCircle style={{ marginRight: '10px' }} />
-        {saveError}
-      </div>
-    )}
-    
-    <div style={{
-      padding: '20px',
-      borderRadius: '8px',
-      border: `1px solid ${darkMode ? '#444' : '#ddd'}`,
-      marginBottom: '30px',
-    }}>
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '15px',
-      }}>
-        <div>
-          <h3 style={{ 
-            color: darkMode ? '#e0e0e0' : '#333',
-            margin: '0 0 5px 0',
-            fontSize: '18px',
-            textTransform: 'capitalize',
-            fontWeight: 'bold',
-          }}>
-            {subscriptionTier || 'Free'} Plan
-          </h3>
-          <div style={{ display: 'flex', alignItems: 'center' }}>
-            {getSubscriptionBadge()}
-            {subscriptionData && subscriptionStatus === 'active' && (
-              <span style={{ 
-                color: darkMode ? '#b0b0b0' : '#666',
-                marginLeft: '10px',
-                fontSize: '14px',
-              }}>
-                {subscriptionData.cancelAtPeriodEnd 
-                  ? `Access until: ${new Date(subscriptionData.currentPeriodEnd).toLocaleDateString()}`
-                  : `Next billing date: ${new Date(subscriptionData.currentPeriodEnd).toLocaleDateString()}`
-                }
-              </span>
+              <div>
+                <h2 style={{ 
+                  color: darkMode ? '#e0e0e0' : '#333',
+                  marginTop: 0,
+                  marginBottom: '20px',
+                  fontSize: '20px',
+                }}>
+                  Subscription & Billing
+                </h2>
+                
+                {/* Current Subscription */}
+                {subscription ? (
+                  <div style={{
+                    padding: '20px',
+                    borderRadius: '8px',
+                    border: `1px solid ${darkMode ? '#444' : '#ddd'}`,
+                    marginBottom: '30px',
+                  }}>
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginBottom: '20px',
+                    }}>
+                      <div>
+                        <h3 style={{ 
+                          color: darkMode ? '#e0e0e0' : '#333',
+                          margin: '0 0 5px 0',
+                          fontSize: '18px',
+                          textTransform: 'capitalize',
+                        }}>
+                          {subscription.plan} Plan
+                        </h3>
+                        {getSubscriptionBadge()}
+                      </div>
+                      
+                      <div style={{
+                        textAlign: 'right'
+                      }}>
+                        <div style={{
+                          fontSize: '24px',
+                          fontWeight: 'bold',
+                          color: darkMode ? '#e0e0e0' : '#333',
+                        }}>
+                          {subscription.amount ? formatPrice(subscription.amount) : 'Free'}
+                        </div>
+                        {subscription.originalAmount && subscription.amount < subscription.originalAmount && (
+                          <div style={{
+                            fontSize: '14px',
+                            color: '#4CAF50',
+                          }}>
+                            was {formatPrice(subscription.originalAmount)}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {/* Subscription Details */}
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                      gap: '15px',
+                      marginBottom: '20px'
+                    }}>
+                      {subscription.promoCode && (
+                        <div>
+                          <label style={{
+                            color: darkMode ? '#888' : '#666',
+                            fontSize: '13px',
+                            display: 'block',
+                            marginBottom: '3px'
+                          }}>
+                            Promo Code Used
+                          </label>
+                          <p style={{
+                            color: '#4CAF50',
+                            fontSize: '15px',
+                            margin: 0,
+                            fontWeight: '600'
+                          }}>
+                            {subscription.promoCode.code}
+                            {subscription.discountAmount > 0 && (
+                              <span style={{
+                                fontSize: '13px',
+                                fontWeight: 'normal',
+                                marginLeft: '5px'
+                              }}>
+                                (-{formatPrice(subscription.discountAmount)})
+                              </span>
+                            )}
+                          </p>
+                        </div>
+                      )}
+                      
+                      {subscription.currentPeriodEnd && (
+                        <div>
+                          <label style={{
+                            color: darkMode ? '#888' : '#666',
+                            fontSize: '13px',
+                            display: 'block',
+                            marginBottom: '3px'
+                          }}>
+                            {subscription.cancelAtPeriodEnd ? 'Access Until' : 'Next Billing Date'}
+                          </label>
+                          <p style={{
+                            color: darkMode ? '#e0e0e0' : '#333',
+                            fontSize: '15px',
+                            margin: 0
+                          }}>
+                            {formatDate(subscription.currentPeriodEnd)}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Subscription Actions */}
+                    {subscription.stripeSubscriptionId && (
+                      <div style={{ 
+                        borderTop: `1px solid ${darkMode ? '#333' : '#eee'}`,
+                        paddingTop: '20px',
+                        display: 'flex',
+                        gap: '10px',
+                        flexWrap: 'wrap'
+                      }}>
+                        {subscription.cancelAtPeriodEnd ? (
+                          <button
+                            onClick={handleReactivateSubscription}
+                            disabled={loading}
+                            style={{
+                              backgroundColor: '#4CAF50',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '6px',
+                              padding: '10px 20px',
+                              fontSize: '14px',
+                              cursor: loading ? 'not-allowed' : 'pointer',
+                              opacity: loading ? 0.7 : 1,
+                            }}
+                          >
+                            Reactivate Subscription
+                          </button>
+                        ) : (
+                          <>
+                            <button
+                              onClick={handleUpdatePayment}
+                              disabled={loading}
+                              style={{
+                                backgroundColor: '#2196F3',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '6px',
+                                padding: '10px 20px',
+                                fontSize: '14px',
+                                cursor: loading ? 'not-allowed' : 'pointer',
+                                opacity: loading ? 0.7 : 1,
+                              }}
+                            >
+                              Update Payment Method
+                            </button>
+                            <button
+                              onClick={handleCancelSubscription}
+                              disabled={loading}
+                              style={{
+                                backgroundColor: 'transparent',
+                                color: '#F44336',
+                                border: '1px solid #F44336',
+                                borderRadius: '6px',
+                                padding: '10px 20px',
+                                fontSize: '14px',
+                                cursor: loading ? 'not-allowed' : 'pointer',
+                                opacity: loading ? 0.7 : 1,
+                              }}
+                            >
+                              Cancel Subscription
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div style={{
+                    textAlign: 'center',
+                    padding: '40px 20px',
+                    backgroundColor: darkMode ? '#262626' : '#f5f5f5',
+                    borderRadius: '8px',
+                    marginBottom: '30px'
+                  }}>
+                    <p style={{
+                      color: darkMode ? '#888' : '#666',
+                      marginBottom: '20px',
+                      fontSize: '16px'
+                    }}>
+                      You don't have an active subscription.
+                    </p>
+                    <button
+                      onClick={() => router.push('/pricing')}
+                      style={{
+                        padding: '12px 30px',
+                        backgroundColor: '#2196F3',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        fontSize: '16px',
+                        fontWeight: '500'
+                      }}
+                    >
+                      View Plans
+                    </button>
+                  </div>
+                )}
+                
+                {/* Billing History */}
+                {billingHistory.length > 0 && (
+                  <>
+                    <h3 style={{
+                      color: darkMode ? '#e0e0e0' : '#333',
+                      marginBottom: '15px',
+                      fontSize: '18px',
+                    }}>
+                      Billing History
+                    </h3>
+                    
+                    <div style={{
+                      border: `1px solid ${darkMode ? '#444' : '#ddd'}`,
+                      borderRadius: '8px',
+                      overflow: 'hidden',
+                    }}>
+                      {billingHistory.map((payment, index) => (
+                        <div
+                          key={payment.id || index}
+                          style={{
+                            padding: '15px 20px',
+                            borderBottom: index < billingHistory.length - 1 ? 
+                              `1px solid ${darkMode ? '#333' : '#eee'}` : 'none',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center'
+                          }}
+                        >
+                          <div>
+                            <p style={{
+                              color: darkMode ? '#e0e0e0' : '#333',
+                              margin: 0,
+                              fontSize: '14px'
+                            }}>
+                              {payment.description}
+                            </p>
+                            <p style={{
+                              color: darkMode ? '#888' : '#666',
+                              margin: '2px 0 0 0',
+                              fontSize: '12px'
+                            }}>
+                              {formatDate(payment.createdAt)}
+                              {payment.promoCode && (
+                                <span style={{
+                                  marginLeft: '10px',
+                                  color: '#4CAF50'
+                                }}>
+                                  • {payment.promoCode.code}
+                                </span>
+                              )}
+                            </p>
+                          </div>
+                          <div style={{ textAlign: 'right' }}>
+                            <p style={{
+                              color: darkMode ? '#e0e0e0' : '#333',
+                              margin: 0,
+                              fontSize: '14px',
+                              fontWeight: '600'
+                            }}>
+                              {formatPrice(payment.amount)}
+                            </p>
+                            <p style={{
+                              color: payment.status === 'succeeded' ? '#4CAF50' : '#F44336',
+                              margin: '2px 0 0 0',
+                              fontSize: '12px',
+                              textTransform: 'capitalize'
+                            }}>
+                              {payment.status}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
             )}
-          </div>
-        </div>
-        
-        <div>
-          {subscriptionData && subscriptionData.stripeSubscriptionId ? (
-            // Stripe subscription - can cancel/reactivate
-            subscriptionData.cancelAtPeriodEnd ? (
-              <button
-                onClick={handleReactivateSubscription}
-                disabled={loading}
-                style={{
-                  backgroundColor: '#4CAF50',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  padding: '8px 16px',
-                  fontSize: '14px',
-                  cursor: loading ? 'not-allowed' : 'pointer',
-                  opacity: loading ? 0.7 : 1,
-                }}
-              >
-                {loading ? 'Processing...' : 'Reactivate Subscription'}
-              </button>
-            ) : (
-              <button
-                onClick={handleCancelSubscription}
-                disabled={loading}
-                style={{
-                  backgroundColor: 'transparent',
-                  color: '#F44336',
-                  border: `1px solid ${darkMode ? 'rgba(244, 67, 54, 0.5)' : 'rgba(244, 67, 54, 0.3)'}`,
-                  borderRadius: '6px',
-                  padding: '8px 16px',
-                  fontSize: '14px',
-                  cursor: loading ? 'not-allowed' : 'pointer',
-                  opacity: loading ? 0.7 : 1,
-                }}
-              >
-                {loading ? 'Processing...' : 'Cancel Subscription'}
-              </button>
-            )
-          ) : subscriptionData && !subscriptionData.stripeSubscriptionId && subscriptionStatus === 'active' ? (
-            // Promotional subscription - no actions available
-            <div style={{
-              padding: '8px 16px',
-              backgroundColor: darkMode ? 'rgba(33, 150, 243, 0.2)' : 'rgba(33, 150, 243, 0.1)',
-              color: '#2196F3',
-              borderRadius: '6px',
-              fontSize: '12px',
-              fontWeight: '500',
-            }}>
-              Promotional Plan
-            </div>
-          ) : (
-            // No active subscription
-            <button
-              onClick={() => window.location.href = '/pricing'}
-              style={{
-                backgroundColor: '#4CAF50',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                padding: '8px 16px',
-                fontSize: '14px',
-                cursor: 'pointer',
-              }}
-            >
-              Subscribe Now
-            </button>
-          )}
-        </div>
-      </div>
-      
-      {/* Show promotional subscription notice */}
-      {subscriptionData && !subscriptionData.stripeSubscriptionId && subscriptionStatus === 'active' && (
-        <div style={{
-          marginTop: '15px',
-          padding: '12px',
-          backgroundColor: darkMode ? 'rgba(33, 150, 243, 0.1)' : 'rgba(33, 150, 243, 0.05)',
-          borderRadius: '6px',
-          color: darkMode ? '#90caf9' : '#2196F3',
-          fontSize: '14px',
-          display: 'flex',
-          alignItems: 'center',
-        }}>
-          <FaExclamationCircle style={{ marginRight: '8px' }} />
-          This is a promotional subscription. It will expire on {new Date(subscriptionData.currentPeriodEnd).toLocaleDateString()} and won't auto-renew.
-        </div>
-      )}
-      
-      {/* Show cancellation pending notice */}
-      {subscriptionData && subscriptionData.cancelAtPeriodEnd && (
-        <div style={{
-          marginTop: '15px',
-          padding: '12px',
-          backgroundColor: darkMode ? 'rgba(255, 193, 7, 0.1)' : 'rgba(255, 193, 7, 0.05)',
-          borderRadius: '6px',
-          color: darkMode ? '#FFC107' : '#FFA000',
-          fontSize: '14px',
-          display: 'flex',
-          alignItems: 'center',
-        }}>
-          <FaExclamationCircle style={{ marginRight: '8px' }} />
-          Your subscription is set to cancel at the end of the current billing period. You'll retain access until {new Date(subscriptionData.currentPeriodEnd).toLocaleDateString()}.
-        </div>
-      )}
-      
-      {subscriptionStatus === 'active' && subscriptionTier && (
-        <div style={{
-          color: darkMode ? '#b0b0b0' : '#666',
-          fontSize: '14px',
-          marginTop: '15px',
-        }}>
-          <p style={{ margin: '0 0 5px 0' }}>Your {subscriptionTier} subscription includes:</p>
-          <ul style={{ 
-            paddingLeft: '20px',
-            margin: '0',
-            lineHeight: '1.6',
-          }}>
-            {subscriptionTier === 'monthly' || subscriptionTier === 'annual' ? (
-              <>
-                <li>Full access to all trading tests and exam modules</li>
-                <li>Unlimited chart analysis with AI feedback</li>
-                <li>Performance tracking and analytics</li>
-                <li>Expert trading pattern recognition tools</li>
-                {subscriptionTier === 'annual' && <li>Save 20% compared to monthly billing</li>}
-              </>
-            ) : (
-              <li>Full access to premium features</li>
-            )}
-          </ul>
-        </div>
-      )}
-    </div>
-    
-    <h3 style={{ 
-      color: darkMode ? '#e0e0e0' : '#333',
-      fontSize: '18px',
-      marginBottom: '15px',
-    }}>
-      Available Plans
-    </h3>
-    
-    <div style={{ 
-      display: 'grid', 
-      gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', 
-      gap: '20px',
-      marginBottom: '30px',
-    }}>
-      <div style={{
-        padding: '20px',
-        borderRadius: '8px',
-        border: `1px solid ${darkMode ? '#444' : '#ddd'}`,
-        backgroundColor: subscriptionTier === 'monthly' ? (darkMode ? 'rgba(33, 150, 243, 0.1)' : 'rgba(33, 150, 243, 0.05)') : 'transparent',
-        borderColor: subscriptionTier === 'monthly' ? '#2196F3' : (darkMode ? '#444' : '#ddd'),
-      }}>
-        <h4 style={{ 
-          color: darkMode ? '#e0e0e0' : '#333',
-          margin: '0 0 10px 0',
-          fontSize: '18px',
-        }}>
-          Monthly Plan
-        </h4>
-        <div style={{ 
-          fontSize: '24px', 
-          fontWeight: 'bold',
-          color: darkMode ? '#e0e0e0' : '#333',
-          margin: '10px 0',
-        }}>
-          $29.99<span style={{ fontSize: '14px', fontWeight: 'normal', color: darkMode ? '#b0b0b0' : '#666' }}>/month</span>
-        </div>
-        <ul style={{ 
-          paddingLeft: '20px',
-          margin: '15px 0',
-          color: darkMode ? '#b0b0b0' : '#666',
-          fontSize: '14px',
-          lineHeight: '1.6',
-        }}>
-          <li>Full access to all features</li>
-          <li>Cancel anytime</li>
-          <li>Priority support</li>
-        </ul>
-        {(subscriptionTier !== 'monthly' || subscriptionStatus !== 'active') && (
-          <button
-            onClick={() => window.location.href = '/pricing'}
-            style={{
-              backgroundColor: '#2196F3',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              padding: '8px 16px',
-              fontSize: '14px',
-              width: '100%',
-              cursor: 'pointer',
-              marginTop: '10px',
-            }}
-          >
-            {subscriptionStatus === 'active' ? 'Switch to Monthly' : 'Choose Monthly'}
-          </button>
-        )}
-      </div>
-      
-      <div style={{
-        padding: '20px',
-        borderRadius: '8px',
-        border: `1px solid ${darkMode ? '#444' : '#ddd'}`,
-        backgroundColor: subscriptionTier === 'annual' ? (darkMode ? 'rgba(33, 150, 243, 0.1)' : 'rgba(33, 150, 243, 0.05)') : 'transparent',
-        borderColor: subscriptionTier === 'annual' ? '#2196F3' : (darkMode ? '#444' : '#ddd'),
-      }}>
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-        }}>
-          <h4 style={{ 
-            color: darkMode ? '#e0e0e0' : '#333',
-            margin: '0 0 10px 0',
-            fontSize: '18px',
-          }}>
-            Annual Plan
-          </h4>
-          <div style={{
-            backgroundColor: '#4CAF50',
-            color: 'white',
-            fontSize: '12px',
-            fontWeight: 'bold',
-            padding: '3px 8px',
-            borderRadius: '4px',
-          }}>
-            SAVE 20%
-          </div>
-        </div>
-        <div style={{ 
-          fontSize: '24px', 
-          fontWeight: 'bold',
-          color: darkMode ? '#e0e0e0' : '#333',
-          margin: '10px 0',
-        }}>
-          $287.88<span style={{ fontSize: '14px', fontWeight: 'normal', color: darkMode ? '#b0b0b0' : '#666' }}>/year</span>
-        </div>
-        <div style={{
-          fontSize: '14px',
-          color: darkMode ? '#90caf9' : '#2196F3',
-          marginBottom: '10px',
-        }}>
-          Just $23.99/month (billed annually)
-        </div>
-        <ul style={{ 
-          paddingLeft: '20px',
-          margin: '15px 0',
-          color: darkMode ? '#b0b0b0' : '#666',
-          fontSize: '14px',
-          lineHeight: '1.6',
-        }}>
-          <li>Everything in Monthly plan</li>
-          <li>Save 20% with annual billing</li>
-          <li>Best value for serious traders</li>
-        </ul>
-        {(subscriptionTier !== 'annual' || subscriptionStatus !== 'active') && (
-          <button
-            onClick={() => window.location.href = '/pricing'}
-            style={{
-              backgroundColor: '#4CAF50',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              padding: '8px 16px',
-              fontSize: '14px',
-              width: '100%',
-              cursor: 'pointer',
-              marginTop: '10px',
-            }}
-          >
-            {subscriptionStatus === 'active' ? 'Switch to Annual' : 'Choose Annual'}
-          </button>
-        )}
-      </div>
-    </div>
-  </div>
-)}
             
+            {/* Notifications Tab */}
             {activeTab === 'notifications' && (
               <div>
                 <h2 style={{ 
                   color: darkMode ? '#e0e0e0' : '#333',
                   marginTop: 0,
                   marginBottom: '20px',
-                  fontWeight: 'bold',
                   fontSize: '20px',
                 }}>
                   Notification Settings
                 </h2>
                 
-                <div style={{
-                  marginBottom: '20px',
-                }}>
-                  <div style={{
-                    marginBottom: '15px',
-                    padding: '15px',
-                    borderRadius: '8px',
-                    backgroundColor: darkMode ? '#262626' : '#f5f5f5',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                  }}>
+                {[
+                  { id: 'email', title: 'Email Notifications', desc: 'Receive emails about account updates' },
+                  { id: 'app', title: 'App Notifications', desc: 'In-app notifications about your activity' }
+                ].map(notif => (
+                  <div
+                    key={notif.id}
+                    style={{
+                      marginBottom: '15px',
+                      padding: '15px',
+                      borderRadius: '8px',
+                      backgroundColor: darkMode ? '#262626' : '#f5f5f5',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                    }}
+                  >
                     <div>
                       <h3 style={{ 
                         color: darkMode ? '#e0e0e0' : '#333',
                         margin: '0 0 5px 0',
                         fontSize: '16px',
-                        fontWeight: 'bold',
                       }}>
-                        Email Notifications
+                        {notif.title}
                       </h3>
                       <p style={{ 
                         color: darkMode ? '#b0b0b0' : '#666',
                         margin: 0,
                         fontSize: '14px',
                       }}>
-                        Receive emails about account and subscription updates.
+                        {notif.desc}
                       </p>
                     </div>
                     <label style={{ position: 'relative', display: 'inline-block', width: '50px', height: '26px' }}>
                       <input 
                         type="checkbox" 
-                        checked={formData.notifications.email} 
-                        onChange={() => handleNotificationChange('email')}
+                        checked={formData.notifications[notif.id]} 
+                        onChange={() => handleNotificationChange(notif.id)}
                         style={{ opacity: 0, width: 0, height: 0 }}
                       />
                       <span style={{
@@ -1207,16 +921,15 @@ const ProfilePage = () => {
                         left: 0,
                         right: 0,
                         bottom: 0,
-                        backgroundColor: formData.notifications.email ? '#2196F3' : (darkMode ? '#555' : '#ccc'),
+                        backgroundColor: formData.notifications[notif.id] ? '#2196F3' : (darkMode ? '#555' : '#ccc'),
                         transition: '0.3s',
                         borderRadius: '34px',
                       }}>
                         <span style={{
                           position: 'absolute',
-                          content: '""',
                           height: '18px',
                           width: '18px',
-                          left: formData.notifications.email ? '28px' : '4px',
+                          left: formData.notifications[notif.id] ? '28px' : '4px',
                           bottom: '4px',
                           backgroundColor: 'white',
                           transition: '0.3s',
@@ -1225,66 +938,7 @@ const ProfilePage = () => {
                       </span>
                     </label>
                   </div>
-                  
-                  <div style={{
-                    marginBottom: '15px',
-                    padding: '15px',
-                    borderRadius: '8px',
-                    backgroundColor: darkMode ? '#262626' : '#f5f5f5',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                  }}>
-                    <div>
-                      <h3 style={{ 
-                        color: darkMode ? '#e0e0e0' : '#333',
-                        margin: '0 0 5px 0',
-                        fontSize: '16px',
-                        fontWeight: 'bold',
-                      }}>
-                        App Notifications
-                      </h3>
-                      <p style={{ 
-                        color: darkMode ? '#b0b0b0' : '#666',
-                        margin: 0,
-                        fontSize: '14px',
-                      }}>
-                        Receive in-app notifications about your activity and results.
-                      </p>
-                    </div>
-                    <label style={{ position: 'relative', display: 'inline-block', width: '50px', height: '26px' }}>
-                      <input 
-                        type="checkbox" 
-                        checked={formData.notifications.app} 
-                        onChange={() => handleNotificationChange('app')}
-                        style={{ opacity: 0, width: 0, height: 0 }}
-                      />
-                      <span style={{
-                        position: 'absolute',
-                        cursor: 'pointer',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        backgroundColor: formData.notifications.app ? '#2196F3' : (darkMode ? '#555' : '#ccc'),
-                        transition: '0.3s',
-                        borderRadius: '34px',
-                      }}>
-                        <span style={{
-                          position: 'absolute',
-                          content: '""',
-                          height: '18px',
-                          width: '18px',
-                          left: formData.notifications.app ? '28px' : '4px',
-                          bottom: '4px',
-                          backgroundColor: 'white',
-                          transition: '0.3s',
-                          borderRadius: '50%',
-                        }} />
-                      </span>
-                    </label>
-                  </div>
-                </div>
+                ))}
                 
                 <button 
                   onClick={handleSaveProfile}
@@ -1307,13 +961,13 @@ const ProfilePage = () => {
               </div>
             )}
             
+            {/* Security Tab */}
             {activeTab === 'security' && (
               <div>
                 <h2 style={{ 
                   color: darkMode ? '#e0e0e0' : '#333',
                   marginTop: 0,
                   marginBottom: '20px',
-                  fontWeight: 'bold',
                   fontSize: '20px',
                 }}>
                   Security Settings
@@ -1333,80 +987,8 @@ const ProfilePage = () => {
                     Change Password
                   </h3>
                   
-                  <div style={{ marginBottom: '15px' }}>
-                    <label style={{
-                      display: 'block',
-                      marginBottom: '8px',
-                      color: darkMode ? '#b0b0b0' : '#666',
-                      fontWeight: '500',
-                    }}>
-                      Current Password
-                    </label>
-                    <input 
-                      type="password"
-                      placeholder="Enter your current password"
-                      style={{
-                        width: '100%',
-                        padding: '12px',
-                        fontSize: '16px',
-                        border: `1px solid ${darkMode ? '#444' : '#ddd'}`,
-                        borderRadius: '6px',
-                        backgroundColor: darkMode ? '#333' : '#fff',
-                        color: darkMode ? '#e0e0e0' : '#333',
-                      }}
-                    />
-                  </div>
-                  
-                  <div style={{ marginBottom: '15px' }}>
-                    <label style={{
-                      display: 'block',
-                      marginBottom: '8px',
-                      color: darkMode ? '#b0b0b0' : '#666',
-                      fontWeight: '500',
-                    }}>
-                      New Password
-                    </label>
-                    <input 
-                      type="password"
-                      placeholder="Enter new password"
-                      style={{
-                        width: '100%',
-                        padding: '12px',
-                        fontSize: '16px',
-                        border: `1px solid ${darkMode ? '#444' : '#ddd'}`,
-                        borderRadius: '6px',
-                        backgroundColor: darkMode ? '#333' : '#fff',
-                        color: darkMode ? '#e0e0e0' : '#333',
-                      }}
-                    />
-                  </div>
-                  
-                  <div style={{ marginBottom: '20px' }}>
-                    <label style={{
-                      display: 'block',
-                      marginBottom: '8px',
-                      color: darkMode ? '#b0b0b0' : '#666',
-                      fontWeight: '500',
-                    }}>
-                      Confirm New Password
-                    </label>
-                    <input 
-                      type="password"
-                      placeholder="Confirm new password"
-                      style={{
-                        width: '100%',
-                        padding: '12px',
-                        fontSize: '16px',
-                        border: `1px solid ${darkMode ? '#444' : '#ddd'}`,
-                        borderRadius: '6px',
-                        backgroundColor: darkMode ? '#333' : '#fff',
-                        color: darkMode ? '#e0e0e0' : '#333',
-                      }}
-                    />
-                  </div>
-                  
                   <button 
-                    onClick={() => console.log('Change password')}
+                    onClick={() => router.push('/auth/forgot-password')}
                     style={{
                       backgroundColor: '#2196F3',
                       color: 'white',
@@ -1417,7 +999,7 @@ const ProfilePage = () => {
                       cursor: 'pointer',
                     }}
                   >
-                    Update Password
+                    Reset Password via Email
                   </button>
                 </div>
                 
@@ -1434,25 +1016,20 @@ const ProfilePage = () => {
                     Account Actions
                   </h3>
                   
-                  <div style={{ display: 'flex', gap: '15px' }}>
-                    <button 
-                      onClick={() => console.log('Delete account')}
-                      style={{
-                        backgroundColor: 'transparent',
-                        color: '#F44336',
-                        border: `1px solid ${darkMode ? 'rgba(244, 67, 54, 0.5)' : 'rgba(244, 67, 54, 0.3)'}`,
-                        borderRadius: '6px',
-                        padding: '10px 20px',
-                        fontSize: '14px',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                      }}
-                    >
-                      <FaSignOutAlt style={{ marginRight: '8px' }} />
-                      Delete Account
-                    </button>
-                  </div>
+                  <button 
+                    onClick={logout}
+                    style={{
+                      backgroundColor: '#F44336',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      padding: '10px 20px',
+                      fontSize: '14px',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Log Out
+                  </button>
                 </div>
               </div>
             )}

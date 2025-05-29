@@ -1,6 +1,11 @@
-import { authenticateUser } from '../../../../middleware/auth';
+// pages/api/user/subscription/reactivate.js
+import jwt from 'jsonwebtoken';
+import User from '../../../../models/User';
 import Subscription from '../../../../models/Subscription';
-import stripe from '../../../../lib/stripe';
+import connectDB from '../../../../lib/database';
+import stripe from 'stripe';
+
+const stripeClient = stripe(process.env.STRIPE_SECRET_KEY);
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -8,9 +13,19 @@ export default async function handler(req, res) {
   }
 
   try {
-    const user = await authenticateUser(req);
+    await connectDB();
+
+    // Get user from token
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    if (!token) {
+      return res.status(401).json({ error: 'No token provided' });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.userId);
+    
     if (!user) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      return res.status(404).json({ error: 'User not found' });
     }
 
     const subscription = await Subscription.findOne({
@@ -20,11 +35,11 @@ export default async function handler(req, res) {
     });
 
     if (!subscription) {
-      return res.status(404).json({ error: 'No canceled subscription found' });
+      return res.status(404).json({ error: 'No cancelled subscription found to reactivate' });
     }
 
     // Reactivate in Stripe
-    const stripeSubscription = await stripe.subscriptions.update(
+    const stripeSubscription = await stripeClient.subscriptions.update(
       subscription.stripeSubscriptionId,
       { cancel_at_period_end: false }
     );
@@ -35,10 +50,21 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       message: 'Subscription reactivated successfully',
-      subscription
+      subscription: {
+        cancelAtPeriodEnd: false,
+        status: subscription.status
+      }
     });
   } catch (error) {
     console.error('Reactivate subscription error:', error);
-    return res.status(500).json({ error: 'Failed to reactivate subscription' });
+    
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+    
+    return res.status(500).json({ 
+      error: 'Failed to reactivate subscription',
+      details: error.message 
+    });
   }
 }
