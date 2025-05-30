@@ -89,7 +89,7 @@ const UserSchema = new mongoose.Schema({
       default: true
     }
   },
-  // Subscription related fields
+  // Subscription-related fields
   subscriptionStatus: {
     type: String,
     enum: ['none', 'active', 'inactive', 'cancelled', 'past_due', 'trialing'],

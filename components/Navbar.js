@@ -1,270 +1,57 @@
-import React, { useContext, useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useContext } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/router';
-import { ThemeContext } from '../contexts/ThemeContext';
-import { AuthContext } from '../contexts/AuthContext';
-import { 
-  FaSun, 
-  FaMoon, 
-  FaSignOutAlt,
-  FaUserCog,
-  FaTachometerAlt,
-  FaChevronDown,
-  FaUserShield
-} from 'react-icons/fa';
 import { BiHomeAlt } from 'react-icons/bi';
 import { TbScale, TbChartLine } from 'react-icons/tb';
+import { FaTachometerAlt, FaSun, FaMoon, FaChevronDown, FaUserCog, FaUserShield, FaSignOutAlt } from 'react-icons/fa';
 import { HiMenuAlt3, HiX } from 'react-icons/hi';
+import { AuthContext } from '../contexts/AuthContext';
+import { ThemeContext } from '../contexts/ThemeContext';
 
 const Navbar = () => {
+  const { user, isAuthenticated, logout } = useContext(AuthContext);
   const { darkMode, toggleTheme } = useContext(ThemeContext);
-  const { isAuthenticated, user, logout } = useContext(AuthContext);
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [cryptoPrices, setCryptoPrices] = useState([]);
-  const [priceError, setPriceError] = useState(false);
   const mobileMenuRef = useRef(null);
   const userMenuRef = useRef(null);
   const canvasRef = useRef(null);
 
-  // Real crypto assets with CoinGecko IDs
+  // Sample crypto data (replace with real API data)
+  const [cryptoPrices, setCryptoPrices] = useState([]);
   const cryptoAssets = [
-    { symbol: 'BTC', id: 'bitcoin' },
-    { symbol: 'ETH', id: 'ethereum' },
-    { symbol: 'SOL', id: 'solana' },
-    { symbol: 'XRP', id: 'ripple' },
-    { symbol: 'ADA', id: 'cardano' },
-    { symbol: 'DOT', id: 'polkadot' },
-    { symbol: 'BNB', id: 'binancecoin' },
-    { symbol: 'AVAX', id: 'avalanche-2' },
-    { symbol: 'MATIC', id: 'matic-network' },
-    { symbol: 'LINK', id: 'chainlink' },
-    { symbol: 'UNI', id: 'uniswap' },
-    { symbol: 'LTC', id: 'litecoin' },
-    { symbol: 'ATOM', id: 'cosmos' },
-    { symbol: 'ALGO', id: 'algorand' },
-    { symbol: 'FIL', id: 'filecoin' },
-    { symbol: 'VET', id: 'vechain' },
-    { symbol: 'AAVE', id: 'aave' },
-    { symbol: 'COMP', id: 'compound-governance-token' },
-    { symbol: 'MKR', id: 'maker' },
-    { symbol: 'SNX', id: 'havven' }
+    { symbol: 'BTC', price: 50000, change24h: 2.5 },
+    { symbol: 'ETH', price: 3000, change24h: -1.3 },
+    { symbol: 'SOL', price: 100, change24h: 0.8 },
+    { symbol: 'ADA', price: 0.5, change24h: 1.2 },
+    { symbol: 'XRP', price: 0.8, change24h: -0.5 },
   ];
 
-  // Fetch real-time crypto prices
-  const fetchCryptoPrices = async () => {
-    try {
-      const ids = cryptoAssets.map(asset => asset.id).join(',');
-      const response = await fetch(
-        `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24h_change=true`
-      );
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch prices');
-      }
-      
-      const data = await response.json();
-      
-      const formattedPrices = cryptoAssets.map(asset => {
-        const priceData = data[asset.id];
-        if (priceData) {
-          return {
-            symbol: asset.symbol,
-            price: priceData.usd,
-            change24h: priceData.usd_24h_change || 0
-          };
-        }
-        return null;
-      }).filter(Boolean);
-
-      setCryptoPrices(formattedPrices);
-      setPriceError(false);
-    } catch (error) {
-      console.error('Error fetching crypto prices:', error);
-      setPriceError(true);
-      
-      // Fallback to demo data if API fails
-      const fallbackData = cryptoAssets.slice(0, 10).map(asset => ({
-        symbol: asset.symbol,
-        price: Math.random() * 1000 + 100,
-        change24h: (Math.random() - 0.5) * 10
-      }));
-      setCryptoPrices(fallbackData);
-    }
-  };
-
-  // Initialize price fetching
+  // Simulate API fetch for crypto prices
   useEffect(() => {
-    fetchCryptoPrices();
-    
-    // Update prices every 30 seconds
-    const interval = setInterval(fetchCryptoPrices, 30000);
-    
+    const fetchPrices = () => {
+      setCryptoPrices(cryptoAssets.map(asset => ({
+        ...asset,
+        price: asset.price + (Math.random() - 0.5) * 10,
+      })));
+    };
+    fetchPrices();
+    const interval = setInterval(fetchPrices, 10000);
     return () => clearInterval(interval);
   }, []);
 
+  // Handle window resize for canvas (if used for background effects)
   useEffect(() => {
-    // Canvas setup for 3D background
-    if (!canvasRef.current) return;
-    
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    canvas.width = window.innerWidth;
-    canvas.height = 70; // Same as navbar height
-    
-    // Candlestick patterns
-    const candlesticks = [];
-    for (let i = 0; i < 10; i++) {
-      createCandlestick(candlesticks);
-    }
-    
-    // Chart lines
-    const chartLines = [];
-    for (let i = 0; i < 3; i++) {
-      chartLines.push({
-        points: generateChartLine(),
-        color: darkMode 
-          ? `rgba(33, 150, 243, ${0.1 + Math.random() * 0.15})` 
-          : `rgba(33, 150, 243, ${0.05 + Math.random() * 0.1})`,
-        speed: 0.2 + Math.random() * 0.3
-      });
-    }
-    
-    function createCandlestick(array) {
-      const isGreen = Math.random() > 0.5;
-      const height = 5 + Math.random() * 15;
-      const wickHeight = height * (0.5 + Math.random() * 1);
-      
-      array.push({
-        x: Math.random() * canvas.width,
-        y: 10 + Math.random() * (canvas.height - 20),
-        width: 3 + Math.random() * 3,
-        height: height,
-        wickHeight: wickHeight,
-        isGreen: isGreen,
-        color: isGreen 
-          ? (darkMode ? 'rgba(46, 204, 113, 0.15)' : 'rgba(76, 175, 80, 0.2)') 
-          : (darkMode ? 'rgba(231, 76, 60, 0.15)' : 'rgba(244, 67, 54, 0.2)'),
-        speed: 0.3 + Math.random() * 0.5
-      });
-    }
-    
-    function generateChartLine() {
-      const points = [];
-      const segments = 10 + Math.floor(Math.random() * 10);
-      const amplitude = 5 + Math.random() * 10;
-      const baseY = 20 + Math.random() * (canvas.height - 40);
-      
-      for (let i = 0; i < segments; i++) {
-        points.push({
-          x: (canvas.width / segments) * i,
-          y: baseY + (Math.random() * amplitude * 2 - amplitude)
-        });
-      }
-      return points;
-    }
-    
-    // Animation function
-    function animate() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      
-      // Draw chart lines
-      chartLines.forEach(line => {
-        ctx.beginPath();
-        ctx.moveTo(line.points[0].x, line.points[0].y);
-        
-        for (let i = 1; i < line.points.length; i++) {
-          ctx.lineTo(line.points[i].x, line.points[i].y);
-          
-          // Move points for animation
-          line.points[i].x -= line.speed;
-          if (line.points[i].x < 0) {
-            line.points[i].x = canvas.width;
-            line.points[i].y = 20 + Math.random() * (canvas.height - 40);
-          }
-        }
-        
-        // Reset first point if out of bounds
-        if (line.points[0].x < 0) {
-          line.points[0].x = canvas.width;
-          line.points[0].y = 20 + Math.random() * (canvas.height - 40);
-        } else {
-          line.points[0].x -= line.speed;
-        }
-        
-        ctx.strokeStyle = line.color;
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
-      });
-      
-      // Draw candlesticks
-      candlesticks.forEach(candle => {
-        // Body
-        ctx.fillStyle = candle.color;
-        ctx.fillRect(candle.x, candle.y - candle.height/2, candle.width, candle.height);
-        
-        // Upper wick
-        ctx.beginPath();
-        ctx.moveTo(candle.x + candle.width/2, candle.y - candle.height/2);
-        ctx.lineTo(candle.x + candle.width/2, candle.y - candle.height/2 - candle.wickHeight/2);
-        ctx.strokeStyle = candle.color;
-        ctx.lineWidth = 1;
-        ctx.stroke();
-        
-        // Lower wick
-        ctx.beginPath();
-        ctx.moveTo(candle.x + candle.width/2, candle.y + candle.height/2);
-        ctx.lineTo(candle.x + candle.width/2, candle.y + candle.height/2 + candle.wickHeight/2);
-        ctx.stroke();
-        
-        // Move for animation
-        candle.x -= candle.speed;
-        
-        // Reset if out of bounds
-        if (candle.x + candle.width < 0) {
-          candle.x = canvas.width + candle.width;
-          candle.y = 10 + Math.random() * (canvas.height - 20);
-          candle.isGreen = Math.random() > 0.5;
-          candle.color = candle.isGreen 
-            ? (darkMode ? 'rgba(46, 204, 113, 0.15)' : 'rgba(76, 175, 80, 0.2)') 
-            : (darkMode ? 'rgba(231, 76, 60, 0.15)' : 'rgba(244, 67, 54, 0.2)');
-        }
-      });
-      
-      requestAnimationFrame(animate);
-    }
-    
-    // Start animation
-    animate();
-    
-    // Handle resize
     const handleResize = () => {
-      canvas.width = window.innerWidth;
-      
-      // Reset chart lines with updated colors
-      chartLines.length = 0;
-      for (let i = 0; i < 3; i++) {
-        chartLines.push({
-          points: generateChartLine(),
-          color: darkMode 
-            ? `rgba(33, 150, 243, ${0.1 + Math.random() * 0.15})` 
-            : `rgba(33, 150, 243, ${0.05 + Math.random() * 0.1})`,
-          speed: 0.2 + Math.random() * 0.3
-        });
+      if (canvasRef.current) {
+        canvasRef.current.width = window.innerWidth;
+        canvasRef.current.height = 70;
       }
-      
-      // Update candlestick colors
-      candlesticks.forEach(candle => {
-        candle.color = candle.isGreen 
-          ? (darkMode ? 'rgba(46, 204, 113, 0.15)' : 'rgba(76, 175, 80, 0.2)') 
-          : (darkMode ? 'rgba(231, 76, 60, 0.15)' : 'rgba(244, 67, 54, 0.2)');
-      });
     };
-    
+    handleResize();
     window.addEventListener('resize', handleResize);
-    
     return () => {
       window.removeEventListener('resize', handleResize);
     };
@@ -272,7 +59,6 @@ const Navbar = () => {
 
   const handleLogout = async () => {
     await logout();
-    router.push('/');
     setMobileMenuOpen(false);
     setShowUserMenu(false);
   };
@@ -306,9 +92,6 @@ const Navbar = () => {
               <span className="ticker-symbol">{asset.symbol}</span>
               <span className="ticker-price">
                 ${asset.price < 1 ? asset.price.toFixed(4) : asset.price.toFixed(2)}
-              </span>
-              <span className={`ticker-change ${asset.change24h >= 0 ? 'up' : 'down'}`}>
-                {asset.change24h >= 0 ? '+' : ''}{asset.change24h.toFixed(2)}%
               </span>
             </div>
           ))
@@ -493,7 +276,6 @@ const Navbar = () => {
         </div>
       </div>
       
-      {/* Mobile Menu - ENHANCED */}
       {mobileMenuOpen && (
         <div className="mobile-menu-overlay">
           <div className="mobile-menu premium-mobile-menu" ref={mobileMenuRef}>
@@ -569,7 +351,6 @@ const Navbar = () => {
       )}
 
       <style jsx>{`
-        /* PREMIUM NAVBAR STYLES */
         .navbar {
           width: 100%;
           height: 70px;
@@ -618,7 +399,6 @@ const Navbar = () => {
           opacity: 0.6;
         }
         
-        /* ENHANCED TICKER */
         .asset-ticker {
           position: absolute;
           bottom: 0;
@@ -627,7 +407,7 @@ const Navbar = () => {
           height: 16px;
           display: flex;
           gap: 35px;
-          font-size: 10px;
+          font-size: 12px;
           font-weight: 600;
           overflow: hidden;
           white-space: nowrap;
@@ -665,21 +445,13 @@ const Navbar = () => {
         .ticker-symbol {
           font-weight: 700;
           letter-spacing: 0.5px;
+          font-size: 12px;
         }
         
         .ticker-price {
           font-weight: 600;
           font-family: 'SF Mono', Monaco, monospace;
-        }
-        
-        .ticker-change.up {
-          color: #10b981;
-          font-weight: 700;
-        }
-        
-        .ticker-change.down {
-          color: #ef4444;
-          font-weight: 700;
+          font-size: 12px;
         }
         
         .loading {
@@ -705,7 +477,6 @@ const Navbar = () => {
           z-index: 10000;
         }
         
-        /* PREMIUM BRAND */
         .navbar-brand {
           text-decoration: none;
           transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -807,7 +578,6 @@ const Navbar = () => {
           color: rgba(0, 0, 0, 0.6);
         }
         
-        /* PREMIUM NAVIGATION */
         .navbar-nav {
           display: flex;
           gap: 8px;
@@ -933,7 +703,6 @@ const Navbar = () => {
           box-shadow: 0 0 8px rgba(59, 130, 246, 0.6);
         }
         
-        /* PREMIUM ACTIONS */
         .navbar-actions {
           display: flex;
           align-items: center;
@@ -998,7 +767,6 @@ const Navbar = () => {
           transform: rotate(15deg) scale(1.1);
         }
         
-        /* PREMIUM USER MENU */
         .user-menu {
           position: relative;
           z-index: 10002;
@@ -1089,7 +857,6 @@ const Navbar = () => {
           transform: rotate(180deg);
         }
         
-        /* PREMIUM DROPDOWN */
         .premium-dropdown {
           position: fixed;
           top: 70px;
@@ -1333,19 +1100,18 @@ const Navbar = () => {
         }
         
         .logout-item {
-          color: #ef4444 !important;
+          color: #ef3;
         }
         
         .logout-item .item-icon {
-          background: rgba(239, 68, 68, 0.1);
-          color: #ef4444;
+          background: rgba(239, 65, 68, 0.1);
+          color: #e;
         }
         
         .logout-item:hover {
-          background: rgba(239, 68, 68, 0.1) !important;
+          background: rgba(239, 65, 68, 0.1);
         }
         
-        /* LOGIN BUTTON */
         .login-button {
           display: flex;
           align-items: center;
@@ -1357,7 +1123,7 @@ const Navbar = () => {
           background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
           color: white;
           box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          transition: all 0.3s ease;
         }
         
         .login-button:hover {
@@ -1365,7 +1131,6 @@ const Navbar = () => {
           box-shadow: 0 12px 30px rgba(59, 130, 246, 0.4);
         }
         
-        /* PREMIUM MOBILE MENU */
         .mobile-menu-overlay {
           position: fixed;
           top: 0;
@@ -1400,7 +1165,7 @@ const Navbar = () => {
         }
         
         .dark .premium-mobile-menu {
-          background: rgba(10, 12, 30, 0.98);
+          background: rgba(10, 12, 245, 0.4);
           border-left: 1px solid rgba(255, 255, 255, 0.1);
           backdrop-filter: blur(30px);
         }
@@ -1652,7 +1417,6 @@ const Navbar = () => {
           box-shadow: 0 12px 30px rgba(59, 130, 246, 0.4);
         }
         
-        /* RESPONSIVE */
         @media (max-width: 768px) {
           .navbar-nav {
             display: none;
