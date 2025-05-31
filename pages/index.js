@@ -153,45 +153,88 @@ export default function HomePage() {
       background: darkMode ? '#121212' : '#F8FAFC',
     }}>
       {/* Enhanced Hero Section */}
-      <motion.section
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 1 }}
+  <motion.section
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 1.2, ease: 'easeOut' }}
+      style={{
+        textAlign: 'center',
+        padding: '120px 20px',
+        marginBottom: '80px',
+        borderRadius: '24px',
+        position: 'relative',
+        overflow: 'hidden',
+        boxShadow: darkMode 
+          ? '0 20px 60px rgba(0, 0, 0, 0.6), 0 0 20px rgba(59, 130, 246, 0.3)' 
+          : '0 20px 60px rgba(0, 0, 0, 0.2), 0 0 20px rgba(34, 197, 94, 0.3)',
+        border: darkMode 
+          ? '1px solid rgba(59, 130, 246, 0.4)' 
+          : '1px solid rgba(34, 197, 94, 0.4)',
+      }}
+    >
+      <video
+        autoPlay
+        muted
+        loop
+        playsInline
         style={{
-          textAlign: 'center',
-          padding: '100px 20px',
-          marginBottom: '80px',
-          borderRadius: '24px',
-          background: darkMode
-            ? 'linear-gradient(135deg, #1E3A8A 0%, #166534 100%)'
-            : 'linear-gradient(135deg, #3B82F6 0%, #22C55E 100%)',
-          position: 'relative',
-          overflow: 'hidden',
-          boxShadow: darkMode ? '0 15px 50px rgba(0,0,0,0.5)' : '0 15px 50px rgba(0,0,0,0.15)',
-        }}
-      >
-        <div style={{
           position: 'absolute',
           top: 0,
           left: 0,
           width: '100%',
           height: '100%',
-          background: 'url(/particles.png) no-repeat center', // Replace with a particle or abstract SVG
-          opacity: 0.2,
+          objectFit: 'cover',
           zIndex: 0,
-        }}></div>
-        <div style={{ position: 'relative', zIndex: 1 }}>
-          <h1 style={{
+          opacity: darkMode ? 0.65 : 0.75,
+          filter: darkMode ? 'brightness(0.8) contrast(1.1)' : 'brightness(0.9) contrast(1.2)',
+        }}
+      >
+        <source src="/videos/background-video.mp4" type="video/mp4" />
+        Your browser does not support the video tag.
+      </video>
+      <div
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          background: darkMode 
+            ? 'linear-gradient(135deg, rgba(30, 41, 59, 0.5), rgba(22, 101, 52, 0.4))' 
+            : 'linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(34, 197, 94, 0.3))',
+          zIndex: 1,
+          opacity: 0.5,
+        }}
+      />
+      <motion.div
+        style={{ position: 'relative', zIndex: 2 }}
+        initial={{ y: 30, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.3, duration: 0.8, ease: 'easeOut' }}
+      >
+        <motion.h1
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ delay: 0.5, duration: 0.7, ease: 'easeOut' }}
+          style={{
             fontSize: 'clamp(3rem, 6vw, 4.5rem)',
             fontWeight: 800,
             color: '#FFFFFF',
             marginBottom: '20px',
             lineHeight: 1.1,
-            textShadow: '0 4px 15px rgba(0,0,0,0.3)',
-          }}>
-            Unleash Your Trading Potential with ChartSense
-          </h1>
-          <p style={{
+            textShadow: darkMode 
+              ? '0 6px 15px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(59, 130, 246, 0.4)' 
+              : '0 6px 15px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(34, 197, 94, 0.4)',
+            letterSpacing: '0.5px',
+          }}
+        >
+          Unleash Your Trading Potential with ChartSense
+        </motion.h1>
+        <motion.p
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.7, duration: 0.7, ease: 'easeOut' }}
+          style={{
             fontSize: 'clamp(1.2rem, 2.5vw, 1.5rem)',
             color: '#E5E7EB',
             marginBottom: '40px',
@@ -199,12 +242,21 @@ export default function HomePage() {
             margin: '0 auto',
             lineHeight: '1.6',
             fontWeight: 500,
-          }}>
-            Master the markets with cutting-edge AI, hands-on practice, and deep analytics. Your journey to trading greatness starts here.
-          </p>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '20px' }}>
-            {isAuthenticated ? (
-              <Link href="/dashboard" style={{
+            textShadow: '0 3px 10px rgba(0, 0, 0, 0.4)',
+          }}
+        >
+          Master the markets with cutting-edge AI, hands-on practice, and deep analytics. Your journey to trading greatness starts here.
+        </motion.p>
+        <motion.div
+          style={{ display: 'flex', justifyContent: 'center', gap: '20px' }}
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.9, duration: 0.7, ease: 'easeOut' }}
+        >
+          {isAuthenticated ? (
+            <Link 
+              href="/dashboard" 
+              style={{
                 padding: '16px 40px',
                 background: 'linear-gradient(90deg, #22C55E, #4ADE80)',
                 color: '#FFFFFF',
@@ -213,21 +265,23 @@ export default function HomePage() {
                 fontSize: '1.2rem',
                 fontWeight: 700,
                 transition: 'all 0.3s ease',
-                boxShadow: '0 6px 20px rgba(34,197,94,0.5)',
+                boxShadow: '0 6px 20px rgba(34, 197, 94, 0.5), 0 0 15px rgba(34, 197, 94, 0.3)',
               }}
               onMouseOver={(e) => {
-                e.currentTarget.style.transform = 'scale(1.05)';
-                e.currentTarget.style.boxShadow = '0 8px 25px rgba(34,197,94,0.7)';
+                e.currentTarget.style.transform = 'scale(1.05) translateY(-5px)';
+                e.currentTarget.style.boxShadow = '0 10px 25px rgba(34, 197, 94, 0.7), 0 0 20px rgba(34, 197, 94, 0.5)';
               }}
               onMouseOut={(e) => {
-                e.currentTarget.style.transform = 'scale(1)';
-                e.currentTarget.style.boxShadow = '0 6px 20px rgba(34,197,94,0.5)';
+                e.currentTarget.style.transform = 'scale(1) translateY(0)';
+                e.currentTarget.style.boxShadow = '0 6px 20px rgba(34, 197, 94, 0.5), 0 0 15px rgba(34, 197, 94, 0.3)';
               }}
-              >
-                Dive into Your Dashboard
-              </Link>
-            ) : (
-              <Link href="/auth/register" style={{
+            >
+              Dive into Your Dashboard
+            </Link>
+          ) : (
+            <Link 
+              href="/auth/register" 
+              style={{
                 padding: '16px 40px',
                 background: 'linear-gradient(90deg, #3B82F6, #60A5FA)',
                 color: '#FFFFFF',
@@ -236,21 +290,23 @@ export default function HomePage() {
                 fontSize: '1.2rem',
                 fontWeight: 700,
                 transition: 'all 0.3s ease',
-                boxShadow: '0 6px 20px rgba(59,130,246,0.5)',
+                boxShadow: '0 6px 20px rgba(59, 130, 246, 0.5), 0 0 15px rgba(59, 130, 246, 0.3)',
               }}
               onMouseOver={(e) => {
-                e.currentTarget.style.transform = 'scale(1.05)';
-                e.currentTarget.style.boxShadow = '0 8px 25px rgba(59,130,246,0.7)';
+                e.currentTarget.style.transform = 'scale(1.05) translateY(-5px)';
+                e.currentTarget.style.boxShadow = '0 10px 25px rgba(59, 130, 246, 0.7), 0 0 20px rgba(59, 130, 246, 0.5)';
               }}
               onMouseOut={(e) => {
-                e.currentTarget.style.transform = 'scale(1)';
-                e.currentTarget.style.boxShadow = '0 6px 20px rgba(59,130,246,0.5)';
+                e.currentTarget.style.transform = 'scale(1) translateY(0)';
+                e.currentTarget.style.boxShadow = '0 6px 20px rgba(59, 130, 246, 0.5), 0 0 15px rgba(59, 130, 246, 0.3)';
               }}
-              >
-                Begin Your Epic Journey
-              </Link>
-            )}
-            <Link href="/learn-more" style={{
+            >
+              Begin Your Epic Journey
+            </Link>
+          )}
+          <Link 
+            href="/learn-more" 
+            style={{
               padding: '16px 40px',
               background: 'transparent',
               border: `2px solid ${darkMode ? '#FFFFFF' : '#FFFFFF'}`,
@@ -260,19 +316,24 @@ export default function HomePage() {
               fontSize: '1.2rem',
               fontWeight: 600,
               transition: 'all 0.3s ease',
+              boxShadow: '0 4px 15px rgba(255, 255, 255, 0.2)',
             }}
             onMouseOver={(e) => {
               e.currentTarget.style.background = '#FFFFFF33';
+              e.currentTarget.style.transform = 'scale(1.05) translateY(-5px)';
+              e.currentTarget.style.boxShadow = '0 8px 20px rgba(255, 255, 255, 0.3)';
             }}
             onMouseOut={(e) => {
               e.currentTarget.style.background = 'transparent';
+              e.currentTarget.style.transform = 'scale(1) translateY(0)';
+              e.currentTarget.style.boxShadow = '0 4px 15px rgba(255, 255, 255, 0.2)';
             }}
-            >
-              Learn More
-            </Link>
-          </div>
-        </div>
-      </motion.section>
+          >
+            Learn More
+          </Link>
+        </motion.div>
+      </motion.div>
+    </motion.section>
 
       {/* Feature Cards Section */}
       <section style={{ marginBottom: '80px' }}>

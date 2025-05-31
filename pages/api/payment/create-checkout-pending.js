@@ -1,3 +1,4 @@
+// pages/api/payment/create-checkout-pending.js
 import { calculatePriceWithPromo } from '../../../lib/subscriptionUtils';
 import PendingRegistration from '../../../models/PendingRegistration';
 import connectDB from '../../../lib/database';

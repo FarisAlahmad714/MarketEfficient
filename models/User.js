@@ -22,6 +22,7 @@ const UserSchema = new mongoose.Schema({
     unique: true,
     lowercase: true,
     trim: true,
+    index: true, // Add index for performance
     match: [
       /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
       'Please provide a valid email'
@@ -65,7 +66,10 @@ const UserSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
-  verificationToken: String,
+  verificationToken: {
+    type: String,
+    sparse: true // Allows multiple null values
+  },
   verificationTokenExpires: Date,
   resetPasswordToken: String,
   resetPasswordExpires: Date,
@@ -126,6 +130,8 @@ const UserSchema = new mongoose.Schema({
   }
 });
 
+// Compound index for email + isVerified for faster queries
+UserSchema.index({ email: 1, isVerified: 1 });
 // Index for performance
 UserSchema.index({ verificationToken: 1 });
 UserSchema.index({ resetPasswordToken: 1 });
@@ -139,10 +145,15 @@ UserSchema.virtual('isLocked').get(function() {
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOCK_TIME = 2 * 60 * 60 * 1000; // 2 hours
 
-// Add password hashing pre-save hook
+// Pre-save middleware to normalize email and hash password
 UserSchema.pre('save', async function(next) {
   // Update the updatedAt field
   this.updatedAt = new Date();
+  
+  // Normalize email to lowercase (extra safety)
+  if (this.isModified('email')) {
+    this.email = this.email.toLowerCase().trim();
+  }
   
   if (!this.isModified('password')) {
     return next();
@@ -227,6 +238,24 @@ UserSchema.methods.canStartTrial = function() {
 UserSchema.statics.findByEmail = function(email) {
   return this.findOne({ email: email.toLowerCase().trim() });
 };
+
+// Handle duplicate key errors
+UserSchema.post('save', function(error, doc, next) {
+  if (error.name === 'MongoServerError' && error.code === 11000) {
+    next(new Error('An account with this email already exists'));
+  } else {
+    next(error);
+  }
+});
+
+// Handle duplicate key errors for other operations
+UserSchema.post('findOneAndUpdate', function(error, doc, next) {
+  if (error.name === 'MongoServerError' && error.code === 11000) {
+    next(new Error('An account with this email already exists'));
+  } else {
+    next(error);
+  }
+});
 
 // Prevent model overwrite during hot reloads
 module.exports = mongoose.models.User || mongoose.model('User', UserSchema);

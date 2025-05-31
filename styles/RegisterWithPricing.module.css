@@ -9,6 +9,27 @@
   justify-content: center;
 }
 
+.emailMessage {
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+  color: #333;
+}
+
+.checking {
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+  color: #666;
+}
+
+.invalid {
+  border-color: red;
+}
+
+.nextBtn:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
 .formCard {
   background: white;
   border-radius: 16px;

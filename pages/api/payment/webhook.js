@@ -1,3 +1,4 @@
+// pages/api/payment/webhook.js
 import { constructWebhookEvent } from '../../../lib/stripe';
 import { createOrUpdateSubscription, processPromoCodeUsage } from '../../../lib/subscriptionUtils';
 import User from '../../../models/User';
@@ -104,6 +105,11 @@ export default async function handler(req, res) {
     console.error('Webhook error:', error);
     res.status(400).json({ error: error.message });
   }
+}
+const existingUser = await User.findOne({ email: pendingReg.email });
+if (existingUser) {
+  console.error('User already exists with this email:', pendingReg.email);
+  return;
 }
 
 async function handleCheckoutSessionCompleted(session) {

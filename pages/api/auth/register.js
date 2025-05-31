@@ -1,3 +1,4 @@
+// pages/api/auth/register.js
 import jwt from 'jsonwebtoken';
 import connectDB from '../../../lib/database';
 import User from '../../../models/User';
