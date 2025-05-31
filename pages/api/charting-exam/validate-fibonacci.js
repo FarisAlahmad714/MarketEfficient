@@ -48,8 +48,9 @@ export default async function handler(req, res) {
     await connectDB();
     
     // Save test result to database
-    const symbol = chartData.symbol || 'UNKNOWN';
+    const symbol = req.body.symbol || 'MULTIASSET';
     
+    // FIXED: Added missing variable declaration
     const testResult = new TestResults({
       userId: userId,
       testType: 'chart-exam',

@@ -147,19 +147,98 @@ const ChartContainer = styled.div`
 `;
 
 const ChartWrapper = styled.div`
+  position: relative;
   width: 100%;
   height: 500px;
-  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: ${props => props.$isDarkMode ? '#1e1e1e' : '#ffffff'};
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 `;
 
-const FibPanel = styled.div`
-  margin-top: 20px;
-  background-color: ${props => props.$isDarkMode ? 'rgba(30, 30, 30, 0.8)' : 'rgba(255, 255, 255, 0.8)'};
-  border-radius: 8px;
-  padding: 15px;
-  max-height: 300px;
+// Draggable Panel Styles (copied from SwingAnalysis)
+const DraggablePanel = styled.div`
+  position: absolute;
+  width: 280px;
+  max-height: 350px;
+  background: ${props => props.$isDarkMode ? 'rgba(40, 40, 40, 0.9)' : 'rgba(255, 255, 255, 0.9)'};
+  border: 1px solid ${props => props.$isDarkMode ? '#444' : '#ddd'};
+  border-radius: 5px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  z-index: 10;
   overflow-y: auto;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  padding-bottom: 5px;
+  color: ${props => props.$isDarkMode ? '#e0e0e0' : '#333'};
+`;
+
+const PanelHeader = styled.div`
+  background: #2196F3;
+  color: white;
+  padding: 8px;
+  text-align: center;
+  cursor: move;
+  font-weight: bold;
+`;
+
+const PanelContent = styled.div`
+  padding: 8px;
+`;
+
+const DrawingItem = styled.div`
+  margin-bottom: 8px;
+  padding: 8px;
+  border-bottom: 1px solid ${props => props.$isDarkMode ? '#444' : '#eee'};
+  &:last-child {
+    border-bottom: none;
+  }
+  background-color: ${props => props.$isDarkMode ? 'rgba(0, 0, 0, 0.2)' : 'rgba(0, 0, 0, 0.05)'};
+  border-radius: 4px;
+  
+  & > .drawing-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    
+    h4 {
+      margin: 0;
+      color: ${props => props.$isDarkMode ? '#e0e0e0' : '#333'};
+      font-size: 0.95rem;
+    }
+    
+    button {
+      background: none;
+      border: none;
+      color: ${props => props.$isDarkMode ? '#e0e0e0' : '#555'};
+      cursor: pointer;
+      font-size: 1rem;
+      
+      &:hover {
+        color: ${props => props.$isDarkMode ? '#fff' : '#000'};
+      }
+    }
+  }
+  
+  & > .drawing-details {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    font-size: 0.85rem;
+    
+    .detail-row {
+      display: flex;
+      justify-content: space-between;
+      
+      span:first-child {
+        color: ${props => props.$isDarkMode ? '#b0b0b0' : '#666'};
+      }
+      
+      span:last-child {
+        color: ${props => props.$isDarkMode ? '#e0e0e0' : '#333'};
+        font-weight: bold;
+      }
+    }
+  }
 `;
 
 const FibInfoOverlay = styled.div`
@@ -175,19 +254,11 @@ const FibInfoOverlay = styled.div`
   font-size: 0.9rem;
   line-height: 1.4;
   z-index: 50;
+  pointer-events: none;
   display: ${props => props.$active ? 'block' : 'none'};
 `;
 
-const FibonacciInfoGrid = styled.div`
-  display: grid;
-  grid-template-columns: 1fr 2fr;
-  gap: 20px;
-  margin-top: 20px;
-  
-  @media (max-width: 768px) {
-    grid-template-columns: 1fr;
-  }
-`;
+
 
 const FibGuidelinesWrapper = styled.div`
   background-color: ${props => props.$isDarkMode ? 'rgba(0, 0, 0, 0.2)' : 'rgba(0, 0, 0, 0.05)'};
@@ -235,27 +306,6 @@ const ClearNotification = styled.div`
 `;
 
 /**
- * Get guidelines text based on current part
- * @param {Number} part - Current exam part (1 for uptrend, 2 for downtrend)
- * @returns {String} Guidelines text
- */
-function getFibGuidelines(part) {
-  if (part === 1) {
-    return `For UPTREND Fibonacci Retracement:
-1. Find a significant UPTREND
-2. Place your START point at a major SWING HIGH
-3. Place your END point at a major SWING LOW
-4. Key levels to watch: 0.5, 0.618, 0.705`;
-  } else {
-    return `For DOWNTREND Fibonacci Retracement:
-1. Find a significant DOWNTREND
-2. Place your START point at a major SWING LOW
-3. Place your END point at a major SWING HIGH
-4. Key levels to watch: 0.5, 0.618, 0.705`;
-  }
-}
-
-/**
  * Enhanced point selection for better accuracy
  * @param {Object} point - Clicked point
  * @param {Array} chartData - Chart data
@@ -292,6 +342,7 @@ function enhancePointSelection(point, chartData, part, isEndPoint = false) {
 
 const FibonacciRetracement = ({ chartData, onDrawingsUpdate, part, chartCount, isDarkMode }) => {
   const containerRef = useRef(null);
+  const panelRef = useRef(null);
   const [drawings, setDrawings] = useState([]);
   const [drawingMode, setDrawingMode] = useState(false);
   const [startPoint, setStartPoint] = useState(null);
@@ -300,6 +351,20 @@ const FibonacciRetracement = ({ chartData, onDrawingsUpdate, part, chartCount, i
   const [chartKey, setChartKey] = useState(0);
   const [showClearNotification, setShowClearNotification] = useState(false);
   const [prevPart, setPrevPart] = useState(part);
+  
+  // Draggable panel state
+  const [panelOffset, setPanelOffset] = useState({ x: 0, y: 10 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [currentCoords, setCurrentCoords] = useState({ x: 0, y: 0 });
+  
+  // Set initial panel position
+  useEffect(() => {
+    if (containerRef.current && panelRef.current) {
+      const containerWidth = containerRef.current.clientWidth;
+      const panelWidth = panelRef.current.clientWidth;
+      setPanelOffset({ x: containerWidth - panelWidth - 10, y: 10 });
+    }
+  }, [containerRef, panelRef]);
   
   useEffect(() => {
     if (prevPart !== part && prevPart !== undefined) {
@@ -426,6 +491,36 @@ const FibonacciRetracement = ({ chartData, onDrawingsUpdate, part, chartCount, i
     }
   }, [drawings, onDrawingsUpdate]);
   
+  // Dragging logic
+  const startPanelDragging = (e) => {
+    if (e.target.className.includes('panel-header')) {
+      setIsDragging(true);
+      setCurrentCoords({
+        x: e.clientX - panelOffset.x,
+        y: e.clientY - panelOffset.y
+      });
+    }
+  };
+
+  const dragPanel = (e) => {
+    if (isDragging && containerRef.current && panelRef.current) {
+      e.preventDefault();
+      const x = e.clientX - currentCoords.x;
+      const y = e.clientY - currentCoords.y;
+      const container = containerRef.current;
+      const panel = panelRef.current;
+      const maxX = container.offsetWidth - panel.offsetWidth;
+      const maxY = container.offsetHeight - panel.offsetHeight;
+      const newX = Math.max(0, Math.min(x, maxX));
+      const newY = Math.max(0, Math.min(y, maxY));
+      setPanelOffset({ x: newX, y: newY });
+    }
+  };
+
+  const stopPanelDragging = () => {
+    setIsDragging(false);
+  };
+  
   const handlePointClick = (point) => {
     if (!drawingMode) return;
     
@@ -501,6 +596,12 @@ const FibonacciRetracement = ({ chartData, onDrawingsUpdate, part, chartCount, i
     }
   };
 
+  const removeDrawing = (index) => {
+    const newDrawings = [...drawings];
+    newDrawings.splice(index, 1);
+    setDrawings(newDrawings);
+  };
+
   const toolsConfig = [
     {
       id: 'draw-fibonacci',
@@ -570,7 +671,13 @@ const FibonacciRetracement = ({ chartData, onDrawingsUpdate, part, chartCount, i
       )}
       
       <ChartContainer>
-        <ChartWrapper ref={containerRef}>
+        <ChartWrapper 
+          $isDarkMode={isDarkMode} 
+          ref={containerRef}
+          onMouseMove={dragPanel}
+          onMouseUp={stopPanelDragging}
+          onMouseLeave={stopPanelDragging}
+        >
           {containerRef.current && (
             <Chart 
               key={chartKey}
@@ -586,16 +693,20 @@ const FibonacciRetracement = ({ chartData, onDrawingsUpdate, part, chartCount, i
             />
           )}
           
-          <FibInfoOverlay
+          
+          {/* Draggable Panel */}
+          <DraggablePanel
+            ref={panelRef}
+            style={{ left: `${panelOffset.x}px`, top: `${panelOffset.y}px` }}
+            onMouseDown={startPanelDragging}
             $isDarkMode={isDarkMode}
-            $direction={part === 1 ? 'uptrend' : 'downtrend'}
-            $active={drawingMode}
           >
-            <h4 style={{ marginTop: 0, marginBottom: '10px' }}>
-              Drawing {part === 1 ? 'Uptrend' : 'Downtrend'} Fibonacci
-            </h4>
-            
-            {startPoint ? (
+            <PanelHeader className="panel-header">Fibonacci Retracements</PanelHeader>
+            <PanelContent>
+              {drawings.length === 0 ? (
+                <p style={{ color: isDarkMode ? '#b0b0b0' : '#666', fontSize: '0.9rem' }}>
+                                Drawing {part === 1 ? 'Uptrend' : 'Downtrend'} Fibonacci
+                                {startPoint ? (
               <p>
                 Great! Start point set at {startPoint.price.toFixed(2)}<br />
                 Now click to set the {part === 1 ? 'low' : 'high'} point
@@ -605,71 +716,55 @@ const FibonacciRetracement = ({ chartData, onDrawingsUpdate, part, chartCount, i
                 Click to set the start point ({part === 1 ? 'high' : 'low'})
               </p>
             )}
-            
-            <div style={{ 
-              marginTop: '10px', 
-              fontSize: '0.8rem',
-              color: isDarkMode ? '#b0b0b0' : '#666'
-            }}>
-              Tip: For {part === 1 ? 'uptrend' : 'downtrend'} Fibonacci, draw from {part === 1 ? 'high to low' : 'low to high'}
-            </div>
-          </FibInfoOverlay>
+
+                
+                </p>
+              ) : (
+                <>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
+                    <span style={{ display: 'inline-block', background: '#2196F3', color: 'white', padding: '3px 8px', borderRadius: '12px', fontSize: '0.8rem' }}>
+                      Total: {drawings.length}
+                    </span>
+                    <span style={{ display: 'inline-block', background: part === 1 ? '#4CAF50' : '#F44336', color: 'white', padding: '3px 8px', borderRadius: '12px', fontSize: '0.8rem' }}>
+                      {part === 1 ? 'Uptrend' : 'Downtrend'}
+                    </span>
+                  </div>
+                  {[...drawings]
+                    .sort((a, b) => a.start.time - b.start.time)
+                    .map((drawing, index) => (
+                      <DrawingItem key={index} $isDarkMode={isDarkMode}>
+                        <div className="drawing-header">
+                          <h4>{drawing.direction === 'uptrend' ? 'Uptrend' : 'Downtrend'} #{index + 1}</h4>
+                          <button onClick={() => removeDrawing(index)}>×</button>
+                        </div>
+                        <div className="drawing-details">
+                          <div className="detail-row">
+                            <span>Start:</span>
+                            <span>{drawing.start.price.toFixed(2)}</span>
+                          </div>
+                          <div className="detail-row">
+                            <span>End:</span>
+                            <span>{drawing.end.price.toFixed(2)}</span>
+                          </div>
+                          <div className="detail-row">
+                            <span>Range:</span>
+                            <span>{Math.abs(drawing.start.price - drawing.end.price).toFixed(2)}</span>
+                          </div>
+                          <div className="detail-row">
+                            <span>Date:</span>
+                            <span>{formatDate(drawing.start.time)}</span>
+                          </div>
+                        </div>
+                      </DrawingItem>
+                    ))}
+                </>
+              )}
+            </PanelContent>
+          </DraggablePanel>
         </ChartWrapper>
       </ChartContainer>
       
-      <FibonacciInfoGrid>
-        <FibPanel $isDarkMode={isDarkMode}>
-          <h3 style={{ 
-            marginTop: 0, 
-            fontSize: '1rem', 
-            marginBottom: '10px',
-            color: isDarkMode ? '#e0e0e0' : '#333'
-          }}>
-            Your Fibonacci Retracements
-          </h3>
-          
-          {drawings.length === 0 ? (
-            <p style={{ color: isDarkMode ? '#b0b0b0' : '#666', fontSize: '0.9rem' }}>
-              No retracements drawn yet.
-            </p>
-          ) : (
-            drawings.map((drawing, index) => (
-              <div key={index} style={{ padding: '8px', marginBottom: '10px', backgroundColor: isDarkMode ? 'rgba(0, 0, 0, 0.2)' : 'rgba(0, 0, 0, 0.05)', borderRadius: '4px' }}>
-                <h4 style={{ margin: '0 0 8px 0', color: isDarkMode ? '#e0e0e0' : '#333', fontSize: '0.95rem' }}>
-                  {drawing.direction === 'uptrend' ? 'Uptrend' : 'Downtrend'} #{index + 1}
-                </h4>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px', fontSize: '0.85rem' }}>
-                  <span style={{ color: isDarkMode ? '#b0b0b0' : '#666' }}>Start:</span>
-                  <span style={{ color: isDarkMode ? '#e0e0e0' : '#333', fontWeight: 'bold' }}>{drawing.start.price.toFixed(2)}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px', fontSize: '0.85rem' }}>
-                  <span style={{ color: isDarkMode ? '#b0b0b0' : '#666' }}>End:</span>
-                  <span style={{ color: isDarkMode ? '#e0e0e0' : '#333', fontWeight: 'bold' }}>{drawing.end.price.toFixed(2)}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px', fontSize: '0.85rem' }}>
-                  <span style={{ color: isDarkMode ? '#b0b0b0' : '#666' }}>Date Range:</span>
-                  <span style={{ color: isDarkMode ? '#e0e0e0' : '#333', fontWeight: 'bold' }}>{formatDate(drawing.start.time)} - {formatDate(drawing.end.time)}</span>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <button
-                    style={{ background: 'none', border: 'none', color: isDarkMode ? '#e0e0e0' : '#555', cursor: 'pointer', fontSize: '1rem' }}
-                    onClick={() => {
-                      const newDrawings = [...drawings];
-                      newDrawings.splice(index, 1);
-                      setDrawings(newDrawings);
-                    }}
-                    onMouseOver={(e) => e.currentTarget.style.color = isDarkMode ? '#fff' : '#000'}
-                    onMouseOut={(e) => e.currentTarget.style.color = isDarkMode ? '#e0e0e0' : '#555'}
-                  >
-                    ×
-                  </button>
-                </div>
-              </div>
-            ))
-          )}
-        </FibPanel>
-        
-        <FibGuidelinesWrapper $isDarkMode={isDarkMode}>
+      <FibGuidelinesWrapper $isDarkMode={isDarkMode}>
           <h3>Fibonacci Retracement Guidelines</h3>
           
           <p style={{ 
@@ -734,7 +829,6 @@ const FibonacciRetracement = ({ chartData, onDrawingsUpdate, part, chartCount, i
             </p>
           </div>
         </FibGuidelinesWrapper>
-      </FibonacciInfoGrid>
     </div>
   );
 };

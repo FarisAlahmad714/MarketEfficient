@@ -22,10 +22,8 @@ const ChartContainer = styled.div`
 
 const FVGPanel = styled.div`
   position: absolute;
-  top: 10px;
-  left: 10px;
-  width: 250px;
-  max-height: 200px;
+  width: 280px;
+  max-height: 350px;
   background: ${props => props.$isDarkMode ? 'rgba(40, 40, 40, 0.9)' : 'rgba(255, 255, 255, 0.9)'};
   border: 1px solid ${props => props.$isDarkMode ? '#444' : '#ddd'};
   border-radius: 5px;
@@ -51,10 +49,31 @@ const PanelContent = styled.div`
 
 const FVGItem = styled.div`
   margin-bottom: 8px;
-  padding: 6px;
+  padding: 8px;
   border-bottom: 1px solid ${props => props.$isDarkMode ? '#444' : '#eee'};
   &:last-child {
     border-bottom: none;
+  }
+  background-color: ${props => props.$isDarkMode ? 'rgba(0, 0, 0, 0.2)' : 'rgba(0, 0, 0, 0.05)'};
+  border-radius: 4px;
+  
+  & > .fvg-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    
+    button {
+      background: none;
+      border: none;
+      color: ${props => props.$isDarkMode ? '#e0e0e0' : '#555'};
+      cursor: pointer;
+      font-size: 1rem;
+      
+      &:hover {
+        color: ${props => props.$isDarkMode ? '#fff' : '#000'};
+      }
+    }
   }
 `;
 
@@ -195,7 +214,7 @@ const FairValueGaps = ({
   const [userFVGs, setUserFVGs] = useState([]);
   const [rectangles, setRectangles] = useState([]);
   const [hlines, setHlines] = useState([]);
-  const [panelOffset, setPanelOffset] = useState({ x: 10, y: 10 });
+  const [panelOffset, setPanelOffset] = useState({ x: 0, y: 10 });
   const [isDragging, setIsDragging] = useState(false);
   const [currentCoords, setCurrentCoords] = useState({ x: 0, y: 0 });
   const [expectedFVGMarkers, setExpectedFVGMarkers] = useState([]);
@@ -209,6 +228,15 @@ const FairValueGaps = ({
     correctBullish: 'rgba(255, 152, 0, 0.6)',
     correctBearish: 'rgba(244, 67, 54, 0.6)'
   };
+
+  // Set initial panel position
+  useEffect(() => {
+    if (chartContainerRef.current && panelRef.current) {
+      const containerWidth = chartContainerRef.current.clientWidth;
+      const panelWidth = panelRef.current.clientWidth;
+      setPanelOffset({ x: containerWidth - panelWidth - 10, y: 10 });
+    }
+  }, [chartContainerRef, panelRef]);
 
   // Auto-clear drawings when part changes
   useEffect(() => {
@@ -693,7 +721,7 @@ const FairValueGaps = ({
     }
   };
 
-  // Handle panel dragging
+  // Enhanced dragging logic (copied from SwingAnalysis)
   const startPanelDragging = (e) => {
     if (e.target.className.includes('panel-header')) {
       setIsDragging(true);
@@ -709,22 +737,62 @@ const FairValueGaps = ({
       e.preventDefault();
       const x = e.clientX - currentCoords.x;
       const y = e.clientY - currentCoords.y;
-      
       const container = chartContainerRef.current;
       const panel = panelRef.current;
-      
       const maxX = container.offsetWidth - panel.offsetWidth;
       const maxY = container.offsetHeight - panel.offsetHeight;
-      
       const newX = Math.max(0, Math.min(x, maxX));
       const newY = Math.max(0, Math.min(y, maxY));
-      
       setPanelOffset({ x: newX, y: newY });
     }
   };
 
   const stopPanelDragging = () => {
     setIsDragging(false);
+  };
+
+  // Remove individual FVG
+  const removeFVG = (index) => {
+    if (index < rectangles.length) {
+      const rectToRemove = rectangles[index];
+      if (rectToRemove.lines) {
+        rectToRemove.lines.forEach(line => {
+          candleSeriesRef.current.removePriceLine(line);
+        });
+      }
+      
+      const currentMarkers = candleSeriesRef.current.markers() || [];
+      const updatedMarkers = currentMarkers
+        .filter(marker => {
+          return !rectToRemove.markers.some(m => 
+            m.time === marker.time && 
+            m.position === marker.position && 
+            m.text === marker.text
+          );
+        })
+        .sort((a, b) => a.time - b.time);
+      
+      candleSeriesRef.current.setMarkers(updatedMarkers);
+      setRectangles(prev => prev.filter((_, i) => i !== index));
+    } else if (index - rectangles.length < hlines.length) {
+      const hlineIndex = index - rectangles.length;
+      const lineToRemove = hlines[hlineIndex];
+      candleSeriesRef.current.removePriceLine(lineToRemove.line);
+      
+      const currentMarkers = candleSeriesRef.current.markers() || [];
+      const updatedMarkers = currentMarkers
+        .filter(marker => {
+          return !(marker.time === lineToRemove.time && 
+                  marker.position === lineToRemove.marker.position && 
+                  marker.text === lineToRemove.marker.text);
+        })
+        .sort((a, b) => a.time - b.time);
+      
+      candleSeriesRef.current.setMarkers(updatedMarkers);
+      setHlines(prev => prev.filter((_, i) => i !== hlineIndex));
+    }
+    
+    setUserFVGs(prev => prev.filter((_, i) => i !== index));
   };
 
   // Handle tool selection
@@ -834,13 +902,19 @@ const FairValueGaps = ({
         selectedTool={drawingMode}
         onToolSelect={handleToolSelect}
         tools={toolsConfig}
+        actions={actionsConfig}
         onClearAll={clearAllDrawings}
         isDarkMode={isDarkMode}
         noFvgsOption={true}
         onNoFvgsFound={markNoFvgsFound}
       />
       
-      <ChartWrapper $isDarkMode={isDarkMode}>
+      <ChartWrapper 
+        $isDarkMode={isDarkMode}
+        onMouseMove={dragPanel}
+        onMouseUp={stopPanelDragging}
+        onMouseLeave={stopPanelDragging}
+      >
         <ChartContainer 
           ref={chartContainerRef} 
           onClick={handleChartClick}
@@ -856,12 +930,9 @@ const FairValueGaps = ({
           ref={panelRef}
           style={{ left: `${panelOffset.x}px`, top: `${panelOffset.y}px` }}
           onMouseDown={startPanelDragging}
-          onMouseMove={dragPanel}
-          onMouseUp={stopPanelDragging}
-          onMouseLeave={stopPanelDragging}
           $isDarkMode={isDarkMode}
         >
-          <PanelHeader $isBullish={part === 1}>
+          <PanelHeader className="panel-header" $isBullish={part === 1}>
             Fair Value Gaps
           </PanelHeader>
           <PanelContent>
@@ -883,20 +954,42 @@ const FairValueGaps = ({
                 </FVGRange>
               </FVGItem>
             ) : (
-              userFVGs.map((fvg, index) => {
-                if (fvg.no_fvgs_found) return null;
-                
-                const startDate = new Date(fvg.startTime * 1000).toLocaleDateString();
-                return (
-                  <FVGItem key={index} $isDarkMode={isDarkMode}>
-                    <FVGLabel $isDarkMode={isDarkMode}>FVG {index + 1} ({fvg.type})</FVGLabel>
-                    <FVGRange $isDarkMode={isDarkMode}>
-                      Price Range: {fvg.topPrice.toFixed(2)} - {fvg.bottomPrice.toFixed(2)}
-                    </FVGRange>
-                    <FVGDate $isDarkMode={isDarkMode}>Date: {startDate}</FVGDate>
-                  </FVGItem>
-                );
-              })
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
+                  <span style={{ display: 'inline-block', background: '#2196F3', color: 'white', padding: '3px 8px', borderRadius: '12px', fontSize: '0.8rem' }}>
+                    Total: {userFVGs.filter(fvg => !fvg.no_fvgs_found).length}
+                  </span>
+                  <span style={{ display: 'inline-block', background: part === 1 ? '#4CAF50' : '#F44336', color: 'white', padding: '3px 8px', borderRadius: '12px', fontSize: '0.8rem' }}>
+                    {part === 1 ? 'Bullish' : 'Bearish'}
+                  </span>
+                </div>
+                {userFVGs.map((fvg, index) => {
+                  if (fvg.no_fvgs_found) return null;
+                  
+                  const startDate = new Date(fvg.startTime * 1000).toLocaleDateString();
+                  return (
+                    <FVGItem key={index} $isDarkMode={isDarkMode}>
+                      <div className="fvg-header">
+                        <FVGLabel $isDarkMode={isDarkMode}>
+                          FVG {index + 1} ({fvg.type})
+                        </FVGLabel>
+                        <button onClick={() => removeFVG(index)}>×</button>
+                      </div>
+                      <FVGRange $isDarkMode={isDarkMode}>
+                        Range: {fvg.topPrice.toFixed(2)} - {fvg.bottomPrice.toFixed(2)}
+                      </FVGRange>
+                      <FVGDate $isDarkMode={isDarkMode}>
+                        Date: {startDate}
+                      </FVGDate>
+                      {fvg.drawingType === 'hline' && (
+                        <FVGDate $isDarkMode={isDarkMode}>
+                          Type: Horizontal Line
+                        </FVGDate>
+                      )}
+                    </FVGItem>
+                  );
+                })}
+              </>
             )}
           </PanelContent>
         </FVGPanel>
@@ -920,4 +1013,4 @@ const FairValueGaps = ({
   );
 };
 
-export default FairValueGaps;                
+export default FairValueGaps;

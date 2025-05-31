@@ -30,7 +30,7 @@ async function validateFvgHandler(req, res) {
   }
   
   // Extract asset symbol and timeframe from the request
-  const symbol = chartData.symbol || req.body.symbol || 'UNKNOWN';
+  const symbol = 'MULTIASSET';
   const chartTimeframe = timeframe || chartData.timeframe || '1d';
   
   console.log(`Validating ${part === 1 ? 'bullish' : 'bearish'} FVGs for ${symbol} on ${chartTimeframe} timeframe`);

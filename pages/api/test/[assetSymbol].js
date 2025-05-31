@@ -559,6 +559,7 @@ export default async function handler(req, res) {
         });
         
         // Create and save the test result
+        
         const testResult = new TestResults({
           userId: userId,
           testType: 'bias-test',

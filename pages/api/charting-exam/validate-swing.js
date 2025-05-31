@@ -59,13 +59,13 @@ async function validateSwingHandler(req, res) {
   } : undefined;
 
   // IMPORTANT: Save test result to database
-  const symbol = chartData.symbol || 'UNKNOWN';
+  const symbol = req.body.symbol || 'MULTIASSET';
   
   const testResult = new TestResults({
     userId: userId,
     testType: 'chart-exam',
     subType: 'swing-analysis',
-    assetSymbol: symbol,
+    assetSymbol:  'MULTIASSET',
     score: validationResult.score,
     totalPoints: validationResult.totalExpectedPoints,
     details: {
