@@ -5,7 +5,7 @@ import Subscription from '../../../models/Subscription';
 import PromoCode from '../../../models/PromoCode';
 import { calculatePriceWithPromo, processPromoCodeUsage } from '../../../lib/subscriptionUtils';
 import { sendWelcomeEmail, sendVerificationEmail } from '../../../lib/email-service';
-
+import logger from '../../../lib/logger'; // Adjust path to your logger utility
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -106,7 +106,7 @@ export default async function handler(req, res) {
     if (!user.isVerified && user.verificationToken) {
       try {
         await sendVerificationEmail(user, user.verificationToken);
-        console.log('Verification email sent for free subscription');
+        logger.log('Verification email sent for free subscription');
       } catch (emailError) {
         console.error('Failed to send verification email for free subscription:', emailError);
       }
@@ -117,7 +117,7 @@ export default async function handler(req, res) {
       await sendWelcomeEmail(user);
       user.hasReceivedWelcomeEmail = true;
       await user.save();
-      console.log('Welcome email sent for free subscription');
+      logger.log('Welcome email sent for free subscription');
     } catch (emailError) {
       console.error('Failed to send welcome email:', emailError);
     }

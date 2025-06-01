@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createChart, CrosshairMode, LineStyle } from 'lightweight-charts';
 import styled from 'styled-components';
 import ToolPanel from './common/ToolPanel';
+import logger from '../../lib/logger'; // Adjust path to your logger utility
+// Adjust path to your logger utility
 
 // Styled components
 const ChartWrapper = styled.div`
@@ -322,7 +324,7 @@ const FairValueGaps = ({
   // Process validation results - add labels to existing FVG visualizations
   useEffect(() => {
     if (validationResults && chartRef.current) {
-      console.log('Processing validation results with', validationResults.expected?.gaps?.length || 0, 'expected gaps');
+      logger.log('Processing validation results with', validationResults.expected?.gaps?.length || 0, 'expected gaps');
       
       // Clear existing labels first
       clearFVGVisualElements();
@@ -507,11 +509,11 @@ const FairValueGaps = ({
   const drawFVGLabels = () => {
     try {
       if (!validationResults?.expected?.gaps || !chartRef.current || !chartContainerRef.current) {
-        console.log('Missing required data for drawing FVG labels');
+        logger.log('Missing required data for drawing FVG labels');
         return;
       }
       
-      console.log('Drawing', validationResults.expected.gaps.length, 'FVG labels');
+      logger.log('Drawing', validationResults.expected.gaps.length, 'FVG labels');
       
       const sortedGaps = [...validationResults.expected.gaps].sort((a, b) => b.topPrice - a.topPrice);
       const newExpectedMarkers = [];
@@ -588,7 +590,7 @@ const FairValueGaps = ({
       });
       
       setExpectedFVGMarkers(newExpectedMarkers);
-      console.log(`Successfully created FVG visualization without labels`);
+      logger.log(`Successfully created FVG visualization without labels`);
       
     } catch (error) {
       console.error('Error in drawFVGLabels:', error);

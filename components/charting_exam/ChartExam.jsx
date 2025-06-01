@@ -8,7 +8,7 @@ import ExamProgress from './common/ExamProgress';
 import ResultsPanel from './common/ResultsPanel';
 import { ThemeContext } from '../../contexts/ThemeContext';
 import CryptoLoader from '../CryptoLoader';
-
+import logger from '../../lib/logger'; // Adjust path to your logger utility
 // Styled components with $-prefixed props to prevent DOM forwarding
 const ExamContainer = styled.div`
   max-width: 1200px;
@@ -174,7 +174,7 @@ const ChartExam = ({ examType }) => {
   
   // Validate user drawings with chart data included in payload
   const validateDrawings = async () => {
-    console.log("Validating drawings:", drawings);
+    logger.log("Validating drawings:", drawings);
   
     // Check if there are drawings to validate
     if (drawings.length === 0 && !drawings[0]?.no_fvgs_found && !drawings[0]?.no_swings_found) {
@@ -243,7 +243,7 @@ const ChartExam = ({ examType }) => {
       }
       
       // Log validation results for debugging
-      console.log(`Validation results: ${data.score}/${data.totalExpectedPoints} points`);
+      logger.log(`Validation results: ${data.score}/${data.totalExpectedPoints} points`);
       
       // Set results and show panel
       setResults(data);
@@ -330,7 +330,7 @@ const ChartExam = ({ examType }) => {
   // Handle drawings update from child components
  // In components/charting_exam/ChartExam.jsx - only the updated function needed
 const handleDrawingsUpdate = (newDrawings) => {
-  console.log("Drawings update received:", newDrawings);
+  logger.log("Drawings update received:", newDrawings);
 
   // Store drawings without causing unnecessary rerenders
   setDrawings(prevDrawings => {
@@ -399,7 +399,7 @@ useEffect(() => {
   
   // Render the appropriate exam component
   const renderExamComponent = () => {
-    console.log("Rendering exam component:", examType);
+    logger.log("Rendering exam component:", examType);
 
     const props = {
       chartData,

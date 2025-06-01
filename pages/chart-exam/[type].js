@@ -4,7 +4,7 @@ import ChartExam from '../../components/charting_exam/ChartExam';
 import { useContext } from 'react';
 import { ThemeContext } from '../../contexts/ThemeContext';
 import CryptoLoader from '../../components/CryptoLoader';
-
+import logger from '../../lib/logger'; // Adjust path to your logger utility
 const ChartExamPage = () => {
   const router = useRouter();
   const { type } = router.query;
@@ -46,7 +46,7 @@ const ChartExamPage = () => {
   // Changed to match the IDs you're using in chart-exam.js
   const validTypes = ['swing-analysis', 'fibonacci-retracement', 'fair-value-gaps'];
   
-  console.log("Current type:", type); // Debug to see what value is coming in
+  logger.log("Current type:", type); // Debug to see what value is coming in
   
   if (!validTypes.includes(type)) {
     return (

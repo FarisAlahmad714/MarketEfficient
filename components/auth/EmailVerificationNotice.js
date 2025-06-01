@@ -130,9 +130,9 @@ const EmailVerificationNotice = ({
               fontSize: '14px',
               lineHeight: '1.6'
             }}>
-              <li>Check your email inbox (and spam folder)</li>
-              <li>Click the verification link in the email</li>
-              <li>Return here to log in and start trading</li>
+              <h3>Check your email inbox (and spam folder)</h3>
+              <h3>Click the verification link in the email</h3>
+              <h3>Return here to log in and start trading</h3>
             </ol>
           </div>
 

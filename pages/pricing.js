@@ -2,6 +2,7 @@ import { useState, useEffect, useContext } from 'react';
 import { useRouter } from 'next/router';
 import { AuthContext } from '../contexts/AuthContext';
 import PricingPage from '../components/PricingPage';
+import logger from '../lib/logger'; // Adjust the path to your logger utility
 
 export default function Pricing() {
   const router = useRouter();
@@ -11,7 +12,7 @@ export default function Pricing() {
   // Store tempToken for registration flow
   useEffect(() => {
     if (cancelled === 'true' && tempToken) {
-      console.log('Cancelled checkout:', { email, plan, tempToken });
+      logger.log('Cancelled checkout:', { email, plan, tempToken });
       localStorage.setItem('registrationTempToken', tempToken);
     }
   }, [cancelled, email, plan, tempToken]);
@@ -26,7 +27,7 @@ export default function Pricing() {
     }
 
     try {
-      console.log('Initiating checkout for plan:', selectedPlan, { isAuthenticated });
+      logger.log('Initiating checkout for plan:', selectedPlan, { isAuthenticated });
       const response = await fetch('/api/payment/create-checkout-registration', {
         method: 'POST',
         headers: {
@@ -41,7 +42,7 @@ export default function Pricing() {
       });
       const data = await response.json();
       if (data.url) {
-        console.log('Redirecting to Stripe checkout:', data.url);
+        logger.log('Redirecting to Stripe checkout:', data.url);
         window.location.href = data.url;
       } else {
         console.error('Checkout failed:', data.error);

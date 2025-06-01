@@ -7,7 +7,7 @@ import { composeMiddleware } from '../../../lib/api-handler';
 import { detectSwingPoints } from './utils/swing-detection';
 import { validateSwingPoints } from './utils/validation';
 import TestResults from '../../../models/TestResults';
-
+import logger from '../../../lib/logger'; // Adjust path to your logger utility
 async function validateSwingHandler(req, res) {
   // User is already authenticated via middleware
   const userId = req.user.id;
@@ -35,17 +35,17 @@ async function validateSwingHandler(req, res) {
   }
   
   // Log some info about the data to help with debugging
-  console.log(`Analyzing ${dataToAnalyze.length} candles for swing points`);
+  logger.log(`Analyzing ${dataToAnalyze.length} candles for swing points`);
   
   // Get chart timeframe to adjust detection parameters
   const timeframe = determineTimeframe(dataToAnalyze);
-  console.log(`Detected timeframe: ${timeframe}`);
+  logger.log(`Detected timeframe: ${timeframe}`);
   
   // Detect swing points with parameters optimized for the timeframe
   const options = getDetectionOptions(timeframe);
   const expectedSwingPoints = detectSwingPoints(dataToAnalyze, options);
   
-  console.log(`Detected ${expectedSwingPoints.highs.length} swing highs and ${expectedSwingPoints.lows.length} swing lows`);
+  logger.log(`Detected ${expectedSwingPoints.highs.length} swing highs and ${expectedSwingPoints.lows.length} swing lows`);
   
   // Validate user drawings against expected points
   const validationResult = validateSwingPoints(drawings, expectedSwingPoints, dataToAnalyze);
@@ -76,7 +76,7 @@ async function validateSwingHandler(req, res) {
   });
   
   await testResult.save();
-  console.log(`Test result saved, score: ${validationResult.score}/${validationResult.totalExpectedPoints}`);
+  logger.log(`Test result saved, score: ${validationResult.score}/${validationResult.totalExpectedPoints}`);
   
   return res.status(200).json({
     success: true,

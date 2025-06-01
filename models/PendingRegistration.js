@@ -1,5 +1,6 @@
 // models/PendingRegistration.js
 const mongoose = require('mongoose');
+const loggerr = require('../lib/logger'); // Adjust path to your logger utility
 
 const PendingRegistrationSchema = new mongoose.Schema({
   name: {
@@ -93,7 +94,7 @@ PendingRegistrationSchema.statics.cleanupExpired = async function() {
     ]
   });
   
-  console.log(`Cleaned up ${result.deletedCount} expired pending registrations`);
+  loggerr.log(`Cleaned up ${result.deletedCount} expired pending registrations`);
   return result;
 };
 

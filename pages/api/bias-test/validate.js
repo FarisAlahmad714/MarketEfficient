@@ -5,7 +5,7 @@ import { createApiHandler } from '../../../lib/api-handler';
 import { requireAuth } from '../../../middleware/auth';
 import { composeMiddleware } from '../../../lib/api-handler';
 import TestResults from '../../../models/TestResults';
-
+import logger from '../../../lib/logger'; // Adjust path to your logger utility
 async function validateHandler(req, res) {
   // User is already authenticated via middleware
   const userId = req.user.id;
@@ -55,7 +55,7 @@ async function validateHandler(req, res) {
   });
   
   await testResult.save();
-  console.log(`Bias test result saved, score: ${score}/${predictions.length} for ${assetSymbol}`);
+  logger.log(`Bias test result saved, score: ${score}/${predictions.length} for ${assetSymbol}`);
   
   return res.status(200).json({
     success: true,

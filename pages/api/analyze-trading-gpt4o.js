@@ -1,5 +1,6 @@
 // pages/api/analyze-trading-gpt4o.js
 import OpenAI from 'openai';
+import logger from '../../lib/Logger'; // Adjust path to your logger utility
 
 // Helper function to format dates - ENHANCED VERSION
 function formatReadableDate(isoDateString) {
@@ -92,7 +93,7 @@ export default async function handler(req, res) {
     if (!reasoning) return res.status(400).json({ error: 'Reasoning is required' });
     if (!correctAnswer) return res.status(400).json({ error: 'Correct answer is required' });
     
-    console.log(`Processing analysis for ${prediction.toUpperCase()} prediction (Correct: ${correctAnswer.toUpperCase()}, wasCorrect: ${wasCorrect})`);
+    logger.log(`Processing analysis for ${prediction.toUpperCase()} prediction (Correct: ${correctAnswer.toUpperCase()}, wasCorrect: ${wasCorrect})`);
 
     // Get the most recent candle data for explicit reference
     const lastCandle = chartData[chartData.length - 1];
@@ -269,7 +270,7 @@ Please provide a comprehensive analysis following ALL the required sections in t
     }
 
     // Call OpenAI GPT-4o with increased token limit for comprehensive analysis
-    console.log("Calling OpenAI API for enhanced analysis");
+    logger.log("Calling OpenAI API for enhanced analysis");
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: messages,
@@ -278,7 +279,7 @@ Please provide a comprehensive analysis following ALL the required sections in t
     });
 
     const analysis = completion.choices[0].message.content;
-    console.log(`Analysis completed successfully: ${analysis.substring(0, 50)}...`);
+    logger.log(`Analysis completed successfully: ${analysis.substring(0, 50)}...`);
 
     return res.status(200).json({ analysis });
   } catch (error) {

@@ -4,7 +4,7 @@ import { fetchAssetOHLCData, generateMockOHLCData } from '../../../lib/data-serv
 import connectDB from '../../../lib/database';
 import TestResults from '../../../models/TestResults';
 import jwt from 'jsonwebtoken';
-
+import logger from '../../../lib/logger'; // Adjust path to your logger utility
 
 // Store sessions in memory (in a real app, this would be a database)
 const sessions = {};
@@ -16,7 +16,7 @@ setInterval(() => {
   Object.keys(sessions).forEach(key => {
     if (sessions[key].timestamp && (now - sessions[key].timestamp) > SESSION_EXPIRY) {
       delete sessions[key];
-      console.log('Cleaned up expired session');
+      logger.log('Cleaned up expired session');
     }
   });
 }, 15 * 60 * 1000); // Check every 15 minutes
@@ -116,11 +116,11 @@ async function fetchSegmentedData(asset, timeframe, questionCount) {
     // Fetch a large dataset, starting from a random historical date
     // This ensures we get different data segments each time
     const randomHistoricalDate = getRandomHistoricalDate();
-    console.log(`Fetching ${totalCandles} candles for ${asset.symbol} at ${timeframe} timeframe, starting from ${randomHistoricalDate.toISOString()}`);
+    logger.log(`Fetching ${totalCandles} candles for ${asset.symbol} at ${timeframe} timeframe, starting from ${randomHistoricalDate.toISOString()}`);
     
     // Use the random date as a seed for generating different data patterns
     const randomSeed = getRandomSeed();
-    console.log(`Using random seed: ${randomSeed} for data generation`);
+    logger.log(`Using random seed: ${randomSeed} for data generation`);
     
     // Fetch real data with randomization
     const allData = await fetchAssetOHLCData(asset, timeframe, totalCandles, randomHistoricalDate, randomSeed);
@@ -142,7 +142,7 @@ async function fetchSegmentedData(asset, timeframe, questionCount) {
       
       if (currentIdx < 0 || currentIdx >= allData.length || currentIdx + SETUP_CANDLES >= allData.length) {
         // Generate mock data if we don't have enough real data
-        console.log(`Not enough data for question ${i+1}, generating mock data`);
+        logger.log(`Not enough data for question ${i+1}, generating mock data`);
         const mockSegment = generateMockSegment(
           asset.basePrice, 
           SETUP_CANDLES, 
@@ -319,7 +319,7 @@ export default async function handler(req, res) {
   const forceNewSession = req.query.random !== undefined;
   const sessionId = forceNewSession ? uuidv4() : (req.query.session_id || uuidv4());
   
-  console.log(`Session ID: ${sessionId}, Force new session: ${forceNewSession}`);
+  logger.log(`Session ID: ${sessionId}, Force new session: ${forceNewSession}`);
   
   // Get the asset data
   const asset = assets.find(a => a.symbol === assetSymbol);
@@ -341,7 +341,7 @@ export default async function handler(req, res) {
       });
       
       if (dbResult) {
-        console.log(`Found test results in database for session ${req.query.session_id}`);
+        logger.log(`Found test results in database for session ${req.query.session_id}`);
         
         // Map test details to answers format
         const answers = dbResult.details.testDetails.map(detail => {
@@ -386,21 +386,21 @@ export default async function handler(req, res) {
   if (!forceNewSession) {
     // First, check if we already have results for this session
     if (sessions[sessionId] && sessions[sessionId].answers) {
-      console.log(`Found existing results for session ${sessionId}, returning those`);
+      logger.log(`Found existing results for session ${sessionId}, returning those`);
       return res.status(200).json(sessions[sessionId]);
     }
     
     // If requesting results with explicit session_id
     if (req.query.session_id) {
       if (sessions[req.query.session_id] && sessions[req.query.session_id].answers) {
-        console.log(`Returning existing processed results for ${req.query.session_id}`);
+        logger.log(`Returning existing processed results for ${req.query.session_id}`);
         return res.status(200).json(sessions[req.query.session_id]);
       }
       
       // If no processed results, check for test session
       const testSessionKey = req.query.session_id + '_test';
       if (sessions[testSessionKey]) {
-        console.log(`Found test session ${testSessionKey}, but no processed results yet`);
+        logger.log(`Found test session ${testSessionKey}, but no processed results yet`);
       }
     }
   }
@@ -436,8 +436,8 @@ export default async function handler(req, res) {
       const answersArray = Array.isArray(answers) ? answers : 
                           (answers.answers && Array.isArray(answers.answers) ? answers.answers : []);
       
-      console.log('Processing answers:', answersArray);
-      console.log('Test session data:', testSession.questions.map(q => ({ 
+      logger.log('Processing answers:', answersArray);
+      logger.log('Test session data:', testSession.questions.map(q => ({ 
         id: q.id, 
         correct_answer: q.correct_answer 
       })));
@@ -465,7 +465,7 @@ export default async function handler(req, res) {
         }
         
         const isCorrect = question.correct_answer === answer.prediction;
-        console.log(`Question ${answer.test_id}: User=${answer.prediction}, Correct=${question.correct_answer}, Match=${isCorrect}`);
+        logger.log(`Question ${answer.test_id}: User=${answer.prediction}, Correct=${question.correct_answer}, Match=${isCorrect}`);
         
         if (isCorrect) {
           score++;
@@ -481,7 +481,7 @@ export default async function handler(req, res) {
               ? chartData[answer.test_id] 
               : question.ohlc_data;
               
-            console.log(`Getting AI analysis for answer ${answer.test_id}`);
+            logger.log(`Getting AI analysis for answer ${answer.test_id}`);
             // Get AI analysis with all required parameters
             aiAnalysis = await getAIAnalysis(
               ohlcData,
@@ -491,7 +491,7 @@ export default async function handler(req, res) {
               question.correct_answer,
               question.correct_answer === answer.prediction
             );
-            console.log(`AI analysis received for answer ${answer.test_id}: ${aiAnalysis ? 'success' : 'empty'}`);
+            logger.log(`AI analysis received for answer ${answer.test_id}: ${aiAnalysis ? 'success' : 'empty'}`);
           } catch (error) {
             console.error(`Error getting AI analysis for answer ${answer.test_id}:`, error);
           }
@@ -525,7 +525,7 @@ export default async function handler(req, res) {
         timestamp: Date.now() // Add timestamp for session cleanup
       };
       
-      console.log(`Final score: ${score}/${answersArray.length}`);
+      logger.log(`Final score: ${score}/${answersArray.length}`);
       
       // Connect to database before saving the test result
       await connectDB();
@@ -552,10 +552,10 @@ export default async function handler(req, res) {
           outcomeData: answer.outcome_data || []
         }));
         
-        console.log("CHART DATA DEBUG:");
+        logger.log("CHART DATA DEBUG:");
         resultAnswers.forEach((answer, idx) => {
-          console.log(`Question ${answer.test_id} OHLC data: ${answer.ohlc_data?.length || 0} candles`);
-          console.log(`Question ${answer.test_id} Outcome data: ${answer.outcome_data?.length || 0} candles`);
+          logger.log(`Question ${answer.test_id} OHLC data: ${answer.ohlc_data?.length || 0} candles`);
+          logger.log(`Question ${answer.test_id} Outcome data: ${answer.outcome_data?.length || 0} candles`);
         });
         
         // Create and save the test result
@@ -582,7 +582,7 @@ export default async function handler(req, res) {
         
         // CRITICAL: Check document size before saving
         const documentSize = JSON.stringify(testResult).length;
-        console.log(`Document size before saving: ${documentSize / 1024} KB`);
+        logger.log(`Document size before saving: ${documentSize / 1024} KB`);
         
         if (documentSize > 15 * 1024 * 1024) {
           console.error(`Document too large (${documentSize / 1024 / 1024} MB), may exceed MongoDB 16MB limit`);
@@ -598,21 +598,21 @@ export default async function handler(req, res) {
         }
         
         // IMPORTANT: Log final data before saving
-        console.log("FINAL DATA BEFORE SAVE:");
+        logger.log("FINAL DATA BEFORE SAVE:");
         testResult.details.testDetails.forEach((detail, idx) => {
-          console.log(`Question ${detail.question} OHLC data: ${detail.ohlcData?.length || 0} candles`);
-          console.log(`Question ${detail.question} Outcome data: ${detail.outcomeData?.length || 0} candles`);
+          logger.log(`Question ${detail.question} OHLC data: ${detail.ohlcData?.length || 0} candles`);
+          logger.log(`Question ${detail.question} Outcome data: ${detail.outcomeData?.length || 0} candles`);
         });
         
         await testResult.save();
-        console.log(`Bias test result saved to database for user ${userId}, session ${sessionId}`);
+        logger.log(`Bias test result saved to database for user ${userId}, session ${sessionId}`);
       } else {
-        console.log(`Result already exists in database for user ${userId}, session ${sessionId}`);
+        logger.log(`Result already exists in database for user ${userId}, session ${sessionId}`);
       }
       
       // Store the results in memory as well
       sessions[sessionId] = results;
-      console.log(`Stored results for session ${sessionId}`);
+      logger.log(`Stored results for session ${sessionId}`);
       
       return res.status(200).json(results);
     } catch (error) {
@@ -623,7 +623,7 @@ export default async function handler(req, res) {
   
   // CRITICAL: Do not generate a new test if we already have results for this session
   if (req.method === 'GET' && sessions[sessionId] && sessions[sessionId].answers) {
-    console.log(`Session ${sessionId} already has results, returning those instead of generating new test`);
+    logger.log(`Session ${sessionId} already has results, returning those instead of generating new test`);
     return res.status(200).json(sessions[sessionId]);
   }
   
@@ -635,7 +635,7 @@ export default async function handler(req, res) {
     
     // Log randomization parameters
     const randomSeed = Date.now();
-    console.log(`Generating new test with seed: ${randomSeed}`);
+    logger.log(`Generating new test with seed: ${randomSeed}`);
     
     // Fetch segmented data for each question
     const dataSegments = await fetchSegmentedData(asset, timeframe, questionCount);
@@ -688,7 +688,7 @@ export default async function handler(req, res) {
     // Store test session for validation of answers later
     const testSessionKey = sessionId + '_test';
     sessions[testSessionKey] = testData;
-    console.log(`Stored test session with key: ${testSessionKey}`);
+    logger.log(`Stored test session with key: ${testSessionKey}`);
     
     // Test session stored in memory - database backup removed to avoid validation issues
     
@@ -707,7 +707,7 @@ export default async function handler(req, res) {
       }))
     };
     
-    console.log(`Sending test with ${clientTestData.questions.length} questions to client`);
+    logger.log(`Sending test with ${clientTestData.questions.length} questions to client`);
     res.status(200).json(clientTestData);
   } catch (error) {
     console.error('Error generating test:', error);
@@ -792,7 +792,7 @@ export default async function handler(req, res) {
       }))
     };
     
-    console.log(`Sending fallback test with ${clientTestData.questions.length} questions to client`);
+    logger.log(`Sending fallback test with ${clientTestData.questions.length} questions to client`);
     res.status(200).json(clientTestData);
   }
 }

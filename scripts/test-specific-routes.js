@@ -1,6 +1,6 @@
 // scripts/test-specific-routes.js
 // Comprehensive test suite for migrated routes
-
+const logger = require('../lib/logger'); // Adjust path to your logger utility
 const axios = require('axios');
 require('dotenv').config({ path: '.env.local' });
 
@@ -15,7 +15,7 @@ const log = (message, type = 'info') => {
     error: '\x1b[31m',
     warning: '\x1b[33m'
   };
-  console.log(`${colors[type]}${message}\x1b[0m`);
+  logger.log(`${colors[type]}${message}\x1b[0m`);
 };
 
 const runTest = async (testName, testFn) => {

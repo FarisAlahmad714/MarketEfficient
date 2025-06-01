@@ -10,7 +10,7 @@ import PendingRegistration from '../../../models/PendingRegistration';
 import connectDB from '../../../lib/database';
 import { sendWelcomeEmail, sendVerificationEmail } from '../../../lib/email-service';
 import jwt from 'jsonwebtoken';
-
+import logger from '../../../lib/logger'; // Adjust path to your logger utility
 // Disable body parsing for webhooks
 export const config = {
   api: {
@@ -45,7 +45,7 @@ export default async function handler(req, res) {
     // Construct the webhook event
     const event = constructWebhookEvent(rawBody, signature);
 
-    console.log(`Received webhook: ${event.type}`);
+    logger.log(`Received webhook: ${event.type}`);
 
     switch (event.type) {
       case 'checkout.session.completed':
@@ -81,7 +81,7 @@ export default async function handler(req, res) {
         break;
 
       default:
-        console.log(`Unhandled event type: ${event.type}`);
+        logger.log(`Unhandled event type: ${event.type}`);
     }
 
     res.status(200).json({ received: true });
@@ -113,7 +113,7 @@ async function handleCheckoutSessionCompleted(session) {
       // Check if user already exists (in case of duplicate webhooks)
       const existingUser = await User.findOne({ email: registrationData.email });
       if (existingUser) {
-        console.log('User already exists, skipping creation');
+        logger.log('User already exists, skipping creation');
         return;
       }
       
@@ -138,7 +138,7 @@ async function handleCheckoutSessionCompleted(session) {
       });
       
       isNewUser = true;
-      console.log(`User created after payment: ${user.email}`);
+      logger.log(`User created after payment: ${user.email}`);
     } else {
       // Normal flow - user already exists
       const userId = session.metadata?.userId;
@@ -221,7 +221,7 @@ async function handleCheckoutSessionCompleted(session) {
     if (!user.isVerified && user.verificationToken) {
       try {
         await sendVerificationEmail(user, user.verificationToken);
-        console.log('Verification email sent after payment');
+        logger.log('Verification email sent after payment');
       } catch (emailError) {
         console.error('Failed to send verification email after payment:', emailError);
       }
@@ -234,13 +234,13 @@ async function handleCheckoutSessionCompleted(session) {
         // Mark that welcome email has been sent
         user.hasReceivedWelcomeEmail = true;
         await user.save();
-        console.log('Welcome email sent after payment');
+        logger.log('Welcome email sent after payment');
       } catch (emailError) {
         console.error('Failed to send welcome email:', emailError);
       }
     }
 
-    console.log(`Checkout completed for user ${user._id}, plan: ${plan}`);
+    logger.log(`Checkout completed for user ${user._id}, plan: ${plan}`);
 
   } catch (error) {
     console.error('Error handling checkout session completed:', error);
@@ -273,7 +273,7 @@ async function handleSubscriptionCreated(subscription) {
       promoCodeUsed: promoCodeId || null
     });
 
-    console.log(`Subscription created for user ${userId}: ${subscription.id}`);
+    logger.log(`Subscription created for user ${userId}: ${subscription.id}`);
 
   } catch (error) {
     console.error('Error handling subscription created:', error);
@@ -305,7 +305,7 @@ async function handleSubscriptionUpdated(subscription) {
       await user.updateSubscriptionStatus(subscription.status, existingSubscription.plan);
     }
 
-    console.log(`Subscription updated: ${subscription.id}, status: ${subscription.status}`);
+    logger.log(`Subscription updated: ${subscription.id}, status: ${subscription.status}`);
 
   } catch (error) {
     console.error('Error handling subscription updated:', error);
@@ -333,7 +333,7 @@ async function handleSubscriptionDeleted(subscription) {
       await user.updateSubscriptionStatus('cancelled', 'free');
     }
 
-    console.log(`Subscription deleted: ${subscription.id}`);
+    logger.log(`Subscription deleted: ${subscription.id}`);
 
   } catch (error) {
     console.error('Error handling subscription deleted:', error);
@@ -369,7 +369,7 @@ async function handleInvoicePaymentSucceeded(invoice) {
       processedAt: new Date(invoice.status_transitions.paid_at * 1000)
     });
 
-    console.log(`Invoice payment succeeded: ${invoice.id}`);
+    logger.log(`Invoice payment succeeded: ${invoice.id}`);
 
   } catch (error) {
     console.error('Error handling invoice payment succeeded:', error);
@@ -404,7 +404,7 @@ async function handleInvoicePaymentFailed(invoice) {
       }
     });
 
-    console.log(`Invoice payment failed: ${invoice.id}`);
+    logger.log(`Invoice payment failed: ${invoice.id}`);
 
   } catch (error) {
     console.error('Error handling invoice payment failed:', error);
@@ -417,7 +417,7 @@ async function handlePaymentIntentSucceeded(paymentIntent) {
     const userId = metadata?.userId;
 
     if (!userId) {
-      console.log('No userId in payment intent metadata');
+      logger.log('No userId in payment intent metadata');
       return;
     }
 
@@ -450,7 +450,7 @@ async function handlePaymentIntentSucceeded(paymentIntent) {
       });
     }
 
-    console.log(`Payment intent succeeded: ${paymentIntent.id} for user ${userId}`);
+    logger.log(`Payment intent succeeded: ${paymentIntent.id} for user ${userId}`);
 
   } catch (error) {
     console.error('Error handling payment intent succeeded:', error);
@@ -463,11 +463,11 @@ async function handlePaymentIntentFailed(paymentIntent) {
     const userId = metadata?.userId;
 
     if (!userId) {
-      console.log('No userId in payment intent metadata');
+      logger.log('No userId in payment intent metadata');
       return;
     }
 
-    console.log(`Payment intent failed: ${paymentIntent.id} for user ${userId}`);
+    logger.log(`Payment intent failed: ${paymentIntent.id} for user ${userId}`);
 
   } catch (error) {
     console.error('Error handling payment intent failed:', error);

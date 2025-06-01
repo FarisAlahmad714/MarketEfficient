@@ -7,7 +7,7 @@ import dynamic from 'next/dynamic';
 import { ThemeContext } from '../../contexts/ThemeContext';
 import CryptoLoader from '../../components/CryptoLoader';
 import TrackedPage from '../../components/TrackedPage';
-
+import logger from '../../lib/logger'; // Adjust path to your logger utility
 // Import CandlestickChart with SSR disabled
 const CandlestickChart = dynamic(
   () => import('../../components/charts/CandlestickChart'),
@@ -30,7 +30,7 @@ const Results = () => {
     const { assetSymbol, session_id } = router.query;
     
     // Log router query params
-    console.log("Router query parameters:", router.query);
+    logger.log("Router query parameters:", router.query);
     
     // Check if we have required parameters
     if (!assetSymbol || !session_id) {
@@ -47,14 +47,14 @@ const Results = () => {
     
     const fetchResults = async () => {
       try {
-        console.log(`Fetching results for ${assetSymbol} with session ${session_id}`);
+        logger.log(`Fetching results for ${assetSymbol} with session ${session_id}`);
         
         // First try to get results from in-memory session
         let response = await axios.get(`/api/test/${assetSymbol}?session_id=${session_id}`);
         
         // If session data exists and has answers, use it
         if (response.data && response.data.answers && response.data.answers.length > 0) {
-          console.log('Results found in memory session');
+          logger.log('Results found in memory session');
           setResults(response.data);
           setHasLoadedResults(true); 
           setLoading(false);
@@ -62,20 +62,20 @@ const Results = () => {
         }
         
         // If memory session failed or has incomplete data, try database
-        console.log('Memory session had incomplete or no data, trying database...');
+        logger.log('Memory session had incomplete or no data, trying database...');
         
         // First check if database has results using check-results endpoint
         const checkResponse = await axios.get(`/api/bias-test/check-results?session_id=${session_id}`);
         
         if (checkResponse.data && checkResponse.data.ready) {
-          console.log('Database has results, retrieving full data');
+          logger.log('Database has results, retrieving full data');
           
           try {
             // Request full results from database via the test endpoint with source=db parameter
             const dbResponse = await axios.get(`/api/test/${assetSymbol}?session_id=${session_id}&source=db`);
             
             if (dbResponse.data && dbResponse.data.answers) {
-              console.log('Successfully retrieved results from database');
+              logger.log('Successfully retrieved results from database');
               setResults(dbResponse.data);
               setHasLoadedResults(true);
               setLoading(false);
@@ -89,7 +89,7 @@ const Results = () => {
               const directDbResponse = await axios.get(`/api/bias-test/get-results?session_id=${session_id}`);
               
               if (directDbResponse.data) {
-                console.log('Successfully retrieved results from direct database endpoint');
+                logger.log('Successfully retrieved results from direct database endpoint');
                 setResults(directDbResponse.data);
                 setHasLoadedResults(true);
                 setLoading(false);
@@ -133,21 +133,21 @@ const Results = () => {
     if (results && results.answers && results.answers.length > 0) {
       // Check if any answers have AI analysis
       const hasAiAnalysis = results.answers.some(answer => answer.ai_analysis);
-      console.log('Has AI analysis:', hasAiAnalysis);
+      logger.log('Has AI analysis:', hasAiAnalysis);
       
       // Log the first answer structure 
-      console.log('First answer structure:', results.answers[0]);
+      logger.log('First answer structure:', results.answers[0]);
       
       // Log all properties of each answer for debugging
       results.answers.forEach((answer, index) => {
-        console.log(`Answer ${index + 1} properties:`, Object.keys(answer));
-        console.log(`Answer ${index + 1} has ai_analysis:`, Boolean(answer.ai_analysis));
+        logger.log(`Answer ${index + 1} properties:`, Object.keys(answer));
+        logger.log(`Answer ${index + 1} has ai_analysis:`, Boolean(answer.ai_analysis));
         if (answer.ai_analysis) {
           // Check if AI analysis has HTML structure
           const hasHtml = answer.ai_analysis.includes('<h3>') || 
                          answer.ai_analysis.includes('<p>') || 
                          answer.ai_analysis.includes('<ul>');
-          console.log(`Answer ${index + 1} has HTML formatting:`, hasHtml);
+          logger.log(`Answer ${index + 1} has HTML formatting:`, hasHtml);
         }
       });
     }

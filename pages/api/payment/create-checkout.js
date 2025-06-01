@@ -3,6 +3,7 @@ import { calculatePriceWithPromo } from '../../../lib/subscriptionUtils';
 import PendingRegistration from '../../../models/PendingRegistration';
 import connectDB from '../../../lib/database';
 import jwt from 'jsonwebtoken';
+import logger from '../../../lib/logger'; // Adjust path to your logger utility
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -73,7 +74,7 @@ export default async function handler(req, res) {
           });
         }
       } catch (stripeError) {
-        console.log('Previous Stripe session not found, creating new one:', stripeError.message);
+        logger.log('Previous Stripe session not found, creating new one:', stripeError.message);
       }
     }
 
@@ -123,7 +124,7 @@ export default async function handler(req, res) {
     const session = await stripe.checkout.sessions.create(sessionConfig);
     await pendingReg.startCheckout(session.id);
 
-    console.log(`Created checkout session for ${pendingReg.email}: ${session.id}`);
+    logger.log(`Created checkout session for ${pendingReg.email}: ${session.id}`);
 
     res.status(200).json({ 
       url: session.url,

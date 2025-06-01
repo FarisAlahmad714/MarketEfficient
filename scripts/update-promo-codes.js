@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const PromoCode = require('../models/PromoCode');
 const User = require('../models/User');
 const dotenv = require('dotenv');
+const logger = require('../lib/logger'); // Adjust path to your logger utility
 
 // Load environment variables
 dotenv.config({ path: '.env.local' });
@@ -10,7 +11,7 @@ async function updatePromoCodes() {
   try {
     // Connect to MongoDB
     await mongoose.connect(process.env.MONGODB_URI);
-    console.log('Connected to MongoDB');
+    logger.log('Connected to MongoDB');
 
     // Find the first admin user to assign as creator
     const adminUser = await User.findOne({ isAdmin: true });
@@ -19,7 +20,7 @@ async function updatePromoCodes() {
       process.exit(1);
     }
 
-    console.log(`Using admin user: ${adminUser.email} as promo code creator`);
+    logger.log(`Using admin user: ${adminUser.email} as promo code creator`);
 
     // Define the correct promo codes as per user requirements
     const correctPromoCodes = [
@@ -55,7 +56,7 @@ async function updatePromoCodes() {
       }
     ];
 
-    console.log('\n🔄 Updating promo codes...');
+    logger.log('\n🔄 Updating promo codes...');
 
     for (const codeData of correctPromoCodes) {
       try {
@@ -78,7 +79,7 @@ async function updatePromoCodes() {
               updatedAt: new Date()
             }
           );
-          console.log(`✅ Updated existing code: ${codeData.code}`);
+          logger.log(`✅ Updated existing code: ${codeData.code}`);
         } else {
           // Create new code
           const newCode = new PromoCode({
@@ -87,7 +88,7 @@ async function updatePromoCodes() {
             isActive: true
           });
           await newCode.save();
-          console.log(`✅ Created new code: ${codeData.code}`);
+          logger.log(`✅ Created new code: ${codeData.code}`);
         }
       } catch (error) {
         console.error(`❌ Error processing code ${codeData.code}:`, error.message);
@@ -99,8 +100,8 @@ async function updatePromoCodes() {
       .populate('createdBy', 'name email')
       .sort({ createdAt: -1 });
 
-    console.log('\n📋 Current promo codes in database:');
-    console.log('─'.repeat(80));
+    logger.log('\n📋 Current promo codes in database:');
+    logger.log('─'.repeat(80));
     
     allCodes.forEach(code => {
       const status = code.isActive ? '🟢 Active' : '🔴 Inactive';
@@ -109,27 +110,27 @@ async function updatePromoCodes() {
       const originalPrice = '$29.00'; // Monthly price
       const discount = code.finalPrice ? Math.round(((2900 - code.finalPrice) / 2900) * 100) : 0;
       
-      console.log(`${status} ${code.code}`);
-      console.log(`  Description: ${code.description}`);
-      console.log(`  Type: ${code.type} | Discount: ${code.discountType}`);
-      console.log(`  Pricing: ${originalPrice} → ${finalPrice} (${discount}% off)`);
-      console.log(`  Usage: ${usage} | Plans: ${code.applicablePlans.join(', ')}`);
-      console.log(`  Created by: ${code.createdBy?.name || 'Unknown'} on ${code.createdAt.toLocaleDateString()}`);
-      console.log('─'.repeat(40));
+      logger.log(`${status} ${code.code}`);
+      logger.log(`  Description: ${code.description}`);
+      logger.log(`  Type: ${code.type} | Discount: ${code.discountType}`);
+      logger.log(`  Pricing: ${originalPrice} → ${finalPrice} (${discount}% off)`);
+      logger.log(`  Usage: ${usage} | Plans: ${code.applicablePlans.join(', ')}`);
+      logger.log(`  Created by: ${code.createdBy?.name || 'Unknown'} on ${code.createdAt.toLocaleDateString()}`);
+      logger.log('─'.repeat(40));
     });
 
-    console.log('\n🎉 Promo code update completed!');
-    console.log('\n📝 Summary:');
-    console.log('• WIZDOM: $29 → $20 (30% off monthly)');
-    console.log('• FOXDEN: $29 → $20 (30% off monthly)');
-    console.log('• FRIENDSFAMILY: $29 → $15 (48% off monthly)');
-    console.log('\n🔗 Admin can now manage these codes at: /admin/promo-codes');
+    logger.log('\n🎉 Promo code update completed!');
+    logger.log('\n📝 Summary:');
+    logger.log('• WIZDOM: $29 → $20 (30% off monthly)');
+    logger.log('• FOXDEN: $29 → $20 (30% off monthly)');
+    logger.log('• FRIENDSFAMILY: $29 → $15 (48% off monthly)');
+    logger.log('\n🔗 Admin can now manage these codes at: /admin/promo-codes');
 
   } catch (error) {
     console.error('Error updating promo codes:', error);
   } finally {
     await mongoose.disconnect();
-    console.log('Disconnected from MongoDB');
+    logger.log('Disconnected from MongoDB');
   }
 }
 

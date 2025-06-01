@@ -12,6 +12,7 @@ import {
   Cell, Pie, PieChart
 } from 'recharts';
 import TrackedPage from '../components/TrackedPage';
+import logging from '../lib/logger'; // Import your logging utility
 
 // Info tooltip component
 const InfoTooltip = ({ text, darkMode, position = 'top' }) => {
@@ -140,7 +141,7 @@ if (data && data.summary && data.summary.testsByType) {
   data.summary.testsByType = filteredTestsByType;
 }
     
-    console.log('Dashboard data after filtering:', data); // Debug log
+    logging.log('Dashboard data after filtering:', data); // Debug log
     setMetrics(data);
   } catch (err) {
     console.error('Error fetching dashboard metrics:', err);

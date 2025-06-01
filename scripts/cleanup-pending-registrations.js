@@ -1,11 +1,13 @@
 // scripts/cleanup-pending-registrations.js - UPDATED VERSION
 require('dotenv').config({ path: '.env.local' });
 const mongoose = require('mongoose');
+const logger = require('../lib/logger'); // Adjust path to your logger utility
+
 
 async function cleanupPendingRegistrations(options = {}) {
   try {
     await mongoose.connect(process.env.MONGODB_URI);
-    console.log('Connected to MongoDB');
+    logger.log('Connected to MongoDB');
 
     // Import the model
     const PendingRegistration = require('../models/PendingRegistration');
@@ -21,7 +23,7 @@ async function cleanupPendingRegistrations(options = {}) {
     if (forceAll) {
       // Option to clean ALL pending registrations
       const allPending = await PendingRegistration.deleteMany({});
-      console.log(`🔥 FORCE: Deleted ALL pending registrations: ${allPending.deletedCount}`);
+      logger.log(`🔥 FORCE: Deleted ALL pending registrations: ${allPending.deletedCount}`);
       totalCleaned = allPending.deletedCount;
     } else {
       // 1. Clean up expired checkout sessions (older than specified age)
@@ -54,19 +56,19 @@ async function cleanupPendingRegistrations(options = {}) {
 
       totalCleaned = expiredCheckouts.deletedCount + oldPending.deletedCount + expiredStatus.deletedCount + recentCleaned.deletedCount;
 
-      console.log(`✅ Cleanup Results:`);
-      console.log(`   - Expired checkouts: ${expiredCheckouts.deletedCount}`);
-      console.log(`   - Old pending (>${maxAge}min): ${oldPending.deletedCount}`);
-      console.log(`   - Expired status: ${expiredStatus.deletedCount}`);
+      logger.log(`✅ Cleanup Results:`);
+      logger.log(`   - Expired checkouts: ${expiredCheckouts.deletedCount}`);
+      logger.log(`   - Old pending (>${maxAge}min): ${oldPending.deletedCount}`);
+      logger.log(`   - Expired status: ${expiredStatus.deletedCount}`);
       if (includeRecent) {
-        console.log(`   - Recent pending (<${maxAge}min): ${recentCleaned.deletedCount}`);
+        logger.log(`   - Recent pending (<${maxAge}min): ${recentCleaned.deletedCount}`);
       }
-      console.log(`   - Total cleaned: ${totalCleaned}`);
+      logger.log(`   - Total cleaned: ${totalCleaned}`);
     }
 
     // Show current stats
     const remaining = await PendingRegistration.countDocuments();
-    console.log(`📊 Remaining pending registrations: ${remaining}`);
+    logger.log(`📊 Remaining pending registrations: ${remaining}`);
 
     if (remaining > 0) {
       const recentActivity = await PendingRegistration.find({
@@ -74,16 +76,16 @@ async function cleanupPendingRegistrations(options = {}) {
       }).sort({ createdAt: -1 });
 
       if (recentActivity.length > 0) {
-        console.log('\n🕐 Recent Activity (Last hour):');
+        logger.log('\n🕐 Recent Activity (Last hour):');
         recentActivity.forEach(reg => {
           const age = Math.floor((Date.now() - reg.createdAt.getTime()) / 60000);
-          console.log(`   ${reg.email} - ${reg.status} (${age} min ago)`);
+          logger.log(`   ${reg.email} - ${reg.status} (${age} min ago)`);
         });
       }
     }
 
     await mongoose.disconnect();
-    console.log('\n✅ Cleanup completed!');
+    logger.log('\n✅ Cleanup completed!');
     
     return { totalCleaned, remaining };
     
@@ -106,7 +108,7 @@ if (require.main === module) {
     maxAge: conservativeMode ? 30 : 5  // 30 minutes if conservative, 5 minutes if not
   };
 
-  console.log(`🧹 Running cleanup with options:`, options);
+  logger.log(`🧹 Running cleanup with options:`, options);
   cleanupPendingRegistrations(options);
 }
 

@@ -18,6 +18,8 @@
  * Calculate adaptive minimum gap percentage based on asset volatility and timeframe
  * FIXED: Made calculation deterministic and consistent
  */
+import logger from '../../../../lib/Logger';
+
 export function calculateAdaptiveMinGapPercent(chartData, timeframe = '1d', assetSymbol = 'UNKNOWN') {
   // FIXED: Improved thresholds for longer timeframes
   // Longer timeframes typically have larger gaps that are still valid
@@ -39,7 +41,7 @@ export function calculateAdaptiveMinGapPercent(chartData, timeframe = '1d', asse
   // Direct calculation without volatility
   const finalPercentage = basePercentage * assetMultiplier;
   
-  console.log(`[FVG Adaptive] Asset=${assetSymbol}, TF=${timeframe}, ` +
+  logger.log(`[FVG Adaptive] Asset=${assetSymbol}, TF=${timeframe}, ` +
               `Base=${basePercentage.toFixed(4)}, Multiplier=${assetMultiplier}, ` +
               `Final=${finalPercentage.toFixed(4)}`);
               
@@ -84,7 +86,7 @@ export function detectFairValueGaps(
   assetSymbol = 'UNKNOWN'
 ) {
   if (!chartData || chartData.length < 3) {
-    console.log('[FVG Detection] Insufficient data for FVG detection');
+    logger.log('[FVG Detection] Insufficient data for FVG detection');
     return [];
   }
   
@@ -117,11 +119,11 @@ export function detectFairValueGaps(
     minGapSize = avgPrice * adaptiveMinGapPercent;
   }
   
-  console.log(`[FVG Detection] Searching for ${gapType} FVGs on ${timeframe} timeframe:`);
-  console.log(`- Average price: ${avgPrice.toFixed(2)}`);
-  console.log(`- Min gap size: ${minGapSize.toFixed(4)} (${(adaptiveMinGapPercent * 100).toFixed(3)}%)`);
-  console.log(`- Total candles: ${sortedData.length}`);
-  console.log(`- Timeframe-specific logic: ${timeframe === '1w' || timeframe === '1d' ? 'LENIENT' : 'STRICT'} momentum checks`);
+  logger.log(`[FVG Detection] Searching for ${gapType} FVGs on ${timeframe} timeframe:`);
+  logger.log(`- Average price: ${avgPrice.toFixed(2)}`);
+  logger.log(`- Min gap size: ${minGapSize.toFixed(4)} (${(adaptiveMinGapPercent * 100).toFixed(3)}%)`);
+  logger.log(`- Total candles: ${sortedData.length}`);
+  logger.log(`- Timeframe-specific logic: ${timeframe === '1w' || timeframe === '1d' ? 'LENIENT' : 'STRICT'} momentum checks`);
   
   // Scan for three-candle patterns
   for (let i = 0; i < sortedData.length - 2; i++) {
@@ -168,11 +170,11 @@ export function detectFairValueGaps(
       }
       
       if (gapExists && gapSize >= minGapSize && momentumValid && gapPercentage <= maxGapPercentage) {
-        console.log(`[Bullish FVG Found] Candles ${i+1}-${i+3}:`);
-        console.log(`- C1 High: ${candle1.high.toFixed(4)}, C3 Low: ${candle3.low.toFixed(4)}`);
-        console.log(`- Gap Size: ${gapSize.toFixed(4)} (${(gapPercentage * 100).toFixed(3)}%)`);
-        console.log(`- C2 Bullish: ${candle2IsBullish}, Breaks Higher: ${candle2BreaksHigher}`);
-        console.log(`- Max Gap %: ${(maxGapPercentage * 100).toFixed(3)}%, Min Gap Size: ${minGapSize.toFixed(4)}`);
+        logger.log(`[Bullish FVG Found] Candles ${i+1}-${i+3}:`);
+        logger.log(`- C1 High: ${candle1.high.toFixed(4)}, C3 Low: ${candle3.low.toFixed(4)}`);
+        logger.log(`- Gap Size: ${gapSize.toFixed(4)} (${(gapPercentage * 100).toFixed(3)}%)`);
+        logger.log(`- C2 Bullish: ${candle2IsBullish}, Breaks Higher: ${candle2BreaksHigher}`);
+        logger.log(`- Max Gap %: ${(maxGapPercentage * 100).toFixed(3)}%, Min Gap Size: ${minGapSize.toFixed(4)}`);
         
         gaps.push({
           startTime: candle1.time || Math.floor(new Date(candle1.date).getTime() / 1000),
@@ -189,10 +191,10 @@ export function detectFairValueGaps(
         });
       } else if (gapExists && gapSize >= minGapSize) {
         // Debug: Show why this FVG was rejected
-        console.log(`[Bullish FVG Rejected] Candles ${i+1}-${i+3}:`);
-        console.log(`- Gap exists: ${gapExists}, Size: ${gapSize.toFixed(4)} (${(gapPercentage * 100).toFixed(3)}%)`);
-        console.log(`- Momentum valid: ${momentumValid} (C2 Bullish: ${candle2IsBullish}, Breaks Higher: ${candle2BreaksHigher})`);
-        console.log(`- Gap % check: ${gapPercentage.toFixed(6)} <= ${maxGapPercentage.toFixed(6)} = ${gapPercentage <= maxGapPercentage}`);
+        logger.log(`[Bullish FVG Rejected] Candles ${i+1}-${i+3}:`);
+        logger.log(`- Gap exists: ${gapExists}, Size: ${gapSize.toFixed(4)} (${(gapPercentage * 100).toFixed(3)}%)`);
+        logger.log(`- Momentum valid: ${momentumValid} (C2 Bullish: ${candle2IsBullish}, Breaks Higher: ${candle2BreaksHigher})`);
+        logger.log(`- Gap % check: ${gapPercentage.toFixed(6)} <= ${maxGapPercentage.toFixed(6)} = ${gapPercentage <= maxGapPercentage}`);
       }
     } else if (gapType === 'bearish') {
       // BEARISH FVG CONDITIONS:
@@ -228,11 +230,11 @@ export function detectFairValueGaps(
       }
       
       if (gapExists && gapSize >= minGapSize && momentumValid && gapPercentage <= maxGapPercentage) {
-        console.log(`[Bearish FVG Found] Candles ${i+1}-${i+3}:`);
-        console.log(`- C1 Low: ${candle1.low.toFixed(4)}, C3 High: ${candle3.high.toFixed(4)}`);
-        console.log(`- Gap Size: ${gapSize.toFixed(4)} (${(gapPercentage * 100).toFixed(3)}%)`);
-        console.log(`- C2 Bearish: ${candle2IsBearish}, Breaks Lower: ${candle2BreaksLower}`);
-        console.log(`- Max Gap %: ${(maxGapPercentage * 100).toFixed(3)}%, Min Gap Size: ${minGapSize.toFixed(4)}`);
+        logger.log(`[Bearish FVG Found] Candles ${i+1}-${i+3}:`);
+        logger.log(`- C1 Low: ${candle1.low.toFixed(4)}, C3 High: ${candle3.high.toFixed(4)}`);
+        logger.log(`- Gap Size: ${gapSize.toFixed(4)} (${(gapPercentage * 100).toFixed(3)}%)`);
+        logger.log(`- C2 Bearish: ${candle2IsBearish}, Breaks Lower: ${candle2BreaksLower}`);
+        logger.log(`- Max Gap %: ${(maxGapPercentage * 100).toFixed(3)}%, Min Gap Size: ${minGapSize.toFixed(4)}`);
         
         gaps.push({
           startTime: candle1.time || Math.floor(new Date(candle1.date).getTime() / 1000),
@@ -249,10 +251,10 @@ export function detectFairValueGaps(
         });
       } else if (gapExists && gapSize >= minGapSize) {
         // Debug: Show why this FVG was rejected
-        console.log(`[Bearish FVG Rejected] Candles ${i+1}-${i+3}:`);
-        console.log(`- Gap exists: ${gapExists}, Size: ${gapSize.toFixed(4)} (${(gapPercentage * 100).toFixed(3)}%)`);
-        console.log(`- Momentum valid: ${momentumValid} (C2 Bearish: ${candle2IsBearish}, Breaks Lower: ${candle2BreaksLower})`);
-        console.log(`- Gap % check: ${gapPercentage.toFixed(6)} <= ${maxGapPercentage.toFixed(6)} = ${gapPercentage <= maxGapPercentage}`);
+        logger.log(`[Bearish FVG Rejected] Candles ${i+1}-${i+3}:`);
+        logger.log(`- Gap exists: ${gapExists}, Size: ${gapSize.toFixed(4)} (${(gapPercentage * 100).toFixed(3)}%)`);
+        logger.log(`- Momentum valid: ${momentumValid} (C2 Bearish: ${candle2IsBearish}, Breaks Lower: ${candle2BreaksLower})`);
+        logger.log(`- Gap % check: ${gapPercentage.toFixed(6)} <= ${maxGapPercentage.toFixed(6)} = ${gapPercentage <= maxGapPercentage}`);
       }
     }
   }
@@ -260,7 +262,7 @@ export function detectFairValueGaps(
   // Sort gaps by size percentage (most significant first)
   gaps.sort((a, b) => b.sizePercent - a.sizePercent);
   
-  console.log(`[FVG Detection] Total ${gapType} FVGs found: ${gaps.length}`);
+  logger.log(`[FVG Detection] Total ${gapType} FVGs found: ${gaps.length}`);
   
   // Return top 10 most significant gaps
   return gaps.slice(0, 10);
@@ -360,7 +362,7 @@ export function validateFairValueGaps(drawings, expectedGaps, chartData, gapType
   const avgTimeIncrement = (timePoints[timePoints.length - 1] - timePoints[0]) / (timePoints.length - 1);
   const timeTolerance = avgTimeIncrement * 4;
   
-  console.log(`[Validation] TF=${timeframe}, Price tolerance: ±${priceTolerance.toFixed(4)}, Time tolerance: ±${timeTolerance}s`);
+  logger.log(`[Validation] TF=${timeframe}, Price tolerance: ±${priceTolerance.toFixed(4)}, Time tolerance: ±${timeTolerance}s`);
   
   let matched = 0;
   const feedback = { correct: [], incorrect: [] };

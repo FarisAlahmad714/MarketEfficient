@@ -1,6 +1,7 @@
 // lib/data-services.js
 
 import axios from 'axios';
+import logger from '../lib/logger';
 
 // Available coins and timeframes
 const allCoins = ['bitcoin', 'ethereum', 'binancecoin', 'solana', 'cosmos', 'ripple', 'litecoin', 'chainlink'];
@@ -26,7 +27,7 @@ const dataCache = {
 
 // Reset cache after 24 hours to ensure fresh data
 setInterval(() => {
-  console.log('Clearing data cache to ensure fresh data');
+  logger.log('Clearing data cache to ensure fresh data');
   dataCache.crypto = {};
   dataCache.stock = {};
   dataCache.failedRequests = { crypto: 0, stock: 0 };
@@ -76,7 +77,7 @@ export async function fetchChartData(coin = null, timeframe = null) {
   // Check cache
   const cacheKey = `${coin}_${timeframe}`;
   if (chartCache.has(cacheKey)) {
-    console.log(`Using cached chart data for ${coin} (${timeframe})`);
+    logger.log(`Using cached chart data for ${coin} (${timeframe})`);
     return {
       chart_data: chartCache.get(cacheKey),
       symbol: coin,
@@ -85,7 +86,7 @@ export async function fetchChartData(coin = null, timeframe = null) {
   }
   
   // Fetch from API
-  console.log(`Fetching chart data for ${coin} (${timeframe})`);
+  logger.log(`Fetching chart data for ${coin} (${timeframe})`);
   
   try {
     // For real implementation, use a crypto price API
@@ -162,7 +163,7 @@ export async function fetchCryptoOHLCData(apiId, timeframe = 'daily', days = 30,
   const timeSinceLastRequest = now - (dataCache.lastRequest.crypto || 0);
   if (timeSinceLastRequest < 1500) {
     const waitTime = 1500 - timeSinceLastRequest;
-    console.log(`Rate limiting: waiting ${waitTime}ms before next API call`);
+    logger.log(`Rate limiting: waiting ${waitTime}ms before next API call`);
     await sleep(waitTime);
   }
   
@@ -172,7 +173,7 @@ export async function fetchCryptoOHLCData(apiId, timeframe = 'daily', days = 30,
   
   // Check cache first
   if (dataCache.crypto[cacheKey]) {
-    console.log(`Using cached data for ${cacheKey}`);
+    logger.log(`Using cached data for ${cacheKey}`);
     return JSON.parse(JSON.stringify(dataCache.crypto[cacheKey])); // Deep clone to prevent mutations
   }
 
@@ -200,7 +201,7 @@ export async function fetchCryptoOHLCData(apiId, timeframe = 'daily', days = 30,
         // Construct URL
         let url = `https://api.coingecko.com/api/v3/coins/${apiId}/market_chart?vs_currency=usd&days=${daysParam}&interval=${interval}×tamp=${Date.now()}`;
         
-        console.log(`Fetching crypto data from: ${url}`);
+        logger.log(`Fetching crypto data from: ${url}`);
         
         // Fetch data with retry logic
         const response = await axios.get(url, {
@@ -306,7 +307,7 @@ export async function fetchCryptoOHLCData(apiId, timeframe = 'daily', days = 30,
         }
         
         usesMockData = false;
-        console.log(`Successfully fetched real data for ${apiId}`);
+        logger.log(`Successfully fetched real data for ${apiId}`);
       } catch (error) {
         if (error.response && error.response.status === 429) {
           const retryAfter = parseInt(error.response.headers['retry-after'] || '60', 10);
@@ -315,7 +316,7 @@ export async function fetchCryptoOHLCData(apiId, timeframe = 'daily', days = 30,
           dataCache.failedRequests.crypto += 1;
           
           if (dataCache.failedRequests.crypto <= 1) {
-            console.log(`Waiting ${retryAfter} seconds to retry...`);
+            logger.log(`Waiting ${retryAfter} seconds to retry...`);
             await sleep(retryAfter * 1000);
           }
         } else {
@@ -324,11 +325,11 @@ export async function fetchCryptoOHLCData(apiId, timeframe = 'daily', days = 30,
         }
       }
     } else {
-      console.log(`Skipping API call for ${apiId} due to previous failures`);
+      logger.log(`Skipping API call for ${apiId} due to previous failures`);
     }
     
     if (usesMockData) {
-      console.log(`Using mock data for ${apiId} with seed ${seed}`);
+      logger.log(`Using mock data for ${apiId} with seed ${seed}`);
       let basePrice = 100;
       if (apiId === 'bitcoin') basePrice = 60000;
       else if (apiId === 'ethereum') basePrice = 3000;
@@ -372,7 +373,7 @@ export async function fetchStockOHLCData(symbol, timeframe = 'daily', candles = 
   const timeSinceLastRequest = now - (dataCache.lastRequest.stock || 0);
   if (timeSinceLastRequest < 12000) {
     const waitTime = 12000 - timeSinceLastRequest;
-    console.log(`Rate limiting: waiting ${waitTime}ms before next Alpha Vantage API call`);
+    logger.log(`Rate limiting: waiting ${waitTime}ms before next Alpha Vantage API call`);
     await sleep(waitTime);
   }
   
@@ -380,12 +381,12 @@ export async function fetchStockOHLCData(symbol, timeframe = 'daily', candles = 
   const cacheKey = `${symbol}_${timeframe}_${candles}_${randomParam}`;
   
   if (dataCache.stock[cacheKey]) {
-    console.log(`Using cached data for ${cacheKey}`);
+    logger.log(`Using cached data for ${cacheKey}`);
     return JSON.parse(JSON.stringify(dataCache.stock[cacheKey]));
   }
 
   if (Math.random() > 0.1 || dataCache.failedRequests.stock >= 2) {
-    console.log(`Using.Domain mock data for ${symbol} to avoid API rate limits`);
+    logger.log(`Using.Domain mock data for ${symbol} to avoid API rate limits`);
     let basePrice = 100;
     if (symbol === 'NVDA') basePrice = 800;
     else if (symbol === 'AAPL') basePrice = 175;
@@ -415,7 +416,7 @@ export async function fetchStockOHLCData(symbol, timeframe = 'daily', candles = 
     const ALPHA_VANTAGE_API_KEY = 'QRL7874F7OJAGJHY';
     const url = `https://www.alphavantage.co/query?function=${function_name}&symbol=${symbol}&interval=${interval === '60min' ? '60min' : ''}&outputsize=full&apikey=${ALPHA_VANTAGE_API_KEY}`;
     
-    console.log(`Fetching stock data from: ${url}`);
+    logger.log(`Fetching stock data from: ${url}`);
     
     const response = await axios.get(url, {
       headers: {
@@ -452,13 +453,13 @@ export async function fetchStockOHLCData(symbol, timeframe = 'daily', candles = 
       dataCache.stock[cacheKey] = JSON.parse(JSON.stringify(limitedData));
     }
     
-    console.log(`Successfully fetched real stock data for ${symbol}`);
+    logger.log(`Successfully fetched real stock data for ${symbol}`);
     return limitedData;
   } catch (error) {
     dataCache.failedRequests.stock += 1;
     console.error(`Error fetching stock data for ${symbol}:`, error.message);
     
-    console.log(`Using mock data for ${symbol} as fallback`);
+    logger.log(`Using mock data for ${symbol} as fallback`);
     let basePrice = 100;
     if (symbol === 'NVDA') basePrice = 800;
     else if (symbol === 'AAPL') basePrice = 175;
@@ -601,7 +602,7 @@ export async function fetchCoinGeckoOHLC(coinId, days, vs_currency = 'usd') {
   const cacheKey = `plotly_${coinId}_${days}_${vs_currency}`;
   
   if (dataCache.crypto[cacheKey]) {
-    console.log(`Using cached Plotly data for ${cacheKey}`);
+    logger.log(`Using cached Plotly data for ${cacheKey}`);
     return JSON.parse(JSON.stringify(dataCache.crypto[cacheKey]));
   }
   
@@ -609,7 +610,7 @@ export async function fetchCoinGeckoOHLC(coinId, days, vs_currency = 'usd') {
   const timeSinceLastRequest = now - (dataCache.lastRequest.crypto || 0);
   if (timeSinceLastRequest < 1500) {
     const waitTime = 1500 - timeSinceLastRequest;
-    console.log(`Rate limiting: waiting ${waitTime}ms before next API call`);
+    logger.log(`Rate limiting: waiting ${waitTime}ms before next API call`);
     await sleep(waitTime);
   }
   
@@ -618,7 +619,7 @@ export async function fetchCoinGeckoOHLC(coinId, days, vs_currency = 'usd') {
     
     const url = `https://api.coingecko.com/api/v3/coins/${coinId}/ohlc?vs_currency=${vs_currency}&days=${days}`;
     
-    console.log(`Fetching CoinGecko OHLC data from: ${url}`);
+    logger.log(`Fetching CoinGecko OHLC data from: ${url}`);
     
     const response = await axios.get(url, {
       headers: {

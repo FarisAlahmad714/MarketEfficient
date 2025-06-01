@@ -5,6 +5,7 @@ import { createApiHandler } from '../../../lib/api-handler';
 import { optionalAuth } from '../../../middleware/auth';
 import { composeMiddleware } from '../../../lib/api-handler';
 import TestResults from '../../../models/TestResults';
+import logger from '../../../lib/logger'; // Adjust path to your logger utility
 
 async function getResultsHandler(req, res) {
   const { session_id } = req.query;
@@ -47,13 +48,13 @@ async function getResultsHandler(req, res) {
   // DEBUGGING: Log the first question's chart data
   if (dbResult.details && dbResult.details.testDetails && dbResult.details.testDetails.length > 0) {
     const firstQuestion = dbResult.details.testDetails[0];
-    console.log('DATABASE CHART DATA CHECK:');
-    console.log('- First question has ohlcData:', 
+    logger.log('DATABASE CHART DATA CHECK:');
+    logger.log('- First question has ohlcData:', 
       firstQuestion.ohlcData ? 
       `Yes, ${firstQuestion.ohlcData.length} candles` : 
       'No'
     );
-    console.log('- First question has outcomeData:', 
+    logger.log('- First question has outcomeData:', 
       firstQuestion.outcomeData ? 
       `Yes, ${firstQuestion.outcomeData.length} candles` : 
       'No'
@@ -88,8 +89,8 @@ async function getResultsHandler(req, res) {
 
   // DEBUGGING: Check formatted data
   if (formattedResults.answers && formattedResults.answers.length > 0) {
-    console.log('FORMATTED RESULTS CHECK:');
-    console.log('- First answer has ohlc_data:', 
+    logger.log('FORMATTED RESULTS CHECK:');
+    logger.log('- First answer has ohlc_data:', 
       formattedResults.answers[0].ohlc_data ? 
       `Yes, ${formattedResults.answers[0].ohlc_data.length} candles` : 
       'No'

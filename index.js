@@ -1,4 +1,5 @@
 // index.js
+
 require('dotenv').config(); // Load environment variables
 const { createServer } = require('http');
 const { parse } = require('url');
@@ -23,7 +24,7 @@ async function initializeModules() {
     getUserMetrics = userService.getUserMetrics;
     getInactiveUsers = userService.getInactiveUsers;
     
-    console.log('✅ All modules loaded successfully');
+    logger.log('✅ All modules loaded successfully');
   } catch (error) {
     console.error('❌ Error loading modules:', error);
     throw error;
@@ -36,7 +37,7 @@ async function sendEmailWithRateLimit(emailFunction, user, ...args) {
     // Add a small delay between emails to avoid overwhelming the email service
     await new Promise(resolve => setTimeout(resolve, 1000));
     await emailFunction(user, ...args);
-    console.log(`📧 Email sent to ${user.email}`);
+    logger.log(`📧 Email sent to ${user.email}`);
     return true;
   } catch (error) {
     console.error(`❌ Failed to send email to ${user.email}:`, error.message);
@@ -52,7 +53,7 @@ app.prepare().then(async () => {
 
   server.listen(3000, async (err) => {
     if (err) throw err;
-    console.log('🚀 Server ready on http://localhost:3000');
+    logger.log('🚀 Server ready on http://localhost:3000');
 
     try {
       // Initialize modules
@@ -60,11 +61,11 @@ app.prepare().then(async () => {
       
       // Connect to database
       await connectDB();
-      console.log('📊 Database connected successfully');
+      logger.log('📊 Database connected successfully');
 
       // 📅 WEEKLY METRICS - Every Sunday at 9:00 AM
       cron.schedule('0 9 * * 0', async () => {
-        console.log('📊 Starting weekly metrics email job at', new Date().toISOString());
+        logger.log('📊 Starting weekly metrics email job at', new Date().toISOString());
         
         try {
           const users = await User.find({ 
@@ -72,7 +73,7 @@ app.prepare().then(async () => {
             'notifications.email': { $ne: false } // Only send to users who haven't disabled email notifications
           });
           
-          console.log(`📧 Found ${users.length} users for weekly metrics`);
+          logger.log(`📧 Found ${users.length} users for weekly metrics`);
           
           let successCount = 0;
           let errorCount = 0;
@@ -90,7 +91,7 @@ app.prepare().then(async () => {
                   errorCount++;
                 }
               } else {
-                console.log(`⏭️  Skipping ${user.email} - no tests taken this week`);
+                logger.log(`⏭️  Skipping ${user.email} - no tests taken this week`);
               }
             } catch (userError) {
               console.error(`❌ Error processing user ${user.email}:`, userError.message);
@@ -98,7 +99,7 @@ app.prepare().then(async () => {
             }
           }
           
-          console.log(`✅ Weekly metrics job completed: ${successCount} sent, ${errorCount} errors`);
+          logger.log(`✅ Weekly metrics job completed: ${successCount} sent, ${errorCount} errors`);
         } catch (error) {
           console.error('❌ Error in weekly metrics job:', error);
         }
@@ -109,7 +110,7 @@ app.prepare().then(async () => {
 
       // 📅 MONTHLY METRICS - 1st of every month at 9:00 AM
       cron.schedule('0 9 1 * *', async () => {
-        console.log('📊 Starting monthly metrics email job at', new Date().toISOString());
+        logger.log('📊 Starting monthly metrics email job at', new Date().toISOString());
         
         try {
           const users = await User.find({ 
@@ -117,7 +118,7 @@ app.prepare().then(async () => {
             'notifications.email': { $ne: false }
           });
           
-          console.log(`📧 Found ${users.length} users for monthly metrics`);
+          logger.log(`📧 Found ${users.length} users for monthly metrics`);
           
           let successCount = 0;
           let errorCount = 0;
@@ -135,7 +136,7 @@ app.prepare().then(async () => {
                   errorCount++;
                 }
               } else {
-                console.log(`⏭️  Skipping ${user.email} - no tests taken this month`);
+                logger.log(`⏭️  Skipping ${user.email} - no tests taken this month`);
               }
             } catch (userError) {
               console.error(`❌ Error processing user ${user.email}:`, userError.message);
@@ -143,7 +144,7 @@ app.prepare().then(async () => {
             }
           }
           
-          console.log(`✅ Monthly metrics job completed: ${successCount} sent, ${errorCount} errors`);
+          logger.log(`✅ Monthly metrics job completed: ${successCount} sent, ${errorCount} errors`);
         } catch (error) {
           console.error('❌ Error in monthly metrics job:', error);
         }
@@ -154,7 +155,7 @@ app.prepare().then(async () => {
 
       // 📅 INACTIVE USER REMINDERS - Every Monday at 10:00 AM
       cron.schedule('0 10 * * 1', async () => {
-        console.log('📧 Starting inactive user reminder job at', new Date().toISOString());
+        logger.log('📧 Starting inactive user reminder job at', new Date().toISOString());
         
         try {
           const inactiveUsers = await getInactiveUsers(30); // 30 days inactivity
@@ -164,7 +165,7 @@ app.prepare().then(async () => {
             user.notifications?.email !== false
           );
           
-          console.log(`📧 Found ${eligibleUsers.length} inactive users for reminders`);
+          logger.log(`📧 Found ${eligibleUsers.length} inactive users for reminders`);
           
           let successCount = 0;
           let errorCount = 0;
@@ -178,7 +179,7 @@ app.prepare().then(async () => {
             }
           }
           
-          console.log(`✅ Inactive user reminders completed: ${successCount} sent, ${errorCount} errors`);
+          logger.log(`✅ Inactive user reminders completed: ${successCount} sent, ${errorCount} errors`);
         } catch (error) {
           console.error('❌ Error in inactive user reminder job:', error);
         }
@@ -190,15 +191,15 @@ app.prepare().then(async () => {
       // 🧪 TEST CRON JOB - Every minute (for testing only - remove in production)
       if (process.env.NODE_ENV === 'development' && process.env.ENABLE_TEST_CRON === 'true') {
         cron.schedule('* * * * *', async () => {
-          console.log('🧪 Test cron job triggered at', new Date().toISOString());
+          logger.log('🧪 Test cron job triggered at', new Date().toISOString());
         });
-        console.log('🧪 Test cron job enabled (development only)');
+        logger.log('🧪 Test cron job enabled (development only)');
       }
 
-      console.log('⏰ All cron jobs scheduled successfully');
-      console.log('📅 Weekly metrics: Sundays at 9:00 AM');
-      console.log('📅 Monthly metrics: 1st of month at 9:00 AM');
-      console.log('📅 Inactive reminders: Mondays at 10:00 AM');
+      logger.log('⏰ All cron jobs scheduled successfully');
+      logger.log('📅 Weekly metrics: Sundays at 9:00 AM');
+      logger.log('📅 Monthly metrics: 1st of month at 9:00 AM');
+      logger.log('📅 Inactive reminders: Mondays at 10:00 AM');
       
     } catch (error) {
       console.error('❌ Error initializing cron jobs:', error);

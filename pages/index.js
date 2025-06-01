@@ -7,6 +7,7 @@ import Leaderboard from '../components/Leaderboard';
 import { ShieldCheck, BarChart2, Users, Zap, Brain, LineChart as LucideLineChart } from 'lucide-react';
 import { motion } from 'framer-motion';
 import TrackedPage from '../components/TrackedPage';
+import logger from '../lib/logger';
 
 // FeatureCard Component with Enhanced Design and Information
 const FeatureCard = ({ darkMode, icon, title, description, link, linkText, color, accentColor, benefits }) => {
@@ -142,7 +143,7 @@ export default function HomePage() {
   const { isAuthenticated, user } = useContext(AuthContext);
 
   useEffect(() => {
-    console.log('Home page loaded');
+    logger.log('Home page loaded');
   }, []);
 
   return (

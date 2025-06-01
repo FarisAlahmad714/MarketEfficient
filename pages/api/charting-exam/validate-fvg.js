@@ -6,7 +6,7 @@ import { requireAuth } from '../../../middleware/auth';
 import { composeMiddleware } from '../../../lib/api-handler';
 import { detectFairValueGaps } from './utils/fvg-detection';
 import TestResults from '../../../models/TestResults';
-
+import logger from '../../../lib/logger'; // Adjust path to your logger utility
 async function validateFvgHandler(req, res) {
   // User is already authenticated via middleware
   const userId = req.user.id;
@@ -33,7 +33,7 @@ async function validateFvgHandler(req, res) {
   const symbol = 'MULTIASSET';
   const chartTimeframe = timeframe || chartData.timeframe || '1d';
   
-  console.log(`Validating ${part === 1 ? 'bullish' : 'bearish'} FVGs for ${symbol} on ${chartTimeframe} timeframe`);
+  logger.log(`Validating ${part === 1 ? 'bullish' : 'bearish'} FVGs for ${symbol} on ${chartTimeframe} timeframe`);
   
   // Detect expected FVGs with adaptive minimum gap size
   const gapType = part === 1 ? 'bullish' : 'bearish';
@@ -60,7 +60,7 @@ async function validateFvgHandler(req, res) {
   });
   
   await testResult.save();
-  console.log(`FVG test result saved, score: ${validationResult.score}/${validationResult.totalExpectedPoints}`);
+  logger.log(`FVG test result saved, score: ${validationResult.score}/${validationResult.totalExpectedPoints}`);
   
   return res.status(200).json({
     success: true,

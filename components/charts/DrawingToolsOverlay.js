@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
 import { ThemeContext } from '../../contexts/ThemeContext';
-
+//           'Content-Type': 'application/json'
+import logger from '../../lib/logger';
 // Drawing tools types
 const TOOL_TYPES = {
   POINTER: 'pointer',
@@ -105,7 +106,7 @@ const DrawingToolsOverlay = ({
   const containerRef = useRef(null);
   const drawingAreaRef = useRef(null);
 
-  console.log("DrawingToolsOverlay rendering with plotlyNode:", plotlyNode);
+  logger.log("DrawingToolsOverlay rendering with plotlyNode:", plotlyNode);
 
   // Helper to find Plotly container and create overlay
   const setupDrawingOverlay = () => {
@@ -117,7 +118,7 @@ const DrawingToolsOverlay = ({
         return;
       }
       
-      console.log("Found Plotly container:", plotlyContainer);
+      logger.log("Found Plotly container:", plotlyContainer);
       
       // Find the plot area (the main SVG or the plot div)
       const mainSvg = plotlyContainer.querySelector('.main-svg');
@@ -126,11 +127,11 @@ const DrawingToolsOverlay = ({
         return;
       }
       
-      console.log("Found main SVG:", mainSvg);
+      logger.log("Found main SVG:", mainSvg);
       
       // Create drawing area if it doesn't exist
       if (!drawingAreaRef.current) {
-        console.log("Creating drawing area");
+        logger.log("Creating drawing area");
         const drawingArea = document.createElement('div');
         drawingArea.className = 'drawing-overlay';
         drawingArea.style.position = 'absolute';
@@ -148,7 +149,7 @@ const DrawingToolsOverlay = ({
       
       // Create SVG for drawings if it doesn't exist
       if (drawingAreaRef.current && !svgRef.current) {
-        console.log("Creating SVG overlay");
+        logger.log("Creating SVG overlay");
         const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
         svg.style.width = '100%';
         svg.style.height = '100%';
@@ -193,7 +194,7 @@ const DrawingToolsOverlay = ({
       drawingArea.style.top = `${plotRect.top - containerRect.top}px`;
       drawingArea.style.left = `${plotRect.left - containerRect.left}px`;
       
-      console.log("Drawing area positioned:", {
+      logger.log("Drawing area positioned:", {
         width: plotRect.width,
         height: plotRect.height,
         top: plotRect.top - containerRect.top,
@@ -216,7 +217,7 @@ const DrawingToolsOverlay = ({
 
   // Handle tool changes
   useEffect(() => {
-    console.log("Tool changed to:", activeTool);
+    logger.log("Tool changed to:", activeTool);
     
     try {
       // Update drawing area pointer events
@@ -311,14 +312,14 @@ const DrawingToolsOverlay = ({
   const handleMouseDown = (e) => {
     if (activeTool === TOOL_TYPES.POINTER) return;
     
-    console.log("Mouse down in drawing area");
+    logger.log("Mouse down in drawing area");
     
     const rect = drawingAreaRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
     
     const dataCoords = pixelToDataCoordinates(x, y);
-    console.log("Start point data coordinates:", dataCoords);
+    logger.log("Start point data coordinates:", dataCoords);
     
     setStartPoint(dataCoords);
     setCurrentPoint(dataCoords);
@@ -339,7 +340,7 @@ const DrawingToolsOverlay = ({
   const handleMouseUp = () => {
     if (!isDrawing) return;
     
-    console.log("Mouse up in drawing area");
+    logger.log("Mouse up in drawing area");
     
     // Create the drawing object based on tool type
     if (startPoint && currentPoint) {
@@ -349,7 +350,7 @@ const DrawingToolsOverlay = ({
         points: [startPoint, currentPoint]
       };
       
-      console.log("Creating new drawing:", newDrawing);
+      logger.log("Creating new drawing:", newDrawing);
       
       // Add to drawings array
       const updatedDrawings = [...drawings, newDrawing];
@@ -382,7 +383,7 @@ const DrawingToolsOverlay = ({
   useEffect(() => {
     if (!svgRef.current) return;
     
-    console.log("Rendering drawings:", drawings.length);
+    logger.log("Rendering drawings:", drawings.length);
     
     // Clear existing drawings
     while (svgRef.current.firstChild) {
@@ -405,7 +406,7 @@ const DrawingToolsOverlay = ({
   
   // Function to handle tool selection
   const handleToolSelect = (tool) => {
-    console.log("Tool selected:", tool);
+    logger.log("Tool selected:", tool);
     setActiveTool(tool);
   };
 

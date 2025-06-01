@@ -1,6 +1,7 @@
 // scripts/create-test-user.js
 // Run with: node scripts/create-test-user.js
-
+// This script creates a test user in your MongoDB database for testing purposes.
+const logger = require('../lib/logger'); // Adjust path to your logger utility
 require('dotenv').config({ path: '.env.local' });
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
@@ -28,7 +29,7 @@ async function createTestUser() {
   try {
     // Connect to MongoDB
     await mongoose.connect(MONGODB_URI);
-    console.log('Connected to MongoDB');
+    logger.log('Connected to MongoDB');
     
     // Test user details
     const testEmail = 'test@example.com';
@@ -39,7 +40,7 @@ async function createTestUser() {
     const existingUser = await User.findOne({ email: testEmail });
     
     if (existingUser) {
-      console.log('Test user already exists - updating credentials');
+      logger.log('Test user already exists - updating credentials');
       
       // Update password in case it's different
       const hashedPassword = await bcrypt.hash(testPassword, 10);
@@ -47,7 +48,7 @@ async function createTestUser() {
       existingUser.isVerified = true; // Make sure it's verified
       await existingUser.save();
       
-      console.log('Test user password updated');
+      logger.log('Test user password updated');
     } else {
       // Create new test user
       const hashedPassword = await bcrypt.hash(testPassword, 10);
@@ -62,13 +63,13 @@ async function createTestUser() {
       });
       
       await testUser.save();
-      console.log(`Test user created successfully`);
+      logger.log(`Test user created successfully`);
     }
     
-    console.log('\n✅ Test user ready:');
-    console.log('Email: [HIDDEN FOR SECURITY]');
-    console.log('Password: [HIDDEN FOR SECURITY]');
-    console.log('\nYou can now run: node scripts/test-migration.js');
+    logger.log('\n✅ Test user ready:');
+    logger.log('Email: [HIDDEN FOR SECURITY]');
+    logger.log('Password: [HIDDEN FOR SECURITY]');
+    logger.log('\nYou can now run: node scripts/test-migration.js');
     
     // Close connection
     setTimeout(() => {

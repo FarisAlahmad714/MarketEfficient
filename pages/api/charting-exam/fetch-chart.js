@@ -2,7 +2,7 @@ import { createApiHandler } from '../../../lib/api-handler';
 import { fetchAssetOHLCData } from '../../../lib/data-service';
 import fs from 'fs';
 import path from 'path';
-
+import logger from '../../../lib/logger'; // Adjust path to your logger utility
 // Define assets and timeframes to match Flask app
 const ASSETS = [
   { type: 'crypto', symbol: 'btc', apiId: 'bitcoin' },
@@ -39,7 +39,7 @@ async function fetchChartHandler(req, res) {
   // Select appropriate timeframes based on exam type
   const timeframes = examType === 'fair-value-gaps' ? TIMEFRAMES_FVG : TIMEFRAMES_ALL;
   
-  console.log(`Fetching chart for exam type: ${examType}, available timeframes:`, timeframes);
+  logger.log(`Fetching chart for exam type: ${examType}, available timeframes:`, timeframes);
 
   // Randomly select asset and timeframe
   const asset = ASSETS[Math.floor(Math.random() * ASSETS.length)];
@@ -69,7 +69,7 @@ async function fetchChartHandler(req, res) {
       days = 30;
   }
 
-  console.log(`Fetching data for ${asset.apiId} on timeframe ${timeframe} (${apiTimeframe}, ${days} days)`);
+  logger.log(`Fetching data for ${asset.apiId} on timeframe ${timeframe} (${apiTimeframe}, ${days} days)`);
 
   let chartData;
   try {

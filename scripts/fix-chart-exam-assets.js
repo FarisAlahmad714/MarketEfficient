@@ -2,7 +2,7 @@
 require('dotenv').config({ path: '.env.local' });
 const mongoose = require('mongoose');
 const TestResults = require('../models/TestResults');
-
+const logger = require('../lib/logger'); // Adjust path to your logger utility
 async function fixChartExamAssets() {
   await mongoose.connect(process.env.MONGODB_URI);
   
@@ -17,7 +17,7 @@ async function fixChartExamAssets() {
     }
   );
   
-  console.log(`✅ Updated ${result.modifiedCount} chart exam records to MULTIASSET`);
+  logger.log(`✅ Updated ${result.modifiedCount} chart exam records to MULTIASSET`);
   
   // Show current stats
   const stats = await TestResults.aggregate([
@@ -32,9 +32,9 @@ async function fixChartExamAssets() {
     { $sort: { '_id.subType': 1 } }
   ]);
   
-  console.log('\n📊 Current Chart Exam Stats:');
+  logger.log('\n📊 Current Chart Exam Stats:');
   stats.forEach(stat => {
-    console.log(`  ${stat._id.subType} - ${stat._id.assetSymbol}: ${stat.count} tests`);
+    logger.log(`  ${stat._id.subType} - ${stat._id.assetSymbol}: ${stat.count} tests`);
   });
   
   await mongoose.disconnect();

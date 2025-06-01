@@ -4,7 +4,7 @@ import connectDB from '../../../lib/database';
 import User from '../../../models/User';
 import { generateToken, sendVerificationEmail, sendWelcomeEmail } from '../../../lib/email-service';
 import { authRateLimit } from '../../../middleware/rateLimit';
-
+import logger from '../../../lib/logger'; // Adjust path to your logger utility
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -171,7 +171,7 @@ export default async function handler(req, res) {
                 pricing.discountAmount, 
                 pricing.finalPrice
               );
-              console.log('✅ Promo code marked as used successfully');
+              logger.log('✅ Promo code marked as used successfully');
             } catch (useCodeError) {
               console.error('❌ Error marking promo code as used:', useCodeError.message);
             }

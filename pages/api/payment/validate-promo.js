@@ -3,6 +3,7 @@ import PromoCode from '../../../models/PromoCode';
 import User from '../../../models/User';
 import connectDB from '../../../lib/database';
 import jwt from 'jsonwebtoken';
+import logger from '../../../lib/logger'; // Adjust path to your logger utility
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -36,7 +37,7 @@ export default async function handler(req, res) {
         }
       } catch (error) {
         // Token validation failed, but we can still validate the promo code
-        console.log('Token validation failed during promo validation:', error.message);
+        logger.log('Token validation failed during promo validation:', error.message);
       }
     }
 

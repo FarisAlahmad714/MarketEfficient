@@ -3,7 +3,7 @@ import styled from 'styled-components';
 import dynamic from 'next/dynamic';
 import ToolPanel from './common/ToolPanel';
 import FibonacciSettings from './FibonacciSettings';
-
+import logger from '../../lib/logger';
 // Dynamically import chart component to avoid SSR issues
 const Chart = dynamic(
   () => import('lightweight-charts').then(mod => {
@@ -374,7 +374,7 @@ const FibonacciRetracement = ({ chartData, onDrawingsUpdate, part, chartCount, i
       setPrevPart(part);
       setShowClearNotification(true);
       setTimeout(() => setShowClearNotification(false), 2000);
-      console.log(`Cleared Part ${prevPart} drawings, now on Part ${part}`);
+      logger.log(`Cleared Part ${prevPart} drawings, now on Part ${part}`);
     }
   }, [part, prevPart]);
   

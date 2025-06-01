@@ -2,6 +2,7 @@
 import { calculatePriceWithPromo } from '../../../lib/subscriptionUtils';
 import connectDB from '../../../lib/database';
 import jwt from 'jsonwebtoken';
+import logger from '../../../lib/logger'; // Adjust path to your logger utility
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -94,7 +95,7 @@ export default async function handler(req, res) {
     
     const session = await stripe.checkout.sessions.create(sessionConfig);
 
-    console.log(`Created checkout session for ${registrationData.email}: ${session.id}`);
+    logger.log(`Created checkout session for ${registrationData.email}: ${session.id}`);
 
     res.status(200).json({ 
       url: session.url,

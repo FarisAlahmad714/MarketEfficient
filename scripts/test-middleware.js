@@ -1,7 +1,8 @@
 // scripts/test-middleware.js
 // Tests the middleware functions directly without needing a running server
-// Run with: node scripts/test-middleware.js
-
+// Run with: node scripts/test-middleware.js  
+const logger = require('../lib/logger'); // Adjust path to your logger utility
+  
 // Mock Next.js request/response objects
 class MockRequest {
     constructor(options = {}) {
@@ -34,10 +35,10 @@ class MockRequest {
   
   // Test our middleware
   async function testMiddleware() {
-    console.log('🧪 Testing Middleware Functions\n');
+    logger.log('🧪 Testing Middleware Functions\n');
     
     // Test 1: No token
-    console.log('Test 1: No Authentication Token');
+    logger.log('Test 1: No Authentication Token');
     try {
       const { authenticate } = require('../middleware/auth');
       const middleware = authenticate({ required: true });
@@ -48,16 +49,16 @@ class MockRequest {
       await middleware(req, res, () => {});
       
       if (res.statusCode === 401 && res.data.error === 'Authorization token required') {
-        console.log('✅ Correctly rejected request without token\n');
+        logger.log('✅ Correctly rejected request without token\n');
       } else {
-        console.log('❌ Failed to reject request without token\n');
+        logger.log('❌ Failed to reject request without token\n');
       }
     } catch (error) {
-      console.log('❌ Error:', error.message, '\n');
+      logger.log('❌ Error:', error.message, '\n');
     }
     
     // Test 2: Invalid token format
-    console.log('Test 2: Invalid Token Format');
+    logger.log('Test 2: Invalid Token Format');
     try {
       const { authenticate } = require('../middleware/auth');
       const middleware = authenticate({ required: true });
@@ -70,16 +71,16 @@ class MockRequest {
       await middleware(req, res, () => {});
       
       if (res.statusCode === 401) {
-        console.log('✅ Correctly rejected invalid token format\n');
+        logger.log('✅ Correctly rejected invalid token format\n');
       } else {
-        console.log('❌ Failed to reject invalid token format\n');
+        logger.log('❌ Failed to reject invalid token format\n');
       }
     } catch (error) {
-      console.log('❌ Error:', error.message, '\n');
+      logger.log('❌ Error:', error.message, '\n');
     }
     
     // Test 3: API Handler wrapper
-    console.log('Test 3: API Handler Method Checking');
+    logger.log('Test 3: API Handler Method Checking');
     try {
       const { createApiHandler } = require('../lib/api-handler');
       
@@ -97,16 +98,16 @@ class MockRequest {
       await handler(req, res);
       
       if (res.statusCode === 405 && res.data.error === 'Method not allowed') {
-        console.log('✅ Correctly rejected wrong HTTP method\n');
+        logger.log('✅ Correctly rejected wrong HTTP method\n');
       } else {
-        console.log('❌ Failed to reject wrong HTTP method\n');
+        logger.log('❌ Failed to reject wrong HTTP method\n');
       }
     } catch (error) {
-      console.log('❌ Error:', error.message, '\n');
+      logger.log('❌ Error:', error.message, '\n');
     }
     
     // Test 4: Optional auth
-    console.log('Test 4: Optional Authentication');
+    logger.log('Test 4: Optional Authentication');
     try {
       const { authenticate } = require('../middleware/auth');
       const middleware = authenticate({ required: false });
@@ -120,19 +121,19 @@ class MockRequest {
       });
       
       if (nextCalled && req.user === null) {
-        console.log('✅ Optional auth correctly allows unauthenticated requests\n');
+        logger.log('✅ Optional auth correctly allows unauthenticated requests\n');
       } else {
-        console.log('❌ Optional auth failed\n');
+        logger.log('❌ Optional auth failed\n');
       }
     } catch (error) {
-      console.log('❌ Error:', error.message, '\n');
+      logger.log('❌ Error:', error.message, '\n');
     }
     
-    console.log('🏁 Middleware tests complete!');
-    console.log('\nNote: These tests verify the middleware logic works correctly.');
-    console.log('To test with real authentication, you need to:');
-    console.log('1. Run: node scripts/create-test-user.js');
-    console.log('2. Then: node scripts/test-migration.js');
+    logger.log('🏁 Middleware tests complete!');
+    logger.log('\nNote: These tests verify the middleware logic works correctly.');
+    logger.log('To test with real authentication, you need to:');
+    logger.log('1. Run: node scripts/create-test-user.js');
+    logger.log('2. Then: node scripts/test-migration.js');
   }
   
   // Run tests

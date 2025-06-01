@@ -4,7 +4,7 @@
 import { createApiHandler } from '../../../lib/api-handler';
 import { requireAuth } from '../../../middleware/auth';
 import TestResults from '../../../models/TestResults';
-
+import logger from '../../../lib/logger'; // Adjust path to your logger utility
 // Main handler function - now much cleaner!
 async function saveResultsHandler(req, res) {
   // User is already authenticated and attached to req.user
@@ -38,7 +38,7 @@ async function saveResultsHandler(req, res) {
   
   // Handle analysis update
   if (updateAnalysis && existingResult) {
-    console.log(`Updating AI analysis for session ${sessionId}`);
+    logger.log(`Updating AI analysis for session ${sessionId}`);
     
     const analysisUpdates = answers.map(answer => ({
       test_id: answer.test_id,
@@ -131,7 +131,7 @@ async function saveResultsHandler(req, res) {
     }
     
     await testResult.save();
-    console.log(`Bias test result saved, score: ${finalScore}/${totalPoints} for ${assetSymbol}`);
+    logger.log(`Bias test result saved, score: ${finalScore}/${totalPoints} for ${assetSymbol}`);
     
     return res.status(200).json({
       success: true,

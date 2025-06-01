@@ -2,12 +2,13 @@ require('dotenv').config();
 const mongoose = require('mongoose');
 const PromoCode = require('../models/PromoCode');
 const User = require('../models/User');
+const logger = require('../lib/logger'); // Adjust path to your logger utility
 
 async function ensureTestPromoCode() {
   try {
     // Connect to MongoDB
     await mongoose.connect(process.env.MONGODB_URI);
-    console.log('Connected to MongoDB');
+    logger.log('Connected to MongoDB');
 
     // Find the first admin user to assign as creator
     const adminUser = await User.findOne({ isAdmin: true });
@@ -16,17 +17,17 @@ async function ensureTestPromoCode() {
       process.exit(1);
     }
 
-    console.log(`Using admin user: ${adminUser.email} as promo code creator`);
+    logger.log(`Using admin user: ${adminUser.email} as promo code creator`);
 
     // Check if TESTFREE already exists
     const existingCode = await PromoCode.findOne({ code: 'TESTFREE' });
     
     if (existingCode) {
-      console.log('✅ TESTFREE promo code already exists');
-      console.log('   - Description:', existingCode.description);
-      console.log('   - Discount Type:', existingCode.discountType);
-      console.log('   - Is Active:', existingCode.isActive);
-      console.log('   - Current Uses:', existingCode.currentUses, '/', existingCode.maxUses);
+      logger.log('✅ TESTFREE promo code already exists');
+      logger.log('   - Description:', existingCode.description);
+      logger.log('   - Discount Type:', existingCode.discountType);
+      logger.log('   - Is Active:', existingCode.isActive);
+      logger.log('   - Current Uses:', existingCode.currentUses, '/', existingCode.maxUses);
     } else {
       // Create TESTFREE promo code
       const testFreeCode = new PromoCode({
@@ -43,7 +44,7 @@ async function ensureTestPromoCode() {
       });
 
       await testFreeCode.save();
-      console.log('✅ Created TESTFREE promo code successfully!');
+      logger.log('✅ Created TESTFREE promo code successfully!');
     }
 
     // Also ensure other preset codes exist
@@ -89,23 +90,23 @@ async function ensureTestPromoCode() {
           isActive: true
         });
         await newCode.save();
-        console.log(`✅ Created ${codeData.code} promo code`);
+        logger.log(`✅ Created ${codeData.code} promo code`);
       } else {
-        console.log(`✅ ${codeData.code} promo code already exists`);
+        logger.log(`✅ ${codeData.code} promo code already exists`);
       }
     }
 
     // Display all active promo codes
-    console.log('\n📋 All active promo codes:');
+    logger.log('\n📋 All active promo codes:');
     const allCodes = await PromoCode.find({ isActive: true });
     allCodes.forEach(code => {
-      console.log(`- ${code.code}: ${code.description}`);
-      console.log(`  Final Price: $${code.finalPrice ? (code.finalPrice / 100).toFixed(2) : 'Variable'}`);
-      console.log(`  Uses: ${code.currentUses}/${code.maxUses}`);
+      logger.log(`- ${code.code}: ${code.description}`);
+      logger.log(`  Final Price: $${code.finalPrice ? (code.finalPrice / 100).toFixed(2) : 'Variable'}`);
+      logger.log(`  Uses: ${code.currentUses}/${code.maxUses}`);
     });
 
     await mongoose.disconnect();
-    console.log('\n✅ Done!');
+    logger.log('\n✅ Done!');
   } catch (error) {
     console.error('Error:', error);
     process.exit(1);

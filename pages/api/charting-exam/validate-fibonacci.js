@@ -3,7 +3,7 @@ import { getFibonacciRetracement, calculateFibonacciLevels } from './utils/fibon
 import connectDB from '../../../lib/database';
 import TestResults from '../../../models/TestResults';
 import jwt from 'jsonwebtoken';
-
+import logger from '../../../lib/logger'; // Adjust path to your logger utility
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -72,7 +72,7 @@ export default async function handler(req, res) {
     });
     
     await testResult.save();
-    console.log(`Fibonacci test result saved, score: ${validationResult.score}/${validationResult.totalExpectedPoints}`);
+  logger.log(`Fibonacci test result saved, score: ${validationResult.score}/${validationResult.totalExpectedPoints}`);
     
     return res.status(200).json({
       success: true,
@@ -164,7 +164,7 @@ function validateFibonacciRetracement(drawings, expected, chartData, part) {
   
   // Determine timeframe for appropriate tolerances
   const timeframe = determineTimeframe(chartData);
-  console.log(`Detected timeframe for validation: ${timeframe}`);
+logger.log(`Detected timeframe for validation: ${timeframe}`);
   
   // MODIFIED: Increased tolerance percentages to be more forgiving
   const priceTolerances = {
@@ -185,7 +185,7 @@ function validateFibonacciRetracement(drawings, expected, chartData, part) {
   const priceTolerance = priceRange * (priceTolerances[timeframe] || 0.06);
   const timeTolerance = timeTolerances[timeframe] || (5 * 86400);
   
-  console.log(`Validation tolerances: price=${priceTolerance.toFixed(4)}, time=${timeTolerance/3600}h`);
+logger.log(`Validation tolerances: price=${priceTolerance.toFixed(4)}, time=${timeTolerance/3600}h`);
   
   const totalCredits = 2; // 1 for start point, 1 for end point
   let creditsEarned = 0;
@@ -250,7 +250,7 @@ function validateFibonacciRetracement(drawings, expected, chartData, part) {
       const endPriceDiffPercent = Math.abs(drawing.end.price - expected.end.price) / expected.end.price * 100;
       
       // Log detailed validation info for debugging
-      console.log(`Validating drawing: 
+    logger.log(`Validating drawing: 
         Direction: ${userDirection}
         User Start: time=${drawing.start.time}, price=${drawing.start.price}
         Expected Start: time=${expected.start.time}, price=${expected.start.price}

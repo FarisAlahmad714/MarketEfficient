@@ -1,6 +1,6 @@
 // scripts/test-migration.js
 // Run with: node scripts/test-migration.js
-
+const logger = require('../lib/logger'); // Adjust path to your logger utility
 const axios = require('axios');
 require('dotenv').config({ path: '.env.local' });
 
@@ -14,14 +14,14 @@ const TEST_USER = {
 
 // Show usage if no credentials
 if (process.argv.length > 2 && process.argv[2] === '--help') {
-  console.log('\nUsage:');
-  console.log('  node scripts/test-migration.js [email] [password]');
-  console.log('\nExamples:');
-  console.log('  node scripts/test-migration.js [email] [password]');
-  console.log('  node scripts/test-migration.js [your-email] [your-password]');
-  console.log('\nOr set in .env.local:');
-  console.log('  TEST_USER_EMAIL=[your-email]');
-  console.log('  TEST_USER_PASSWORD=[your-password]');
+  logger.log('\nUsage:');
+  logger.log('  node scripts/test-migration.js [email] [password]');
+  logger.log('\nExamples:');
+  logger.log('  node scripts/test-migration.js [email] [password]');
+  logger.log('  node scripts/test-migration.js [your-email] [your-password]');
+  logger.log('\nOr set in .env.local:');
+  logger.log('  TEST_USER_EMAIL=[your-email]');
+  logger.log('  TEST_USER_PASSWORD=[your-password]');
   process.exit(0);
 }
 
@@ -38,7 +38,7 @@ function log(message, type = 'info') {
   const color = type === 'success' ? colors.green : 
                 type === 'error' ? colors.red : 
                 colors.yellow;
-  console.log(`${color}${message}${colors.reset}`);
+  logger.log(`${color}${message}${colors.reset}`);
 }
 
 // Test function for a single route

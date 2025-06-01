@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/router"; // If using Next.js
 import { app } from "../lib/firebase"; // Adjust path to your Firebase config file
 import { getAnalytics, logEvent } from "firebase/analytics";
+import logger from "../lib/logger"; // Adjust path to your logger utility
 
 const TrackedPage = ({ children }) => {
   const router = useRouter(); // For Next.js; remove if not applicable
@@ -13,7 +14,7 @@ const TrackedPage = ({ children }) => {
       try {
         const analyticsInstance = getAnalytics(app);
         setAnalytics(analyticsInstance);
-        console.log("✅ Firebase Analytics initialized successfully");
+        logger.log("✅ Firebase Analytics initialized successfully");
       } catch (error) {
         console.error("❌ Failed to initialize Firebase Analytics:", error);
       }
@@ -25,12 +26,12 @@ const TrackedPage = ({ children }) => {
     if (analytics && router.isReady) { // router.isReady is Next.js-specific
       const pagePath = router.asPath; // Current URL path
       const pageTitle = document.title; // Current page title
-      console.log(`📊 Attempting to log page_view for: ${pagePath}`);
+      logger.log(`📊 Attempting to log page_view for: ${pagePath}`);
       logEvent(analytics, "page_view", {
         page_path: pagePath,
         page_title: pageTitle,
       });
-      console.log(`✅ page_view event logged for: ${pagePath}`);
+      logger.log(`✅ page_view event logged for: ${pagePath}`);
     } else if (!analytics) {
       console.warn("⚠️ Analytics not initialized yet");
     }
