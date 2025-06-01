@@ -1,11 +1,13 @@
 import { useContext } from 'react';
 import AssetSelector from '../components/AssetSelector';
 import { ThemeContext } from '../contexts/ThemeContext';
+import TrackedPage from '../components/TrackedPage';
 
 export default function BiasTestPage() {
   const { darkMode } = useContext(ThemeContext);
 
   return (
+    <TrackedPage>
     <div style={{
       minHeight: '100vh',
       background: darkMode 
@@ -17,5 +19,6 @@ export default function BiasTestPage() {
         <AssetSelector />
       </main>
     </div>
+    </TrackedPage>
   );
 } 

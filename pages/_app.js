@@ -5,7 +5,7 @@ import { useEffect, useState, useContext } from 'react';
 import { AuthProvider, AuthContext } from '../contexts/AuthContext';
 import { useRouter } from 'next/router';
 import CryptoLoader from '../components/CryptoLoader';
-
+import TrackedPage from "../components/TrackedPage";  
 // Define which routes require authentication
 const protectedRoutes = [
   '/bias-test', 
@@ -136,9 +136,11 @@ function AppContent({ Component, pageProps }) {
   }
   
   return (
+    <TrackedPage>
     <Layout>
       <Component {...pageProps} />
     </Layout>
+    </TrackedPage>
   );
 }
 

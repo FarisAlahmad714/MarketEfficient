@@ -5,6 +5,7 @@ import { ThemeContext } from '../../contexts/ThemeContext';
 import Link from 'next/link';
 import CryptoLoader from '../../components/CryptoLoader';
 import UserDetailsModal from '../../components/admin/UserDetailsModal';
+import TrackedPage from '../../components/TrackedPage';
 
 const AdminPanel = () => {
   const { isAuthenticated, user } = useContext(AuthContext);
@@ -171,6 +172,7 @@ const AdminPanel = () => {
   };
 
   return (
+    <TrackedPage>
     <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px 20px' }}>
       <h1 style={{ color: darkMode ? '#e0e0e0' : '#333', marginBottom: '30px' }}>Admin Panel</h1>
 
@@ -655,6 +657,7 @@ const AdminPanel = () => {
         />
       )}
     </div>
+    </TrackedPage>
   );
 };
 

@@ -6,6 +6,7 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { ThemeContext } from '../../contexts/ThemeContext';
 import CryptoLoader from '../../components/CryptoLoader';
+import TrackedPage from '../../components/TrackedPage';
 
 // Import CandlestickChart with SSR disabled
 const CandlestickChart = dynamic(
@@ -319,6 +320,7 @@ const Results = () => {
   };
 
   return (
+    <TrackedPage>
     <div style={{ 
       maxWidth: '1000px', 
       margin: '0 auto', 
@@ -964,6 +966,7 @@ const Results = () => {
         }
       `}</style>
     </div>
+    </TrackedPage>
   );
 };
 

@@ -6,6 +6,7 @@ import { AuthContext } from '../contexts/AuthContext';
 import Leaderboard from '../components/Leaderboard';
 import { ShieldCheck, BarChart2, Users, Zap, Brain, LineChart as LucideLineChart } from 'lucide-react';
 import { motion } from 'framer-motion';
+import TrackedPage from '../components/TrackedPage';
 
 // FeatureCard Component with Enhanced Design and Information
 const FeatureCard = ({ darkMode, icon, title, description, link, linkText, color, accentColor, benefits }) => {
@@ -145,6 +146,7 @@ export default function HomePage() {
   }, []);
 
   return (
+    <TrackedPage>
     <div style={{
       maxWidth: '1440px',
       margin: '0 auto',
@@ -440,5 +442,6 @@ export default function HomePage() {
         </motion.div>
       </section>
     </div>
+    </TrackedPage>
   );
 }

@@ -5,6 +5,7 @@ import styled from 'styled-components';
 import { ThemeContext } from '../../contexts/ThemeContext';
 import { motion } from 'framer-motion';
 import CryptoLoader from '../../components/CryptoLoader';
+import TrackedPage from '../../components/TrackedPage';
 
 // Styled components
 const Container = styled.div`
@@ -337,6 +338,7 @@ const ChartExamResults = () => {
   const improvementTips = getImprovementTips(examType, scorePercentage);
   
   return (
+    <TrackedPage>
     <Container>
       <Header>
         <Title isDarkMode={darkMode}>Exam Results</Title>
@@ -453,6 +455,7 @@ const ChartExamResults = () => {
         </Link>
       </ButtonContainer>
     </Container>
+    </TrackedPage>
   );
 };
 

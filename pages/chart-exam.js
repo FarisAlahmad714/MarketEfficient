@@ -2,6 +2,7 @@ import React, { useContext, useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { ThemeContext } from '../contexts/ThemeContext';
 import Link from 'next/link';
+import TrackedPage from '../components/TrackedPage';
 
 const ChartExamIntro = () => {
   const { darkMode } = useContext(ThemeContext);
@@ -316,6 +317,7 @@ const ChartExamIntro = () => {
   const getCardHeight = () => isMobile ? 'auto' : '590px';
 
   return (
+    <TrackedPage>
     <div style={{ 
       maxWidth: '1200px', 
       margin: '0 auto', 
@@ -970,6 +972,7 @@ const ChartExamIntro = () => {
         ))}
       </div>
     </div>
+    </TrackedPage>
   );
 };
 

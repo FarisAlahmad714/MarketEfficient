@@ -11,6 +11,7 @@ import {
   BarChart, Bar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
   Cell, Pie, PieChart
 } from 'recharts';
+import TrackedPage from '../components/TrackedPage';
 
 // Info tooltip component
 const InfoTooltip = ({ text, darkMode, position = 'top' }) => {
@@ -188,6 +189,7 @@ if (data && data.summary && data.summary.testsByType) {
   }
   
   return (
+    <TrackedPage>
     <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px 20px' }}>
       <header style={{ 
         display: 'flex', 
@@ -1094,6 +1096,7 @@ if (data && data.summary && data.summary.testsByType) {
         </>
       )}
     </div>
+    </TrackedPage>
   );
 };
 
@@ -1532,7 +1535,7 @@ const getGoalsByPeriod = (period, metrics, darkMode) => {
       color: '#673AB7' // Deep Purple
     });
   }
-  
+    
   return goals;
 };
 
