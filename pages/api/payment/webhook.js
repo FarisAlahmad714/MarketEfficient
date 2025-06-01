@@ -6,8 +6,10 @@ import Subscription from '../../../models/Subscription';
 import Payment from '../../../models/Payment';
 import PromoCode from '../../../models/PromoCode';
 import PaymentHistory from '../../../models/PaymentHistory';
+import PendingRegistration from '../../../models/PendingRegistration';
 import connectDB from '../../../lib/database';
 import { sendWelcomeEmail, sendVerificationEmail } from '../../../lib/email-service';
+import jwt from 'jsonwebtoken';
 
 // Disable body parsing for webhooks
 export const config = {
@@ -77,23 +79,6 @@ export default async function handler(req, res) {
       case 'payment_intent.payment_failed':
         await handlePaymentIntentFailed(event.data.object);
         break;
-        case 'payment_intent.succeeded':
-    const paymentIntent = event.data.object;
-    await PaymentHistory.create({
-      userId: user._id,
-      stripePaymentIntentId: paymentIntent.id,
-      amount: paymentIntent.amount,
-      currency: paymentIntent.currency,
-      status: 'succeeded',
-      description: `${subscription.plan === 'monthly' ? 'Monthly' : 'Annual'} subscription payment`,
-      paymentMethod: paymentIntent.payment_method,
-      metadata: {
-        subscriptionId: subscription._id,
-        plan: subscription.plan
-      }
-    });
-    break;
-  
 
       default:
         console.log(`Unhandled event type: ${event.type}`);
@@ -106,27 +91,29 @@ export default async function handler(req, res) {
     res.status(400).json({ error: error.message });
   }
 }
-const existingUser = await User.findOne({ email: pendingReg.email });
-if (existingUser) {
-  console.error('User already exists with this email:', pendingReg.email);
-  return;
-}
 
 async function handleCheckoutSessionCompleted(session) {
   try {
-    // Check if this is a pending registration (paid promo code)
-    const pendingRegistrationId = session.metadata?.pendingRegistrationId;
+    // Check if this is a new registration
+    const registrationDataToken = session.metadata?.registrationData;
     
     let user;
     let isNewUser = false;
     
-    if (pendingRegistrationId) {
-      // This is a pending registration - create the user now
-      const PendingRegistration = require('../../../models/PendingRegistration');
-      const pendingReg = await PendingRegistration.findById(pendingRegistrationId);
+    if (registrationDataToken) {
+      // This is a new registration - decode the registration data
+      let registrationData;
+      try {
+        registrationData = jwt.verify(registrationDataToken, process.env.JWT_SECRET);
+      } catch (error) {
+        console.error('Failed to decode registration data:', error);
+        return;
+      }
       
-      if (!pendingReg) {
-        console.error('Pending registration not found:', pendingRegistrationId);
+      // Check if user already exists (in case of duplicate webhooks)
+      const existingUser = await User.findOne({ email: registrationData.email });
+      if (existingUser) {
+        console.log('User already exists, skipping creation');
         return;
       }
       
@@ -135,14 +122,14 @@ async function handleCheckoutSessionCompleted(session) {
       const verificationToken = generateToken();
       const verificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
       
-      // Create the actual user
+      // NOW create the user after successful payment
       user = await User.create({
-        name: pendingReg.name,
-        email: pendingReg.email,
-        password: pendingReg.passwordHash, // Already hashed
+        name: registrationData.name,
+        email: registrationData.email,
+        password: registrationData.passwordHash, // Already hashed
         verificationToken,
         verificationTokenExpires,
-        registrationPromoCode: pendingReg.promoCode,
+        registrationPromoCode: registrationData.promoCode,
         hasActiveSubscription: false,
         subscriptionStatus: 'none',
         subscriptionTier: 'free',
@@ -151,9 +138,7 @@ async function handleCheckoutSessionCompleted(session) {
       });
       
       isNewUser = true;
-      
-      // Delete the pending registration
-      await PendingRegistration.findByIdAndDelete(pendingRegistrationId);
+      console.log(`User created after payment: ${user.email}`);
     } else {
       // Normal flow - user already exists
       const userId = session.metadata?.userId;
@@ -179,54 +164,58 @@ async function handleCheckoutSessionCompleted(session) {
     // Handle promo code usage if applicable
     if (promoCodeId) {
       try {
-        await processPromoCodeUsage(promoCodeId, userId, originalAmount, discountAmount, finalAmount);
+        await processPromoCodeUsage(promoCodeId, user._id, originalAmount, discountAmount, finalAmount);
       } catch (error) {
         console.error('Error processing promo code usage:', error);
       }
     }
 
-    // For one-time payments (promo codes), create a manual subscription
-    if (subscriptionType === 'promo_payment') {
-      const periodStart = new Date();
-      const periodEnd = new Date();
-      
-      if (plan === 'monthly') {
-        periodEnd.setMonth(periodEnd.getMonth() + 1);
-      } else if (plan === 'annual') {
-        periodEnd.setFullYear(periodEnd.getFullYear() + 1);
-      }
-
-      await createOrUpdateSubscription(userId, {
-        stripeCustomerId: session.customer,
-        status: 'active',
-        plan: plan,
-        amount: finalAmount,
-        originalAmount: originalAmount,
-        discountAmount: discountAmount,
-        currentPeriodStart: periodStart,
-        currentPeriodEnd: periodEnd,
-        promoCodeUsed: promoCodeId || null
-      });
-
-      // Create payment record
-      await createPaymentRecord({
-        userId,
-        stripePaymentIntentId: session.payment_intent,
-        amount: finalAmount,
-        status: 'succeeded',
-        paymentMethod: promoCodeId ? 'promo_code' : 'stripe',
-        plan: plan,
-        promoCodeUsed: promoCodeId,
-        originalAmount: originalAmount,
-        discountAmount: discountAmount,
-        description: `${plan} subscription payment${session.metadata?.promoCode ? ` with promo code ${session.metadata.promoCode}` : ''}`,
-        metadata: {
-          customerEmail: user.email,
-          customerName: user.name,
-          sessionId: session.id
-        }
-      });
+    // Create subscription
+    const periodStart = new Date();
+    const periodEnd = new Date();
+    
+    if (plan === 'monthly') {
+      periodEnd.setMonth(periodEnd.getMonth() + 1);
+    } else if (plan === 'annual') {
+      periodEnd.setFullYear(periodEnd.getFullYear() + 1);
     }
+
+    await createOrUpdateSubscription(user._id, {
+      stripeCustomerId: session.customer,
+      status: 'active',
+      plan: plan,
+      amount: finalAmount,
+      originalAmount: originalAmount,
+      discountAmount: discountAmount,
+      currentPeriodStart: periodStart,
+      currentPeriodEnd: periodEnd,
+      promoCodeUsed: promoCodeId || null
+    });
+
+    // Update user subscription status
+    user.hasActiveSubscription = true;
+    user.subscriptionStatus = 'active';
+    user.subscriptionTier = plan;
+    await user.save();
+
+    // Create payment record
+    await createPaymentRecord({
+      userId: user._id,
+      stripePaymentIntentId: session.payment_intent,
+      amount: finalAmount,
+      status: 'succeeded',
+      paymentMethod: promoCodeId ? 'promo_code' : 'stripe',
+      plan: plan,
+      promoCodeUsed: promoCodeId,
+      originalAmount: originalAmount,
+      discountAmount: discountAmount,
+      description: `${plan} subscription payment${session.metadata?.promoCode ? ` with promo code ${session.metadata.promoCode}` : ''}`,
+      metadata: {
+        customerEmail: user.email,
+        customerName: user.name,
+        sessionId: session.id
+      }
+    });
 
     // Send verification email first (if not verified yet) and then welcome email
     if (!user.isVerified && user.verificationToken) {
@@ -251,7 +240,7 @@ async function handleCheckoutSessionCompleted(session) {
       }
     }
 
-    console.log(`Checkout completed for user ${userId}, plan: ${plan}`);
+    console.log(`Checkout completed for user ${user._id}, plan: ${plan}`);
 
   } catch (error) {
     console.error('Error handling checkout session completed:', error);
@@ -500,4 +489,4 @@ async function createPaymentRecord(paymentData) {
     console.error('Error creating payment record:', error);
     throw error;
   }
-} 
+}

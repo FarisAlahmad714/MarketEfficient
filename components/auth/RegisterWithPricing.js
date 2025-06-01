@@ -70,6 +70,28 @@ const RegisterWithPricing = () => {
     },
   };
 
+  // Check for cancelled checkout session on page load
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const cancelled = urlParams.get('cancelled');
+    const cancelledEmail = urlParams.get('email');
+    const cancelledPlan = urlParams.get('plan');
+    
+    if (cancelled === 'true' && cancelledEmail) {
+      // Pre-fill the form with their previous data
+      setEmail(decodeURIComponent(cancelledEmail));
+      if (cancelledPlan) {
+        setSelectedPlan(cancelledPlan);
+      }
+      
+      // Show a friendly message
+      setError('No problem! You can try a different plan or update your information.');
+      
+      // Clear the URL params
+      window.history.replaceState({}, document.title, '/pricing');
+    }
+  }, []);
+
   // Validate email format instantly
   const validateEmailFormat = (email) => {
     const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -249,18 +271,8 @@ const RegisterWithPricing = () => {
       const data = await response.json();
 
       if (response.ok && data.requiresPayment) {
-        localStorage.setItem(
-          'pendingRegistration',
-          JSON.stringify({
-            pendingRegistrationId: data.pendingRegistrationId,
-            name,
-            email,
-            plan: selectedPlan,
-            promoCode: promoCode ? promoCode.toUpperCase() : null,
-          })
-        );
-
-        const checkoutResponse = await fetch('/api/payment/create-checkout-pending', {
+        // Use the new checkout endpoint
+        const checkoutResponse = await fetch('/api/payment/create-checkout-registration', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -268,13 +280,15 @@ const RegisterWithPricing = () => {
           body: JSON.stringify({
             plan: selectedPlan,
             promoCode: promoCode ? promoCode.toUpperCase() : null,
-            pendingRegistrationId: data.pendingRegistrationId,
+            tempToken: data.tempToken,
           }),
         });
 
         const checkoutData = await checkoutResponse.json();
 
         if (checkoutData.url) {
+          // Store token for potential use later
+          localStorage.setItem('registrationToken', data.tempToken);
           window.location.href = checkoutData.url;
         } else {
           setError(checkoutData.error || 'Failed to create checkout session');
@@ -436,7 +450,7 @@ const RegisterWithPricing = () => {
                   className={confirmPassword && !passwordMatch ? styles.invalid : ''}
                 />
                 {confirmPassword && !passwordMatch && (
-                  <p className={styles.errorText}>Passwords don’t match</p>
+                  <p className={styles.errorText}>Passwords don't match</p>
                 )}
               </div>
 

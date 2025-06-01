@@ -6,6 +6,52 @@ import PricingPage from '../components/PricingPage';
 export default function Pricing() {
   const router = useRouter();
   const { user, isAuthenticated, isLoading } = useContext(AuthContext);
+  const { cancelled, email, plan, tempToken } = router.query;
+
+  // Store tempToken for registration flow
+  useEffect(() => {
+    if (cancelled === 'true' && tempToken) {
+      console.log('Cancelled checkout:', { email, plan, tempToken });
+      localStorage.setItem('registrationTempToken', tempToken);
+    }
+  }, [cancelled, email, plan, tempToken]);
+
+  // Handle plan selection and initiate checkout
+  const handlePlanSelect = async (selectedPlan, promoCode) => {
+    const storedToken = localStorage.getItem('registrationTempToken');
+    if (!isAuthenticated && !storedToken) {
+      console.error('No auth or temp token, redirecting to register');
+      router.push('/auth/register');
+      return;
+    }
+
+    try {
+      console.log('Initiating checkout for plan:', selectedPlan, { isAuthenticated });
+      const response = await fetch('/api/payment/create-checkout-registration', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(isAuthenticated && user?.token && { 'Authorization': `Bearer ${user.token}` })
+        },
+        body: JSON.stringify({
+          plan: selectedPlan,
+          promoCode: promoCode || '',
+          tempToken: isAuthenticated ? '' : storedToken
+        })
+      });
+      const data = await response.json();
+      if (data.url) {
+        console.log('Redirecting to Stripe checkout:', data.url);
+        window.location.href = data.url;
+      } else {
+        console.error('Checkout failed:', data.error);
+        return data.error || 'Failed to create checkout session';
+      }
+    } catch (error) {
+      console.error('Error initiating checkout:', error);
+      return 'Failed to start checkout process';
+    }
+  };
 
   if (isLoading) {
     return (
@@ -38,7 +84,11 @@ export default function Pricing() {
 
   return (
     <div>
-      <PricingPage user={user} />
+      <PricingPage 
+        user={user} 
+        onPlanSelect={handlePlanSelect}
+        isRegistrationFlow={!!tempToken || !!localStorage.getItem('registrationTempToken')}
+      />
     </div>
   );
-} 
+}

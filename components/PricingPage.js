@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import styles from '../styles/PricingPage.module.css';
 
-const PricingPage = ({ user }) => {
+const PricingPage = ({ user, onPlanSelect, isRegistrationFlow }) => {
   const router = useRouter();
   const [selectedPlan, setSelectedPlan] = useState('monthly');
   const [promoCode, setPromoCode] = useState('');
@@ -92,40 +92,14 @@ const PricingPage = ({ user }) => {
   };
 
   const handleCheckout = async () => {
-    if (!user) {
-      router.push('/auth/login?redirect=/pricing');
-      return;
-    }
-
     setIsProcessing(true);
     setError('');
 
-    try {
-      const response = await fetch('/api/payment/create-checkout', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user.token}`
-        },
-        body: JSON.stringify({
-          plan: selectedPlan,
-          ...(promoCode && promoValidation?.valid && { promoCode: promoCode.toUpperCase() })
-        })
-      });
-
-      const data = await response.json();
-
-      if (data.url) {
-        window.location.href = data.url;
-      } else {
-        setError(data.error || 'Failed to create checkout session');
-      }
-    } catch (error) {
-      console.error('Checkout error:', error);
-      setError('Failed to start checkout process');
-    } finally {
-      setIsProcessing(false);
+    const errorMessage = await onPlanSelect(selectedPlan, promoCode);
+    if (errorMessage) {
+      setError(errorMessage);
     }
+    setIsProcessing(false);
   };
 
   const getCurrentPrice = (plan) => {
@@ -287,4 +261,4 @@ const PricingPage = ({ user }) => {
   );
 };
 
-export default PricingPage; 
+export default PricingPage;

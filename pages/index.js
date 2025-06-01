@@ -305,7 +305,7 @@ export default function HomePage() {
             </Link>
           )}
           <Link 
-            href="/learn-more" 
+            href="auth/register" 
             style={{
               padding: '16px 40px',
               background: 'transparent',
@@ -329,7 +329,7 @@ export default function HomePage() {
               e.currentTarget.style.boxShadow = '0 4px 15px rgba(255, 255, 255, 0.2)';
             }}
           >
-            Learn More
+           Register Now!
           </Link>
         </motion.div>
       </motion.div>

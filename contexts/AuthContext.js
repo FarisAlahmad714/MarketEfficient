@@ -10,18 +10,15 @@ export const AuthProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
   
-  // Check if user is authenticated on initial load
   useEffect(() => {
     const checkAuth = async () => {
       try {
         const token = localStorage.getItem('auth_token');
-        
         if (!token) {
           setIsLoading(false);
           return;
         }
         
-        // Verify token with API
         const response = await fetch('/api/auth/me', {
           headers: {
             'Authorization': `Bearer ${token}`
@@ -33,7 +30,6 @@ export const AuthProvider = ({ children }) => {
           setUser(userData);
           setIsAuthenticated(true);
         } else {
-          // Token invalid, remove from storage
           localStorage.removeItem('auth_token');
         }
       } catch (error) {
@@ -46,7 +42,6 @@ export const AuthProvider = ({ children }) => {
     checkAuth();
   }, []);
   
-  // Register function
   const register = async (name, email, password, promoCode) => {
     try {
       const response = await fetch('/api/auth/register', {
@@ -60,19 +55,16 @@ export const AuthProvider = ({ children }) => {
       if (response.ok) {
         const data = await response.json();
         
-        // Store user data for email verification flow
         localStorage.setItem('pending_verification_email', email);
         localStorage.setItem('pending_verification_name', name);
+        localStorage.setItem('auth_token', data.token);
+        if (data.tempToken) {
+          localStorage.setItem('registrationTempToken', data.tempToken);
+        }
         
-        // Only log in user if user is already verified (email verification is required by default)
         if (data.user.isVerified) {
-          localStorage.setItem('auth_token', data.token);
           setUser(data.user);
           setIsAuthenticated(true);
-        } else {
-          // Don't log in user until email is verified
-          // But still store token for payment processing if needed
-          localStorage.setItem('auth_token', data.token);
         }
         
         return true;
@@ -85,7 +77,6 @@ export const AuthProvider = ({ children }) => {
     }
   };
   
-  // Login function
   const login = async (email, password) => {
     try {
       const response = await fetch('/api/auth/login', {
@@ -100,11 +91,11 @@ export const AuthProvider = ({ children }) => {
       
       if (response.ok) {
         localStorage.setItem('auth_token', data.token);
+        localStorage.removeItem('registrationTempToken');
         setUser(data.user);
         setIsAuthenticated(true);
         return { success: true };
       } else {
-        // Handle specific error cases
         if (response.status === 403 && data.needsVerification) {
           return { 
             success: false, 
@@ -128,7 +119,6 @@ export const AuthProvider = ({ children }) => {
     }
   };
   
-  // Logout function
   const logout = async () => {
     try {
       await fetch('/api/auth/logout', {
@@ -141,6 +131,7 @@ export const AuthProvider = ({ children }) => {
       console.error('Logout failed:', error);
     } finally {
       localStorage.removeItem('auth_token');
+      localStorage.removeItem('registrationTempToken');
       setUser(null);
       setIsAuthenticated(false);
       router.push('/');
