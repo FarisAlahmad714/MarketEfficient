@@ -4,6 +4,23 @@ import connectDB from '../lib/database';
 import User from '../models/User';
 
 /**
+ * Parse cookies from request
+ */
+function parseCookies(req) {
+  const cookieHeader = req.headers.cookie || '';
+  const cookies = {};
+  
+  cookieHeader.split(';').forEach(cookie => {
+    const [name, value] = cookie.trim().split('=');
+    if (name && value) {
+      cookies[name] = value;
+    }
+  });
+  
+  return cookies;
+}
+
+/**
  * Middleware to verify JWT token and attach user to request
  * @param {Object} options - Configuration options
  * @param {boolean} options.required - Whether authentication is required
@@ -14,25 +31,33 @@ export const authenticate = (options = {}) => {
     const { required = true, adminOnly = false } = options;
     
     try {
-      // Get Authorization header
+      // Try to get token from cookie first, then Authorization header
+      const cookies = parseCookies(req);
+      const cookieToken = cookies.auth_token;
       const authHeader = req.headers.authorization;
       
+      let token = null;
+      
+      // Prefer cookie token for better security
+      if (cookieToken) {
+        token = cookieToken;
+      } else if (authHeader && authHeader.startsWith('Bearer ')) {
+        token = authHeader.split(' ')[1];
+      }
+      
       // If no token and auth is not required, continue
-      if (!authHeader && !required) {
+      if (!token && !required) {
         req.user = null;
         return next();
       }
       
       // If no token and auth is required, return error
-      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      if (!token) {
         return res.status(401).json({ 
           error: 'Authorization token required',
           code: 'AUTH_TOKEN_MISSING'
         });
       }
-      
-      // Extract token
-      const token = authHeader.split(' ')[1];
       
       // Verify token
       let decoded;
@@ -40,6 +65,10 @@ export const authenticate = (options = {}) => {
         decoded = jwt.verify(token, process.env.JWT_SECRET);
       } catch (error) {
         if (error.name === 'TokenExpiredError') {
+          // Clear cookie if it exists
+          if (cookieToken) {
+            res.setHeader('Set-Cookie', 'auth_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT');
+          }
           return res.status(401).json({ 
             error: 'Token expired',
             code: 'AUTH_TOKEN_EXPIRED'

@@ -1,161 +1,218 @@
 // pages/api/bias-test/save-results.js
-// MIGRATED VERSION - Using centralized middleware
-
 import { createApiHandler } from '../../../lib/api-handler';
 import { requireAuth } from '../../../middleware/auth';
+import { sanitizeInput, sanitizeAssetSymbol, sanitizeObjectId } from '../../../middleware/sanitization';
 import TestResults from '../../../models/TestResults';
-import logger from '../../../lib/logger'; // Adjust path to your logger utility
-// Main handler function - now much cleaner!
-async function saveResultsHandler(req, res) {
-  // User is already authenticated and attached to req.user
-  const userId = req.user.id;
+
+// Validation function for test results
+function validateTestData(data) {
+  const { assetSymbol, timeframe, sessionId, answers, results } = data;
   
-  // Get the data from the request body
-  const { 
-    assetSymbol, 
-    timeframe, 
-    score, 
-    totalQuestions, 
-    answers, 
-    sessionId,
-    results,
-    updateAnalysis
-  } = req.body;
-  
-  if (!sessionId) {
-    return res.status(400).json({ 
-      error: 'Session ID is required',
-      code: 'SESSION_ID_REQUIRED'
-    });
+  // Validate sessionId
+  if (!sessionId || typeof sessionId !== 'string' || sessionId.length > 100) {
+    return { valid: false, error: 'Invalid session ID' };
   }
   
-  // Check if this session has already been saved
-  const existingResult = await TestResults.findOne({
-    userId: userId,
-    'details.sessionId': sessionId,
-    testType: 'bias-test'
-  });
-  
-  // Handle analysis update
-  if (updateAnalysis && existingResult) {
-    logger.log(`Updating AI analysis for session ${sessionId}`);
-    
-    const analysisUpdates = answers.map(answer => ({
-      test_id: answer.test_id,
-      ai_analysis: answer.ai_analysis
-    }));
-    
-    await existingResult.updateAnalysis(analysisUpdates);
-    
-    return res.status(200).json({
-      success: true,
-      message: 'AI analysis updated successfully'
-    });
+  // Validate asset symbol
+  const validAssets = ['btc', 'eth', 'sol', 'bnb', 'nvda', 'aapl', 'tsla', 'gld', 'random'];
+  if (!assetSymbol || !validAssets.includes(assetSymbol.toLowerCase())) {
+    return { valid: false, error: 'Invalid asset symbol' };
   }
   
-  // If result already exists and we're not updating analysis
-  if (existingResult) {
-    return res.status(200).json({ 
-      success: true, 
-      message: 'Results already saved to database',
-      alreadySaved: true
-    });
+  // Validate timeframe if provided
+  const validTimeframes = ['daily', 'hourly', '1h', '4h', '1d', '1w'];
+  if (timeframe && !validTimeframes.includes(timeframe.toLowerCase())) {
+    return { valid: false, error: 'Invalid timeframe' };
   }
   
-  // Prepare test details
-  let testDetails = [];
-  let finalScore = 0;
-  let totalPoints = 0;
-  let analysisStatus = 'pending';
-  
-  // Process results or answers
-  if (results && results.answers && Array.isArray(results.answers)) {
-    testDetails = results.answers.map(answer => ({
-      question: answer.test_id || 0,
-      prediction: answer.user_prediction || answer.prediction,
-      correctAnswer: answer.correct_answer,
-      isCorrect: answer.is_correct,
-      reasoning: answer.user_reasoning || answer.reasoning,
-      aiAnalysis: answer.ai_analysis,
-      ohlcData: answer.ohlc_data || [],
-      outcomeData: answer.outcome_data || [],
-      analysisStatus: answer.ai_analysis ? 'completed' : 'pending'
-    }));
-    
-    finalScore = results.score || 0;
-    totalPoints = results.total || results.answers.length || 0;
-    analysisStatus = results.status || 'processing';
-  } else if (answers && Array.isArray(answers)) {
-    testDetails = answers.map(answer => ({
-      question: answer.test_id || 0,
-      prediction: answer.user_prediction || answer.prediction,
-      correctAnswer: answer.correct_answer,
-      isCorrect: answer.is_correct,
-      reasoning: answer.user_reasoning || answer.reasoning,
-      aiAnalysis: answer.ai_analysis,
-      ohlcData: answer.ohlc_data || [],
-      outcomeData: answer.outcome_data || [],
-      analysisStatus: answer.ai_analysis ? 'completed' : 'pending'
-    }));
-    
-    finalScore = score || 0;
-    totalPoints = totalQuestions || answers.length || 0;
-    analysisStatus = testDetails.every(detail => detail.aiAnalysis) ? 'completed' : 'processing';
-  } else {
-    return res.status(400).json({ 
-      error: 'Invalid data format',
-      code: 'INVALID_DATA_FORMAT',
-      message: 'No valid answers data provided'
-    });
-  }
-  
-  // Save to database
-  if (testDetails.length > 0) {
-    const testResult = new TestResults({
-      userId: userId,
-      testType: 'bias-test',
-      assetSymbol: assetSymbol,
-      score: finalScore,
-      totalPoints: totalPoints,
-      status: analysisStatus,
-      details: {
-        timeframe: timeframe || 'daily',
-        sessionId: sessionId,
-        testDetails: testDetails
-      },
-      completedAt: new Date()
-    });
-    
-    if (analysisStatus === 'completed') {
-      testResult.analysisCompletedAt = new Date();
+  // Validate answers/results structure
+  const answersArray = results?.answers || answers;
+  if (answersArray) {
+    if (!Array.isArray(answersArray) || answersArray.length === 0 || answersArray.length > 20) {
+      return { valid: false, error: 'Invalid answers data' };
     }
     
-    await testResult.save();
-    logger.log(`Bias test result saved, score: ${finalScore}/${totalPoints} for ${assetSymbol}`);
-    
-    return res.status(200).json({
-      success: true,
-      message: 'Results saved to database successfully',
-      status: analysisStatus
-    });
+    // Validate each answer
+    for (const answer of answersArray) {
+      if (answer.user_prediction && !['bullish', 'bearish'].includes(answer.user_prediction.toLowerCase())) {
+        return { valid: false, error: 'Invalid prediction value' };
+      }
+    }
   }
   
-  return res.status(400).json({ 
-    error: 'Invalid test details',
-    code: 'INVALID_TEST_DETAILS',
-    message: 'Unable to process test results'
+  return { valid: true };
+}
+
+async function saveResultsHandler(req, res) {
+  const userId = req.user.id;
+  
+  // Apply sanitization
+  sanitizeInput()(req, res, async () => {
+    const { 
+      assetSymbol, 
+      timeframe, 
+      score, 
+      totalQuestions, 
+      answers, 
+      sessionId,
+      results,
+      updateAnalysis
+    } = req.body;
+    
+    // Validate all input data
+    const validation = validateTestData(req.body);
+    if (!validation.valid) {
+      return res.status(400).json({ 
+        error: validation.error,
+        code: 'VALIDATION_ERROR'
+      });
+    }
+    
+    // Sanitize specific fields
+    const sanitizedAssetSymbol = sanitizeAssetSymbol(assetSymbol);
+    if (!sanitizedAssetSymbol) {
+      return res.status(400).json({ 
+        error: 'Invalid asset symbol format',
+        code: 'INVALID_ASSET_FORMAT'
+      });
+    }
+    
+    try {
+      // Check if this session has already been saved
+      const existingResult = await TestResults.findOne({
+        userId: userId,
+        'details.sessionId': sessionId,
+        testType: 'bias-test'
+      });
+      
+      // Handle analysis update
+      if (updateAnalysis && existingResult) {
+        console.log(`Updating AI analysis for session ${sessionId}`);
+        
+        const analysisUpdates = answers.map(answer => ({
+          test_id: answer.test_id,
+          ai_analysis: answer.ai_analysis
+        }));
+        
+        await existingResult.updateAnalysis(analysisUpdates);
+        
+        return res.status(200).json({
+          success: true,
+          message: 'AI analysis updated successfully'
+        });
+      }
+      
+      // If result already exists and we're not updating analysis
+      if (existingResult) {
+        return res.status(200).json({ 
+          success: true, 
+          message: 'Results already saved to database',
+          alreadySaved: true
+        });
+      }
+      
+      // Prepare test details
+      let testDetails = [];
+      let finalScore = 0;
+      let totalPoints = 0;
+      let analysisStatus = 'pending';
+      
+      // Process results or answers
+      if (results && results.answers && Array.isArray(results.answers)) {
+        testDetails = results.answers.map(answer => ({
+          question: parseInt(answer.test_id) || 0,
+          prediction: (answer.user_prediction || answer.prediction || '').toLowerCase(),
+          correctAnswer: (answer.correct_answer || '').toLowerCase(),
+          isCorrect: Boolean(answer.is_correct),
+          reasoning: answer.user_reasoning || answer.reasoning || '',
+          aiAnalysis: answer.ai_analysis || null,
+          ohlcData: Array.isArray(answer.ohlc_data) ? answer.ohlc_data.slice(0, 100) : [], // Limit array size
+          outcomeData: Array.isArray(answer.outcome_data) ? answer.outcome_data.slice(0, 100) : [], // Limit array size
+          analysisStatus: answer.ai_analysis ? 'completed' : 'pending'
+        }));
+        
+        finalScore = parseInt(results.score) || 0;
+        totalPoints = parseInt(results.total) || results.answers.length || 0;
+        analysisStatus = results.status || 'processing';
+      } else if (answers && Array.isArray(answers)) {
+        testDetails = answers.map(answer => ({
+          question: parseInt(answer.test_id) || 0,
+          prediction: (answer.user_prediction || answer.prediction || '').toLowerCase(),
+          correctAnswer: (answer.correct_answer || '').toLowerCase(),
+          isCorrect: Boolean(answer.is_correct),
+          reasoning: answer.user_reasoning || answer.reasoning || '',
+          aiAnalysis: answer.ai_analysis || null,
+          ohlcData: Array.isArray(answer.ohlc_data) ? answer.ohlc_data.slice(0, 100) : [],
+          outcomeData: Array.isArray(answer.outcome_data) ? answer.outcome_data.slice(0, 100) : [],
+          analysisStatus: answer.ai_analysis ? 'completed' : 'pending'
+        }));
+        
+        finalScore = parseInt(score) || 0;
+        totalPoints = parseInt(totalQuestions) || answers.length || 0;
+        analysisStatus = testDetails.every(detail => detail.aiAnalysis) ? 'completed' : 'processing';
+      } else {
+        return res.status(400).json({ 
+          error: 'Invalid data format',
+          code: 'INVALID_DATA_FORMAT',
+          message: 'No valid answers data provided'
+        });
+      }
+      
+      // Validate score ranges
+      if (finalScore < 0 || finalScore > totalPoints || totalPoints > 20 || totalPoints < 1) {
+        return res.status(400).json({ 
+          error: 'Invalid score values',
+          code: 'INVALID_SCORE'
+        });
+      }
+      
+      // Save to database
+      if (testDetails.length > 0) {
+        const testResult = new TestResults({
+          userId: userId,
+          testType: 'bias-test',
+          assetSymbol: sanitizedAssetSymbol.toLowerCase(),
+          score: finalScore,
+          totalPoints: totalPoints,
+          status: analysisStatus,
+          details: {
+            timeframe: timeframe || 'daily',
+            sessionId: sessionId,
+            testDetails: testDetails
+          },
+          completedAt: new Date()
+        });
+        
+        if (analysisStatus === 'completed') {
+          testResult.analysisCompletedAt = new Date();
+        }
+        
+        await testResult.save();
+        console.log(`Bias test result saved, score: ${finalScore}/${totalPoints} for ${sanitizedAssetSymbol}`);
+        
+        return res.status(200).json({
+          success: true,
+          message: 'Results saved to database successfully',
+          status: analysisStatus
+        });
+      }
+      
+      return res.status(400).json({ 
+        error: 'Invalid test details',
+        code: 'INVALID_TEST_DETAILS',
+        message: 'Unable to process test results'
+      });
+      
+    } catch (error) {
+      console.error('Save results error:', error);
+      throw error; // Let the API handler deal with it
+    }
   });
 }
 
 // Export the wrapped handler
-export default createApiHandler(
-  composeMiddleware(requireAuth, saveResultsHandler),
-  { methods: ['POST'] }
-);
-
-// For easier migration, also export a composed middleware version
 import { composeMiddleware } from '../../../lib/api-handler';
-export const handler = createApiHandler(
+export default createApiHandler(
   composeMiddleware(requireAuth, saveResultsHandler),
   { methods: ['POST'] }
 );

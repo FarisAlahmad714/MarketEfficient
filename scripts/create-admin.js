@@ -2,7 +2,7 @@
 require('dotenv').config({ path: '.env.local' }); // This loads variables from .env.local
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
-const logger = require('../lib/logger'); // Adjust path to your logger utility
+ // Adjust path to your logger utility
 const MONGODB_URI = process.env.MONGODB_URI;
 
 if (!MONGODB_URI) {
@@ -12,7 +12,7 @@ if (!MONGODB_URI) {
 
 // Connect to MongoDB
 mongoose.connect(MONGODB_URI)
-.then(() => logger.log('Connected to MongoDB'))
+.then(() => console.log('Connected to MongoDB'))
 .catch(err => {
   console.error('Failed to connect to MongoDB', err);
   process.exit(1);
@@ -37,7 +37,7 @@ async function createAdmin() {
     const adminPassword = process.env.ADMIN_PASSWORD || 'Admin123!';
     const adminName = process.env.ADMIN_NAME || 'Admin User';
     
-    logger.log('Attempting to create/update admin user...');
+    console.log('Attempting to create/update admin user...');
     
     // Check if admin already exists
     const existingAdmin = await User.findOne({ email: adminEmail });
@@ -47,7 +47,7 @@ async function createAdmin() {
       existingAdmin.isAdmin = true;
       existingAdmin.isVerified = true;
       await existingAdmin.save();
-      logger.log('User has been updated to admin status');
+      console.log('User has been updated to admin status');
     } else {
       // Create new admin user
       const hashedPassword = await bcrypt.hash(adminPassword, 10);
@@ -62,13 +62,13 @@ async function createAdmin() {
       });
       
       await newAdmin.save();
-      logger.log('Admin user created successfully');
+      console.log('Admin user created successfully');
     }
     
     // Close connection
     setTimeout(() => {
       mongoose.connection.close();
-      logger.log('MongoDB connection closed');
+      console.log('MongoDB connection closed');
     }, 1000);
   } catch (error) {
     console.error('Error creating admin user:', error);

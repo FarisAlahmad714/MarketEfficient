@@ -1,6 +1,6 @@
 // pages/api/analyze-trading-gpt4o.js
 import OpenAI from 'openai';
-import logger from '../../lib/Logger'; // Adjust path to your logger utility
+import logger from '../../lib/logger'; // Adjust path to your logger utility
 
 // Helper function to format dates - ENHANCED VERSION
 function formatReadableDate(isoDateString) {
