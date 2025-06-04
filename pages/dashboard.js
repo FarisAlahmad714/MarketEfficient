@@ -13,6 +13,7 @@ import {
 } from 'recharts';
 import TrackedPage from '../components/TrackedPage';
 import logging from '../lib/logger'; // Import your logging utility
+import storage from '../lib/storage';
 
 // Info tooltip component
 const InfoTooltip = ({ text, darkMode, position = 'top' }) => {
@@ -108,7 +109,8 @@ const Dashboard = () => {
     setLoading(true);
     setError(null);
     
-    const token = localStorage.getItem('auth_token');
+    const token = storage.getItem('auth_token');
+
     const response = await fetch(`/api/dashboard/user-metrics?period=${period}`, {
       headers: {
         'Authorization': `Bearer ${token}`

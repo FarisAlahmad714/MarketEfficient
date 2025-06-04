@@ -1,9 +1,11 @@
+// pages/auth/email-verification.js
 import { useState, useEffect, useContext } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Link from 'next/link';
 import { ThemeContext } from '../../contexts/ThemeContext';
 import EmailVerificationNotice from '../../components/auth/EmailVerificationNotice';
+import storage from '../../lib/storage';
 
 export default function EmailVerificationPage() {
   const { darkMode } = useContext(ThemeContext);
@@ -12,7 +14,7 @@ export default function EmailVerificationPage() {
   const [userName, setUserName] = useState('');
 
   useEffect(() => {
-    // Get email and name from query params or localStorage
+    // Get email and name from query params or storage
     const { email, name } = router.query;
     if (email) {
       setUserEmail(email);
@@ -21,10 +23,11 @@ export default function EmailVerificationPage() {
       setUserName(name);
     }
 
-    // If no email provided, try to get from localStorage (if user just registered)
+    // If no email provided, try to get from storage (if user just registered)
     if (!email) {
-      const storedEmail = localStorage.getItem('pending_verification_email');
-      const storedName = localStorage.getItem('pending_verification_name');
+      // Use storage wrapper instead of direct localStorage
+      const storedEmail = storage.getItem('pending_verification_email');
+      const storedName = storage.getItem('pending_verification_name');
       if (storedEmail) {
         setUserEmail(storedEmail);
         setUserName(storedName || '');
@@ -135,6 +138,8 @@ export default function EmailVerificationPage() {
               const email = formData.get('email');
               if (email) {
                 setUserEmail(email);
+                // Store email for later use
+                storage.setItem('pending_verification_email', email);
               }
             }}>
               <div style={{ marginBottom: '15px' }}>
@@ -236,4 +241,4 @@ export default function EmailVerificationPage() {
       </div>
     </>
   );
-} 
+}

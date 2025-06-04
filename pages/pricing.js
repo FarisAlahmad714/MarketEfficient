@@ -1,8 +1,10 @@
+// pages/pricing.js
 import { useState, useEffect, useContext } from 'react';
 import { useRouter } from 'next/router';
 import { AuthContext } from '../contexts/AuthContext';
 import PricingPage from '../components/PricingPage';
-import logger from '../lib/logger'; // Adjust the path to your logger utility
+import logger from '../lib/logger';
+import storage from '../lib/storage';
 
 export default function Pricing() {
   const router = useRouter();
@@ -13,13 +15,14 @@ export default function Pricing() {
   useEffect(() => {
     if (cancelled === 'true' && tempToken) {
       logger.log('Cancelled checkout:', { email, plan, tempToken });
-      localStorage.setItem('registrationTempToken', tempToken);
+      storage.setItem('registrationTempToken', tempToken);
     }
   }, [cancelled, email, plan, tempToken]);
 
   // Handle plan selection and initiate checkout
   const handlePlanSelect = async (selectedPlan, promoCode) => {
-    const storedToken = localStorage.getItem('registrationTempToken');
+    // Use storage wrapper instead of direct localStorage
+    const storedToken = storage.getItem('registrationTempToken');
     if (!isAuthenticated && !storedToken) {
       console.error('No auth or temp token, redirecting to register');
       router.push('/auth/register');
@@ -88,7 +91,7 @@ export default function Pricing() {
       <PricingPage 
         user={user} 
         onPlanSelect={handlePlanSelect}
-        isRegistrationFlow={!!tempToken || !!localStorage.getItem('registrationTempToken')}
+        isRegistrationFlow={!!tempToken || !!storage.getItem('registrationTempToken')}
       />
     </div>
   );

@@ -7,6 +7,7 @@ import { FaUser, FaCamera, FaCreditCard, FaCheckCircle,
          FaExclamationCircle, FaLock, FaBell } from 'react-icons/fa';
 import Head from 'next/head';
 import CryptoLoader from '../components/CryptoLoader';
+import storage from '../lib/storage';
 
 const ProfilePage = () => {
   const { darkMode } = useContext(ThemeContext);
@@ -50,7 +51,12 @@ const ProfilePage = () => {
   const fetchUserData = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('auth_token');
+      const token = storage.getItem('auth_token');
+      if (!token) {
+        setSaveError('You must be logged in to view this page');
+        setLoading(false);
+        return;
+      }
       
       const response = await fetch('/api/user/subscription/details', {
         headers: {
@@ -121,7 +127,7 @@ const ProfilePage = () => {
     
     setLoading(true);
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = storage.getItem('auth_token');
       const response = await fetch('/api/user/subscription/cancel', {
         method: 'POST',
         headers: {
@@ -145,7 +151,7 @@ const ProfilePage = () => {
   const handleReactivateSubscription = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = storage.getItem('auth_token');
       const response = await fetch('/api/user/subscription/reactivate', {
         method: 'POST',
         headers: {
@@ -169,7 +175,8 @@ const ProfilePage = () => {
   const handleUpdatePayment = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = storage.getItem('auth_token');
+
       const response = await fetch('/api/user/subscription/update-payment', {
         method: 'POST',
         headers: {

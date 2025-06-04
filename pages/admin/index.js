@@ -6,7 +6,7 @@ import Link from 'next/link';
 import CryptoLoader from '../../components/CryptoLoader';
 import UserDetailsModal from '../../components/admin/UserDetailsModal';
 import TrackedPage from '../../components/TrackedPage';
-
+import storage from '../../lib/storage'; // Adjust the path to your storage utility
 const AdminPanel = () => {
   const { isAuthenticated, user } = useContext(AuthContext);
   const { darkMode } = useContext(ThemeContext);
@@ -45,7 +45,7 @@ const AdminPanel = () => {
       try {
         setLoading(true);
         setError(null);
-        const token = localStorage.getItem('auth_token');
+       const token = storage.getItem('auth_token');
         const response = await fetch(`/api/admin/users?page=${page}&search=${search}&includePromoUsage=true`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -71,7 +71,7 @@ const AdminPanel = () => {
       try {
         setInsightsLoading(true);
         setInsightsError(null);
-        const token = localStorage.getItem('auth_token');
+        const token = storage.getItem('auth_token');
         const response = await fetch('/api/admin/insights', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -142,7 +142,7 @@ const AdminPanel = () => {
     if (!userToDelete) return;
     setDeleteLoading(true);
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = storage.getItem('auth_token');
       const response = await fetch(`/api/admin/users?userId=${userToDelete._id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }

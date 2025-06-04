@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import Head from 'next/head';
 import { ThemeContext } from '../../contexts/ThemeContext';
 import { AuthContext } from '../../contexts/AuthContext';
+import storage from '../../lib/storage'; // Adjust the path to your storage utility
 
 export default function CronTestPage() {
   const { darkMode } = useContext(ThemeContext);
@@ -28,7 +29,7 @@ export default function CronTestPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+          'Authorization': `Bearer ${storage.getItem('auth_token')}`
         },
         body: JSON.stringify({ type: testType })
       });

@@ -4,6 +4,8 @@ import { ThemeContext } from '../contexts/ThemeContext';
 import { AuthContext } from '../contexts/AuthContext';
 import { Trophy, Award, Medal, User, Calendar, Activity } from 'lucide-react';
 import CryptoLoader from './CryptoLoader';
+import storage from '../lib/storage';
+
 
 const Leaderboard = () => {
   const [leaderboardData, setLeaderboardData] = useState([]);
@@ -41,7 +43,7 @@ const Leaderboard = () => {
 
         const headers = {};
         if (isAuthenticated) {
-          const token = localStorage.getItem('auth_token');
+         const token = storage.getItem('auth_token');
           if (token) {
             headers.Authorization = `Bearer ${token}`;
           }
