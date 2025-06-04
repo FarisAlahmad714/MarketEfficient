@@ -4,6 +4,7 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { ThemeContext } from '../../contexts/ThemeContext';
 import { AuthContext } from '../../contexts/AuthContext';
+import storage from '../../lib/storage';
 
 const LoginForm = () => {
   const [email, setEmail] = useState('');
@@ -27,7 +28,7 @@ const LoginForm = () => {
         router.push('/');
       } else if (result.needsVerification) {
         // Store email for verification page
-        localStorage.setItem('pending_verification_email', result.email);
+        storage.setItem('pending_verification_email', result.email);
         
         // Redirect to email verification page
         router.push(`/auth/email-verification?email=${encodeURIComponent(result.email)}`);

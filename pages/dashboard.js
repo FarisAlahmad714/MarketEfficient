@@ -109,7 +109,7 @@ const Dashboard = () => {
     setLoading(true);
     setError(null);
     
-    const token = storage.getItem('auth_token');
+    const token = await storage.getItem('auth_token');
 
     const response = await fetch(`/api/dashboard/user-metrics?period=${period}`, {
       headers: {

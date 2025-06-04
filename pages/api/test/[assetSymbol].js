@@ -420,11 +420,30 @@ export default async function handler(req, res) {
       // Get Authorization header - EXACTLY LIKE CHARTING EXAM
       const authHeader = req.headers.authorization;
       if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        logger.warn('Authorization header missing or not Bearer');
         return res.status(401).json({ error: 'Authorization token required' });
       }
       
       // Extract token and decode user ID - EXACTLY LIKE CHARTING EXAM
-      const token = authHeader.split(' ')[1];
+      const tokenParts = authHeader.split(' ');
+      if (tokenParts.length !== 2 || !tokenParts[1]) {
+        logger.error('Malformed Authorization header or token missing', { authHeader });
+        return res.status(401).json({ error: 'Malformed authorization token' });
+      }
+      const token = tokenParts[1];
+
+      // Check if token is just an empty string or not a string
+      if (typeof token !== 'string' || token.trim() === '') {
+        logger.error('Token is empty or not a string after extraction', { token });
+        return res.status(401).json({ error: 'Invalid token format' });
+      }
+
+      // Optional: Basic check for JWT structure (three parts separated by dots)
+      if (token.split('.').length !== 3) {
+        logger.error('Token does not have the expected JWT structure (x.y.z)', { token });
+        return res.status(401).json({ error: 'Token is not a valid JWT structure' });
+      }
+      
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       const userId = decoded.userId;
       

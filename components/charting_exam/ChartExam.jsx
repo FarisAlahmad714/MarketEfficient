@@ -9,6 +9,7 @@ import ResultsPanel from './common/ResultsPanel';
 import { ThemeContext } from '../../contexts/ThemeContext';
 import CryptoLoader from '../CryptoLoader';
 import logger from '../../lib/logger'; // Adjust path to your logger utility
+import storage from '../../lib/storage'; // Added import
 // Styled components with $-prefixed props to prevent DOM forwarding
 const ExamContainer = styled.div`
   max-width: 1200px;
@@ -148,7 +149,7 @@ const ChartExam = ({ examType }) => {
         
         // Store the chart data in session storage for backup
         try {
-          sessionStorage.setItem('current_chart_data', JSON.stringify(processedData));
+          await storage.setItem('current_chart_data', JSON.stringify(processedData));
         } catch (e) {
           console.warn('Failed to store chart data in session storage:', e);
         }
@@ -156,7 +157,7 @@ const ChartExam = ({ examType }) => {
         // Handle error
         console.error('Failed to fetch valid chart data');
         // Try to load from session storage as backup
-        const savedData = sessionStorage.getItem('current_chart_data');
+        const savedData = await storage.getItem('current_chart_data');
         if (savedData) {
           try {
             setChartData(JSON.parse(savedData));
@@ -197,8 +198,8 @@ const ChartExam = ({ examType }) => {
         throw new Error(`Unknown exam type: ${examType}`);
       }
       
-      // Get auth token from localStorage
-      const token = localStorage.getItem('auth_token');
+      // Get auth token from storage
+      const token = await storage.getItem('auth_token');
       
       // Include auth token in request headers
       const response = await fetch(endpoint, {
@@ -257,17 +258,18 @@ const ChartExam = ({ examType }) => {
     }
   };
   
-  const saveResultsAndRedirect = (finalScores, examType) => {
+  const saveResultsAndRedirect = async (finalScores, examType) => {
+    setSubmitting(true);
     try {
-      // Store results in sessionStorage
+      // Store results in storage
       const resultData = {
         scores: finalScores,
         examType: examType,
         timestamp: new Date().toISOString(),
       };
       
-      // Save to sessionStorage
-      sessionStorage.setItem('chartExamResults', JSON.stringify(resultData));
+      // Save to storage
+      await storage.setItem('chartExamResults', JSON.stringify(resultData));
       
       // Build URL with fallback query parameters in case sessionStorage isn't available later
       const queryParams = new URLSearchParams({
@@ -281,6 +283,8 @@ const ChartExam = ({ examType }) => {
       console.error('Error saving results:', error);
       // Fallback to direct navigation if storage fails
       router.push('/chart-exam/results');
+    } finally {
+      setSubmitting(false);
     }
   };
   
@@ -316,7 +320,7 @@ const ChartExam = ({ examType }) => {
         );
         
         // Instead of alert, save results and redirect
-        saveResultsAndRedirect(scores, examType);
+        await saveResultsAndRedirect(scores, examType);
         return;
       }
       

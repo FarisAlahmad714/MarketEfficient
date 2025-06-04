@@ -3,6 +3,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import { ThemeContext } from '../contexts/ThemeContext';
 import { FaExclamationCircle, FaCreditCard, FaArrowLeft } from 'react-icons/fa';
 import { useRouter } from 'next/router';
+import storage from '../lib/storage';
 
 const CheckoutErrorRecovery = ({ error, sessionId, onRetry }) => {
   const { darkMode } = useContext(ThemeContext);
@@ -38,7 +39,7 @@ const CheckoutErrorRecovery = ({ error, sessionId, onRetry }) => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+            'Authorization': `Bearer ${storage.getItem('auth_token')}`
           },
           body: JSON.stringify({ sessionId })
         });
@@ -205,15 +206,15 @@ export const useCheckoutErrorRecovery = () => {
       setCheckoutError(error);
       setSessionId(session);
       
-      // Store in localStorage for persistence
-      localStorage.setItem('checkout_error', JSON.stringify({
+      // Store in storage for persistence
+      storage.setItem('checkout_error', JSON.stringify({
         error,
         sessionId: session,
         timestamp: Date.now()
       }));
     } else {
-      // Check localStorage for recent errors
-      const stored = localStorage.getItem('checkout_error');
+      // Check storage for recent errors
+      const stored = storage.getItem('checkout_error');
       if (stored) {
         const { error, sessionId, timestamp } = JSON.parse(stored);
         // Only show if error is less than 1 hour old
@@ -221,7 +222,7 @@ export const useCheckoutErrorRecovery = () => {
           setCheckoutError(error);
           setSessionId(sessionId);
         } else {
-          localStorage.removeItem('checkout_error');
+          storage.removeItem('checkout_error');
         }
       }
     }
@@ -230,7 +231,7 @@ export const useCheckoutErrorRecovery = () => {
   const clearError = () => {
     setCheckoutError(null);
     setSessionId(null);
-    localStorage.removeItem('checkout_error');
+    storage.removeItem('checkout_error');
     
     // Clean URL
     const url = new URL(window.location);

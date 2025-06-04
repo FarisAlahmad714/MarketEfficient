@@ -1,6 +1,7 @@
 // components/admin/UserDetailsModal.js
 import { useState, useEffect } from 'react';
 import CryptoLoader from '../CryptoLoader';
+import storage from '../../lib/storage';
 
 const UserDetailsModal = ({ user, darkMode, onClose, onUpdate }) => {
   const [loading, setLoading] = useState(false);
@@ -22,7 +23,7 @@ const UserDetailsModal = ({ user, darkMode, onClose, onUpdate }) => {
 
     setUpdating(true);
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = storage.getItem('auth_token');
       const response = await fetch('/api/admin/subscriptions', {
         method: 'PUT',
         headers: {
@@ -51,7 +52,7 @@ const UserDetailsModal = ({ user, darkMode, onClose, onUpdate }) => {
   const handleReactivateSubscription = async () => {
     setUpdating(true);
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = storage.getItem('auth_token');
       const response = await fetch('/api/admin/subscriptions', {
         method: 'PUT',
         headers: {
@@ -80,7 +81,7 @@ const UserDetailsModal = ({ user, darkMode, onClose, onUpdate }) => {
   const handleExtendSubscription = async (days) => {
     setUpdating(true);
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = storage.getItem('auth_token');
       const response = await fetch('/api/admin/subscriptions', {
         method: 'PUT',
         headers: {
@@ -110,7 +111,7 @@ const UserDetailsModal = ({ user, darkMode, onClose, onUpdate }) => {
   const handleGrantAccess = async (plan, duration) => {
     setUpdating(true);
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = storage.getItem('auth_token');
       const response = await fetch('/api/admin/subscriptions', {
         method: 'POST',
         headers: {

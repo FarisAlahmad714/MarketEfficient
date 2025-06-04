@@ -18,7 +18,7 @@
  * Calculate adaptive minimum gap percentage based on asset volatility and timeframe
  * FIXED: Made calculation deterministic and consistent
  */
-import logger from '../../../../lib/Logger';
+import logger from '../../../../lib/logger';
 
 export function calculateAdaptiveMinGapPercent(chartData, timeframe = '1d', assetSymbol = 'UNKNOWN') {
   // FIXED: Improved thresholds for longer timeframes

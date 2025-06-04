@@ -6,6 +6,7 @@ import { AuthContext } from '../../contexts/AuthContext';
 import EmailVerificationNotice from './EmailVerificationNotice';
 import styles from '../../styles/RegisterWithPricing.module.css';
 import debounce from 'lodash.debounce';
+import storage from '../../lib/storage';
 
 const RegisterWithPricing = () => {
   // Registration form state
@@ -288,7 +289,7 @@ const RegisterWithPricing = () => {
 
         if (checkoutData.url) {
           // Store token for potential use later
-          localStorage.setItem('registrationToken', data.tempToken);
+          storage.setItem('registrationToken', data.tempToken);
           window.location.href = checkoutData.url;
         } else {
           setError(checkoutData.error || 'Failed to create checkout session');

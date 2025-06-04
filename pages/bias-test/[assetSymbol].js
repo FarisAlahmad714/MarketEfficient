@@ -7,6 +7,7 @@ import Link from 'next/link';
 
 import CryptoLoader from '../../components/CryptoLoader';
 import { ThemeContext } from '../../contexts/ThemeContext';
+import storage from '../../lib/storage';
 
 // Import CandlestickChart with SSR disabled
 const CandlestickChart = dynamic(
@@ -217,8 +218,20 @@ export default function AssetTestPage() {
         reasoning: reasoningInputs[testId]
       }));
       
-      // Get auth token from localStorage - JUST LIKE CHARTING EXAM
-      const token = localStorage.getItem('auth_token');
+      // Get auth token from storage - AWAIT THE ASYNCHRONOUS CALL
+      const token = await storage.getItem('auth_token');
+      
+      // Check if the token was retrieved successfully
+      if (!token) {
+        console.error('Auth token not found. Cannot submit test.');
+        alert('Authentication error. Please log in again.');
+        setIsSubmitting(false);
+        if (typeof window !== 'undefined' && window.hideGlobalLoader) {
+          window.hideGlobalLoader();
+        }
+        // Potentially redirect to login or show a more specific error
+        return;
+      }
       
       const response = await axios.post(`/api/test/${assetSymbol}?session_id=${testData.session_id}`, {
         answers: formattedAnswers,

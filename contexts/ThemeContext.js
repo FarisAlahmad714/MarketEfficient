@@ -1,4 +1,5 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
+import storage from '../lib/storage';
 
 export const ThemeContext = createContext();
 
@@ -25,13 +26,13 @@ export const ThemeProvider = ({ children }) => {
     document.body.classList.toggle('dark-mode', darkMode);
     document.body.classList.toggle('light-mode', !darkMode);
     
-    // Store user preference in localStorage
-    localStorage.setItem('darkMode', darkMode);
+    // Store user preference in storage
+    storage.setItem('darkMode', darkMode);
   }, [darkMode]);
   
   // Check for saved preference on load
   useEffect(() => {
-    const savedMode = localStorage.getItem('darkMode');
+    const savedMode = storage.getItem('darkMode');
     if (savedMode !== null) {
       setDarkMode(savedMode === 'true');
     }

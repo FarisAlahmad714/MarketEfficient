@@ -4,6 +4,7 @@ import { useRouter } from 'next/router';
 import { ThemeContext } from '../../contexts/ThemeContext';
 import { FaCheckCircle, FaArrowRight } from 'react-icons/fa';
 import Head from 'next/head';
+import storage from '../../lib/storage';
 
 const CheckoutSuccess = () => {
   const { darkMode } = useContext(ThemeContext);
@@ -26,7 +27,7 @@ const CheckoutSuccess = () => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+            'Authorization': `Bearer ${storage.getItem('auth_token')}`
           },
           body: JSON.stringify({ sessionId: session_id })
         });
@@ -37,7 +38,7 @@ const CheckoutSuccess = () => {
         setSubscription(data.subscription);
         
         // Clear any stored checkout errors
-        localStorage.removeItem('checkout_error');
+        storage.removeItem('checkout_error');
         
       } catch (error) {
         console.error('Error verifying payment:', error);

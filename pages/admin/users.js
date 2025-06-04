@@ -4,6 +4,7 @@ import { ThemeContext } from '../../contexts/ThemeContext';
 import AdminProtectedRoute from '../../components/auth/AdminProtectedRoute';
 import Link from 'next/link';
 import CryptoLoader from '../../components/CryptoLoader';
+import storage from '../../lib/storage';
 
 const UsersManagement = () => {
   const { darkMode } = useContext(ThemeContext);
@@ -30,7 +31,7 @@ const UsersManagement = () => {
         setLoading(true);
         setError(null);
 
-        const token = localStorage.getItem('auth_token');
+        const token = storage.getItem('auth_token');
         const response = await fetch(
           `/api/admin/users?page=${page}&search=${search}&includePromoUsage=true`,
           {
@@ -81,7 +82,7 @@ const UsersManagement = () => {
 
     setDeleteLoading(true);
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = storage.getItem('auth_token');
       const response = await fetch(`/api/admin/users?userId=${userToDelete._id}`, {
         method: 'DELETE',
         headers: {
@@ -118,7 +119,7 @@ const UsersManagement = () => {
 
     setCancelLoading(true);
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = storage.getItem('auth_token');
       const response = await fetch('/api/admin/subscriptions/cancel', {
         method: 'POST',
         headers: {

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import styles from '../styles/UserDashboard.module.css';
+import storage from '../lib/storage';
 
 const UserDashboard = ({ user }) => {
   const router = useRouter();
@@ -19,8 +20,8 @@ const UserDashboard = ({ user }) => {
     try {
       setLoading(true);
       
-      // Get token from localStorage
-      const token = localStorage.getItem('auth_token');
+      // Get token from storage
+      const token = storage.getItem('auth_token');
       if (!token) {
         setError('No authentication token found');
         return;

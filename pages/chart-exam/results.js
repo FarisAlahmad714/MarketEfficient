@@ -6,6 +6,7 @@ import { ThemeContext } from '../../contexts/ThemeContext';
 import { motion } from 'framer-motion';
 import CryptoLoader from '../../components/CryptoLoader';
 import TrackedPage from '../../components/TrackedPage';
+import storage from '../../lib/storage';
 
 // Styled components
 const Container = styled.div`
@@ -13,6 +14,28 @@ const Container = styled.div`
   margin: 0 auto;
   padding: 40px 20px;
   font-family: 'Inter', sans-serif;
+`;
+
+const LoadingContainer = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 70vh; // Adjust as needed
+  text-align: center;
+`;
+
+const ErrorContainer = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 70vh; // Adjust as needed
+  text-align: center;
+  color: red; // Basic error styling
+  font-size: 1.2rem;
+  padding: 20px;
+  border: 1px solid red;
+  border-radius: 8px;
+  background-color: #ffeeee;
 `;
 
 const Header = styled.div`
@@ -257,46 +280,93 @@ function getImprovementTips(examType, percentage) {
 const ChartExamResults = () => {
   const router = useRouter();
   const { darkMode } = useContext(ThemeContext);
-  const [results, setResults] = useState(null);
+  const [scoresArray, setScoresArray] = useState(null);
+  const [currentExamType, setCurrentExamType] = useState('');
   const [loading, setLoading] = useState(true);
-  
+  const [error, setError] = useState('');
+
   useEffect(() => {
-    // Load results from sessionStorage
-    try {
-      const storedResults = sessionStorage.getItem('chartExamResults');
-      if (storedResults) {
-        setResults(JSON.parse(storedResults));
-      } else if (router.query.scores) {
-        // Fallback to URL parameters
-        try {
-          const scores = JSON.parse(decodeURIComponent(router.query.scores));
-          const examType = router.query.examType;
-          setResults({ scores, examType });
-        } catch (e) {
-          console.error('Error parsing scores from URL', e);
+    const loadResults = async () => {
+      setLoading(true);
+      setError('');
+      try {
+        let queryExamType = router.query.examType;
+        let queryScoresString = router.query.scores;
+
+        let finalScoresArray = null;
+
+        if (queryScoresString) {
+          try {
+            finalScoresArray = JSON.parse(queryScoresString);
+            if (queryExamType) {
+              setCurrentExamType(queryExamType);
+            }
+            console.log("[ResultsPage] Loaded results from query params.");
+          } catch (e) {
+            console.error("[ResultsPage] Failed to parse scores from query params:", e);
+            queryScoresString = null; 
+          }
         }
-      } else {
-        // If no results found, redirect to exam selection
-        router.push('/chart-exam');
+
+        if (!finalScoresArray) {
+          const storedResultsString = await storage.getItem('chartExamResults');
+          if (storedResultsString) {
+            try {
+              finalScoresArray = JSON.parse(storedResultsString);
+              console.log("[ResultsPage] Loaded results from storage.");
+              // Attempt to get examType if not already set by query
+              if (!queryExamType) {
+                const storedExamType = await storage.getItem('currentExamType'); // This was a potential issue, ensure 'currentExamType' is being set if relied upon
+                if (storedExamType) {
+                  setCurrentExamType(storedExamType);
+                } else {
+                  // Heuristic: try to infer from scores structure if possible, or default
+                  // This part is tricky without knowing the exact structure of 'currentExamType' or if it's always passed in query
+                  console.warn("[ResultsPage] Exam type not found in storage or query. Attempting to infer or default.");
+                  // For now, if queryExamType was missing and storedExamType is missing, it remains an issue.
+                }
+              }
+            } catch (e) {
+              console.error("[ResultsPage] Error parsing stored exam results:", e);
+              setError('Failed to parse exam results from storage. The data might be corrupted.');
+              finalScoresArray = null; 
+            }
+          } else {
+            console.warn("[ResultsPage] No exam results found in query params or storage.");
+            if(queryExamType) setCurrentExamType(queryExamType); 
+          }
+        }
+        
+        setScoresArray(finalScoresArray);
+        // Ensure currentExamType is set if it came from query and scores were also from query
+        if (queryExamType && finalScoresArray && !currentExamType) {
+            setCurrentExamType(queryExamType);
+        }
+
+      } catch (e) {
+        console.error("[ResultsPage] Error loading exam results:", e);
+        setError('An unexpected error occurred while loading exam results.');
+      } finally {
+        setLoading(false);
       }
-    } catch (e) {
-      console.error('Error loading exam results', e);
-    } finally {
-      setLoading(false);
+    };
+
+    if (router.isReady) {
+        loadResults();
     }
-  }, [router.query]);
-  
+
+  }, [router.isReady, router.query]);
+
   if (loading) {
-    return (
-      <Container>
-        <div style={{ textAlign: 'center', padding: '100px 0' }}>
-          <CryptoLoader />
-        </div>
-      </Container>
-    );
+    return <LoadingContainer><CryptoLoader /></LoadingContainer>;
   }
-  
-  if (!results) {
+
+  if (error) {
+    return <ErrorContainer>{error}</ErrorContainer>;
+  }
+
+  // Updated Guard condition
+  if (!scoresArray || !Array.isArray(scoresArray) || scoresArray.length === 0) {
     return (
       <Container>
         <Header>
@@ -304,157 +374,136 @@ const ChartExamResults = () => {
           <Subtitle isDarkMode={darkMode}>
             We couldn't find any exam results to display. Please try taking an exam first.
           </Subtitle>
-          <div style={{ marginTop: '30px' }}>
-            <Link href="/chart-exam" passHref>
-              <Button primary isDarkMode={darkMode} as="a">
-                Go to Chart Exams
-              </Button>
-            </Link>
-          </div>
         </Header>
+        <ButtonContainer>
+          <Link href="/chart-exam" passHref>
+            <Button primary isDarkMode={darkMode} as="a">Take an Exam</Button>
+          </Link>
+        </ButtonContainer>
       </Container>
     );
   }
-  
-  // Calculate total score
-  const { scores, examType } = results;
-  
+
+  // Directly use scoresArray and currentExamType
+  // No destructuring from a 'results' object needed here for these two
+
   let totalScore = 0;
   let totalPossible = 0;
   
-  if (examType === 'swing-analysis') {
-    totalScore = scores.reduce((sum, score) => sum + (typeof score === 'number' ? score : 0), 0);
-    totalPossible = scores.length * 10;
-  } else if (examType === 'fibonacci-retracement') {
-    totalScore = scores.reduce((sum, score) => sum + (score.part1 || 0) + (score.part2 || 0), 0);
-    totalPossible = scores.length * 4;
-  } else if (examType === 'fair-value-gaps') {
-    totalScore = scores.reduce((sum, score) => sum + (score.part1 || 0) + (score.part2 || 0), 0);
-    totalPossible = scores.length * 10;
+  if (currentExamType === 'swing-analysis') {
+    totalScore = scoresArray.reduce((sum, scoreItem) => sum + (typeof scoreItem === 'number' ? scoreItem : 0), 0);
+    totalPossible = scoresArray.length * 10; // Assuming 10 points per swing analysis chart
+  } else if (currentExamType === 'fibonacci-retracement') {
+    totalScore = scoresArray.reduce((sum, scoreItem) => sum + (scoreItem.part1 || 0) + (scoreItem.part2 || 0), 0);
+    totalPossible = scoresArray.length * 4; // 2 for part1, 2 for part2
+  } else if (currentExamType === 'fair-value-gaps') {
+    totalScore = scoresArray.reduce((sum, scoreItem) => sum + (scoreItem.part1 || 0) + (scoreItem.part2 || 0), 0);
+    totalPossible = scoresArray.length * 10; // Assuming 5 for part1, 5 for part2 (example)
   }
-  
-  const scorePercentage = (totalScore / totalPossible) * 100;
+
+  const scorePercentage = totalPossible > 0 ? (totalScore / totalPossible) * 100 : 0;
   const feedbackMessage = getFeedbackMessage(scorePercentage);
-  const improvementTips = getImprovementTips(examType, scorePercentage);
+  const improvementTips = getImprovementTips(currentExamType, scorePercentage);
   
   return (
-    <TrackedPage>
-    <Container>
-      <Header>
-        <Title isDarkMode={darkMode}>Exam Results</Title>
-        <Subtitle isDarkMode={darkMode}>
-          Here's how you performed on the {getExamTypeName(examType)} exam
-        </Subtitle>
-      </Header>
-      
-      <ResultsCard 
-        isDarkMode={darkMode}
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
-        <ScoreHeader isDarkMode={darkMode}>
-          <ExamTitle isDarkMode={darkMode}>{getExamTypeName(examType)}</ExamTitle>
-          <ScoreDisplay 
-            score={totalScore} 
-            total={totalPossible}
-            isDarkMode={darkMode}
-          >
-            {totalScore} / {totalPossible} Points
-          </ScoreDisplay>
-        </ScoreHeader>
-        
-        <ProgressBar isDarkMode={darkMode}>
-          <ProgressFill score={totalScore} total={totalPossible} />
-        </ProgressBar>
-        
-        <div style={{ 
-          textAlign: 'center', 
-          marginTop: '5px', 
-          fontSize: '0.9rem',
-          color: darkMode ? '#b0b0b0' : '#666'
-        }}>
-          {scorePercentage.toFixed(1)}% Accuracy
-        </div>
-        
-        <BreakdownContainer>
-          <BreakdownTitle isDarkMode={darkMode}>Chart Breakdown</BreakdownTitle>
-          
-          {scores.map((score, index) => (
-            <ChartBreakdown key={index} isDarkMode={darkMode}>
-              <ChartTitle isDarkMode={darkMode}>Chart {index + 1}</ChartTitle>
-              
-              {examType === 'swing-analysis' ? (
-                <PartScore isDarkMode={darkMode}>
-                  <PartTitle isDarkMode={darkMode}>Swing Points</PartTitle>
-                  <PartResult 
-                    score={score} 
-                    total={10}
-                    isDarkMode={darkMode}
-                  >
-                    {score} / 10
-                  </PartResult>
-                </PartScore>
-              ) : (
-                <>
+    <TrackedPage pageName="ChartExamResults">
+      <Container>
+        <Header>
+          <Title isDarkMode={darkMode}>Exam Results</Title>
+          <Subtitle isDarkMode={darkMode}>
+           Here's how you performed on the {getExamTypeName(currentExamType)} exam
+          </Subtitle>
+        </Header>
+
+        <ResultsCard 
+          isDarkMode={darkMode}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          <ScoreHeader isDarkMode={darkMode}>
+           <ExamTitle isDarkMode={darkMode}>{getExamTypeName(currentExamType)}</ExamTitle>
+            <ScoreDisplay 
+              score={totalScore} 
+              total={totalPossible} 
+              isDarkMode={darkMode}
+            >
+              {totalScore} / {totalPossible} ({scorePercentage.toFixed(0)}%)
+            </ScoreDisplay>
+          </ScoreHeader>
+
+          <ProgressBar score={totalScore} total={totalPossible} isDarkMode={darkMode}>
+            <ProgressFill score={totalScore} total={totalPossible} />
+          </ProgressBar>
+
+          <BreakdownContainer>
+            <BreakdownTitle isDarkMode={darkMode}>Chart Breakdown</BreakdownTitle>
+            {/* This is where the user's error was (line 436 in their stack trace) */}
+            {scoresArray.map((scoreItem, index) => (
+              <ChartBreakdown key={index} isDarkMode={darkMode}>
+                <ChartTitle isDarkMode={darkMode}>Chart {index + 1}</ChartTitle>
+                
+                {currentExamType === 'swing-analysis' ? (
                   <PartScore isDarkMode={darkMode}>
-                    <PartTitle isDarkMode={darkMode}>Part 1</PartTitle>
+                    <PartTitle isDarkMode={darkMode}>Swing Points</PartTitle>
                     <PartResult 
-                      score={score.part1 || 0} 
-                      total={examType === 'fibonacci-retracement' ? 2 : 5}
+                      score={typeof scoreItem === 'number' ? scoreItem : 0} 
+                      total={10} // Assuming 10 points for swing analysis
                       isDarkMode={darkMode}
                     >
-                      {score.part1 || 0} / {examType === 'fibonacci-retracement' ? 2 : 5}
+                      {typeof scoreItem === 'number' ? scoreItem : 0} / 10
                     </PartResult>
                   </PartScore>
-                  
-                  <PartScore isDarkMode={darkMode}>
-                    <PartTitle isDarkMode={darkMode}>Part 2</PartTitle>
-                    <PartResult 
-                      score={score.part2 || 0} 
-                      total={examType === 'fibonacci-retracement' ? 2 : 5}
-                      isDarkMode={darkMode}
-                    >
-                      {score.part2 || 0} / {examType === 'fibonacci-retracement' ? 2 : 5}
-                    </PartResult>
-                  </PartScore>
-                </>
-              )}
-            </ChartBreakdown>
-          ))}
-        </BreakdownContainer>
-        
-        <Feedback isDarkMode={darkMode}>
-          <FeedbackTitle isDarkMode={darkMode}>Feedback</FeedbackTitle>
-          <p>{feedbackMessage}</p>
+                ) : (currentExamType === 'fibonacci-retracement' || currentExamType === 'fair-value-gaps') ? (
+                  <>
+                    <PartScore isDarkMode={darkMode}>
+                      <PartTitle isDarkMode={darkMode}>Part 1</PartTitle>
+                      <PartResult 
+                        score={scoreItem.part1 || 0} 
+                        total={currentExamType === 'fibonacci-retracement' ? 2 : 5} // Example totals
+                        isDarkMode={darkMode}
+                      >
+                        {scoreItem.part1 || 0} / {currentExamType === 'fibonacci-retracement' ? 2 : 5}
+                      </PartResult>
+                    </PartScore>
+                    <PartScore isDarkMode={darkMode}>
+                      <PartTitle isDarkMode={darkMode}>Part 2</PartTitle>
+                      <PartResult 
+                        score={scoreItem.part2 || 0} 
+                        total={currentExamType === 'fibonacci-retracement' ? 2 : 5} // Example totals
+                        isDarkMode={darkMode}
+                      >
+                        {scoreItem.part2 || 0} / {currentExamType === 'fibonacci-retracement' ? 2 : 5}
+                      </PartResult>
+                    </PartScore>
+                  </>
+                ) : null}
+              </ChartBreakdown>
+            ))}
+          </BreakdownContainer>
+
+          <Feedback isDarkMode={darkMode}>
+            <FeedbackTitle isDarkMode={darkMode}>Feedback</FeedbackTitle>
+            <p>{feedbackMessage}</p>
+            <h4>How to Improve:</h4>
+            <ul>
+              {improvementTips.map((tip, i) => <li key={i}>{tip}</li>)}
+            </ul>
+          </Feedback>
+        </ResultsCard>
+
+        <ButtonContainer>
+          <Link href="/dashboard" passHref>
+            <Button isDarkMode={darkMode} as="a">Back to Dashboard</Button>
+          </Link>
           
-          {scorePercentage < 90 && (
-            <>
-              <FeedbackTitle isDarkMode={darkMode}>Areas for Improvement</FeedbackTitle>
-              <ul>
-                {improvementTips.map((tip, index) => (
-                  <li key={index} style={{ marginBottom: '8px' }}>{tip}</li>
-                ))}
-              </ul>
-            </>
-          )}
-        </Feedback>
-      </ResultsCard>
-      
-      <ButtonContainer>
-        <Link href="/chart-exam" passHref>
-          <Button isDarkMode={darkMode} as="a">
-            Back to Exam Selection
-          </Button>
-        </Link>
-        
-        <Link href={`/chart-exam/${examType}`} passHref>
-          <Button primary isDarkMode={darkMode} as="a">
-            Try Again
-          </Button>
-        </Link>
-      </ButtonContainer>
-    </Container>
+          <Link href={`/chart-exam/${currentExamType || 'fair-value-gaps'}`} passHref>
+            <Button primary isDarkMode={darkMode} as="a">
+              Try Again
+            </Button>
+          </Link>
+        </ButtonContainer>
+      </Container>
     </TrackedPage>
   );
 };
