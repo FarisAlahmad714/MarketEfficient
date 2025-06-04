@@ -1,7 +1,9 @@
+// pages/api/admin/insights.js - REPLACE YOUR ENTIRE FILE WITH THIS
 import { requireAdmin } from '../../../middleware/auth';
 import User from '../../../models/User';
-import Payment from '../../../models/Payment';
 import TestResults from '../../../models/TestResults';
+import Subscription from '../../../models/Subscription';
+import PaymentHistory from '../../../models/PaymentHistory';
 import connectDB from '../../../lib/database';
 import { startOfMonth, subMonths } from 'date-fns';
 
@@ -15,59 +17,122 @@ export default async function handler(req, res) {
       try {
         await connectDB();
 
-        // Inactive Users: Users with no activity in the last 30 days
-        const inactiveCutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+        // 1. INACTIVE USERS - Real calculation
+        const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+        
+        // Find users who haven't logged in recently
         const inactiveUsers = await User.countDocuments({
-          lastLogin: { $lt: inactiveCutoff }, // Assuming User model has lastLogin
-          isVerified: true
+          isVerified: true,
+          $or: [
+            { lastLogin: { $lt: thirtyDaysAgo } },
+            { lastLogin: null }
+          ]
         });
 
-        // Revenue Change: Compare current vs. previous month
+        // 2. REVENUE METRICS - From actual subscriptions
         const currentMonth = startOfMonth(new Date());
         const previousMonth = subMonths(currentMonth, 1);
-        const currentMonthRevenue = await Payment.aggregate([
-          { $match: { createdAt: { $gte: currentMonth } } },
+        
+        // Current month revenue
+        const currentMonthSubs = await Subscription.aggregate([
+          { 
+            $match: { 
+              createdAt: { $gte: currentMonth },
+              amount: { $gt: 0 },
+              status: { $in: ['active', 'trialing'] }
+            } 
+          },
           { $group: { _id: null, total: { $sum: '$amount' } } }
         ]);
-        const previousMonthRevenue = await Payment.aggregate([
-          { $match: { createdAt: { $gte: previousMonth, $lt: currentMonth } } },
+        
+        // Previous month revenue
+        const previousMonthSubs = await Subscription.aggregate([
+          { 
+            $match: { 
+              createdAt: { $gte: previousMonth, $lt: currentMonth },
+              amount: { $gt: 0 }
+            } 
+          },
           { $group: { _id: null, total: { $sum: '$amount' } } }
         ]);
-        const currentTotal = currentMonthRevenue[0]?.total || 0;
-        const previousTotal = previousMonthRevenue[0]?.total || 0;
-        const revenueChange = previousTotal
-          ? ((currentTotal - previousTotal) / previousTotal) * 100
+        
+        const currentTotal = (currentMonthSubs[0]?.total || 0) / 100; // cents to dollars
+        const previousTotal = (previousMonthSubs[0]?.total || 0) / 100;
+        const revenueChange = previousTotal > 0 
+          ? ((currentTotal - previousTotal) / previousTotal) * 100 
           : 0;
 
-        // Top Engagement Region: Region with highest average tests per user
-        const engagementByRegion = await User.aggregate([
+        // 3. MOST ACTIVE ASSET - From actual test results
+        const assetActivity = await TestResults.aggregate([
           {
-            $lookup: {
-              from: 'testresults',
-              localField: '_id',
-              foreignField: 'userId',
-              as: 'tests'
+            $match: {
+              createdAt: { $gte: thirtyDaysAgo }
             }
           },
           {
             $group: {
-              _id: '$location', // Assuming User model has location
-              avgTests: { $avg: { $size: '$tests' } }
+              _id: '$assetSymbol',
+              count: { $sum: 1 }
             }
           },
-          { $sort: { avgTests: -1 } },
+          { $sort: { count: -1 } },
           { $limit: 1 }
         ]);
 
-        const topRegion = engagementByRegion[0]?._id || 'N/A';
-        const topRegionEngagement = engagementByRegion[0]?.avgTests || 0;
+        const topAsset = assetActivity[0];
+
+        // 4. ADDITIONAL USEFUL METRICS
+        const totalUsers = await User.countDocuments({ isVerified: true });
+        const activeSubscriptions = await Subscription.countDocuments({ 
+          status: { $in: ['active', 'trialing'] } 
+        });
+        const recentSignups = await User.countDocuments({
+          createdAt: { $gte: thirtyDaysAgo }
+        });
+
+        // 5. SECURITY METRICS
+        const lockedAccounts = await User.countDocuments({
+          lockUntil: { $gt: new Date() }
+        });
+        
+        const failedLogins = await User.aggregate([
+          {
+            $match: {
+              loginAttempts: { $gt: 0 }
+            }
+          },
+          {
+            $group: {
+              _id: null,
+              totalAttempts: { $sum: '$loginAttempts' }
+            }
+          }
+        ]);
 
         res.status(200).json({
+          // User metrics
+          totalUsers,
           inactiveUsers,
+          recentSignups,
+          activeSubscriptions,
+          
+          // Revenue metrics
+          currentMonthRevenue: currentTotal.toFixed(2),
+          previousMonthRevenue: previousTotal.toFixed(2),
           revenueChange: revenueChange.toFixed(2),
-          topRegion,
-          topRegionEngagement: topRegionEngagement.toFixed(1)
+          
+          // Activity metrics
+          topAsset: topAsset?._id || 'None',
+          topAssetTests: topAsset?.count || 0,
+          
+          // Security metrics
+          lockedAccounts,
+          failedLoginAttempts: failedLogins[0]?.totalAttempts || 0,
+
+          // Timestamp
+          lastUpdated: new Date().toISOString()
         });
+
       } catch (error) {
         console.error('Insights fetch error:', error);
         res.status(500).json({ error: 'Failed to fetch insights' });

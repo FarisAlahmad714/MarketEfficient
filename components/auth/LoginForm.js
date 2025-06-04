@@ -1,5 +1,5 @@
 // components/auth/LoginForm.js
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { ThemeContext } from '../../contexts/ThemeContext';
@@ -15,6 +15,24 @@ const LoginForm = () => {
   const { darkMode } = useContext(ThemeContext);
   const { login } = useContext(AuthContext);
   const router = useRouter();
+  
+  useEffect(() => {
+    // Fetch initial CSRF token to ensure the cookie is set by the server
+    const primeCsrfCookie = async () => {
+      try {
+        await fetch('/api/auth/login', { method: 'GET' });
+        // The primary goal is for the server to set the http-only csrf_token cookie.
+        // The response body (which contains the token) isn't strictly needed here by LoginForm,
+        // as AuthContext will read the cookie directly.
+      } catch (err) {
+        console.error('Failed to prime CSRF cookie:', err);
+        // Consider if any user-facing error or retry logic is needed here,
+        // though CSRF failure will be caught upon login attempt.
+      }
+    };
+
+    primeCsrfCookie();
+  }, []); // Empty dependency array ensures this runs once on mount
   
   const handleSubmit = async (e) => {
     e.preventDefault();

@@ -5,6 +5,19 @@ import storage from '../lib/storage';
 
 export const AuthContext = createContext();
 
+// Helper function to get a cookie by name
+function getCookie(name) {
+  if (typeof document === 'undefined') {
+    return null; 
+  }
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) {
+    return parts.pop().split(';').shift();
+  }
+  return null;
+}
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -83,11 +96,22 @@ export const AuthProvider = ({ children }) => {
   
   const login = async (email, password) => {
     try {
+      const csrfToken = getCookie('csrf_token'); // Get CSRF token
+
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+
+      if (csrfToken) {
+        headers['X-CSRF-Token'] = csrfToken;
+      } else {
+        // This warning is for development; server will enforce CSRF
+        console.warn('CSRF token cookie not found. Login may be blocked by CSRF protection.');
+      }
+
       const response = await fetch('/api/auth/login', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: headers, // Use updated headers
         body: JSON.stringify({ email, password })
       });
       
