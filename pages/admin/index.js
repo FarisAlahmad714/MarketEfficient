@@ -1,3 +1,4 @@
+//pages/admin/index.js
 import { useState, useEffect, useContext, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { AuthContext } from '../../contexts/AuthContext';
@@ -7,10 +8,26 @@ import CryptoLoader from '../../components/CryptoLoader';
 import UserDetailsModal from '../../components/admin/UserDetailsModal';
 import TrackedPage from '../../components/TrackedPage';
 import storage from '../../lib/storage'; // Adjust the path to your storage utility
+
 const AdminPanel = () => {
   const { isAuthenticated, user } = useContext(AuthContext);
   const { darkMode } = useContext(ThemeContext);
   const router = useRouter();
+
+  // Define linkStyle for navigation items
+  const linkStyle = {
+    display: 'block',
+    textDecoration: 'none',
+    color: 'inherit', // Inherit color from parent, can be overridden by nested styles
+  };
+
+  // Define toolItemStyle for the container of each admin tool link
+  const toolItemStyle = {
+    padding: '15px 20px',
+    backgroundColor: darkMode ? '#2a2a2a' : '#f8f9fa',
+    borderRadius: '8px',
+    border: `1px solid ${darkMode ? '#444' : '#e0e0e0'}`,
+  };
 
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -298,30 +315,34 @@ const AdminPanel = () => {
             <div style={{ fontWeight: '500', marginBottom: '5px' }}>Analytics Dashboard</div>
             <div style={{ fontSize: '14px' }}>Coming soon - User engagement and platform metrics</div>
           </div>
-          <div style={{
-            padding: '15px 20px',
-            backgroundColor: darkMode ? '#2a2a2a' : '#f8f9fa',
-            borderRadius: '8px',
-            color: darkMode ? '#888' : '#999',
-            border: `1px solid ${darkMode ? '#444' : '#e0e0e0'}`,
-            opacity: 0.6
-          }}>
-            <div style={{ fontSize: '20px', marginBottom: '8px' }}>⚙️</div>
+          <Link href="/admin/system-settings" style={linkStyle}>
             <div style={{ fontWeight: '500', marginBottom: '5px' }}>System Settings</div>
-            <div style={{ fontSize: '14px' }}>Coming soon - Platform configuration and preferences</div>
-          </div>
-          <div style={{
+            <p style={{ fontSize: '14px', color: darkMode ? '#aaa' : '#666' }}>Platform configuration and preferences</p>
+          </Link>
+          <Link href="/admin/security-monitoring" style={{
+            display: 'block',
             padding: '15px 20px',
             backgroundColor: darkMode ? '#2a2a2a' : '#f8f9fa',
             borderRadius: '8px',
-            color: darkMode ? '#888' : '#999',
+            textDecoration: 'none',
+            color: darkMode ? '#e0e0e0' : '#333',
             border: `1px solid ${darkMode ? '#444' : '#e0e0e0'}`,
-            opacity: 0.6
+            transition: 'all 0.2s ease'
+          }}
+          onMouseOver={(e) => { 
+            const target = e.currentTarget;
+            target.style.backgroundColor = darkMode ? '#333' : '#e9ecef'; 
+            target.style.transform = 'translateY(-2px)'; 
+          }}
+          onMouseOut={(e) => { 
+            const target = e.currentTarget;
+            target.style.backgroundColor = darkMode ? '#2a2a2a' : '#f8f9fa'; 
+            target.style.transform = 'translateY(0)'; 
           }}>
-            <div style={{ fontSize: '20px', marginBottom: '8px' }}>🔒</div>
-            <div style={{ fontWeight: '500', marginBottom: '5px' }}>Security Center</div>
-            <div style={{ fontSize: '14px' }}>Coming soon - Security logs and access control</div>
-          </div>
+            <div style={{ fontSize: '20px', marginBottom: '8px' }}>🛡️</div>
+            <div style={{ fontWeight: '500', marginBottom: '5px' }}>Security Monitoring</div>
+            <p style={{ fontSize: '14px', color: darkMode ? '#b0b0b0' : '#666' }}>View security metrics and threat dashboard</p>
+          </Link>
         </div>
       </div>
 

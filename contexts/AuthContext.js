@@ -5,6 +5,7 @@ import storage from '../lib/storage';
 
 export const AuthContext = createContext();
 
+<<<<<<< HEAD
 // Helper function to get CSRF token from cookies (can be kept for other potential uses or as a fallback, but secureApiCall will prioritize state)
 const getCsrfTokenFromCookie = () => {
   if (typeof document === 'undefined') return null;
@@ -21,6 +22,20 @@ const getCsrfTokenFromCookie = () => {
 // Helper function to make secure API calls with CSRF token
 // This function will now be defined inside AuthProvider to access csrfTokenValue from state
 // const secureApiCall = async (url, options = {}) => { ... }; // Will be moved and modified
+=======
+// Helper function to get a cookie by name
+function getCookie(name) {
+  if (typeof document === 'undefined') {
+    return null; 
+  }
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) {
+    return parts.pop().split(';').shift();
+  }
+  return null;
+}
+>>>>>>> e21852f15954d1a29d6fab2cd61c4964bb1bbb59
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -200,8 +215,27 @@ export const AuthProvider = ({ children }) => {
   
   const login = async (email, password) => {
     try {
+<<<<<<< HEAD
       const response = await secureApiCall('/api/auth/login', {
         method: 'POST',
+=======
+      const csrfToken = getCookie('csrf_token'); // Get CSRF token
+
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+
+      if (csrfToken) {
+        headers['X-CSRF-Token'] = csrfToken;
+      } else {
+        // This warning is for development; server will enforce CSRF
+        console.warn('CSRF token cookie not found. Login may be blocked by CSRF protection.');
+      }
+
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: headers, // Use updated headers
+>>>>>>> e21852f15954d1a29d6fab2cd61c4964bb1bbb59
         body: JSON.stringify({ email, password })
       });
       
