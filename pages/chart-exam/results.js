@@ -301,9 +301,13 @@ const ChartExamResults = () => {
             if (queryExamType) {
               setCurrentExamType(queryExamType);
             }
-            console.log("[ResultsPage] Loaded results from query params.");
+            if (process.env.NODE_ENV === 'development') {
+              console.log("[ResultsPage] Loaded results from query params.");
+            }
           } catch (e) {
-            console.error("[ResultsPage] Failed to parse scores from query params:", e);
+            if (process.env.NODE_ENV === 'development') {
+              console.error("[ResultsPage] Failed to parse scores from query params:", e);
+            }
             queryScoresString = null; 
           }
         }
@@ -313,7 +317,9 @@ const ChartExamResults = () => {
           if (storedResultsString) {
             try {
               finalScoresArray = JSON.parse(storedResultsString);
-              console.log("[ResultsPage] Loaded results from storage.");
+              if (process.env.NODE_ENV === 'development') {
+                console.log("[ResultsPage] Loaded results from storage.");
+              }
               // Attempt to get examType if not already set by query
               if (!queryExamType) {
                 const storedExamType = await storage.getItem('currentExamType'); // This was a potential issue, ensure 'currentExamType' is being set if relied upon
@@ -322,17 +328,23 @@ const ChartExamResults = () => {
                 } else {
                   // Heuristic: try to infer from scores structure if possible, or default
                   // This part is tricky without knowing the exact structure of 'currentExamType' or if it's always passed in query
-                  console.warn("[ResultsPage] Exam type not found in storage or query. Attempting to infer or default.");
+                  if (process.env.NODE_ENV === 'development') {
+                    console.warn("[ResultsPage] Exam type not found in storage or query. Attempting to infer or default.");
+                  }
                   // For now, if queryExamType was missing and storedExamType is missing, it remains an issue.
                 }
               }
             } catch (e) {
-              console.error("[ResultsPage] Error parsing stored exam results:", e);
+              if (process.env.NODE_ENV === 'development') {
+                console.error("[ResultsPage] Error parsing stored exam results:", e);
+              }
               setError('Failed to parse exam results from storage. The data might be corrupted.');
               finalScoresArray = null; 
             }
           } else {
-            console.warn("[ResultsPage] No exam results found in query params or storage.");
+            if (process.env.NODE_ENV === 'development') {
+              console.warn("[ResultsPage] No exam results found in query params or storage.");
+            }
             if(queryExamType) setCurrentExamType(queryExamType); 
           }
         }
@@ -344,7 +356,9 @@ const ChartExamResults = () => {
         }
 
       } catch (e) {
-        console.error("[ResultsPage] Error loading exam results:", e);
+        if (process.env.NODE_ENV === 'development') {
+          console.error("[ResultsPage] Error loading exam results:", e);
+        }
         setError('An unexpected error occurred while loading exam results.');
       } finally {
         setLoading(false);

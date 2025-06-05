@@ -2,24 +2,19 @@
 import { getFibonacciRetracement, calculateFibonacciLevels } from './utils/fibonacci-utils.js';
 import connectDB from '../../../lib/database';
 import TestResults from '../../../models/TestResults';
-import jwt from 'jsonwebtoken';
-import logger from '../../../lib/logger'; // Adjust path to your logger utility
-export default async function handler(req, res) {
+import logger from '../../../lib/logger';
+import { createApiHandler } from '../../../lib/api-handler';
+import { requireAuth } from '../../../middleware/auth';
+import { composeMiddleware } from '../../../lib/api-handler';
+
+async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
   
   try {
-    // Get Authorization header
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'Authorization token required' });
-    }
-    
-    // Extract token and decode user ID
-    const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const userId = decoded.userId;
+    // User is already verified by requireAuth middleware
+    const userId = req.user.id;
     
     const { drawings, chartData, chartCount, part } = req.body;
     
@@ -540,3 +535,8 @@ function findAlternativeRetracements(chartData, part) {
     return [];
   }
 }
+
+export default createApiHandler(
+  composeMiddleware(requireAuth, handler),
+  { methods: ['POST'] }
+);

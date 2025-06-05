@@ -3,6 +3,7 @@ import { createApiHandler } from '../../../lib/api-handler';
 import { requireAuth } from '../../../middleware/auth';
 import { sanitizeInput, sanitizeAssetSymbol, sanitizeObjectId } from '../../../middleware/sanitization';
 import TestResults from '../../../models/TestResults';
+import logger from '../../../lib/logger';
 
 // Validation function for test results
 function validateTestData(data) {
@@ -87,7 +88,7 @@ async function saveResultsHandler(req, res) {
       
       // Handle analysis update
       if (updateAnalysis && existingResult) {
-        console.log(`Updating AI analysis for session ${sessionId}`);
+        logger.log(`Updating AI analysis for session`);
         
         const analysisUpdates = answers.map(answer => ({
           test_id: answer.test_id,
@@ -188,7 +189,7 @@ async function saveResultsHandler(req, res) {
         }
         
         await testResult.save();
-        console.log(`Bias test result saved, score: ${finalScore}/${totalPoints} for ${sanitizedAssetSymbol}`);
+        logger.log(`Bias test result saved, score: ${finalScore}/${totalPoints} for ${sanitizedAssetSymbol}`);
         
         return res.status(200).json({
           success: true,
@@ -204,7 +205,7 @@ async function saveResultsHandler(req, res) {
       });
       
     } catch (error) {
-      console.error('Save results error:', error);
+      logger.error('Save results error:', error);
       throw error; // Let the API handler deal with it
     }
   });

@@ -92,7 +92,7 @@ const EnhancedPromoCodeManagement = () => {
       }
       setError(null);
       
-      const token = storage.getItem('auth_token');
+      const token = await storage.getItem('auth_token');
       
       // Fetch promo codes (increase limit to get all codes)
       const promoResponse = await fetch('/api/admin/promo-codes?limit=100', {
@@ -134,7 +134,7 @@ const EnhancedPromoCodeManagement = () => {
     e.preventDefault();
     
     try {
-      const token = storage.getItem('auth_token');
+      const token = await storage.getItem('auth_token');
       const response = await fetch('/api/admin/promo-codes/generate', {
         method: 'POST',
         headers: {

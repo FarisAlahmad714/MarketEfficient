@@ -51,7 +51,7 @@ const ProfilePage = () => {
   const fetchUserData = async () => {
     try {
       setLoading(true);
-      const token = storage.getItem('auth_token');
+      const token = await storage.getItem('auth_token');
       if (!token) {
         setSaveError('You must be logged in to view this page');
         setLoading(false);

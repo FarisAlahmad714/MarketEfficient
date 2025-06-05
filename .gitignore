@@ -131,3 +131,8 @@ dist
 
 # Replit debugger
 .breakpoints
+
+# Service account keys and secrets
+*-service-account-key.json
+gcs-service-account-key.json
+*.pem

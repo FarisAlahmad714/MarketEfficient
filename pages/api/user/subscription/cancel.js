@@ -1,13 +1,15 @@
 // pages/api/user/subscription/cancel.js
-import jwt from 'jsonwebtoken';
 import User from '../../../../models/User';
 import Subscription from '../../../../models/Subscription';
 import connectDB from '../../../../lib/database';
 import stripe from 'stripe';
+import { createApiHandler } from '../../../../lib/api-handler';
+import { requireAuth } from '../../../../middleware/auth';
+import { composeMiddleware } from '../../../../lib/api-handler';
 
 const stripeClient = stripe(process.env.STRIPE_SECRET_KEY);
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -15,18 +17,8 @@ export default async function handler(req, res) {
   try {
     await connectDB();
 
-    // Get user from token
-    const token = req.headers.authorization?.replace('Bearer ', '');
-    if (!token) {
-      return res.status(401).json({ error: 'No token provided' });
-    }
-
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(decoded.userId);
-    
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
+    // User is already verified by requireAuth middleware
+    const user = req.user;
 
     const subscription = await Subscription.findOne({
       userId: user._id,
@@ -68,3 +60,8 @@ export default async function handler(req, res) {
     });
   }
 }
+
+export default createApiHandler(
+  composeMiddleware(requireAuth, handler),
+  { methods: ['POST'] }
+);

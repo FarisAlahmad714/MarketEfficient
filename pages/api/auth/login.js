@@ -4,6 +4,7 @@ import connectDB from '../../../lib/database';
 import User from '../../../models/User';
 import { authRateLimit } from '../../../middleware/rateLimit';
 import { sanitizeInput, sanitizeEmail } from '../../../middleware/sanitization';
+import { generateCSRFToken } from '../../../middleware/csrf';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -74,9 +75,12 @@ export default async function handler(req, res) {
             { expiresIn: '24h' } // Reduced from 7d
           );
           
-          // Set secure httpOnly cookie
+          // Generate CSRF token
+          const csrfToken = generateCSRFToken();
+          
+          // Set secure httpOnly cookie for auth token
           const isProduction = process.env.NODE_ENV === 'production';
-          const cookieOptions = [
+          const authCookieOptions = [
             `auth_token=${token}`,
             'HttpOnly',
             isProduction ? 'Secure' : '',
@@ -85,7 +89,17 @@ export default async function handler(req, res) {
             `Max-Age=${24 * 60 * 60}` // 24 hours
           ].filter(Boolean).join('; ');
           
-          res.setHeader('Set-Cookie', cookieOptions);
+          // Set CSRF token cookie (not HttpOnly so JavaScript can read it)
+          const csrfCookieOptions = [
+            `csrf_token=${csrfToken}`,
+            isProduction ? 'Secure' : '',
+            'SameSite=Strict',
+            'Path=/',
+            `Max-Age=${24 * 60 * 60}` // 24 hours
+          ].filter(Boolean).join('; ');
+          
+          // Set both cookies
+          res.setHeader('Set-Cookie', [authCookieOptions, csrfCookieOptions]);
           
           // Return user info (without password) and token
           // Keep returning token for now for backward compatibility
@@ -99,6 +113,7 @@ export default async function handler(req, res) {
               isAdmin: user.isAdmin
             },
             token, // For backward compatibility - remove this after updating frontend
+            csrfToken, // Return CSRF token so frontend can use it
             message: 'Login successful. Token is now also set as secure cookie.'
           });
         });

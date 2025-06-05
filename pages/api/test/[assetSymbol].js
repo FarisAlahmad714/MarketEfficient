@@ -3,8 +3,10 @@ import { v4 as uuidv4 } from 'uuid';
 import { fetchAssetOHLCData, generateMockOHLCData } from '../../../lib/data-service';
 import connectDB from '../../../lib/database';
 import TestResults from '../../../models/TestResults';
-import jwt from 'jsonwebtoken';
-import logger from '../../../lib/logger'; // Adjust path to your logger utility
+import logger from '../../../lib/logger';
+import { createApiHandler } from '../../../lib/api-handler';
+import { requireAuth } from '../../../middleware/auth';
+import { composeMiddleware } from '../../../lib/api-handler';
 
 // Store sessions in memory (in a real app, this would be a database)
 const sessions = {};
@@ -309,7 +311,7 @@ function getTimeIncrement(timeframe) {
 }
 
 // Handler function for API requests
-export default async function handler(req, res) {
+async function handler(req, res) {
   const { assetSymbol } = req.query;
   const timeframe = req.query.timeframe || 'daily';
   
@@ -417,35 +419,8 @@ export default async function handler(req, res) {
         return res.status(404).json({ error: 'Test session not found' });
       }
       
-      // Get Authorization header - EXACTLY LIKE CHARTING EXAM
-      const authHeader = req.headers.authorization;
-      if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        logger.warn('Authorization header missing or not Bearer');
-        return res.status(401).json({ error: 'Authorization token required' });
-      }
-      
-      // Extract token and decode user ID - EXACTLY LIKE CHARTING EXAM
-      const tokenParts = authHeader.split(' ');
-      if (tokenParts.length !== 2 || !tokenParts[1]) {
-        logger.error('Malformed Authorization header or token missing', { authHeader });
-        return res.status(401).json({ error: 'Malformed authorization token' });
-      }
-      const token = tokenParts[1];
-
-      // Check if token is just an empty string or not a string
-      if (typeof token !== 'string' || token.trim() === '') {
-        logger.error('Token is empty or not a string after extraction', { token });
-        return res.status(401).json({ error: 'Invalid token format' });
-      }
-
-      // Optional: Basic check for JWT structure (three parts separated by dots)
-      if (token.split('.').length !== 3) {
-        logger.error('Token does not have the expected JWT structure (x.y.z)', { token });
-        return res.status(401).json({ error: 'Token is not a valid JWT structure' });
-      }
-      
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      const userId = decoded.userId;
+      // User is already verified by requireAuth middleware
+      const userId = req.user.id;
       
       // CRITICAL FIX: Extract answers from the request body
       // Handle both structures: either direct array or {answers: [...]} object
@@ -815,3 +790,8 @@ export default async function handler(req, res) {
     res.status(200).json(clientTestData);
   }
 }
+
+export default createApiHandler(
+  composeMiddleware(requireAuth, handler),
+  { methods: ['GET', 'POST'] }
+);
