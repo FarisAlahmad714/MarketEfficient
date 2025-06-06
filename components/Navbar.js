@@ -4,12 +4,13 @@ import Image from 'next/image';
 import { useRouter } from 'next/router';
 import { BiHomeAlt } from 'react-icons/bi';
 import { TbScale, TbChartLine } from 'react-icons/tb';
-import { FaTachometerAlt, FaSun, FaMoon, FaChevronDown, FaUserCog, FaUserShield, FaSignOutAlt } from 'react-icons/fa';
+import { FaTachometerAlt, FaSun, FaMoon, FaChevronDown, FaUserCog, FaUserShield, FaSignOutAlt, FaCommentDots } from 'react-icons/fa';
 import { HiMenuAlt3, HiX } from 'react-icons/hi';
 import { AuthContext } from '../contexts/AuthContext';
 import { ThemeContext } from '../contexts/ThemeContext';
 import { useProfileImage } from '../lib/useProfileImage';
 import ProfileAvatar from './ProfileAvatar';
+import FeedbackModal from './FeedbackModal';
 
 const Navbar = () => {
   const { user, isAuthenticated, logout } = useContext(AuthContext);
@@ -17,6 +18,7 @@ const Navbar = () => {
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const mobileMenuRef = useRef(null);
   const userMenuRef = useRef(null);
   const canvasRef = useRef(null);
@@ -258,6 +260,22 @@ const Navbar = () => {
                         </div>
                       </Link>
                     )}
+
+                    <button 
+                      className="dropdown-item" 
+                      onClick={() => {
+                        setShowUserMenu(false);
+                        setShowFeedbackModal(true);
+                      }}
+                    >
+                      <div className="item-icon">
+                        <FaCommentDots />
+                      </div>
+                      <div className="item-content">
+                        <span className="item-title">Send Feedback</span>
+                        <span className="item-subtitle">Help us improve</span>
+                      </div>
+                    </button>
                   </div>
                   
                   <div className="dropdown-footer">
@@ -373,6 +391,11 @@ const Navbar = () => {
         </div>
       )}
 
+      <FeedbackModal 
+        isOpen={showFeedbackModal} 
+        onClose={() => setShowFeedbackModal(false)} 
+      />
+
       <style jsx global>{`
         /* NUCLEAR LINK RESET - Remove ALL hyperlink styling completely */
         .navbar a,
@@ -438,6 +461,7 @@ const Navbar = () => {
           text-decoration-line: none !important;
           text-decoration-style: none !important;
           text-decoration-color: transparent !important;
+          background-color: transparent !important;
         }
         
         /* Dropdown item reset */
@@ -448,11 +472,30 @@ const Navbar = () => {
         .navbar .dropdown-item:hover,
         .navbar .dropdown-item:active,
         .navbar .dropdown-item:focus {
-          color: inherit !important;
           text-decoration: none !important;
-          text-decoration-line: none !important;
-          text-decoration-style: none !important;
-          text-decoration-color: transparent !important;
+          text-align: left;
+          font-family: inherit;
+          cursor: pointer;
+        }
+        
+        .dark .dropdown-item {
+          color: rgba(255, 255, 255, 0.85);
+        }
+        
+        .light .dropdown-item {
+          color: rgba(0, 0, 0, 0.85);
+        }
+        
+        .dark .dropdown-item:hover {
+          background: rgba(255, 255, 255, 0.08);
+          color: rgba(255, 255, 255, 0.95);
+          transform: translateX(2px);
+        }
+        
+        .light .dropdown-item:hover {
+          background: rgba(0, 0, 0, 0.04);
+          color: rgba(0, 0, 0, 0.95);
+          transform: translateX(2px);
         }
         
         /* Brand link reset */
@@ -502,7 +545,9 @@ const Navbar = () => {
           text-decoration: none !important;
           text-decoration-line: none !important;
         }
-        
+      `}</style>
+
+      <style jsx>{`
         .navbar {
           width: 100%;
           height: 70px;
@@ -510,7 +555,7 @@ const Navbar = () => {
           top: 0;
           z-index: 9999;
           transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-          overflow: hidden;
+          overflow: visible;
           isolation: isolate;
         }
         
@@ -1240,12 +1285,12 @@ const Navbar = () => {
         }
         
         .logout-item {
-          color: #ef3;
+          color: #ef4444;
         }
         
         .logout-item .item-icon {
           background: rgba(239, 65, 68, 0.1);
-          color: #e;
+          color: #ef4444;
         }
         
         .logout-item:hover {
@@ -1305,7 +1350,7 @@ const Navbar = () => {
         }
         
         .dark .premium-mobile-menu {
-          background: rgba(10, 12, 245, 0.4);
+          background: rgba(10, 12, 30, 0.98);
           border-left: 1px solid rgba(255, 255, 255, 0.1);
           backdrop-filter: blur(30px);
         }
