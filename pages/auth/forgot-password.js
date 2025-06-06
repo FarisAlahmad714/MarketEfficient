@@ -13,6 +13,7 @@ const ForgotPasswordPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
+    setMessage('');
     
     try {
       const response = await fetch('/api/auth/forgot-password', {
@@ -24,7 +25,8 @@ const ForgotPasswordPage = () => {
       });
       
       if (response.ok) {
-        setMessage('Password reset instructions have been sent to your email.');
+        const data = await response.json();
+        setMessage(data.message || 'Password reset instructions have been sent to your email.');
       } else {
         const data = await response.json();
         setMessage(data.error || 'An error occurred. Please try again.');

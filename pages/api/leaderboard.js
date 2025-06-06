@@ -86,7 +86,7 @@ async function leaderboardHandler(req, res) {
   const userIds = results.map(result => result._id);
   const users = await User.find(
     { _id: { $in: userIds } },
-    { name: 1, email: 1 } // Only return name and email
+    { name: 1, email: 1, profileImageGcsPath: 1 } // Include profile image path
   );
   
   // Create a map of userId to user data for quick lookup
@@ -109,7 +109,8 @@ async function leaderboardHandler(req, res) {
         email: userData.email ? `${userData.email.split('@')[0].substring(0, 3)}***@${userData.email.split('@')[1]}` : null,
         score: parseFloat(result.bestScore.toFixed(1)),
         testsTaken: result.testsTaken,
-        lastActive: result.latestTest
+        lastActive: result.latestTest,
+        profileImageGcsPath: userData.profileImageGcsPath || null
       };
     });
   

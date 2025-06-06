@@ -86,6 +86,7 @@ module.exports = {
       'images.unsplash.com',
       'imageio.forbes.com',
       'www.chainalysis.com',
+      'storage.googleapis.com',
     ],
     // Add security for images
     dangerouslyAllowSVG: false,

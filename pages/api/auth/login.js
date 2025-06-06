@@ -4,13 +4,9 @@ import connectDB from '../../../lib/database';
 import User from '../../../models/User';
 import { authRateLimit } from '../../../middleware/rateLimit';
 import { sanitizeInput, sanitizeEmail } from '../../../middleware/sanitization';
-<<<<<<< HEAD
-import { generateCSRFToken } from '../../../middleware/csrf';
-=======
 import SecurityLogger from '../../../lib/security-logger';
 import crypto from 'crypto';
 import { withCsrfProtect } from '../../../middleware/csrf';
->>>>>>> e21852f15954d1a29d6fab2cd61c4964bb1bbb59
 
 async function loginApiRouteHandler(req, res) {
   const isProduction = process.env.NODE_ENV === 'production';
@@ -33,39 +29,44 @@ async function loginApiRouteHandler(req, res) {
     const ip = req.headers['x-forwarded-for'] || req.connection?.remoteAddress || 'unknown';
 
     // Apply rate limiting for authentication
-    return new Promise((resolve) => {
-      authRateLimit(req, res, async () => {
-        try {
-          // Connect to database
-          await connectDB();
-          
-          // Apply sanitization to inputs
-          sanitizeInput()(req, res, async () => {
+    return new Promise((resolve, reject) => {
+      authRateLimit(req, res, () => {
+        sanitizeInput()(req, res, async () => {
+          try {
+            // Connect to database
+            await connectDB();
+            
             const { email, password } = req.body;
             
             // Validate input
             if (!email || !password) {
-              return res.status(400).json({ error: 'Missing required fields' });
+              res.status(400).json({ error: 'Missing required fields' });
+              return resolve();
             }
 
             // Additional input validation
             if (typeof email !== 'string' || typeof password !== 'string') {
-              return res.status(400).json({ error: 'Invalid input format' });
+              res.status(400).json({ error: 'Invalid input format' });
+              return resolve();
             }
 
             // Validate and sanitize email
             const sanitizedEmail = sanitizeEmail(email);
             if (!sanitizedEmail) {
-              return res.status(400).json({ error: 'Invalid email format' });
+              res.status(400).json({ error: 'Invalid email format' });
+              return resolve();
             }
 
             // Validate password length
             if (password.length < 6 || password.length > 128) {
-              return res.status(400).json({ error: 'Invalid credentials' });
+              res.status(400).json({ error: 'Invalid credentials' });
+              return resolve();
             }
             
-            // Find user with sanitized email
-            const user = await User.findOne({ email: sanitizedEmail });
+            // Find user with sanitized email (case-insensitive search)
+            const user = await User.findOne({ 
+              email: { $regex: new RegExp(`^${sanitizedEmail}$`, 'i') }
+            });
             if (!user) {
               // Log failed attempt even if user doesn't exist
               SecurityLogger.logEvent('failed_login', {
@@ -73,7 +74,8 @@ async function loginApiRouteHandler(req, res) {
                 ip,
                 reason: 'user_not_found'
               });
-              return res.status(401).json({ error: 'Invalid credentials' });
+              res.status(401).json({ error: 'Invalid credentials' });
+              return resolve();
             }
             
             // Compare password
@@ -98,7 +100,8 @@ async function loginApiRouteHandler(req, res) {
                   });
                 }
                 
-                return res.status(401).json({ error: 'Invalid credentials' });
+                res.status(401).json({ error: 'Invalid credentials' });
+                return resolve();
               }
               
               // Update last login on success
@@ -115,20 +118,22 @@ async function loginApiRouteHandler(req, res) {
             } catch (error) {
               // Handle account lock error from comparePassword
               if (error.message.includes('locked')) {
-                return res.status(423).json({ 
+                res.status(423).json({ 
                   error: 'Account is temporarily locked due to too many failed login attempts' 
                 });
+                return resolve();
               }
               throw error;
             }
             
             // Optional: Check if email is verified
             if (!user.isVerified && process.env.REQUIRE_EMAIL_VERIFICATION === 'true') {
-              return res.status(403).json({ 
+              res.status(403).json({ 
                 error: 'Email not verified',
                 message: 'Please verify your email before logging in.',
                 needsVerification: true
               });
+              return resolve();
             }
             
             // Generate JWT token with shorter expiry
@@ -164,7 +169,7 @@ async function loginApiRouteHandler(req, res) {
 
             res.setHeader('Set-Cookie', [authTokenCookieOptions, csrfTokenCookieOptions]);
             
-            return res.status(200).json({
+            res.status(200).json({
               user: {
                 id: user._id,
                 name: user.name,
@@ -175,77 +180,13 @@ async function loginApiRouteHandler(req, res) {
               token, // For backward compatibility
               message: 'Login successful. Token is now also set as secure cookie.'
             });
-<<<<<<< HEAD
+            resolve();
+          } catch (error) {
+            console.error('Login error:', error);
+            res.status(500).json({ error: 'Login failed' });
+            resolve();
           }
-          
-          // Generate JWT token with shorter expiry
-          const token = jwt.sign(
-            { 
-              userId: user._id,
-              email: user.email,
-              isAdmin: user.isAdmin 
-            },
-            process.env.JWT_SECRET,
-            { expiresIn: '24h' } // Reduced from 7d
-          );
-          
-          // Generate CSRF token
-          const csrfToken = generateCSRFToken();
-          
-          // Set secure httpOnly cookie for auth token
-          const isProduction = process.env.NODE_ENV === 'production';
-          const authCookieOptions = [
-            `auth_token=${token}`,
-            'HttpOnly',
-            isProduction ? 'Secure' : '',
-            'SameSite=Strict',
-            'Path=/',
-            `Max-Age=${24 * 60 * 60}` // 24 hours
-          ].filter(Boolean).join('; ');
-          
-          // Set CSRF token cookie (not HttpOnly so JavaScript can read it)
-          const csrfCookieOptions = [
-            `csrf_token=${csrfToken}`,
-            isProduction ? 'Secure' : '',
-            'SameSite=Strict',
-            'Path=/',
-            `Max-Age=${24 * 60 * 60}` // 24 hours
-          ].filter(Boolean).join('; ');
-          
-          // Set both cookies
-          res.setHeader('Set-Cookie', [authCookieOptions, csrfCookieOptions]);
-          
-          // Return user info (without password) and token
-          // Keep returning token for now for backward compatibility
-          // But encourage using the cookie instead
-          return res.status(200).json({
-            user: {
-              id: user._id,
-              name: user.name,
-              email: user.email,
-              isVerified: user.isVerified,
-              isAdmin: user.isAdmin
-            },
-            token, // For backward compatibility - remove this after updating frontend
-            csrfToken, // Return CSRF token so frontend can use it
-            message: 'Login successful. Token is now also set as secure cookie.'
-=======
->>>>>>> e21852f15954d1a29d6fab2cd61c4964bb1bbb59
-          });
-        } catch (error) {
-          console.error('Login error:', error);
-          // Ensure error response is resolved within the promise if it's a direct throw from try block
-          res.status(500).json({ error: 'Login failed' });
-          resolve(); // Ensure promise resolves in case of outer catch
-        } finally {
-          // Resolve should be called if not already handled by returning a response
-          // However, most paths return res.status().json(), which ends the response.
-          // If a path doesn't explicitly end the response, resolve() is important.
-          // Given the structure, this resolve() might be okay, but typically res.end() or similar confirms.
-          if (!res.headersSent) {
-             resolve();
-          }
-        }
+        });
       });
     });
   }

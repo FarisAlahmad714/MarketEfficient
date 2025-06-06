@@ -3,9 +3,18 @@ import { calculatePriceWithPromo } from '../../../lib/subscriptionUtils';
 import PendingRegistration from '../../../models/PendingRegistration';
 import connectDB from '../../../lib/database';
 import jwt from 'jsonwebtoken';
-import logger from '../../../lib/logger'; // Adjust path to your logger utility
+import logger from '../../../lib/logger';
+import { withCsrfProtect } from '../../../middleware/csrf';
+import { rateLimit } from '../../../middleware/rateLimit';
 
-export default async function handler(req, res) {
+// Payment-specific rate limiting
+const paymentRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  maxRequests: 5, // 5 payment attempts per 15 minutes
+  skipSuccessfulRequests: true
+});
+
+async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -147,3 +156,12 @@ export default async function handler(req, res) {
     });
   }
 }
+
+// Apply rate limiting and CSRF protection
+export default (req, res) => {
+  return new Promise((resolve) => {
+    paymentRateLimit(req, res, () => {
+      withCsrfProtect(handler)(req, res).finally(resolve);
+    });
+  });
+};

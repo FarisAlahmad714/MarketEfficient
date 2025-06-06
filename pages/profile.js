@@ -4,7 +4,7 @@ import { useRouter } from 'next/router';
 import { AuthContext } from '../contexts/AuthContext';
 import { ThemeContext } from '../contexts/ThemeContext';
 import { FaUser, FaCamera, FaCreditCard, FaCheckCircle, 
-         FaExclamationCircle, FaLock, FaBell } from 'react-icons/fa';
+         FaExclamationCircle, FaLock } from 'react-icons/fa';
 import Head from 'next/head';
 import CryptoLoader from '../components/CryptoLoader';
 import storage from '../lib/storage';
@@ -20,15 +20,17 @@ const ProfilePage = () => {
   const [billingHistory, setBillingHistory] = useState([]);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState(null);
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [passwordLoading, setPasswordLoading] = useState(false);
   
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    bio: '',
-    notifications: {
-      email: true,
-      app: true
-    }
+    bio: ''
   });
 
   useEffect(() => {
@@ -41,8 +43,7 @@ const ProfilePage = () => {
       setFormData({
         name: user.name || '',
         email: user.email || '',
-        bio: user.bio || '',
-        notifications: user.notifications || { email: true, app: true }
+        bio: user.bio || ''
       });
       fetchUserData();
     }
@@ -58,6 +59,7 @@ const ProfilePage = () => {
         return;
       }
       
+      // Fetch subscription data
       const response = await fetch('/api/user/subscription/details', {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -69,11 +71,37 @@ const ProfilePage = () => {
       const data = await response.json();
       setSubscription(data.subscription);
       setBillingHistory(data.billingHistory || []);
+      
+      // Fetch profile image
+      await fetchProfileImage();
     } catch (err) {
       console.error('Error fetching user data:', err);
       setSaveError('Failed to load subscription data');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchProfileImage = async () => {
+    try {
+      const token = storage.getItem('auth_token');
+      const response = await fetch('/api/user/get-profile-image', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.signedUrl) {
+          setProfileImage(data.signedUrl);
+        } else {
+          setProfileImage(null);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching profile image:', error);
+      // Don't show error for missing profile image, just leave it empty
     }
   };
 
@@ -85,24 +113,70 @@ const ProfilePage = () => {
     }));
   };
 
-  const handleNotificationChange = (type) => {
-    setFormData(prev => ({
-      ...prev,
-      notifications: {
-        ...prev.notifications,
-        [type]: !prev.notifications[type]
-      }
-    }));
-  };
 
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        setSaveError('Please select a valid image file');
+        return;
+      }
+      
+      // Validate file size (5MB limit)
+      if (file.size > 5 * 1024 * 1024) {
+        setSaveError('Image size must be less than 5MB');
+        return;
+      }
+      
       const reader = new FileReader();
       reader.onloadend = () => {
+        // Show preview immediately
         setProfileImage(reader.result);
+        // Auto-save the profile image to GCS
+        saveProfileImage(reader.result);
       };
       reader.readAsDataURL(file);
+    }
+  };
+
+  const saveProfileImage = async (imageData) => {
+    try {
+      setLoading(true);
+      const token = storage.getItem('auth_token');
+      
+      const response = await fetch('/api/user/update-profile', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          profileImage: imageData
+        })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update profile image');
+      }
+      
+      const data = await response.json();
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+      
+      // Refresh the profile image from GCS
+      await fetchProfileImage();
+      
+    } catch (error) {
+      console.error('Error saving profile image:', error);
+      setSaveError(error.message);
+      setTimeout(() => setSaveError(null), 5000);
+      // Reset the profile image to previous state on error
+      setProfileImage(null);
+      await fetchProfileImage();
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -111,12 +185,33 @@ const ProfilePage = () => {
     setSaveError(null);
     
     try {
-      // Simulate save - replace with actual API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const token = storage.getItem('auth_token');
+      
+      const response = await fetch('/api/user/update-profile', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          bio: formData.bio
+        })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update profile');
+      }
+      
+      const data = await response.json();
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
+      
     } catch (error) {
-      setSaveError('Failed to save profile');
+      console.error('Error saving profile:', error);
+      setSaveError(error.message);
+      setTimeout(() => setSaveError(null), 5000);
     } finally {
       setLoading(false);
     }
@@ -152,7 +247,7 @@ const ProfilePage = () => {
     setLoading(true);
     try {
       const token = storage.getItem('auth_token');
-      const response = await fetch('/api/user/subscription/reactivate', {
+      const response = await fetch('/api/user/subscription/reacivate', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -160,13 +255,17 @@ const ProfilePage = () => {
         }
       });
       
-      if (!response.ok) throw new Error('Failed to reactivate subscription');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to reactivate subscription');
+      }
       
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 5000);
       await fetchUserData();
     } catch (error) {
-      setSaveError('Failed to reactivate subscription');
+      setSaveError(error.message);
+      setTimeout(() => setSaveError(null), 5000);
     } finally {
       setLoading(false);
     }
@@ -193,6 +292,102 @@ const ProfilePage = () => {
       window.location.href = url;
     } catch (error) {
       setSaveError('Failed to update payment method. Please try again.');
+      setTimeout(() => setSaveError(null), 5000);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePasswordChange = async () => {
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      setSaveError('New passwords do not match');
+      return;
+    }
+    
+    if (passwordData.newPassword.length < 8) {
+      setSaveError('Password must be at least 8 characters long');
+      return;
+    }
+    
+    setPasswordLoading(true);
+    setSaveError(null);
+    
+    try {
+      const token = storage.getItem('auth_token');
+      
+      const response = await fetch('/api/user/change-password', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          currentPassword: passwordData.currentPassword,
+          newPassword: passwordData.newPassword
+        })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to change password');
+      }
+      
+      setSaveSuccess(true);
+      setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      setTimeout(() => setSaveSuccess(false), 3000);
+      
+    } catch (error) {
+      console.error('Error changing password:', error);
+      setSaveError(error.message);
+      setTimeout(() => setSaveError(null), 5000);
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    const confirmed = confirm(
+      'Are you absolutely sure you want to delete your account? This action cannot be undone and will permanently delete all your data, including:\n\n' +
+      '• Your profile and settings\n' +
+      '• All test results and progress\n' +
+      '• Subscription and billing history\n' +
+      '• Any uploaded images\n\n' +
+      'Type "DELETE" to confirm'
+    );
+    
+    if (!confirmed) return;
+    
+    const deleteConfirmation = prompt('Please type "DELETE" to confirm account deletion:');
+    if (deleteConfirmation !== 'DELETE') {
+      setSaveError('Account deletion cancelled - confirmation text did not match');
+      return;
+    }
+    
+    setLoading(true);
+    setSaveError(null);
+    
+    try {
+      const token = storage.getItem('auth_token');
+      
+      const response = await fetch('/api/user/delete-account', {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete account');
+      }
+      
+      // Account deleted successfully, log out and redirect
+      await logout();
+      router.push('/');
+      
+    } catch (error) {
+      console.error('Error deleting account:', error);
+      setSaveError(error.message);
       setTimeout(() => setSaveError(null), 5000);
     } finally {
       setLoading(false);
@@ -397,7 +592,6 @@ const ProfilePage = () => {
               {[
                 { id: 'profile', icon: FaUser, label: 'Profile Settings' },
                 { id: 'subscription', icon: FaCreditCard, label: 'Subscription' },
-                { id: 'notifications', icon: FaBell, label: 'Notifications' },
                 { id: 'security', icon: FaLock, label: 'Security' }
               ].map(tab => (
                 <button 
@@ -870,104 +1064,6 @@ const ProfilePage = () => {
               </div>
             )}
             
-            {/* Notifications Tab */}
-            {activeTab === 'notifications' && (
-              <div>
-                <h2 style={{ 
-                  color: darkMode ? '#e0e0e0' : '#333',
-                  marginTop: 0,
-                  marginBottom: '20px',
-                  fontSize: '20px',
-                }}>
-                  Notification Settings
-                </h2>
-                
-                {[
-                  { id: 'email', title: 'Email Notifications', desc: 'Receive emails about account updates' },
-                  { id: 'app', title: 'App Notifications', desc: 'In-app notifications about your activity' }
-                ].map(notif => (
-                  <div
-                    key={notif.id}
-                    style={{
-                      marginBottom: '15px',
-                      padding: '15px',
-                      borderRadius: '8px',
-                      backgroundColor: darkMode ? '#262626' : '#f5f5f5',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                    }}
-                  >
-                    <div>
-                      <h3 style={{ 
-                        color: darkMode ? '#e0e0e0' : '#333',
-                        margin: '0 0 5px 0',
-                        fontSize: '16px',
-                      }}>
-                        {notif.title}
-                      </h3>
-                      <p style={{ 
-                        color: darkMode ? '#b0b0b0' : '#666',
-                        margin: 0,
-                        fontSize: '14px',
-                      }}>
-                        {notif.desc}
-                      </p>
-                    </div>
-                    <label style={{ position: 'relative', display: 'inline-block', width: '50px', height: '26px' }}>
-                      <input 
-                        type="checkbox" 
-                        checked={formData.notifications[notif.id]} 
-                        onChange={() => handleNotificationChange(notif.id)}
-                        style={{ opacity: 0, width: 0, height: 0 }}
-                      />
-                      <span style={{
-                        position: 'absolute',
-                        cursor: 'pointer',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        backgroundColor: formData.notifications[notif.id] ? '#2196F3' : (darkMode ? '#555' : '#ccc'),
-                        transition: '0.3s',
-                        borderRadius: '34px',
-                      }}>
-                        <span style={{
-                          position: 'absolute',
-                          height: '18px',
-                          width: '18px',
-                          left: formData.notifications[notif.id] ? '28px' : '4px',
-                          bottom: '4px',
-                          backgroundColor: 'white',
-                          transition: '0.3s',
-                          borderRadius: '50%',
-                        }} />
-                      </span>
-                    </label>
-                  </div>
-                ))}
-                
-                <button 
-                  onClick={handleSaveProfile}
-                  disabled={loading}
-                  style={{
-                    backgroundColor: '#2196F3',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    padding: '12px 24px',
-                    fontSize: '16px',
-                    fontWeight: '500',
-                    cursor: loading ? 'not-allowed' : 'pointer',
-                    opacity: loading ? 0.7 : 1,
-                    marginTop: '20px',
-                  }}
-                >
-                  {loading ? 'Saving...' : 'Save Preferences'}
-                </button>
-              </div>
-            )}
-            
             {/* Security Tab */}
             {activeTab === 'security' && (
               <div>
@@ -980,6 +1076,7 @@ const ProfilePage = () => {
                   Security Settings
                 </h2>
                 
+                {/* Change Password Section */}
                 <div style={{
                   padding: '20px',
                   borderRadius: '8px',
@@ -994,22 +1091,117 @@ const ProfilePage = () => {
                     Change Password
                   </h3>
                   
-                  <button 
-                    onClick={() => router.push('/auth/forgot-password')}
-                    style={{
-                      backgroundColor: '#2196F3',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '6px',
-                      padding: '10px 20px',
+                  <div style={{ marginBottom: '15px' }}>
+                    <label style={{
+                      display: 'block',
+                      marginBottom: '5px',
+                      color: darkMode ? '#b0b0b0' : '#666',
                       fontSize: '14px',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    Reset Password via Email
-                  </button>
+                    }}>
+                      Current Password
+                    </label>
+                    <input
+                      type="password"
+                      value={passwordData.currentPassword}
+                      onChange={(e) => setPasswordData({...passwordData, currentPassword: e.target.value})}
+                      style={{
+                        width: '100%',
+                        padding: '10px',
+                        fontSize: '14px',
+                        border: `1px solid ${darkMode ? '#444' : '#ddd'}`,
+                        borderRadius: '6px',
+                        backgroundColor: darkMode ? '#333' : '#fff',
+                        color: darkMode ? '#e0e0e0' : '#333',
+                      }}
+                    />
+                  </div>
+                  
+                  <div style={{ marginBottom: '15px' }}>
+                    <label style={{
+                      display: 'block',
+                      marginBottom: '5px',
+                      color: darkMode ? '#b0b0b0' : '#666',
+                      fontSize: '14px',
+                    }}>
+                      New Password
+                    </label>
+                    <input
+                      type="password"
+                      value={passwordData.newPassword}
+                      onChange={(e) => setPasswordData({...passwordData, newPassword: e.target.value})}
+                      style={{
+                        width: '100%',
+                        padding: '10px',
+                        fontSize: '14px',
+                        border: `1px solid ${darkMode ? '#444' : '#ddd'}`,
+                        borderRadius: '6px',
+                        backgroundColor: darkMode ? '#333' : '#fff',
+                        color: darkMode ? '#e0e0e0' : '#333',
+                      }}
+                    />
+                  </div>
+                  
+                  <div style={{ marginBottom: '20px' }}>
+                    <label style={{
+                      display: 'block',
+                      marginBottom: '5px',
+                      color: darkMode ? '#b0b0b0' : '#666',
+                      fontSize: '14px',
+                    }}>
+                      Confirm New Password
+                    </label>
+                    <input
+                      type="password"
+                      value={passwordData.confirmPassword}
+                      onChange={(e) => setPasswordData({...passwordData, confirmPassword: e.target.value})}
+                      style={{
+                        width: '100%',
+                        padding: '10px',
+                        fontSize: '14px',
+                        border: `1px solid ${darkMode ? '#444' : '#ddd'}`,
+                        borderRadius: '6px',
+                        backgroundColor: darkMode ? '#333' : '#fff',
+                        color: darkMode ? '#e0e0e0' : '#333',
+                      }}
+                    />
+                  </div>
+                  
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button 
+                      onClick={handlePasswordChange}
+                      disabled={passwordLoading || !passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword}
+                      style={{
+                        backgroundColor: '#2196F3',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '6px',
+                        padding: '10px 20px',
+                        fontSize: '14px',
+                        cursor: passwordLoading ? 'not-allowed' : 'pointer',
+                        opacity: passwordLoading ? 0.7 : 1,
+                      }}
+                    >
+                      {passwordLoading ? 'Changing...' : 'Change Password'}
+                    </button>
+                    
+                    <button 
+                      onClick={() => router.push('/auth/forgot-password')}
+                      style={{
+                        backgroundColor: 'transparent',
+                        color: '#2196F3',
+                        border: '1px solid #2196F3',
+                        borderRadius: '6px',
+                        padding: '10px 20px',
+                        fontSize: '14px',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Reset via Email
+                    </button>
+                  </div>
                 </div>
                 
+                {/* Account Actions Section */}
                 <div style={{
                   padding: '20px',
                   borderRadius: '8px',
@@ -1023,20 +1215,50 @@ const ProfilePage = () => {
                     Account Actions
                   </h3>
                   
-                  <button 
-                    onClick={logout}
-                    style={{
-                      backgroundColor: '#F44336',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '6px',
-                      padding: '10px 20px',
-                      fontSize: '14px',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    Log Out
-                  </button>
+                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                    <button 
+                      onClick={logout}
+                      style={{
+                        backgroundColor: '#FF9800',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '6px',
+                        padding: '10px 20px',
+                        fontSize: '14px',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Log Out
+                    </button>
+                    
+                    <button 
+                      onClick={handleDeleteAccount}
+                      disabled={loading}
+                      style={{
+                        backgroundColor: '#F44336',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '6px',
+                        padding: '10px 20px',
+                        fontSize: '14px',
+                        cursor: loading ? 'not-allowed' : 'pointer',
+                        opacity: loading ? 0.7 : 1,
+                      }}
+                    >
+                      {loading ? 'Deleting...' : 'Delete Account'}
+                    </button>
+                  </div>
+                  
+                  <div style={{
+                    marginTop: '15px',
+                    padding: '10px',
+                    backgroundColor: darkMode ? 'rgba(244, 67, 54, 0.1)' : 'rgba(244, 67, 54, 0.05)',
+                    borderRadius: '6px',
+                    fontSize: '12px',
+                    color: '#F44336',
+                  }}>
+                    ⚠️ Warning: Account deletion is permanent and cannot be undone. All your data will be permanently deleted.
+                  </div>
                 </div>
               </div>
             )}

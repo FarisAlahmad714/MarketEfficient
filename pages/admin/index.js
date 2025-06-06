@@ -46,6 +46,10 @@ const AdminPanel = () => {
   const [showUserDetailsModal, setShowUserDetailsModal] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const cryptoLoaderRef = useRef(null);
+  const [showAuditTrail, setShowAuditTrail] = useState(false);
+  const [auditData, setAuditData] = useState(null);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditPage, setAuditPage] = useState(1);
 
   // Fetch users
   useEffect(() => {
@@ -188,6 +192,32 @@ const AdminPanel = () => {
     setShowUserDetailsModal(false);
   };
 
+  // Fetch audit trail data
+  const fetchAuditTrail = async (page = 1) => {
+    try {
+      setAuditLoading(true);
+      const token = storage.getItem('auth_token');
+      const response = await fetch(`/api/admin/audit-trail?page=${page}&limit=10`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!response.ok) throw new Error('Failed to fetch audit trail');
+      const data = await response.json();
+      setAuditData(data);
+      setAuditPage(page);
+    } catch (err) {
+      console.error('Error fetching audit trail:', err);
+    } finally {
+      setAuditLoading(false);
+    }
+  };
+
+  const handleShowAuditTrail = () => {
+    setShowAuditTrail(true);
+    if (!auditData) {
+      fetchAuditTrail(1);
+    }
+  };
+
   return (
     <TrackedPage>
     <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px 20px' }}>
@@ -303,18 +333,22 @@ const AdminPanel = () => {
             <div style={{ fontWeight: '500', marginBottom: '5px' }}>Email Automation</div>
             <div style={{ fontSize: '14px', color: darkMode ? '#b0b0b0' : '#666' }}>Test and monitor automated email campaigns</div>
           </Link>
-          <div style={{
+          <Link href="/admin/financial-analytics" style={{
+            display: 'block',
             padding: '15px 20px',
             backgroundColor: darkMode ? '#2a2a2a' : '#f8f9fa',
             borderRadius: '8px',
-            color: darkMode ? '#888' : '#999',
+            textDecoration: 'none',
+            color: darkMode ? '#e0e0e0' : '#333',
             border: `1px solid ${darkMode ? '#444' : '#e0e0e0'}`,
-            opacity: 0.6
-          }}>
-            <div style={{ fontSize: '20px', marginBottom: '8px' }}>📊</div>
-            <div style={{ fontWeight: '500', marginBottom: '5px' }}>Analytics Dashboard</div>
-            <div style={{ fontSize: '14px' }}>Coming soon - User engagement and platform metrics</div>
-          </div>
+            transition: 'all 0.2s ease'
+          }}
+          onMouseOver={(e) => { e.target.style.backgroundColor = darkMode ? '#333' : '#e9ecef'; e.target.style.transform = 'translateY(-2px)'; }}
+          onMouseOut={(e) => { e.target.style.backgroundColor = darkMode ? '#2a2a2a' : '#f8f9fa'; e.target.style.transform = 'translateY(0)'; }}>
+            <div style={{ fontSize: '20px', marginBottom: '8px' }}>💰</div>
+            <div style={{ fontWeight: '500', marginBottom: '5px' }}>Financial Analytics</div>
+            <div style={{ fontSize: '14px', color: darkMode ? '#b0b0b0' : '#666' }}>Revenue tracking, payment metrics, and financial insights</div>
+          </Link>
           <Link href="/admin/system-settings" style={linkStyle}>
             <div style={{ fontWeight: '500', marginBottom: '5px' }}>System Settings</div>
             <p style={{ fontSize: '14px', color: darkMode ? '#aaa' : '#666' }}>Platform configuration and preferences</p>
@@ -418,9 +452,29 @@ const AdminPanel = () => {
         marginBottom: '30px',
         boxShadow: darkMode ? '0 4px 12px rgba(0,0,0,0.3)' : '0 4px 12px rgba(0,0,0,0.1)'
       }}>
-        <h3 style={{ color: darkMode ? '#e0e0e0' : '#333', marginBottom: '20px', fontSize: '18px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-          👥 User Management
-        </h3>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <h3 style={{ color: darkMode ? '#e0e0e0' : '#333', fontSize: '18px', display: 'flex', alignItems: 'center', gap: '10px', margin: 0 }}>
+            👥 User Management
+          </h3>
+          <button
+            onClick={handleShowAuditTrail}
+            style={{
+              padding: '8px 16px',
+              backgroundColor: '#8B5CF6',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: '500',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            📋 View Audit Trail
+          </button>
+        </div>
         <div style={{ marginBottom: '30px', display: 'flex', gap: '10px' }}>
           <form onSubmit={handleSearch} style={{ display: 'flex', gap: '10px', width: '100%' }}>
             <input
@@ -676,6 +730,261 @@ const AdminPanel = () => {
           onClose={() => setShowUserDetailsModal(false)}
           onUpdate={handleUserDetailsUpdate}
         />
+      )}
+
+      {/* Audit Trail Modal */}
+      {showAuditTrail && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.7)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1000,
+          padding: '20px'
+        }}>
+          <div style={{
+            backgroundColor: darkMode ? '#1e1e1e' : 'white',
+            borderRadius: '12px',
+            width: '90%',
+            maxWidth: '1200px',
+            maxHeight: '90vh',
+            overflow: 'hidden',
+            boxShadow: darkMode ? '0 20px 60px rgba(0,0,0,0.5)' : '0 20px 60px rgba(0,0,0,0.2)'
+          }}>
+            {/* Modal Header */}
+            <div style={{
+              padding: '24px',
+              borderBottom: `1px solid ${darkMode ? '#333' : '#eee'}`,
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <h2 style={{ color: darkMode ? '#e0e0e0' : '#333', margin: 0 }}>📋 Admin Audit Trail</h2>
+              <button
+                onClick={() => setShowAuditTrail(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '24px',
+                  cursor: 'pointer',
+                  color: darkMode ? '#e0e0e0' : '#333',
+                  padding: '0',
+                  width: '32px',
+                  height: '32px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: '50%'
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div style={{ padding: '24px', overflowY: 'auto', maxHeight: 'calc(90vh - 120px)' }}>
+              {auditLoading ? (
+                <div style={{ textAlign: 'center', padding: '40px' }}>
+                  <CryptoLoader message="Loading audit trail..." />
+                </div>
+              ) : auditData ? (
+                <>
+                  {/* Summary Stats */}
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                    gap: '16px',
+                    marginBottom: '24px'
+                  }}>
+                    <div style={{
+                      padding: '16px',
+                      backgroundColor: darkMode ? '#2a2a2a' : '#f8f9fa',
+                      borderRadius: '8px',
+                      textAlign: 'center'
+                    }}>
+                      <div style={{ fontSize: '24px', fontWeight: '600', color: '#22C55E' }}>
+                        {auditData.summary.total}
+                      </div>
+                      <div style={{ fontSize: '14px', color: darkMode ? '#b0b0b0' : '#666' }}>
+                        Total Actions
+                      </div>
+                    </div>
+                    <div style={{
+                      padding: '16px',
+                      backgroundColor: darkMode ? '#2a2a2a' : '#f8f9fa',
+                      borderRadius: '8px',
+                      textAlign: 'center'
+                    }}>
+                      <div style={{ fontSize: '24px', fontWeight: '600', color: '#3B82F6' }}>
+                        {auditData.summary.successRate}%
+                      </div>
+                      <div style={{ fontSize: '14px', color: darkMode ? '#b0b0b0' : '#666' }}>
+                        Success Rate
+                      </div>
+                    </div>
+                    <div style={{
+                      padding: '16px',
+                      backgroundColor: darkMode ? '#2a2a2a' : '#f8f9fa',
+                      borderRadius: '8px',
+                      textAlign: 'center'
+                    }}>
+                      <div style={{ fontSize: '24px', fontWeight: '600', color: '#F59E0B' }}>
+                        {auditData.recentCriticalActions.length}
+                      </div>
+                      <div style={{ fontSize: '14px', color: darkMode ? '#b0b0b0' : '#666' }}>
+                        Critical (24h)
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Recent Actions Table */}
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{
+                      width: '100%',
+                      borderCollapse: 'collapse',
+                      backgroundColor: darkMode ? '#1e1e1e' : 'white',
+                      borderRadius: '8px',
+                      overflow: 'hidden'
+                    }}>
+                      <thead>
+                        <tr style={{ backgroundColor: darkMode ? '#2a2a2a' : '#f5f5f5' }}>
+                          <th style={{ padding: '12px', textAlign: 'left', color: darkMode ? '#e0e0e0' : '#333' }}>Time</th>
+                          <th style={{ padding: '12px', textAlign: 'left', color: darkMode ? '#e0e0e0' : '#333' }}>Admin</th>
+                          <th style={{ padding: '12px', textAlign: 'left', color: darkMode ? '#e0e0e0' : '#333' }}>Action</th>
+                          <th style={{ padding: '12px', textAlign: 'left', color: darkMode ? '#e0e0e0' : '#333' }}>Target</th>
+                          <th style={{ padding: '12px', textAlign: 'center', color: darkMode ? '#e0e0e0' : '#333' }}>Status</th>
+                          <th style={{ padding: '12px', textAlign: 'center', color: darkMode ? '#e0e0e0' : '#333' }}>Severity</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {auditData.auditTrail.map((action, index) => (
+                          <tr key={action._id} style={{ 
+                            borderBottom: `1px solid ${darkMode ? '#333' : '#eee'}`,
+                            backgroundColor: index % 2 === 0 ? 'transparent' : (darkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)')
+                          }}>
+                            <td style={{ padding: '12px', color: darkMode ? '#b0b0b0' : '#666', fontSize: '12px' }}>
+                              {action.timeAgo}
+                              <br />
+                              <span style={{ fontSize: '11px', opacity: 0.7 }}>
+                                {new Date(action.createdAt).toLocaleString()}
+                              </span>
+                            </td>
+                            <td style={{ padding: '12px', color: darkMode ? '#e0e0e0' : '#333' }}>
+                              {action.adminUserId?.name || 'Unknown'}
+                              <br />
+                              <span style={{ fontSize: '12px', color: darkMode ? '#b0b0b0' : '#666' }}>
+                                {action.adminUserId?.email}
+                              </span>
+                            </td>
+                            <td style={{ padding: '12px', color: darkMode ? '#e0e0e0' : '#333' }}>
+                              {action.displayText}
+                              {action.description && (
+                                <div style={{ fontSize: '12px', color: darkMode ? '#b0b0b0' : '#666', marginTop: '4px' }}>
+                                  {action.description}
+                                </div>
+                              )}
+                            </td>
+                            <td style={{ padding: '12px', color: darkMode ? '#e0e0e0' : '#333' }}>
+                              <span style={{
+                                padding: '2px 6px',
+                                borderRadius: '4px',
+                                fontSize: '11px',
+                                backgroundColor: darkMode ? '#333' : '#f0f0f0',
+                                textTransform: 'capitalize'
+                              }}>
+                                {action.targetType}
+                              </span>
+                              {action.targetIdentifier && (
+                                <div style={{ fontSize: '11px', marginTop: '2px', color: darkMode ? '#b0b0b0' : '#666' }}>
+                                  {action.targetIdentifier}
+                                </div>
+                              )}
+                            </td>
+                            <td style={{ padding: '12px', textAlign: 'center' }}>
+                              <span style={{
+                                display: 'inline-block',
+                                width: '8px',
+                                height: '8px',
+                                borderRadius: '50%',
+                                backgroundColor: action.success ? '#22C55E' : '#EF4444'
+                              }}></span>
+                            </td>
+                            <td style={{ padding: '12px', textAlign: 'center' }}>
+                              <span style={{
+                                padding: '2px 8px',
+                                borderRadius: '4px',
+                                fontSize: '11px',
+                                fontWeight: '500',
+                                backgroundColor: 
+                                  action.severity === 'critical' ? '#EF4444' :
+                                  action.severity === 'high' ? '#F59E0B' :
+                                  action.severity === 'medium' ? '#3B82F6' : '#6B7280',
+                                color: 'white'
+                              }}>
+                                {action.severity}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Pagination */}
+                  {auditData.pagination.totalPages > 1 && (
+                    <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginTop: '20px' }}>
+                      <button 
+                        onClick={() => fetchAuditTrail(auditPage - 1)} 
+                        disabled={!auditData.pagination.hasPrev}
+                        style={{
+                          padding: '8px 12px',
+                          backgroundColor: auditData.pagination.hasPrev ? '#8B5CF6' : '#6B7280',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: auditData.pagination.hasPrev ? 'pointer' : 'default'
+                        }}
+                      >
+                        Previous
+                      </button>
+                      <span style={{ 
+                        padding: '8px 12px', 
+                        color: darkMode ? '#e0e0e0' : '#333',
+                        display: 'flex',
+                        alignItems: 'center'
+                      }}>
+                        Page {auditData.pagination.currentPage} of {auditData.pagination.totalPages}
+                      </span>
+                      <button 
+                        onClick={() => fetchAuditTrail(auditPage + 1)} 
+                        disabled={!auditData.pagination.hasNext}
+                        style={{
+                          padding: '8px 12px',
+                          backgroundColor: auditData.pagination.hasNext ? '#8B5CF6' : '#6B7280',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: auditData.pagination.hasNext ? 'pointer' : 'default'
+                        }}
+                      >
+                        Next
+                      </button>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div style={{ textAlign: 'center', padding: '40px', color: darkMode ? '#b0b0b0' : '#666' }}>
+                  No audit trail data available
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
     </TrackedPage>

@@ -3,9 +3,18 @@ import PromoCode from '../../../models/PromoCode';
 import User from '../../../models/User';
 import connectDB from '../../../lib/database';
 import jwt from 'jsonwebtoken';
-import logger from '../../../lib/logger'; // Adjust path to your logger utility
+import logger from '../../../lib/logger';
+import { withCsrfProtect } from '../../../middleware/csrf';
+import { rateLimit } from '../../../middleware/rateLimit';
 
-export default async function handler(req, res) {
+// Promo validation rate limiting (prevent brute force)
+const promoRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  maxRequests: 10, // 10 promo validations per 15 minutes
+  skipSuccessfulRequests: false
+});
+
+async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -92,4 +101,13 @@ export default async function handler(req, res) {
       details: error.message 
     });
   }
-} 
+}
+
+// Apply rate limiting and CSRF protection
+export default (req, res) => {
+  return new Promise((resolve) => {
+    promoRateLimit(req, res, () => {
+      withCsrfProtect(handler)(req, res).finally(resolve);
+    });
+  });
+}; 

@@ -59,4 +59,13 @@ async function handler(req, res) {
   }
 }
 
-export default authenticate(handler); 
+export default async function (req, res) {
+  const authMiddleware = authenticate({ required: true });
+  
+  return new Promise((resolve, reject) => {
+    authMiddleware(req, res, (err) => {
+      if (err) return reject(err);
+      handler(req, res).then(resolve).catch(reject);
+    });
+  });
+}; 

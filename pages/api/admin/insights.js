@@ -1,4 +1,4 @@
-// pages/api/admin/insights.js - REPLACE YOUR ENTIRE FILE WITH THIS
+// pages/api/admin/insights.js - Real Security Monitoring Implementation
 import { requireAdmin } from '../../../middleware/auth';
 import User from '../../../models/User';
 import TestResults from '../../../models/TestResults';

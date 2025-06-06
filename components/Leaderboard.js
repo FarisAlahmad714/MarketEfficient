@@ -5,6 +5,8 @@ import { AuthContext } from '../contexts/AuthContext';
 import { Trophy, Award, Medal, User, Calendar, Activity } from 'lucide-react';
 import CryptoLoader from './CryptoLoader';
 import storage from '../lib/storage';
+import ProfileAvatar from './ProfileAvatar';
+import { useLeaderboardImages } from '../lib/useLeaderboardImages';
 
 
 const Leaderboard = () => {
@@ -19,6 +21,9 @@ const Leaderboard = () => {
   const { darkMode } = useContext(ThemeContext);
   const { isAuthenticated, user } = useContext(AuthContext);
   const cryptoLoaderRef = useRef(null);
+
+  // Fetch profile images for leaderboard users
+  const { imageUrls } = useLeaderboardImages(leaderboardData);
 
   const testTypes = [
     { id: 'all', name: 'All Tests' },
@@ -332,22 +337,14 @@ const Leaderboard = () => {
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <div
-                            style={{
-                              width: '30px',
-                              height: '30px',
-                              backgroundColor: generateUserColor(entry.name),
-                              borderRadius: '50%',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              color: 'white',
-                              fontWeight: '600',
-                              fontSize: '0.85rem',
-                            }}
-                          >
-                            {entry.name.charAt(0).toUpperCase()}
-                          </div>
+                          <ProfileAvatar
+                            imageUrl={imageUrls[entry.userId]}
+                            name={entry.name}
+                            size={30}
+                            borderRadius="50%"
+                            fallbackColor={generateUserColor(entry.name)}
+                            textSize="0.85rem"
+                          />
                           <div>
                             <div>{entry.name}</div>
                             {entry.email && (

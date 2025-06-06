@@ -22,7 +22,6 @@ const UserSchema = new mongoose.Schema({
     unique: true,
     lowercase: true,
     trim: true,
-    index: true, // Add index for performance
     match: [
       /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
       'Please provide a valid email'
@@ -120,6 +119,35 @@ const UserSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  // Profile fields
+  bio: {
+    type: String,
+    maxlength: [500, 'Bio cannot be more than 500 characters'],
+    default: ''
+  },
+  profileImageUrl: {
+    type: String,
+    default: ''
+  },
+  profileImageGcsPath: {
+    type: String,
+    default: ''
+  },
+  // Email change fields
+  newEmail: {
+    type: String,
+    lowercase: true,
+    trim: true,
+    match: [
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+      'Please provide a valid email'
+    ]
+  },
+  newEmailVerificationToken: {
+    type: String,
+    sparse: true
+  },
+  newEmailVerificationTokenExpires: Date,
   createdAt: {
     type: Date,
     default: Date.now
@@ -132,8 +160,7 @@ const UserSchema = new mongoose.Schema({
 
 // Compound index for email + isVerified for faster queries
 UserSchema.index({ email: 1, isVerified: 1 });
-// Index for performance
-UserSchema.index({ verificationToken: 1 });
+// Index for performance (verificationToken already has sparse index)
 UserSchema.index({ resetPasswordToken: 1 });
 
 // Virtual for account lock status

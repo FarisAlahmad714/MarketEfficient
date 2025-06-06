@@ -13,6 +13,15 @@ export default function CronTestPage() {
   const [testResults, setTestResults] = useState(null);
   const [isRunning, setIsRunning] = useState(false);
   const [selectedTest, setSelectedTest] = useState('weekly-metrics');
+  const [showEmailManagement, setShowEmailManagement] = useState(false);
+  const [emailData, setEmailData] = useState(null);
+  const [emailLoading, setEmailLoading] = useState(false);
+  const [bulkEmailData, setBulkEmailData] = useState({
+    subject: '',
+    message: '',
+    userGroup: 'all',
+    scheduledFor: ''
+  });
 
   useEffect(() => {
     if (!isLoading && (!user || !user.isAdmin)) {
@@ -48,6 +57,59 @@ export default function CronTestPage() {
     }
   };
 
+  const fetchEmailData = async () => {
+    try {
+      setEmailLoading(true);
+      const response = await fetch('/api/admin/email-management', {
+        headers: {
+          'Authorization': `Bearer ${storage.getItem('auth_token')}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setEmailData(data);
+      }
+    } catch (error) {
+      console.error('Error fetching email data:', error);
+    } finally {
+      setEmailLoading(false);
+    }
+  };
+
+  const handleShowEmailManagement = () => {
+    setShowEmailManagement(true);
+    if (!emailData) {
+      fetchEmailData();
+    }
+  };
+
+  const sendBulkEmail = async () => {
+    try {
+      setEmailLoading(true);
+      const response = await fetch('/api/admin/bulk-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${storage.getItem('auth_token')}`
+        },
+        body: JSON.stringify(bulkEmailData)
+      });
+      
+      const result = await response.json();
+      if (response.ok) {
+        alert(`Email sent successfully to ${result.sentCount} users`);
+        setBulkEmailData({ subject: '', message: '', userGroup: 'all', scheduledFor: '' });
+      } else {
+        alert(`Error: ${result.error}`);
+      }
+    } catch (error) {
+      alert(`Error: ${error.message}`);
+    } finally {
+      setEmailLoading(false);
+    }
+  };
+
   if (isLoading) {
     return <div>Loading...</div>;
   }
@@ -59,7 +121,7 @@ export default function CronTestPage() {
   return (
     <>
       <Head>
-        <title>Cron Job Testing - Admin</title>
+        <title>Email Automation & Management - Admin</title>
       </Head>
       
       <div style={{
@@ -70,13 +132,30 @@ export default function CronTestPage() {
         borderRadius: '12px',
         boxShadow: darkMode ? '0 4px 12px rgba(0,0,0,0.3)' : '0 4px 12px rgba(0,0,0,0.1)'
       }}>
-        <h1 style={{
-          color: darkMode ? '#e0e0e0' : '#333',
-          marginBottom: '30px',
-          fontSize: '28px'
-        }}>
-          🕐 Cron Job Testing
-        </h1>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
+          <h1 style={{
+            color: darkMode ? '#e0e0e0' : '#333',
+            fontSize: '28px',
+            margin: 0
+          }}>
+            📧 Email Automation & Management
+          </h1>
+          <button
+            onClick={handleShowEmailManagement}
+            style={{
+              padding: '10px 20px',
+              backgroundColor: '#8B5CF6',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: '500'
+            }}
+          >
+            📊 Manage User Emails
+          </button>
+        </div>
 
         <div style={{
           backgroundColor: darkMode ? '#2a2a2a' : '#f8f9fa',
@@ -308,6 +387,283 @@ export default function CronTestPage() {
             <li>Check your email service logs for delivery status</li>
           </ul>
         </div>
+
+        {/* Email Management Modal */}
+        {showEmailManagement && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 1000,
+            padding: '20px'
+          }}>
+            <div style={{
+              backgroundColor: darkMode ? '#1e1e1e' : 'white',
+              borderRadius: '12px',
+              width: '90%',
+              maxWidth: '800px',
+              maxHeight: '90vh',
+              overflow: 'hidden',
+              boxShadow: darkMode ? '0 20px 60px rgba(0,0,0,0.5)' : '0 20px 60px rgba(0,0,0,0.2)'
+            }}>
+              {/* Modal Header */}
+              <div style={{
+                padding: '24px',
+                borderBottom: `1px solid ${darkMode ? '#333' : '#eee'}`,
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}>
+                <h2 style={{ color: darkMode ? '#e0e0e0' : '#333', margin: 0 }}>📧 User Email Management</h2>
+                <button
+                  onClick={() => setShowEmailManagement(false)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    fontSize: '24px',
+                    cursor: 'pointer',
+                    color: darkMode ? '#e0e0e0' : '#333'
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+
+              {/* Modal Content */}
+              <div style={{ padding: '24px', overflowY: 'auto', maxHeight: 'calc(90vh - 120px)' }}>
+                {emailLoading && !emailData ? (
+                  <div style={{ textAlign: 'center', padding: '40px' }}>
+                    <div style={{ color: darkMode ? '#e0e0e0' : '#333' }}>Loading email data...</div>
+                  </div>
+                ) : (
+                  <>
+                    {/* Email Statistics */}
+                    {emailData && (
+                      <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                        gap: '16px',
+                        marginBottom: '24px'
+                      }}>
+                        <div style={{
+                          padding: '16px',
+                          backgroundColor: darkMode ? '#2a2a2a' : '#f8f9fa',
+                          borderRadius: '8px',
+                          textAlign: 'center'
+                        }}>
+                          <div style={{ fontSize: '24px', fontWeight: '600', color: '#22C55E' }}>
+                            {emailData.stats?.totalUsers || 0}
+                          </div>
+                          <div style={{ fontSize: '14px', color: darkMode ? '#b0b0b0' : '#666' }}>
+                            Total Users
+                          </div>
+                        </div>
+                        <div style={{
+                          padding: '16px',
+                          backgroundColor: darkMode ? '#2a2a2a' : '#f8f9fa',
+                          borderRadius: '8px',
+                          textAlign: 'center'
+                        }}>
+                          <div style={{ fontSize: '24px', fontWeight: '600', color: '#3B82F6' }}>
+                            {emailData.stats?.verifiedUsers || 0}
+                          </div>
+                          <div style={{ fontSize: '14px', color: darkMode ? '#b0b0b0' : '#666' }}>
+                            Verified Users
+                          </div>
+                        </div>
+                        <div style={{
+                          padding: '16px',
+                          backgroundColor: darkMode ? '#2a2a2a' : '#f8f9fa',
+                          borderRadius: '8px',
+                          textAlign: 'center'
+                        }}>
+                          <div style={{ fontSize: '24px', fontWeight: '600', color: '#F59E0B' }}>
+                            {emailData.stats?.activeSubscribers || 0}
+                          </div>
+                          <div style={{ fontSize: '14px', color: darkMode ? '#b0b0b0' : '#666' }}>
+                            Active Subscribers
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Bulk Email Form */}
+                    <div style={{
+                      backgroundColor: darkMode ? '#2a2a2a' : '#f8f9fa',
+                      padding: '20px',
+                      borderRadius: '8px',
+                      marginBottom: '24px'
+                    }}>
+                      <h3 style={{ color: darkMode ? '#e0e0e0' : '#333', marginBottom: '16px' }}>
+                        📤 Send Bulk Email
+                      </h3>
+                      
+                      <div style={{ display: 'grid', gap: '16px' }}>
+                        <div>
+                          <label style={{ 
+                            display: 'block', 
+                            marginBottom: '8px', 
+                            color: darkMode ? '#e0e0e0' : '#333',
+                            fontWeight: '500'
+                          }}>
+                            Target Group:
+                          </label>
+                          <select
+                            value={bulkEmailData.userGroup}
+                            onChange={(e) => setBulkEmailData({...bulkEmailData, userGroup: e.target.value})}
+                            style={{
+                              width: '100%',
+                              padding: '10px',
+                              borderRadius: '6px',
+                              border: `1px solid ${darkMode ? '#444' : '#ddd'}`,
+                              backgroundColor: darkMode ? '#333' : '#fff',
+                              color: darkMode ? '#e0e0e0' : '#333'
+                            }}
+                          >
+                            <option value="all">All Verified Users</option>
+                            <option value="subscribers">Active Subscribers</option>
+                            <option value="free">Free Users</option>
+                            <option value="inactive">Inactive Users (30+ days)</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label style={{ 
+                            display: 'block', 
+                            marginBottom: '8px', 
+                            color: darkMode ? '#e0e0e0' : '#333',
+                            fontWeight: '500'
+                          }}>
+                            Subject:
+                          </label>
+                          <input
+                            type="text"
+                            value={bulkEmailData.subject}
+                            onChange={(e) => setBulkEmailData({...bulkEmailData, subject: e.target.value})}
+                            placeholder="Email subject line"
+                            style={{
+                              width: '100%',
+                              padding: '10px',
+                              borderRadius: '6px',
+                              border: `1px solid ${darkMode ? '#444' : '#ddd'}`,
+                              backgroundColor: darkMode ? '#333' : '#fff',
+                              color: darkMode ? '#e0e0e0' : '#333'
+                            }}
+                          />
+                        </div>
+
+                        <div>
+                          <label style={{ 
+                            display: 'block', 
+                            marginBottom: '8px', 
+                            color: darkMode ? '#e0e0e0' : '#333',
+                            fontWeight: '500'
+                          }}>
+                            Message:
+                          </label>
+                          <textarea
+                            value={bulkEmailData.message}
+                            onChange={(e) => setBulkEmailData({...bulkEmailData, message: e.target.value})}
+                            placeholder="Email message content"
+                            rows="6"
+                            style={{
+                              width: '100%',
+                              padding: '10px',
+                              borderRadius: '6px',
+                              border: `1px solid ${darkMode ? '#444' : '#ddd'}`,
+                              backgroundColor: darkMode ? '#333' : '#fff',
+                              color: darkMode ? '#e0e0e0' : '#333',
+                              resize: 'vertical'
+                            }}
+                          />
+                        </div>
+
+                        <button
+                          onClick={sendBulkEmail}
+                          disabled={!bulkEmailData.subject || !bulkEmailData.message || emailLoading}
+                          style={{
+                            padding: '12px 24px',
+                            backgroundColor: (!bulkEmailData.subject || !bulkEmailData.message || emailLoading) ? '#6B7280' : '#22C55E',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '6px',
+                            cursor: (!bulkEmailData.subject || !bulkEmailData.message || emailLoading) ? 'default' : 'pointer',
+                            fontSize: '14px',
+                            fontWeight: '500'
+                          }}
+                        >
+                          {emailLoading ? 'Sending...' : '📤 Send Email'}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Recent Email Activity */}
+                    {emailData?.recentEmails && (
+                      <div>
+                        <h3 style={{ color: darkMode ? '#e0e0e0' : '#333', marginBottom: '16px' }}>
+                          📋 Recent Email Activity
+                        </h3>
+                        <div style={{ overflowX: 'auto' }}>
+                          <table style={{
+                            width: '100%',
+                            borderCollapse: 'collapse',
+                            backgroundColor: darkMode ? '#1e1e1e' : 'white',
+                            borderRadius: '8px',
+                            overflow: 'hidden'
+                          }}>
+                            <thead>
+                              <tr style={{ backgroundColor: darkMode ? '#2a2a2a' : '#f5f5f5' }}>
+                                <th style={{ padding: '12px', textAlign: 'left', color: darkMode ? '#e0e0e0' : '#333' }}>Date</th>
+                                <th style={{ padding: '12px', textAlign: 'left', color: darkMode ? '#e0e0e0' : '#333' }}>Type</th>
+                                <th style={{ padding: '12px', textAlign: 'left', color: darkMode ? '#e0e0e0' : '#333' }}>Recipients</th>
+                                <th style={{ padding: '12px', textAlign: 'left', color: darkMode ? '#e0e0e0' : '#333' }}>Status</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {emailData.recentEmails.map((email, index) => (
+                                <tr key={index} style={{ 
+                                  borderBottom: `1px solid ${darkMode ? '#333' : '#eee'}` 
+                                }}>
+                                  <td style={{ padding: '12px', color: darkMode ? '#b0b0b0' : '#666', fontSize: '12px' }}>
+                                    {new Date(email.sentAt).toLocaleString()}
+                                  </td>
+                                  <td style={{ padding: '12px', color: darkMode ? '#e0e0e0' : '#333' }}>
+                                    {email.type}
+                                  </td>
+                                  <td style={{ padding: '12px', color: darkMode ? '#e0e0e0' : '#333' }}>
+                                    {email.recipientCount}
+                                  </td>
+                                  <td style={{ padding: '12px' }}>
+                                    <span style={{
+                                      padding: '2px 8px',
+                                      borderRadius: '4px',
+                                      fontSize: '11px',
+                                      fontWeight: '500',
+                                      backgroundColor: email.status === 'sent' ? '#22C55E' : '#EF4444',
+                                      color: 'white'
+                                    }}>
+                                      {email.status}
+                                    </span>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </>
   );

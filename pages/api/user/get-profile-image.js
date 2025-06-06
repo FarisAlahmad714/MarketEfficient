@@ -1,5 +1,6 @@
 import { createApiHandler } from '../../../lib/api-handler';
 import { requireAuth } from '../../../middleware/auth';
+import { composeMiddleware } from '../../../lib/api-handler';
 import User from '../../../models/User';
 import { getSignedUrlForImage } from '../../../lib/gcs-service';
 
@@ -10,34 +11,26 @@ async function getProfileImageHandler(req, res) {
     const user = await User.findById(userId).select('profileImageGcsPath').lean();
 
     if (!user) {
-      // This case should ideally not be hit if requireAuth works correctly
-      // and user is authenticated, but as a safeguard.
       return res.status(404).json({ error: 'User not found.' });
     }
 
     if (!user.profileImageGcsPath) {
-      return res.status(404).json({ error: 'Profile image not set for this user.', hasProfileImage: false });
+      return res.status(200).json({ profileImageUrl: null, hasProfileImage: false });
     }
 
-    try {
-      const signedUrl = await getSignedUrlForImage(user.profileImageGcsPath);
-      return res.status(200).json({ signedUrl, hasProfileImage: true });
-    } catch (signedUrlError) {
-      console.error('Error generating signed URL in API:', signedUrlError);
-      // It's possible the gcsPath is invalid or the object doesn't exist anymore
-      // or there was an issue with the GCS service itself.
-      return res.status(500).json({ error: 'Could not retrieve profile image URL.', details: signedUrlError.message, hasProfileImage: true }); // hasProfileImage is true because a path exists
-    }
+    const profileImageUrl = await getSignedUrlForImage(user.profileImageGcsPath);
+    return res.status(200).json({ profileImageUrl, hasProfileImage: true });
 
-  } catch (dbError) {
-    console.error('Database error fetching user GCS path:', dbError);
-    // This will be caught by createApiHandler's general error handling if re-thrown
-    // For clarity, sending a specific response if not re-throwing.
-    return res.status(500).json({ error: 'Server error retrieving image information.' });
+  } catch (error) {
+    console.error('Error getting profile image:', error);
+    return res.status(500).json({ 
+      error: 'Failed to get profile image.',
+      details: error.message 
+    });
   }
 }
 
 export default createApiHandler(
-  requireAuth(getProfileImageHandler),
+  composeMiddleware(requireAuth, getProfileImageHandler),
   { methods: ['GET'] }
 ); 

@@ -8,6 +8,8 @@ import { FaTachometerAlt, FaSun, FaMoon, FaChevronDown, FaUserCog, FaUserShield,
 import { HiMenuAlt3, HiX } from 'react-icons/hi';
 import { AuthContext } from '../contexts/AuthContext';
 import { ThemeContext } from '../contexts/ThemeContext';
+import { useProfileImage } from '../lib/useProfileImage';
+import ProfileAvatar from './ProfileAvatar';
 
 const Navbar = () => {
   const { user, isAuthenticated, logout } = useContext(AuthContext);
@@ -18,6 +20,9 @@ const Navbar = () => {
   const mobileMenuRef = useRef(null);
   const userMenuRef = useRef(null);
   const canvasRef = useRef(null);
+
+  // Fetch profile image for authenticated user
+  const { profileImageUrl, loading: imageLoading } = useProfileImage(user?.id, isAuthenticated);
 
   // Sample crypto data (replace with real API data)
   const [cryptoPrices, setCryptoPrices] = useState([]);
@@ -183,9 +188,15 @@ const Navbar = () => {
                 aria-label="User menu"
               >
                 <div className="avatar-container">
-                  <div className="user-avatar">
-                    <span className="avatar-text">{user?.name?.charAt(0).toUpperCase() || 'U'}</span>
-                  </div>
+                  <ProfileAvatar
+                    imageUrl={profileImageUrl}
+                    name={user?.name}
+                    size={36}
+                    className="user-avatar"
+                    style={{
+                      boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)'
+                    }}
+                  />
                   <div className="user-info">
                     <span className="username">{user?.name || 'User'}</span>
                     {user?.isAdmin && <span className="admin-badge">Admin</span>}
@@ -198,9 +209,16 @@ const Navbar = () => {
               {showUserMenu && (
                 <div className="user-dropdown premium-dropdown" ref={userMenuRef}>
                   <div className="dropdown-header">
-                    <div className="dropdown-avatar">
-                      <span className="dropdown-avatar-text">{user?.name?.charAt(0).toUpperCase() || 'U'}</span>
-                    </div>
+                    <ProfileAvatar
+                      imageUrl={profileImageUrl}
+                      name={user?.name}
+                      size={48}
+                      className="dropdown-avatar"
+                      style={{
+                        boxShadow: '0 8px 20px rgba(59, 130, 246, 0.4)'
+                      }}
+                      borderRadius="14px"
+                    />
                     <div className="dropdown-user-info">
                       <span className="dropdown-username">{user?.name || 'User'}</span>
                       <span className="dropdown-email">{user?.email || 'user@example.com'}</span>
@@ -267,6 +285,7 @@ const Navbar = () => {
             className="mobile-toggle premium-button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             aria-label="Toggle mobile menu"
+            style={{ display: 'none' }}
           >
             <div className="button-content">
               {mobileMenuOpen ? <HiX /> : <HiMenuAlt3 />}
@@ -311,9 +330,13 @@ const Navbar = () => {
             {isAuthenticated && (
               <div className="mobile-user-section">
                 <div className="mobile-user-info">
-                  <div className="mobile-avatar">
-                    <span>{user?.name?.charAt(0).toUpperCase() || 'U'}</span>
-                  </div>
+                  <ProfileAvatar
+                    imageUrl={profileImageUrl}
+                    name={user?.name}
+                    size={48}
+                    className="mobile-avatar"
+                    borderRadius="12px"
+                  />
                   <div className="mobile-user-details">
                     <span className="mobile-username">{user?.name || 'User'}</span>
                     <span className="mobile-email">{user?.email || 'user@example.com'}</span>
@@ -417,6 +440,8 @@ const Navbar = () => {
             transparent 0%, 
             rgba(33, 150, 243, 0.05) 50%, 
             transparent 100%);
+          max-width: 100vw;
+          box-sizing: border-box;
         }
         
         .dark .asset-ticker {
@@ -440,6 +465,7 @@ const Navbar = () => {
           padding: 2px 8px;
           border-radius: 4px;
           transition: all 0.3s ease;
+          flex-shrink: 0;
         }
         
         .ticker-symbol {
@@ -796,17 +822,7 @@ const Navbar = () => {
         }
         
         .user-avatar {
-          width: 36px;
-          height: 36px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          border-radius: 10px;
-          background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
-          color: white;
-          font-weight: 600;
-          font-size: 14px;
-          box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+          flex-shrink: 0;
         }
         
         .user-info {
@@ -919,17 +935,7 @@ const Navbar = () => {
         }
         
         .dropdown-avatar {
-          width: 48px;
-          height: 48px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          border-radius: 14px;
-          background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
-          color: white;
-          font-weight: 700;
-          font-size: 18px;
-          box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
+          flex-shrink: 0;
         }
         
         .dropdown-user-info {
@@ -1318,16 +1324,7 @@ const Navbar = () => {
         }
         
         .mobile-avatar {
-          width: 48px;
-          height: 48px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          border-radius: 12px;
-          background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
-          color: white;
-          font-weight: 700;
-          font-size: 18px;
+          flex-shrink: 0;
         }
         
         .mobile-user-details {

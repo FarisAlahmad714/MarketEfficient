@@ -72,8 +72,7 @@ const SubscriptionSchema = new mongoose.Schema({
   }
 });
 
-// Index for performance
-SubscriptionSchema.index({ userId: 1 });
+// Index for performance (userId already has unique index)
 SubscriptionSchema.index({ stripeCustomerId: 1 });
 SubscriptionSchema.index({ stripeSubscriptionId: 1 });
 SubscriptionSchema.index({ status: 1 });

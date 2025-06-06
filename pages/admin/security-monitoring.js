@@ -1,9 +1,8 @@
-//pages/admin/security-monitoring.js
+//pages/admin/security-monitoring.js - Enhanced Real Security Monitoring
 import React, { useState, useEffect, useContext } from 'react';
 import { useRouter } from 'next/router';
 import { AuthContext } from '../../contexts/AuthContext';
-import storage from '../../lib/storage';
-import { Shield, AlertTriangle, CheckCircle, Activity, Lock, Users, CreditCard, Mail } from 'lucide-react';
+import { Shield, AlertTriangle, CheckCircle, Activity, Lock, Users, CreditCard, Mail, TrendingUp, Eye, RefreshCw, Server, Database, Globe, Cpu } from 'lucide-react';
 import { ThemeContext } from '../../contexts/ThemeContext';
 import CryptoLoader from '../../components/CryptoLoader';
 
@@ -12,23 +11,13 @@ const SecurityMonitoringDashboard = () => {
   const router = useRouter();
   const { darkMode } = useContext(ThemeContext);
 
-  const [securityMetrics, setSecurityMetrics] = useState({
-    failedLogins: 0,
-    suspiciousActivities: 0,
-    activeTokens: 0,
-    recentPaymentFailures: 0,
-    unverifiedEmails: 0,
-    rateLimitHits: 0,
-    lastSecurityScan: null,
-    vulnerabilities: [],
-    lockedAccounts: 0,
-    dormantAccounts: 0
-  });
-
   const [securityData, setSecurityData] = useState(null);
-  const [securityScore, setSecurityScore] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [lastUpdate, setLastUpdate] = useState(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
+  // Redirect non-admin users
   useEffect(() => {
     if (typeof isAuthenticated === 'undefined' || !router.isReady) {
       return;
@@ -40,114 +29,114 @@ const SecurityMonitoringDashboard = () => {
     }
   }, [isAuthenticated, user, router]);
 
+  const fetchSecurityData = async (showRefreshLoader = false) => {
+    try {
+      if (showRefreshLoader) {
+        setIsRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+
+      const response = await fetch('/api/admin/security-monitoring', {
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch security data: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      setSecurityData(data);
+      setLastUpdate(new Date());
+      setError(null);
+    } catch (err) {
+      console.error('Security monitoring error:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+      setIsRefreshing(false);
+    }
+  };
+
   useEffect(() => {
     if (isAuthenticated && user?.isAdmin) {
-      const fetchSecurityDataAndMetrics = async () => {
-        try {
-          setLoading(true);
-          const token = storage.getItem('auth_token');
-
-          if (!token) {
-            console.warn('Admin auth token not found in storage. Displaying mock data.');
-            const mockDataOnNoToken = {
-              failedLogins: 3, suspiciousActivities: 1, activeTokens: 42, recentPaymentFailures: 2,
-              unverifiedEmails: 5, rateLimitHits: 15, lastSecurityScan: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-              vulnerabilities: [
-                { severity: 'low', description: 'Outdated npm package: lodash' },
-                { severity: 'medium', description: 'Missing rate limiting on /api/assets' }
-              ], lockedAccounts: 0, dormantAccounts: 0,
-            };
-            setSecurityMetrics(mockDataOnNoToken);
-            calculateSecurityScore(mockDataOnNoToken);
-            setSecurityData(null);
-            return;
-          }
-
-          const response = await fetch('/api/admin/security-monitoring', {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
-
-          if (!response.ok) {
-            console.error('Failed to fetch security data:', response.statusText, await response.text());
-            const mockDataOnError = {
-              failedLogins: 3, suspiciousActivities: 1, activeTokens: 42, recentPaymentFailures: 2,
-              unverifiedEmails: 5, rateLimitHits: 15, lastSecurityScan: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-              vulnerabilities: [
-                { severity: 'low', description: 'Outdated npm package: lodash' },
-                { severity: 'medium', description: 'Missing rate limiting on /api/assets' }
-              ], lockedAccounts: 0, dormantAccounts: 0,
-            };
-            setSecurityMetrics(mockDataOnError);
-            calculateSecurityScore(mockDataOnError);
-            setSecurityData(null);
-            return;
-          }
-
-          const data = await response.json();
-          setSecurityData(data);
-
-          const updatedMetrics = {
-            failedLogins: data.summary?.totalFailedAttempts || 0,
-            suspiciousActivities: securityMetrics.suspiciousActivities,
-            activeTokens: securityMetrics.activeTokens,
-            recentPaymentFailures: securityMetrics.recentPaymentFailures,
-            unverifiedEmails: data.summary?.unverifiedOldAccounts || 0,
-            rateLimitHits: securityMetrics.rateLimitHits,
-            lastSecurityScan: securityMetrics.lastSecurityScan,
-            vulnerabilities: securityMetrics.vulnerabilities,
-            lockedAccounts: data.summary?.currentlyLockedAccounts || 0,
-            dormantAccounts: data.summary?.dormantAccounts || 0,
-          };
-          setSecurityMetrics(updatedMetrics);
-          calculateSecurityScore(updatedMetrics);
-        } catch (error) {
-          console.error('Error in fetchSecurityDataAndMetrics:', error);
-          const mockDataOnCatch = {
-              failedLogins: 3, suspiciousActivities: 1, activeTokens: 42, recentPaymentFailures: 2,
-              unverifiedEmails: 5, rateLimitHits: 15, lastSecurityScan: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-              vulnerabilities: [
-                { severity: 'low', description: 'Outdated npm package: lodash' },
-                { severity: 'medium', description: 'Missing rate limiting on /api/assets' }
-              ], lockedAccounts: 0, dormantAccounts: 0,
-          };
-          setSecurityMetrics(mockDataOnCatch);
-          calculateSecurityScore(mockDataOnCatch);
-          setSecurityData(null);
-        } finally {
-          setLoading(false);
-        }
-      };
-      fetchSecurityDataAndMetrics();
-    } else if (typeof isAuthenticated !== 'undefined') {
-      setLoading(false);
-      const initialMetrics = {
-        failedLogins: 0, suspiciousActivities: 0, activeTokens: 0, recentPaymentFailures: 0,
-        unverifiedEmails: 0, rateLimitHits: 0, lastSecurityScan: null, vulnerabilities: [],
-        lockedAccounts: 0, dormantAccounts: 0
-      };
-      setSecurityMetrics(initialMetrics);
-      calculateSecurityScore(initialMetrics);
-      setSecurityData(null);
+      fetchSecurityData();
+      
+      // Auto-refresh every 30 seconds
+      const interval = setInterval(() => fetchSecurityData(true), 30000);
+      return () => clearInterval(interval);
     }
   }, [isAuthenticated, user]);
 
-  const calculateSecurityScore = (metrics) => {
-    let score = 100;
-    score -= (metrics.failedLogins || 0) * 2;
-    score -= (metrics.suspiciousActivities || 0) * 10;
-    score -= (metrics.recentPaymentFailures || 0) * 5;
-    score -= (metrics.unverifiedEmails || 0) * 1;
-    score -= (metrics.lockedAccounts || 0) * 3;
-    score -= (metrics.dormantAccounts || 0) * 0.5;
-    score -= (metrics.rateLimitHits || 0) * 0.2;
-    const highSeverityVulns = metrics.vulnerabilities?.filter(v => v.severity === 'high').length || 0;
-    const mediumSeverityVulns = metrics.vulnerabilities?.filter(v => v.severity === 'medium').length || 0;
-    const lowSeverityVulns = metrics.vulnerabilities?.filter(v => v.severity === 'low').length || 0;
-    score -= highSeverityVulns * 15;
-    score -= mediumSeverityVulns * 10;
-    score -= lowSeverityVulns * 5;
-    setSecurityScore(Math.max(0, Math.round(score)));
-  };
+  const SecurityCard = ({ icon: Icon, title, value, status, description, color, trend }) => (
+    <div 
+      style={{
+        background: darkMode ? 'rgba(30, 30, 30, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+        borderRadius: '16px',
+        padding: '24px',
+        border: `1px solid ${darkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`,
+        boxShadow: darkMode ? '0 8px 32px rgba(0, 0, 0, 0.3)' : '0 8px 32px rgba(0, 0, 0, 0.1)',
+        transition: 'all 0.3s ease',
+        height: '100%'
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', marginBottom: '16px' }}>
+        <div 
+          style={{
+            background: `${color}22`,
+            padding: '12px',
+            borderRadius: '12px',
+            marginRight: '16px'
+          }}
+        >
+          <Icon size={24} color={color} />
+        </div>
+        <div style={{ flex: 1 }}>
+          <h3 style={{
+            margin: 0,
+            fontSize: '16px',
+            fontWeight: 600,
+            color: darkMode ? '#F5F5F5' : '#1A1A1A'
+          }}>
+            {title}
+          </h3>
+          <p style={{
+            margin: 0,
+            fontSize: '12px',
+            color: darkMode ? '#B0B0B0' : '#666',
+            marginTop: '4px'
+          }}>
+            {description}
+          </p>
+        </div>
+      </div>
+      
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{
+          fontSize: '28px',
+          fontWeight: 700,
+          color: color
+        }}>
+          {value}
+        </div>
+        <div 
+          style={{
+            background: status === 'safe' ? '#10B98122' : 
+                       status === 'warning' ? '#F59E0B22' : '#EF444422',
+            color: status === 'safe' ? '#10B981' : 
+                   status === 'warning' ? '#F59E0B' : '#EF4444',
+            padding: '4px 8px',
+            borderRadius: '6px',
+            fontSize: '10px',
+            fontWeight: 600,
+            textTransform: 'uppercase'
+          }}
+        >
+          {status}
+        </div>
+      </div>
+    </div>
+  );
 
   const getScoreColor = (score) => {
     if (score >= 90) return '#22c55e';
@@ -156,339 +145,484 @@ const SecurityMonitoringDashboard = () => {
     return '#ef4444';
   };
 
-  const getTimeSince = (dateString) => {
-    if (!dateString) return 'Never';
-    const date = new Date(dateString);
-    const now = new Date();
-    const diff = now - date;
-    const minutes = Math.floor(diff / 60000);
-    if (minutes < 1) return 'Just now';
-    if (minutes < 60) return `${minutes} minutes ago`;
-    if (minutes < 1440) return `${Math.floor(minutes / 60)} hours ago`;
-    return `${Math.floor(minutes / 1440)} days ago`;
+  const getThreatColor = (level) => {
+    switch(level) {
+      case 'LOW': return '#22c55e';
+      case 'MEDIUM': return '#eab308';
+      case 'HIGH': return '#ef4444';
+      default: return '#6b7280';
+    }
   };
 
-  const pageStyle = {
-    maxWidth: '1200px',
-    margin: '0 auto',
-    padding: '40px 20px',
-    backgroundColor: darkMode ? '#121212' : '#f0f2f5',
-    color: darkMode ? '#e0e0e0' : '#333',
-    minHeight: '100vh'
-  };
-
-  const cardStyle = {
-    backgroundColor: darkMode ? '#1e1e1e' : 'white',
-    borderRadius: '12px',
-    padding: '20px',
-    marginBottom: '30px',
-    boxShadow: darkMode ? '0 4px 12px rgba(0,0,0,0.3)' : '0 4px 12px rgba(0,0,0,0.1)'
-  };
-  
-  const headerStyle = {
-    color: darkMode ? '#e0e0e0' : '#333',
-    marginBottom: '30px'
-  };
-  
-  const sectionTitleStyle = {
-    color: darkMode ? '#e0e0e0' : '#333',
-    marginBottom: '20px',
-    fontSize: '18px',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '10px'
-  };
-
-  const textMutedStyle = {
-    color: darkMode ? '#b0b0b0' : '#666',
-    fontSize: '14px'
-  };
-  
-  const metricItemStyle = {
-    ...cardStyle,
-    padding: '15px 20px',
-  };
-
-  if (loading) {
+  if (loading && !securityData) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', backgroundColor: darkMode ? '#121212' : '#f0f2f5' }}>
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '100vh',
+        backgroundColor: darkMode ? '#121212' : '#f0f2f5'
+      }}>
         <CryptoLoader message="Loading Security Dashboard..." />
       </div>
     );
   }
 
-  return (
-    <div style={pageStyle}>
-      <div style={{ marginBottom: '30px' }}>
-        <h1 style={{ ...headerStyle, fontSize: '28px', display: 'flex', alignItems: 'center', gap: '15px' }}>
-          <Shield size={32} color="#2196F3" />
-          Security Monitoring Dashboard
-        </h1>
-        <p style={{ ...textMutedStyle, marginTop: '10px' }}>
-          Real-time security metrics and threat monitoring for your platform.
-        </p>
+  if (error && !securityData) {
+    return (
+      <div style={{
+        maxWidth: '1200px',
+        margin: '0 auto',
+        padding: '40px 20px',
+        backgroundColor: darkMode ? '#121212' : '#f0f2f5',
+        minHeight: '100vh'
+      }}>
+        <div style={{
+          background: darkMode ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.05)',
+          border: '1px solid #EF4444',
+          borderRadius: '12px',
+          padding: '24px',
+          textAlign: 'center'
+        }}>
+          <AlertTriangle size={32} color="#EF4444" style={{ marginBottom: '16px' }} />
+          <h3 style={{ color: '#EF4444', margin: '0 0 8px 0' }}>Security Dashboard Error</h3>
+          <p style={{ color: darkMode ? '#F5F5F5' : '#1A1A1A', margin: 0 }}>{error}</p>
+          <button
+            onClick={() => fetchSecurityData()}
+            style={{
+              marginTop: '16px',
+              padding: '8px 16px',
+              background: '#EF4444',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer'
+            }}
+          >
+            Retry
+          </button>
+        </div>
       </div>
+    );
+  }
 
-      <div style={cardStyle}>
+  return (
+    <div style={{
+      maxWidth: '1200px',
+      margin: '0 auto',
+      padding: '40px 20px',
+      backgroundColor: darkMode ? '#121212' : '#f0f2f5',
+      color: darkMode ? '#e0e0e0' : '#333',
+      minHeight: '100vh'
+    }}>
+      {/* Header */}
+      <div style={{ marginBottom: '32px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div>
-            <h2 style={{ ...sectionTitleStyle, marginBottom: '5px', fontSize: '20px' }}>
-              Overall Security Score
-            </h2>
-            <p style={textMutedStyle}>
-              Based on current threats and vulnerabilities
-            </p>
-          </div>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '48px', fontWeight: 'bold', color: getScoreColor(securityScore) }}>
-              {securityScore}
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <Shield size={32} color="#3B82F6" style={{ marginRight: '12px' }} />
+            <div>
+              <h1 style={{
+                margin: 0,
+                fontSize: '28px',
+                fontWeight: 700,
+                color: darkMode ? '#F5F5F5' : '#1A1A1A'
+              }}>
+                Security Monitoring Dashboard
+              </h1>
+              <p style={{
+                margin: 0,
+                fontSize: '16px',
+                color: darkMode ? '#B0B0B0' : '#666',
+                marginTop: '4px'
+              }}>
+                Real-time security metrics and threat detection
+              </p>
             </div>
-            <div style={{ ...textMutedStyle, fontSize: '12px' }}>out of 100</div>
+          </div>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            {lastUpdate && (
+              <div style={{
+                background: darkMode ? 'rgba(34, 197, 94, 0.1)' : 'rgba(34, 197, 94, 0.05)',
+                border: '1px solid #22C55E',
+                borderRadius: '8px',
+                padding: '8px 12px',
+                fontSize: '14px',
+                color: '#22C55E'
+              }}>
+                Last Updated: {lastUpdate.toLocaleTimeString()}
+              </div>
+            )}
+            
+            <button
+              onClick={() => fetchSecurityData(true)}
+              disabled={isRefreshing}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '10px 16px',
+                background: '#3B82F6',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: isRefreshing ? 'not-allowed' : 'pointer',
+                fontSize: '14px',
+                fontWeight: '500',
+                opacity: isRefreshing ? 0.7 : 1
+              }}
+            >
+              <RefreshCw size={16} style={{ 
+                animation: isRefreshing ? 'spin 1s linear infinite' : 'none' 
+              }} />
+              {isRefreshing ? 'Refreshing...' : 'Refresh Now'}
+            </button>
           </div>
         </div>
-        <div style={{ marginTop: '20px', width: '100%', backgroundColor: darkMode ? '#333' : '#e0e0e0', borderRadius: '9999px', height: '16px' }}>
+      </div>
+
+      {/* Security Score Overview */}
+      <div style={{
+        background: darkMode ? 'rgba(30, 30, 30, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+        borderRadius: '16px',
+        padding: '24px',
+        marginBottom: '32px',
+        border: `1px solid ${darkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`,
+        boxShadow: darkMode ? '0 8px 32px rgba(0, 0, 0, 0.3)' : '0 8px 32px rgba(0, 0, 0, 0.1)'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+          <div>
+            <h2 style={{
+              margin: 0,
+              fontSize: '20px',
+              fontWeight: 600,
+              color: darkMode ? '#F5F5F5' : '#1A1A1A'
+            }}>
+              Overall Security Score
+            </h2>
+            <p style={{
+              margin: 0,
+              fontSize: '14px',
+              color: darkMode ? '#B0B0B0' : '#666',
+              marginTop: '4px'
+            }}>
+              Based on real-time threat assessment
+            </p>
+          </div>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ 
+                fontSize: '48px', 
+                fontWeight: 'bold', 
+                color: getScoreColor(securityData?.securityScore || 0) 
+              }}>
+                {securityData?.securityScore || 0}
+              </div>
+              <div style={{ fontSize: '12px', color: darkMode ? '#B0B0B0' : '#666' }}>
+                Security Score
+              </div>
+            </div>
+            
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ 
+                fontSize: '24px', 
+                fontWeight: 'bold', 
+                color: getThreatColor(securityData?.threatLevel) 
+              }}>
+                {securityData?.threatLevel || 'UNKNOWN'}
+              </div>
+              <div style={{ fontSize: '12px', color: darkMode ? '#B0B0B0' : '#666' }}>
+                Threat Level
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div style={{ 
+          width: '100%', 
+          backgroundColor: darkMode ? '#333' : '#e0e0e0', 
+          borderRadius: '9999px', 
+          height: '12px' 
+        }}>
           <div
             style={{
               height: '100%',
               borderRadius: '9999px',
-              transition: 'width 0.5s ease-in-out, background-color 0.5s ease-in-out',
-              width: `${securityScore}%`,
-              backgroundColor: getScoreColor(securityScore)
+              transition: 'width 0.5s ease-in-out',
+              width: `${securityData?.securityScore || 0}%`,
+              backgroundColor: getScoreColor(securityData?.securityScore || 0)
             }}
           />
         </div>
       </div>
 
-      {securityData && (securityData.summary?.currentlyLockedAccounts > 0 || securityData.summary?.totalFailedAttempts > 10) && (
+      {/* Security Alerts */}
+      {securityData?.alerts && securityData.alerts.length > 0 && (
         <div style={{
-          ...cardStyle,
-          backgroundColor: darkMode ? 'rgba(234, 179, 8, 0.1)' : '#fffbeb',
-          borderLeft: `4px solid ${darkMode ? '#eab308' : '#f59e0b'}`
+          background: darkMode ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.05)',
+          border: '1px solid #EF4444',
+          borderRadius: '16px',
+          padding: '24px',
+          marginBottom: '32px'
         }}>
-          <h3 style={{ ...sectionTitleStyle, color: darkMode ? '#fde047' : '#b45309' }}>
+          <h3 style={{
+            margin: '0 0 16px 0',
+            fontSize: '18px',
+            fontWeight: 600,
+            color: '#EF4444',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
             <AlertTriangle size={20} />
             Security Alerts
           </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {securityData.summary?.currentlyLockedAccounts > 0 && (
-              <div style={{
-                padding: '10px',
-                backgroundColor: darkMode ? 'rgba(234, 179, 8, 0.2)' : '#fef3c7',
-                borderRadius: '6px',
-                color: darkMode ? '#fde047' : '#b45309',
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {securityData.alerts.map((alert, index) => (
+              <div key={index} style={{
+                padding: '12px',
+                background: darkMode ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.1)',
+                borderRadius: '8px',
+                color: '#EF4444',
                 fontSize: '14px'
               }}>
-                ⚠️ {securityData.summary.currentlyLockedAccounts} account(s) currently locked.
+                🚨 {alert}
               </div>
-            )}
-            {securityData.summary?.totalFailedAttempts > 10 && (
-              <div style={{
-                padding: '10px',
-                backgroundColor: darkMode ? 'rgba(239, 68, 68, 0.2)' : '#fee2e2',
-                borderRadius: '6px',
-                color: darkMode ? '#f87171' : '#b91c1c',
-                fontSize: '14px'
-              }}>
-                🚨 High number of failed login attempts: {securityData.summary.totalFailedAttempts}.
-              </div>
-            )}
+            ))}
           </div>
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px', marginBottom: '30px' }}>
-        <div style={metricItemStyle}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '15px' }}>
-            <Lock size={32} color="#ef4444" />
-            <span style={{ fontSize: '24px', fontWeight: 'bold', color: securityMetrics.failedLogins > 10 ? '#ef4444' : (darkMode ? '#e0e0e0' : '#333') }}>
-              {securityMetrics.failedLogins}
-            </span>
-          </div>
-          <h3 style={{ fontSize: '14px', fontWeight: '500', color: darkMode ? '#e0e0e0' : '#333', marginBottom: '5px' }}>Failed Login Attempts</h3>
-          <p style={{ ...textMutedStyle, fontSize: '12px' }}>Total attempts from API</p>
-        </div>
-
-        <div style={metricItemStyle}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '15px' }}>
-            <Lock size={32} color="#eab308" />
-            <span style={{ fontSize: '24px', fontWeight: 'bold', color: securityMetrics.lockedAccounts > 0 ? '#eab308' : (darkMode ? '#e0e0e0' : '#333') }}>
-              {securityMetrics.lockedAccounts}
-            </span>
-          </div>
-          <h3 style={{ fontSize: '14px', fontWeight: '500', color: darkMode ? '#e0e0e0' : '#333', marginBottom: '5px' }}>Locked Accounts</h3>
-          <p style={{ ...textMutedStyle, fontSize: '12px' }}>Currently locked out</p>
-        </div>
-
-        <div style={metricItemStyle}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '15px' }}>
-            <Mail size={32} color="#f97316" />
-            <span style={{ fontSize: '24px', fontWeight: 'bold', color: securityMetrics.unverifiedEmails > 5 ? '#f97316' : (darkMode ? '#e0e0e0' : '#333') }}>
-              {securityMetrics.unverifiedEmails}
-            </span>
-          </div>
-          <h3 style={{ fontSize: '14px', fontWeight: '500', color: darkMode ? '#e0e0e0' : '#333', marginBottom: '5px' }}>Unverified Old Accounts</h3>
-          <p style={{ ...textMutedStyle, fontSize: '12px' }}>Older than 1 day (from API)</p>
-        </div>
+      {/* Security Metrics Grid */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+        gap: '24px',
+        marginBottom: '32px'
+      }}>
+        <SecurityCard
+          icon={AlertTriangle}
+          title="Failed Login Attempts"
+          value={securityData?.failedLoginAttempts || 0}
+          status={
+            (securityData?.failedLoginAttempts || 0) > 20 ? 'critical' : 
+            (securityData?.failedLoginAttempts || 0) > 10 ? 'warning' : 'safe'
+          }
+          description="Total failed login attempts"
+          color="#EF4444"
+        />
         
-        <div style={metricItemStyle}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '15px' }}>
-            <Users size={32} color={darkMode ? '#9ca3af' : '#6b7280'} />
-            <span style={{ fontSize: '24px', fontWeight: 'bold', color: darkMode ? '#e0e0e0' : '#333' }}>
-              {securityMetrics.dormantAccounts}
-            </span>
-          </div>
-          <h3 style={{ fontSize: '14px', fontWeight: '500', color: darkMode ? '#e0e0e0' : '#333', marginBottom: '5px' }}>Dormant Accounts</h3>
-          <p style={{ ...textMutedStyle, fontSize: '12px' }}>Inactive &gt; 1 week (from API)</p>
-        </div>
-
-        <div style={metricItemStyle}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '15px' }}>
-            <Activity size={32} color="#22c55e" />
-            <span style={{ fontSize: '24px', fontWeight: 'bold', color: darkMode ? '#e0e0e0' : '#333' }}>
-              {securityMetrics.activeTokens}
-            </span>
-          </div>
-          <h3 style={{ fontSize: '14px', fontWeight: '500', color: darkMode ? '#e0e0e0' : '#333', marginBottom: '5px' }}>Active Sessions</h3>
-          <p style={{ ...textMutedStyle, fontSize: '12px' }}>Currently active (mock data)</p>
-        </div>
-
-        <div style={metricItemStyle}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '15px' }}>
-            <CreditCard size={32} color="#eab308" />
-            <span style={{ fontSize: '24px', fontWeight: 'bold', color: securityMetrics.recentPaymentFailures > 3 ? '#eab308' : (darkMode ? '#e0e0e0' : '#333') }}>
-              {securityMetrics.recentPaymentFailures}
-            </span>
-          </div>
-          <h3 style={{ fontSize: '14px', fontWeight: '500', color: darkMode ? '#e0e0e0' : '#333', marginBottom: '5px' }}>Payment Failures</h3>
-          <p style={{ ...textMutedStyle, fontSize: '12px' }}>Last 7 days (mock data)</p>
-        </div>
+        <SecurityCard
+          icon={Lock}
+          title="Locked Accounts"
+          value={securityData?.lockedAccounts || 0}
+          status={
+            (securityData?.lockedAccounts || 0) > 5 ? 'critical' : 
+            (securityData?.lockedAccounts || 0) > 0 ? 'warning' : 'safe'
+          }
+          description="Currently locked user accounts"
+          color="#F59E0B"
+        />
+        
+        <SecurityCard
+          icon={Users}
+          title="Active Users"
+          value={(securityData?.totalUsers || 0) - (securityData?.inactiveUsers || 0)}
+          status="safe"
+          description="Currently active verified users"
+          color="#22C55E"
+        />
+        
+        <SecurityCard
+          icon={Eye}
+          title="Dormant Accounts"
+          value={securityData?.dormantAccounts || 0}
+          status={(securityData?.dormantAccounts || 0) > 50 ? 'warning' : 'safe'}
+          description="Inactive for 30+ days"
+          color="#6B7280"
+        />
+        
+        <SecurityCard
+          icon={TrendingUp}
+          title="Recent Signups"
+          value={securityData?.recentSignups || 0}
+          status="safe"
+          description="New registrations (last 7 days)"
+          color="#3B82F6"
+        />
+        
+        <SecurityCard
+          icon={CreditCard}
+          title="Payment Security"
+          value={`${securityData?.successfulPayments || 0}/${securityData?.failedPayments || 0}`}
+          status={
+            (securityData?.failedPayments || 0) > (securityData?.successfulPayments || 0) ? 'warning' : 'safe'
+          }
+          description="Success/Failed (last 7 days)"
+          color="#8B5CF6"
+        />
       </div>
 
-      <div style={cardStyle}>
-        <h2 style={{ ...sectionTitleStyle, fontSize: '20px' }}>
-          <AlertTriangle size={24} color="#eab308" />
-          Active Vulnerabilities (Mock Data)
-        </h2>
-        {securityMetrics.vulnerabilities.length === 0 ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#22c55e' }}>
-            <CheckCircle size={20} />
-            <span>No active vulnerabilities detected</span>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {securityMetrics.vulnerabilities.map((vuln, index) => (
-              <div
-                key={index}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '12px',
-                  backgroundColor: darkMode ? '#2a2a2a' : '#f8f9fa',
-                  borderRadius: '8px'
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{
-                    width: '12px', height: '12px', borderRadius: '50%',
-                    backgroundColor: vuln.severity === 'high' ? '#ef4444' : vuln.severity === 'medium' ? '#eab308' : '#3b82f6'
-                  }} />
-                  <span style={{ color: darkMode ? '#e0e0e0' : '#333', fontSize:'14px' }}>{vuln.description}</span>
-                </div>
-                <span style={{
-                  fontSize: '12px', fontWeight: '500', padding: '4px 8px', borderRadius: '4px',
-                  backgroundColor: vuln.severity === 'high' ? (darkMode ? 'rgba(239, 68, 68, 0.3)' : '#fee2e2') :
-                                   vuln.severity === 'medium' ? (darkMode ? 'rgba(234, 179, 8, 0.3)' : '#fef3c7') :
-                                   (darkMode ? 'rgba(59, 130, 246, 0.3)' : '#dbeafe'),
-                  color: vuln.severity === 'high' ? (darkMode ? '#f87171' : '#b91c1c') :
-                         vuln.severity === 'medium' ? (darkMode ? '#fde047' : '#b45309') :
-                         (darkMode ? '#93c5fd' : '#1d4ed8')
+      {/* System Health Monitoring */}
+      <div style={{
+        background: darkMode ? 'rgba(30, 30, 30, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+        borderRadius: '16px',
+        padding: '24px',
+        marginBottom: '32px',
+        border: `1px solid ${darkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`,
+        boxShadow: darkMode ? '0 8px 32px rgba(0, 0, 0, 0.3)' : '0 8px 32px rgba(0, 0, 0, 0.1)'
+      }}>
+        <h3 style={{
+          margin: '0 0 20px 0',
+          fontSize: '20px',
+          fontWeight: 600,
+          color: darkMode ? '#F5F5F5' : '#1A1A1A',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
+        }}>
+          <Server size={24} color="#3B82F6" />
+          System Health Monitor
+        </h3>
+        
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+          gap: '16px'
+        }}>
+          <SecurityCard
+            icon={Database}
+            title="Database Status"
+            value={securityData?.systemHealth?.database?.status || 'Unknown'}
+            status={securityData?.systemHealth?.database?.status === 'Connected' ? 'safe' : 'critical'}
+            description={`Response time: ${securityData?.systemHealth?.database?.responseTime || 'N/A'}`}
+            color={securityData?.systemHealth?.database?.status === 'Connected' ? '#22C55E' : '#EF4444'}
+          />
+          
+          <SecurityCard
+            icon={Globe}
+            title="API Health"
+            value={`${securityData?.systemHealth?.api?.healthyEndpoints || 0}/${securityData?.systemHealth?.api?.totalEndpoints || 0}`}
+            status={
+              (securityData?.systemHealth?.api?.healthyEndpoints || 0) === (securityData?.systemHealth?.api?.totalEndpoints || 0) ? 'safe' :
+              (securityData?.systemHealth?.api?.healthyEndpoints || 0) > (securityData?.systemHealth?.api?.totalEndpoints || 0) * 0.8 ? 'warning' : 'critical'
+            }
+            description="Healthy endpoints"
+            color="#3B82F6"
+          />
+          
+          <SecurityCard
+            icon={Activity}
+            title="Uptime"
+            value={securityData?.systemHealth?.uptime?.percentage || '0%'}
+            status={
+              parseFloat(securityData?.systemHealth?.uptime?.percentage || 0) >= 99 ? 'safe' :
+              parseFloat(securityData?.systemHealth?.uptime?.percentage || 0) >= 95 ? 'warning' : 'critical'
+            }
+            description={`Since: ${securityData?.systemHealth?.uptime?.since || 'Unknown'}`}
+            color="#22C55E"
+          />
+          
+          <SecurityCard
+            icon={Cpu}
+            title="Response Time"
+            value={`${securityData?.systemHealth?.performance?.avgResponseTime || 0}ms`}
+            status={
+              (securityData?.systemHealth?.performance?.avgResponseTime || 0) < 200 ? 'safe' :
+              (securityData?.systemHealth?.performance?.avgResponseTime || 0) < 500 ? 'warning' : 'critical'
+            }
+            description="Average API response"
+            color="#8B5CF6"
+          />
+        </div>
+
+        {/* Error Logs */}
+        {securityData?.systemHealth?.errors && securityData.systemHealth.errors.length > 0 && (
+          <div style={{ marginTop: '24px' }}>
+            <h4 style={{
+              margin: '0 0 12px 0',
+              fontSize: '16px',
+              fontWeight: 600,
+              color: '#EF4444'
+            }}>
+              Recent System Errors
+            </h4>
+            <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
+              {securityData.systemHealth.errors.slice(0, 5).map((error, index) => (
+                <div key={index} style={{
+                  padding: '8px 12px',
+                  marginBottom: '8px',
+                  background: darkMode ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.05)',
+                  borderLeft: '3px solid #EF4444',
+                  borderRadius: '4px',
+                  fontSize: '12px'
                 }}>
-                  {vuln.severity.toUpperCase()}
-                </span>
-              </div>
-            ))}
+                  <div style={{ color: '#EF4444', fontWeight: '500' }}>
+                    {error.timestamp} - {error.type}
+                  </div>
+                  <div style={{ color: darkMode ? '#B0B0B0' : '#666', marginTop: '2px' }}>
+                    {error.message}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>
 
-      {securityData && securityData.recentLogins && securityData.recentLogins.length > 0 && (
-        <div style={cardStyle}>
-          <h2 style={{ ...sectionTitleStyle, fontSize: '20px' }}>
-            <Activity size={24} color="#2196F3" />
-            Recent Logins (Last 24 hours)
-          </h2>
-          <div style={{ maxHeight: '320px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', paddingRight:'5px' }}>
-            {securityData.recentLogins.map((login, idx) => (
-              <div
-                key={idx}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '12px',
-                  backgroundColor: darkMode ? '#2a2a2a' : '#f8f9fa',
-                  borderRadius: '8px',
-                  transition: 'background-color 0.2s ease',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
-                  <Users size={20} color={darkMode ? '#9ca3af' : '#6b7280'} style={{ flexShrink: 0 }} />
-                  <div style={{minWidth: 0}}>
-                    <p style={{ color: darkMode ? '#e0e0e0' : '#333', fontSize: '14px', fontWeight: '500', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={login.email}>
-                      {login.email}
-                    </p>
-                    <p style={{ ...textMutedStyle, fontSize: '12px' }}>
-                      {new Date(login.lastLogin).toLocaleString()}
-                    </p>
-                  </div>
-                </div>
-                {login.isAdmin && (
-                  <span style={{
-                    marginLeft: '10px', flexShrink: 0, fontSize: '12px', fontWeight: 'bold',
-                    padding: '3px 8px', borderRadius: '9999px',
-                    backgroundColor: darkMode ? 'rgba(168, 85, 247, 0.3)' : '#f3e8ff',
-                    color: darkMode ? '#d8b4fe' : '#7e22ce'
-                  }}>
-                    Admin
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div style={cardStyle}>
+      {/* Real-time Data Indicator */}
+      <div style={{
+        background: darkMode ? 'rgba(30, 30, 30, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+        borderRadius: '16px',
+        padding: '24px',
+        border: `1px solid ${darkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`,
+        boxShadow: darkMode ? '0 8px 32px rgba(0, 0, 0, 0.3)' : '0 8px 32px rgba(0, 0, 0, 0.1)'
+      }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
-            <h3 style={{ ...sectionTitleStyle, fontSize: '18px', marginBottom: '5px' }}>Last Security Scan (Mock)</h3>
-            <p style={{ ...textMutedStyle }}>
-              {securityMetrics.lastSecurityScan ? getTimeSince(securityMetrics.lastSecurityScan) : 'Never'}
+            <h3 style={{
+              margin: 0,
+              fontSize: '18px',
+              fontWeight: 600,
+              color: darkMode ? '#F5F5F5' : '#1A1A1A'
+            }}>
+              ✅ Real-time Security Monitoring Active
+            </h3>
+            <p style={{
+              margin: 0,
+              fontSize: '14px',
+              color: darkMode ? '#B0B0B0' : '#666',
+              marginTop: '4px'
+            }}>
+              All metrics are pulled from live database • Auto-refresh every 30 seconds
             </p>
           </div>
-          <button
-            onClick={() => alert('Triggering security scan... (not implemented)')}
-            style={{
-              padding: '10px 20px',
-              backgroundColor: '#2196F3',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: '500',
-              transition: 'background-color 0.2s ease'
-            }}
-            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#1976D2'}
-            onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#2196F3'}
-          >
-            Run Scan Now
-          </button>
+          
+          <div style={{
+            background: '#22C55E22',
+            color: '#22C55E',
+            padding: '8px 16px',
+            borderRadius: '8px',
+            fontSize: '14px',
+            fontWeight: 600
+          }}>
+            LIVE DATA
+          </div>
         </div>
+        
+        {securityData?.dataSource && (
+          <div style={{
+            marginTop: '16px',
+            fontSize: '12px',
+            color: darkMode ? '#B0B0B0' : '#666'
+          }}>
+            Data Source: {securityData.dataSource} • Last Updated: {securityData.lastUpdated ? new Date(securityData.lastUpdated).toLocaleString() : 'Unknown'}
+          </div>
+        )}
       </div>
     </div>
   );
 };
 
-export default SecurityMonitoringDashboard; 
+export default SecurityMonitoringDashboard;
