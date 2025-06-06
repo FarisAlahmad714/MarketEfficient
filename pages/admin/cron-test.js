@@ -1,6 +1,7 @@
 import { useState, useContext, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
+import Link from 'next/link';
 import { ThemeContext } from '../../contexts/ThemeContext';
 import { AuthContext } from '../../contexts/AuthContext';
 import storage from '../../lib/storage'; // Adjust the path to your storage utility
@@ -140,21 +141,39 @@ export default function CronTestPage() {
           }}>
             📧 Email Automation & Management
           </h1>
-          <button
-            onClick={handleShowEmailManagement}
-            style={{
-              padding: '10px 20px',
-              backgroundColor: '#8B5CF6',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: '500'
-            }}
-          >
-            📊 Manage User Emails
-          </button>
+          <div>
+            <Link href="/admin" legacyBehavior>
+                <a style={{
+                  padding: '10px 20px',
+                  backgroundColor: '#6B7280',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  textDecoration: 'none',
+                  marginRight: '10px'
+                }}>
+                  ← Back to Admin
+                </a>
+            </Link>
+            <button
+              onClick={handleShowEmailManagement}
+              style={{
+                padding: '10px 20px',
+                backgroundColor: '#8B5CF6',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '500'
+              }}
+            >
+              📊 Manage User Emails
+            </button>
+          </div>
         </div>
 
         <div style={{

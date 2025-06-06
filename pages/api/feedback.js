@@ -323,12 +323,21 @@ async function handleFeedbackDeletion(req, res) {
   }
 }
 
-export default withCsrfProtect(
-  createApiHandler(
-    composeMiddleware(
-      sanitizeInput,
-      feedbackHandler
-    ),
-    { methods: ['POST', 'GET', 'PATCH', 'DELETE'] }
-  )
-);
+export default async function handler(req, res) {
+  // Set CORS headers
+  res.setHeader('Access-Control-Allow-Credentials', true);
+  res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+  res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  try {
+    await feedbackHandler(req, res);
+  } catch (error) {
+    console.error('Feedback API error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+};

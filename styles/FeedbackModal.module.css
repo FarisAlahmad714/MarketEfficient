@@ -61,6 +61,29 @@
   padding: 20px 24px 24px;
 }
 
+.userInfo {
+  background-color: rgba(59, 130, 246, 0.05);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.userDetail {
+  margin-bottom: 8px;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+
+.userDetail:last-child {
+  margin-bottom: 0;
+}
+
+.userDetail strong {
+  color: var(--accent-primary);
+  margin-right: 8px;
+}
+
 .formGroup {
   margin-bottom: 20px;
 }

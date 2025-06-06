@@ -1,10 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import { useRouter } from 'next/router';
-import Layout from '../../components/Layout';
+import Link from 'next/link';
+import styles from '../../styles/AdminFeedback.module.css';
 import AdminProtectedRoute from '../../components/auth/AdminProtectedRoute';
-import styles from '../../styles/AdminUsers.module.css';
+import { ThemeContext } from '../../contexts/ThemeContext';
 
 const AdminFeedback = () => {
+  const { darkMode } = useContext(ThemeContext);
   const [feedback, setFeedback] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -44,10 +46,16 @@ const AdminFeedback = () => {
 
   const handleStatusUpdate = async (feedbackId, newStatus) => {
     try {
+      const csrfResponse = await fetch('/api/auth/csrf-token', {
+        credentials: 'include'
+      });
+      const { csrfToken } = await csrfResponse.json();
+      
       const response = await fetch('/api/feedback', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken,
         },
         credentials: 'include',
         body: JSON.stringify({
@@ -75,10 +83,16 @@ const AdminFeedback = () => {
     if (!confirm('Are you sure you want to delete this feedback?')) return;
 
     try {
+      const csrfResponse = await fetch('/api/auth/csrf-token', {
+        credentials: 'include'
+      });
+      const { csrfToken } = await csrfResponse.json();
+      
       const response = await fetch('/api/feedback', {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken,
         },
         credentials: 'include',
         body: JSON.stringify({ feedbackId })
@@ -105,7 +119,7 @@ const AdminFeedback = () => {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'new': return '#3b82f6';
+      case 'open': return '#3b82f6';
       case 'in_progress': return '#f59e0b';
       case 'resolved': return '#10b981';
       case 'closed': return '#6b7280';
@@ -115,224 +129,196 @@ const AdminFeedback = () => {
 
   const getTypeIcon = (type) => {
     switch (type) {
-      case 'bug': return '🐛';
-      case 'feature': return '✨';
-      case 'ui': return '🎨';
+      case 'bug_report': return '🐛';
+      case 'feature_request': return '✨';
+      case 'ui_ux': return '🎨';
       case 'performance': return '⚡';
-      case 'general': return '💬';
+      case 'general_feedback': return '💬';
       default: return '📝';
     }
   };
 
   if (loading) {
     return (
-      <Layout>
-        <AdminProtectedRoute>
-          <div className={styles.container}>
-            <div className={styles.loadingState}>Loading feedback...</div>
-          </div>
-        </AdminProtectedRoute>
-      </Layout>
+      <div className={styles.container}>
+        <div className={styles.loadingState}>Loading feedback...</div>
+      </div>
     );
   }
 
   return (
-    <Layout>
-      <AdminProtectedRoute>
-        <div className={styles.container}>
-          <div className={styles.header}>
-            <h1>Feedback Management</h1>
-            <button 
-              onClick={() => router.push('/admin')}
-              className={styles.backButton}
-            >
-              ← Back to Admin
-            </button>
-          </div>
+    <div className={styles.container}>
+      <div className={styles.header}>
+        <h1 className={styles.title}>Feedback Management</h1>
+        <Link href="/admin" legacyBehavior>
+          <a style={{
+            background: darkMode ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)',
+            color: '#3B82F6',
+            padding: '10px 16px',
+            borderRadius: '8px',
+            textDecoration: 'none',
+            fontWeight: '600'
+          }}>
+            ← Back to Admin
+          </a>
+        </Link>
+      </div>
 
-          {error && <div className={styles.error}>{error}</div>}
+      {error && <div className={styles.error}>{error}</div>}
 
-          {/* Stats Cards */}
-          <div className={styles.statsGrid}>
-            <div className={styles.statCard}>
-              <h3>Total Feedback</h3>
-              <p className={styles.statNumber}>{stats.total || 0}</p>
-            </div>
-            <div className={styles.statCard}>
-              <h3>New</h3>
-              <p className={styles.statNumber} style={{ color: '#3b82f6' }}>
-                {stats.new || 0}
-              </p>
-            </div>
-            <div className={styles.statCard}>
-              <h3>In Progress</h3>
-              <p className={styles.statNumber} style={{ color: '#f59e0b' }}>
-                {stats.in_progress || 0}
-              </p>
-            </div>
-            <div className={styles.statCard}>
-              <h3>Resolved</h3>
-              <p className={styles.statNumber} style={{ color: '#10b981' }}>
-                {stats.resolved || 0}
-              </p>
-            </div>
-          </div>
-
-          {/* Filters */}
-          <div className={styles.controls}>
-            <div className={styles.filterGroup}>
-              <label>Filter by Status:</label>
-              <select value={filter} onChange={(e) => setFilter(e.target.value)}>
-                <option value="all">All Status</option>
-                <option value="new">New</option>
-                <option value="in_progress">In Progress</option>
-                <option value="resolved">Resolved</option>
-                <option value="closed">Closed</option>
-              </select>
-            </div>
-            <div className={styles.filterGroup}>
-              <label>Sort by:</label>
-              <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-                <option value="newest">Newest First</option>
-                <option value="oldest">Oldest First</option>
-                <option value="status">Status</option>
-                <option value="type">Type</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Feedback List */}
-          <div className={styles.contentGrid}>
-            <div className={styles.tableContainer}>
-              {feedback.length === 0 ? (
-                <div className={styles.emptyState}>
-                  <p>No feedback found matching the current filters.</p>
-                </div>
-              ) : (
-                <table className={styles.table}>
-                  <thead>
-                    <tr>
-                      <th>Type</th>
-                      <th>Subject</th>
-                      <th>User</th>
-                      <th>Status</th>
-                      <th>Date</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {feedback.map((item) => (
-                      <tr key={item._id}>
-                        <td>
-                          <span className={styles.typeIndicator}>
-                            {getTypeIcon(item.type)} {item.type}
-                          </span>
-                        </td>
-                        <td>
-                          <button
-                            className={styles.subjectButton}
-                            onClick={() => setSelectedFeedback(item)}
-                          >
-                            {item.subject}
-                          </button>
-                        </td>
-                        <td>
-                          {item.userId ? (
-                            <span>{item.userId.email}</span>
-                          ) : (
-                            <span className={styles.anonymousUser}>
-                              {item.userEmail || 'Anonymous'}
-                            </span>
-                          )}
-                        </td>
-                        <td>
-                          <span 
-                            className={styles.statusBadge}
-                            style={{ backgroundColor: getStatusColor(item.status) }}
-                          >
-                            {item.status.replace('_', ' ')}
-                          </span>
-                        </td>
-                        <td>{formatDate(item.createdAt)}</td>
-                        <td>
-                          <div className={styles.actionButtons}>
-                            <button
-                              onClick={() => setSelectedFeedback(item)}
-                              className={styles.viewButton}
-                            >
-                              View
-                            </button>
-                            <button
-                              onClick={() => handleDelete(item._id)}
-                              className={styles.deleteButton}
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-
-            {/* Feedback Detail Modal */}
-            {selectedFeedback && (
-              <div className={styles.modal}>
-                <div className={styles.modalContent}>
-                  <div className={styles.modalHeader}>
-                    <h2>Feedback Details</h2>
-                    <button
-                      onClick={() => setSelectedFeedback(null)}
-                      className={styles.closeButton}
-                    >
-                      ×
-                    </button>
-                  </div>
-                  <div className={styles.modalBody}>
-                    <div className={styles.feedbackDetails}>
-                      <div className={styles.detailRow}>
-                        <strong>Type:</strong> {getTypeIcon(selectedFeedback.type)} {selectedFeedback.type}
-                      </div>
-                      <div className={styles.detailRow}>
-                        <strong>Subject:</strong> {selectedFeedback.subject}
-                      </div>
-                      <div className={styles.detailRow}>
-                        <strong>User:</strong> {selectedFeedback.userId?.email || selectedFeedback.userEmail || 'Anonymous'}
-                      </div>
-                      <div className={styles.detailRow}>
-                        <strong>Status:</strong>
-                        <select
-                          value={selectedFeedback.status}
-                          onChange={(e) => handleStatusUpdate(selectedFeedback._id, e.target.value)}
-                          className={styles.statusSelect}
-                        >
-                          <option value="new">New</option>
-                          <option value="in_progress">In Progress</option>
-                          <option value="resolved">Resolved</option>
-                          <option value="closed">Closed</option>
-                        </select>
-                      </div>
-                      <div className={styles.detailRow}>
-                        <strong>Date:</strong> {formatDate(selectedFeedback.createdAt)}
-                      </div>
-                      <div className={styles.detailRow}>
-                        <strong>Message:</strong>
-                        <div className={styles.messageContent}>
-                          {selectedFeedback.message}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+      <div className={styles.statsGrid}>
+        <div className={styles.statCard}>
+          <h3>Total Feedback</h3>
+          <p className={styles.statNumber}>{stats.total || 0}</p>
         </div>
-      </AdminProtectedRoute>
-    </Layout>
+        <div className={styles.statCard}>
+          <h3>Open</h3>
+          <p className={styles.statNumber} style={{ color: getStatusColor('open') }}>
+            {stats.open || 0}
+          </p>
+        </div>
+        <div className={styles.statCard}>
+          <h3>In Progress</h3>
+          <p className={styles.statNumber} style={{ color: getStatusColor('in_progress') }}>
+            {stats.in_progress || 0}
+          </p>
+        </div>
+        <div className={styles.statCard}>
+          <h3>Resolved</h3>
+          <p className={styles.statNumber} style={{ color: getStatusColor('resolved') }}>
+            {stats.resolved || 0}
+          </p>
+        </div>
+      </div>
+
+      <div className={styles.controls}>
+        <div className={styles.filterGroup}>
+          <label htmlFor="status-filter">Filter by Status</label>
+          <select id="status-filter" value={filter} onChange={(e) => setFilter(e.target.value)}>
+            <option value="all">All Status</option>
+            <option value="open">Open</option>
+            <option value="in_progress">In Progress</option>
+            <option value="resolved">Resolved</option>
+            <option value="closed">Closed</option>
+          </select>
+        </div>
+        <div className={styles.filterGroup}>
+          <label htmlFor="sort-by">Sort by</label>
+          <select id="sort-by" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+            <option value="newest">Newest First</option>
+            <option value="oldest">Oldest First</option>
+          </select>
+        </div>
+      </div>
+
+      <div className={styles.contentArea}>
+        <div className={styles.tableContainer}>
+          {feedback.length > 0 ? (
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>Type</th>
+                  <th>Subject</th>
+                  <th>User</th>
+                  <th>Status</th>
+                  <th>Date</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {feedback.map((item) => (
+                  <tr key={item._id} onClick={() => setSelectedFeedback(item)}>
+                    <td>
+                      <span className={styles.typeIndicator}>
+                        {getTypeIcon(item.type)} {item.type.replace(/_/g, ' ')}
+                      </span>
+                    </td>
+                    <td>
+                      <button
+                        className={styles.subjectButton}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedFeedback(item);
+                        }}
+                      >
+                        {item.subject}
+                      </button>
+                    </td>
+                    <td>{item.userId ? item.userId.email : 'Anonymous'}</td>
+                    <td>
+                      <span
+                        className={styles.statusBadge}
+                        style={{ backgroundColor: getStatusColor(item.status) }}
+                      >
+                        {item.status.replace(/_/g, ' ')}
+                      </span>
+                    </td>
+                    <td>{formatDate(item.createdAt)}</td>
+                    <td className={styles.actionCell}>
+                      <button
+                        className={styles.actionButton}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(item._id);
+                        }}
+                        title="Delete"
+                      >
+                        🗑️
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <div className={styles.emptyState}>No feedback found.</div>
+          )}
+        </div>
+
+        <div className={styles.detailsPanel}>
+          {selectedFeedback ? (
+            <div>
+              <h2>{selectedFeedback.subject}</h2>
+              <div className={styles.detailItem}>
+                <strong>From:</strong> {selectedFeedback.userId ? selectedFeedback.userId.email : 'Anonymous'}
+              </div>
+              <div className={styles.detailItem}>
+                <strong>Date:</strong> {formatDate(selectedFeedback.createdAt)}
+              </div>
+              <div className={styles.detailItem}>
+                <strong>Status:</strong>
+                <select
+                  value={selectedFeedback.status}
+                  onChange={(e) => handleStatusUpdate(selectedFeedback._id, e.target.value)}
+                  style={{ marginLeft: '10px', backgroundColor: getStatusColor(selectedFeedback.status), color: 'white', border: 'none', borderRadius: '4px', padding: '4px 8px' }}
+                >
+                  <option value="open">Open</option>
+                  <option value="in_progress">In Progress</option>
+                  <option value="resolved">Resolved</option>
+                  <option value="closed">Closed</option>
+                </select>
+              </div>
+              <div className={styles.detailItem}>
+                <strong>Type:</strong> {selectedFeedback.type.replace(/_/g, ' ')}
+              </div>
+              <div className={styles.detailItem}>
+                <strong>Message:</strong>
+                <p className={styles.detailContent}>{selectedFeedback.message}</p>
+              </div>
+            </div>
+          ) : (
+            <div className={styles.emptyState}>Select a feedback item to see details.</div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 };
 
-export default AdminFeedback;
+const ProtectedAdminFeedback = () => (
+  <AdminProtectedRoute>
+    <AdminFeedback />
+  </AdminProtectedRoute>
+);
+
+export default ProtectedAdminFeedback;

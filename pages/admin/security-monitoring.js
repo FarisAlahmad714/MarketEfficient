@@ -1,6 +1,7 @@
 //pages/admin/security-monitoring.js - Enhanced Real Security Monitoring
 import React, { useState, useEffect, useContext } from 'react';
 import { useRouter } from 'next/router';
+import Link from 'next/link';
 import { AuthContext } from '../../contexts/AuthContext';
 import { Shield, AlertTriangle, CheckCircle, Activity, Lock, Users, CreditCard, Mail, TrendingUp, Eye, RefreshCw, Server, Database, Globe, Cpu } from 'lucide-react';
 import { ThemeContext } from '../../contexts/ThemeContext';
@@ -241,6 +242,18 @@ const SecurityMonitoringDashboard = () => {
           </div>
           
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <Link href="/admin" legacyBehavior>
+              <a style={{
+                background: darkMode ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)',
+                color: '#3B82F6',
+                padding: '10px 16px',
+                borderRadius: '8px',
+                textDecoration: 'none',
+                fontWeight: '600'
+              }}>
+                ← Back to Admin
+              </a>
+            </Link>
             {lastUpdate && (
               <div style={{
                 background: darkMode ? 'rgba(34, 197, 94, 0.1)' : 'rgba(34, 197, 94, 0.05)',

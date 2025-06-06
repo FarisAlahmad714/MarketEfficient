@@ -5,7 +5,7 @@ import styles from '../styles/FeedbackModal.module.css';
 const FeedbackModal = ({ isOpen, onClose }) => {
   const { user } = useContext(AuthContext);
   const [formData, setFormData] = useState({
-    type: 'general',
+    type: 'general_feedback',
     subject: '',
     message: '',
     email: user?.email || ''
@@ -39,29 +39,35 @@ const FeedbackModal = ({ isOpen, onClose }) => {
     setIsSubmitting(true);
     setSubmitStatus(null);
 
+    console.log('Submitting feedback:', formData);
+
     try {
-      // Get CSRF token
-      const csrfResponse = await fetch('/api/auth/csrf-token', {
-        credentials: 'include'
-      });
-      const { csrfToken } = await csrfResponse.json();
+      console.log('Sending feedback to API...');
+      
+      // Add timeout to prevent infinite loading
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
       
       const response = await fetch('/api/feedback', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-CSRF-Token': csrfToken,
         },
         credentials: 'include',
-        body: JSON.stringify(formData)
+        body: JSON.stringify(formData),
+        signal: controller.signal
       });
+      
+      clearTimeout(timeoutId);
 
+      console.log('API response status:', response.status);
       const data = await response.json();
+      console.log('API response data:', data);
 
       if (response.ok) {
         setSubmitStatus('success');
         setFormData({
-          type: 'general',
+          type: 'general_feedback',
           subject: '',
           message: '',
           email: user?.email || ''
@@ -72,7 +78,7 @@ const FeedbackModal = ({ isOpen, onClose }) => {
         }, 2000);
       } else {
         setSubmitStatus('error');
-        console.error('Feedback submission failed:', data.message);
+        console.error('Feedback submission failed:', data);
       }
     } catch (error) {
       setSubmitStatus('error');
@@ -93,6 +99,17 @@ const FeedbackModal = ({ isOpen, onClose }) => {
         </div>
 
         <form onSubmit={handleSubmit} className={styles.feedbackForm}>
+          {user && (
+            <div className={styles.userInfo}>
+              <div className={styles.userDetail}>
+                <strong>Name:</strong> {user.name}
+              </div>
+              <div className={styles.userDetail}>
+                <strong>Email:</strong> {user.email}
+              </div>
+            </div>
+          )}
+          
           <div className={styles.formGroup}>
             <label htmlFor="type">Feedback Type</label>
             <select
@@ -102,10 +119,10 @@ const FeedbackModal = ({ isOpen, onClose }) => {
               onChange={handleChange}
               required
             >
-              <option value="general">General Feedback</option>
-              <option value="bug">Bug Report</option>
-              <option value="feature">Feature Request</option>
-              <option value="ui">UI/UX Feedback</option>
+              <option value="general_feedback">General Feedback</option>
+              <option value="bug_report">Bug Report</option>
+              <option value="feature_request">Feature Request</option>
+              <option value="ui_ux">UI/UX Feedback</option>
               <option value="performance">Performance Issue</option>
               <option value="other">Other</option>
             </select>

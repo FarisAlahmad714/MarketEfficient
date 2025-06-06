@@ -1,0 +1,332 @@
+/* styles/AdminFeedback.module.css */
+
+.container {
+    padding: 2rem;
+    color: var(--text-color);
+  }
+  
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+  }
+  
+  .header h1 {
+    font-size: 2rem;
+    font-weight: 700;
+  }
+  
+  .backButton {
+    background: var(--secondary-color);
+    color: var(--text-color);
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+  
+  .backButton:hover {
+    background-color: var(--accent-color);
+  }
+  
+  .error {
+    background-color: #ff4d4d;
+    color: white;
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+  }
+  
+  .loadingState {
+    text-align: center;
+    padding: 4rem;
+    font-size: 1.25rem;
+  }
+  
+  /* Stats Grid */
+  .statsGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+  }
+  
+  .statCard {
+    background: var(--card-bg-color);
+    padding: 1.5rem;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  
+  .statCard:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+  }
+  
+  .statCard h3 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1rem;
+    color: var(--text-secondary-color);
+  }
+  
+  .statNumber {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin: 0;
+  }
+  
+  /* Controls */
+  .controls {
+    display: flex;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+  }
+  
+  .filterGroup {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .filterGroup label {
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+    color: var(--text-secondary-color);
+  }
+  
+  .filterGroup select {
+    padding: 0.75rem;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background: var(--input-bg-color);
+    color: var(--text-color);
+    font-size: 1rem;
+  }
+  
+  /* Content Layout */
+  .contentGrid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+  
+  @media (min-width: 1024px) {
+    .contentGrid {
+      grid-template-columns: 2fr 1fr;
+    }
+  }
+  
+  /* Table */
+  .tableContainer {
+    background: var(--card-bg-color);
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+  }
+  
+  .table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  
+  .table th, .table td {
+    padding: 1rem 1.25rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+  }
+  
+  .table th {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    color: var(--text-secondary-color);
+    background-color: rgba(0,0,0,0.05); /* Subtle header */
+  }
+  
+  .table tr:last-child td {
+    border-bottom: none;
+  }
+  
+  .table tr:hover {
+    background-color: rgba(255, 255, 255, 0.03);
+  }
+  
+  .typeIndicator {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .statusBadge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #fff;
+    text-transform: capitalize;
+    display: inline-block;
+  }
+  
+  .subjectButton {
+    background: none;
+    border: none;
+    color: var(--accent-color);
+    cursor: pointer;
+    text-align: left;
+    padding: 0;
+    font-size: inherit;
+  }
+  
+  .subjectButton:hover {
+    text-decoration: underline;
+  }
+  
+  .actionButton {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 50%;
+  }
+  
+  .actionButton:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+  
+  /* Selected Feedback Panel */
+  .detailsPanel {
+    background: var(--card-bg-color);
+    border-radius: 12px;
+    padding: 2rem;
+    position: sticky;
+    top: 2rem;
+    border: 1px solid var(--border-color);
+  }
+  
+  .detailsHeader {
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 1rem;
+    margin-bottom: 1rem;
+  }
+  
+  .detailsHeader h2 {
+    margin: 0;
+    font-size: 1.5rem;
+  }
+  
+  .detailsBody {
+    margin-bottom: 1.5rem;
+  }
+  
+  .detailItem {
+    margin-bottom: 1rem;
+  }
+  
+  .detailItem strong {
+    display: block;
+    margin-bottom: 0.25rem;
+    color: var(--text-secondary-color);
+    font-size: 0.9rem;
+  }
+  
+  .detailsActions {
+    display: flex;
+    gap: 1rem;
+  }
+  
+  .deleteButton {
+    background-color: #e53e3e;
+    color: white;
+  }
+  
+  .emptyState {
+    padding: 4rem;
+    text-align: center;
+    color: var(--text-secondary-color);
+  }
+  
+  .emptyState p {
+    margin: 0;
+  }
+  
+  /* Responsive Adjustments */
+  @media (max-width: 768px) {
+    .container {
+      padding: 1rem;
+    }
+  
+    .header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+  
+    .table th, .table td {
+      padding: 0.75rem;
+    }
+  }
+  
+  /* Modal for larger view */
+  .modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+  }
+  
+  .modalContent {
+    background: var(--card-bg-color);
+    padding: 2rem;
+    border-radius: 12px;
+    max-width: 800px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  
+  .modalHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 1rem;
+    margin-bottom: 1rem;
+  }
+  
+  .modalHeader h2 {
+    margin: 0;
+  }
+  
+  .closeButton {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: var(--text-color);
+  }
+  
+  .modalBody p {
+    white-space: pre-wrap;
+    line-height: 1.6;
+  }
+  
+.actionCell {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.detailContent {
+  white-space: pre-wrap;
+  line-height: 1.6;
+  background: #222;
+  padding: 1rem;
+  border-radius: 0.25rem;
+} 

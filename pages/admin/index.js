@@ -51,6 +51,16 @@ const AdminPanel = () => {
   const [auditLoading, setAuditLoading] = useState(false);
   const [auditPage, setAuditPage] = useState(1);
 
+  // Define tools for the admin panel
+  const tools = [
+    { name: 'User Management', description: 'View, edit, and manage users', link: '/admin/users', icon: '👥' },
+    { name: 'Financial Analytics', description: 'Monitor revenue and subscriptions', link: '/admin/financial-analytics', icon: '💰' },
+    { name: 'Promo Codes', description: 'Create and manage promo codes', link: '/admin/promo-codes', icon: '🎫' },
+    { name: 'Feedback Management', description: 'View and respond to user feedback', link: '/admin/feedback', icon: '💬' },
+    { name: 'Security Monitoring', description: 'Monitor security events and logs', link: '/admin/security-monitoring', icon: '🛡️' },
+    { name: 'Email Automation', description: 'Test and manage cron jobs for emails', link: '/admin/cron-test', icon: '🕐' }
+  ];
+
   // Fetch users
   useEffect(() => {
     if (!isAuthenticated) {
@@ -300,83 +310,33 @@ const AdminPanel = () => {
         <h3 style={{ color: darkMode ? '#e0e0e0' : '#333', marginBottom: '20px', fontSize: '18px' }}>
           🛠️ Admin Tools
         </h3>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '15px' }}>
-          <Link href="/admin/promo-codes" style={{
-            display: 'block',
-            padding: '15px 20px',
-            backgroundColor: darkMode ? '#2a2a2a' : '#f8f9fa',
-            borderRadius: '8px',
-            textDecoration: 'none',
-            color: darkMode ? '#e0e0e0' : '#333',
-            border: `1px solid ${darkMode ? '#444' : '#e0e0e0'}`,
-            transition: 'all 0.2s ease'
-          }}
-          onMouseOver={(e) => { e.target.style.backgroundColor = darkMode ? '#333' : '#e9ecef'; e.target.style.transform = 'translateY(-2px)'; }}
-          onMouseOut={(e) => { e.target.style.backgroundColor = darkMode ? '#2a2a2a' : '#f8f9fa'; e.target.style.transform = 'translateY(0)'; }}>
-            <div style={{ fontSize: '20px', marginBottom: '8px' }}>🎫</div>
-            <div style={{ fontWeight: '500', marginBottom: '5px' }}>Promo Code Management</div>
-            <div style={{ fontSize: '14px', color: darkMode ? '#b0b0b0' : '#666' }}>Create and manage promotional codes for discounts</div>
-          </Link>
-          <Link href="/admin/cron-test" style={{
-            display: 'block',
-            padding: '15px 20px',
-            backgroundColor: darkMode ? '#2a2a2a' : '#f8f9fa',
-            borderRadius: '8px',
-            textDecoration: 'none',
-            color: darkMode ? '#e0e0e0' : '#333',
-            border: `1px solid ${darkMode ? '#444' : '#e0e0e0'}`,
-            transition: 'all 0.2s ease'
-          }}
-          onMouseOver={(e) => { e.target.style.backgroundColor = darkMode ? '#333' : '#e9ecef'; e.target.style.transform = 'translateY(-2px)'; }}
-          onMouseOut={(e) => { e.target.style.backgroundColor = darkMode ? '#2a2a2a' : '#f8f9fa'; e.target.style.transform = 'translateY(0)'; }}>
-            <div style={{ fontSize: '20px', marginBottom: '8px' }}>🕐</div>
-            <div style={{ fontWeight: '500', marginBottom: '5px' }}>Email Automation</div>
-            <div style={{ fontSize: '14px', color: darkMode ? '#b0b0b0' : '#666' }}>Test and monitor automated email campaigns</div>
-          </Link>
-          <Link href="/admin/financial-analytics" style={{
-            display: 'block',
-            padding: '15px 20px',
-            backgroundColor: darkMode ? '#2a2a2a' : '#f8f9fa',
-            borderRadius: '8px',
-            textDecoration: 'none',
-            color: darkMode ? '#e0e0e0' : '#333',
-            border: `1px solid ${darkMode ? '#444' : '#e0e0e0'}`,
-            transition: 'all 0.2s ease'
-          }}
-          onMouseOver={(e) => { e.target.style.backgroundColor = darkMode ? '#333' : '#e9ecef'; e.target.style.transform = 'translateY(-2px)'; }}
-          onMouseOut={(e) => { e.target.style.backgroundColor = darkMode ? '#2a2a2a' : '#f8f9fa'; e.target.style.transform = 'translateY(0)'; }}>
-            <div style={{ fontSize: '20px', marginBottom: '8px' }}>💰</div>
-            <div style={{ fontWeight: '500', marginBottom: '5px' }}>Financial Analytics</div>
-            <div style={{ fontSize: '14px', color: darkMode ? '#b0b0b0' : '#666' }}>Revenue tracking, payment metrics, and financial insights</div>
-          </Link>
-          <Link href="/admin/system-settings" style={linkStyle}>
-            <div style={{ fontWeight: '500', marginBottom: '5px' }}>System Settings</div>
-            <p style={{ fontSize: '14px', color: darkMode ? '#aaa' : '#666' }}>Platform configuration and preferences</p>
-          </Link>
-          <Link href="/admin/security-monitoring" style={{
-            display: 'block',
-            padding: '15px 20px',
-            backgroundColor: darkMode ? '#2a2a2a' : '#f8f9fa',
-            borderRadius: '8px',
-            textDecoration: 'none',
-            color: darkMode ? '#e0e0e0' : '#333',
-            border: `1px solid ${darkMode ? '#444' : '#e0e0e0'}`,
-            transition: 'all 0.2s ease'
-          }}
-          onMouseOver={(e) => { 
-            const target = e.currentTarget;
-            target.style.backgroundColor = darkMode ? '#333' : '#e9ecef'; 
-            target.style.transform = 'translateY(-2px)'; 
-          }}
-          onMouseOut={(e) => { 
-            const target = e.currentTarget;
-            target.style.backgroundColor = darkMode ? '#2a2a2a' : '#f8f9fa'; 
-            target.style.transform = 'translateY(0)'; 
-          }}>
-            <div style={{ fontSize: '20px', marginBottom: '8px' }}>🛡️</div>
-            <div style={{ fontWeight: '500', marginBottom: '5px' }}>Security Monitoring</div>
-            <p style={{ fontSize: '14px', color: darkMode ? '#b0b0b0' : '#666' }}>View security metrics and threat dashboard</p>
-          </Link>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+          gap: '20px'
+        }}>
+          {tools.map((tool, index) => (
+            <Link href={tool.link} key={index} style={linkStyle}>
+              <div 
+                style={{
+                  ...toolItemStyle,
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseOver={(e) => { 
+                  e.currentTarget.style.backgroundColor = darkMode ? '#333' : '#e9ecef';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                }}
+                onMouseOut={(e) => { 
+                  e.currentTarget.style.backgroundColor = darkMode ? '#2a2a2a' : '#f8f9fa';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }}
+              >
+                <div style={{ fontSize: '24px', marginBottom: '12px' }}>{tool.icon}</div>
+                <div style={{ fontWeight: '600', color: darkMode ? '#e0e0e0' : '#333', marginBottom: '5px' }}>{tool.name}</div>
+                <p style={{ fontSize: '14px', color: darkMode ? '#b0b0b0' : '#666', margin: 0 }}>{tool.description}</p>
+              </div>
+            </Link>
+          ))}
         </div>
       </div>
 
