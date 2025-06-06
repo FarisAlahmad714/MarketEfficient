@@ -373,7 +373,136 @@ const Navbar = () => {
         </div>
       )}
 
-      <style jsx>{`
+      <style jsx global>{`
+        /* NUCLEAR LINK RESET - Remove ALL hyperlink styling completely */
+        .navbar a,
+        .navbar a:any-link,
+        .navbar a:link,
+        .navbar a:visited,
+        .navbar a:hover,
+        .navbar a:active,
+        .navbar a:focus,
+        .navbar a:target {
+          color: inherit !important;
+          text-decoration: none !important;
+          text-decoration-line: none !important;
+          text-decoration-style: none !important;
+          text-decoration-color: transparent !important;
+          background-color: transparent !important;
+          outline: none !important;
+          border: none !important;
+          box-shadow: none !important;
+        }
+        
+        /* Override any deeply nested links */
+        .navbar * a,
+        .navbar * a:any-link,
+        .navbar * a:link,
+        .navbar * a:visited,
+        .navbar * a:hover,
+        .navbar * a:active,
+        .navbar * a:focus {
+          color: inherit !important;
+          text-decoration: none !important;
+          text-decoration-line: none !important;
+          text-decoration-style: none !important;
+          text-decoration-color: transparent !important;
+          background-color: transparent !important;
+        }
+        
+        /* Specific navigation link reset */
+        .navbar .nav-link,
+        .navbar .nav-link:any-link,
+        .navbar .nav-link:link,
+        .navbar .nav-link:visited,
+        .navbar .nav-link:hover,
+        .navbar .nav-link:active,
+        .navbar .nav-link:focus {
+          color: inherit !important;
+          text-decoration: none !important;
+          text-decoration-line: none !important;
+          text-decoration-style: none !important;
+          text-decoration-color: transparent !important;
+        }
+        
+        /* Mobile link reset */
+        .navbar .mobile-link,
+        .navbar .mobile-link:any-link,
+        .navbar .mobile-link:link,
+        .navbar .mobile-link:visited,
+        .navbar .mobile-link:hover,
+        .navbar .mobile-link:active,
+        .navbar .mobile-link:focus {
+          color: inherit !important;
+          text-decoration: none !important;
+          text-decoration-line: none !important;
+          text-decoration-style: none !important;
+          text-decoration-color: transparent !important;
+        }
+        
+        /* Dropdown item reset */
+        .navbar .dropdown-item,
+        .navbar .dropdown-item:any-link,
+        .navbar .dropdown-item:link,
+        .navbar .dropdown-item:visited,
+        .navbar .dropdown-item:hover,
+        .navbar .dropdown-item:active,
+        .navbar .dropdown-item:focus {
+          color: inherit !important;
+          text-decoration: none !important;
+          text-decoration-line: none !important;
+          text-decoration-style: none !important;
+          text-decoration-color: transparent !important;
+        }
+        
+        /* Brand link reset */
+        .navbar .navbar-brand,
+        .navbar .navbar-brand:any-link,
+        .navbar .navbar-brand:link,
+        .navbar .navbar-brand:visited,
+        .navbar .navbar-brand:hover,
+        .navbar .navbar-brand:active,
+        .navbar .navbar-brand:focus {
+          color: inherit !important;
+          text-decoration: none !important;
+          text-decoration-line: none !important;
+          text-decoration-style: none !important;
+          text-decoration-color: transparent !important;
+        }
+        
+        /* Specific overrides for styled elements */
+        .navbar .login-button,
+        .navbar .login-button:any-link,
+        .navbar .login-button:link,
+        .navbar .login-button:visited,
+        .navbar .login-button:hover,
+        .navbar .login-button:active,
+        .navbar .mobile-login,
+        .navbar .mobile-login:any-link,
+        .navbar .mobile-login:link,
+        .navbar .mobile-login:visited,
+        .navbar .mobile-login:hover,
+        .navbar .mobile-login:active {
+          color: white !important;
+          text-decoration: none !important;
+          text-decoration-line: none !important;
+        }
+        
+        .navbar .brand-name,
+        .navbar .brand-name:any-link,
+        .navbar .brand-name:link,
+        .navbar .brand-name:visited,
+        .navbar .brand-name:hover,
+        .navbar .brand-name:active {
+          background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%) !important;
+          -webkit-background-clip: text !important;
+          -webkit-text-fill-color: transparent !important;
+          background-clip: text !important;
+          color: transparent !important;
+          text-decoration: none !important;
+          text-decoration-line: none !important;
+        }
+        
         .navbar {
           width: 100%;
           height: 70px;
@@ -381,7 +510,7 @@ const Navbar = () => {
           top: 0;
           z-index: 9999;
           transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-          overflow: visible;
+          overflow: hidden;
           isolation: isolate;
         }
         
@@ -506,6 +635,7 @@ const Navbar = () => {
         .navbar-brand {
           text-decoration: none;
           transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          color: inherit;
         }
         
         .navbar-brand:hover {
@@ -597,11 +727,11 @@ const Navbar = () => {
         }
         
         .dark .brand-tagline {
-          color: rgba(255, 255, 255, 0.6);
+          color: #94a3b8;
         }
         
         .light .brand-tagline {
-          color: rgba(0, 0, 0, 0.6);
+          color: #64748b;
         }
         
         .navbar-nav {
@@ -636,14 +766,15 @@ const Navbar = () => {
           position: relative;
           border-radius: 12px;
           min-width: 80px;
+          color: inherit;
         }
         
         .dark .nav-link {
-          color: rgba(255, 255, 255, 0.7);
+          color: rgba(255, 255, 255, 0.85);
         }
         
         .light .nav-link {
-          color: rgba(0, 0, 0, 0.7);
+          color: rgba(15, 23, 42, 0.8);
         }
         
         .nav-link:hover {
@@ -651,13 +782,13 @@ const Navbar = () => {
         }
         
         .dark .nav-link:hover {
-          color: rgba(255, 255, 255, 0.95);
-          background: rgba(255, 255, 255, 0.08);
+          color: #ffffff;
+          background: rgba(59, 130, 246, 0.12);
         }
         
         .light .nav-link:hover {
-          color: rgba(0, 0, 0, 0.95);
-          background: rgba(0, 0, 0, 0.06);
+          color: #1e293b;
+          background: rgba(59, 130, 246, 0.08);
         }
         
         .nav-link.active {
@@ -665,13 +796,15 @@ const Navbar = () => {
         }
         
         .dark .nav-link.active {
-          color: #3b82f6;
-          background: rgba(59, 130, 246, 0.15);
+          color: #60a5fa;
+          background: rgba(59, 130, 246, 0.2);
+          font-weight: 600;
         }
         
         .light .nav-link.active {
-          color: #3b82f6;
-          background: rgba(59, 130, 246, 0.1);
+          color: #2563eb;
+          background: rgba(59, 130, 246, 0.12);
+          font-weight: 600;
         }
         
         .nav-icon-wrapper {
@@ -838,11 +971,11 @@ const Navbar = () => {
         }
         
         .dark .username {
-          color: rgba(255, 255, 255, 0.9);
+          color: #f1f5f9;
         }
         
         .light .username {
-          color: rgba(0, 0, 0, 0.9);
+          color: #1e293b;
         }
         
         .admin-badge {
@@ -1004,6 +1137,7 @@ const Navbar = () => {
           text-align: left;
           font-family: inherit;
           cursor: pointer;
+          color: inherit;
         }
         
         .dark .dropdown-item {
@@ -1127,7 +1261,7 @@ const Navbar = () => {
           text-decoration: none;
           font-size: 14px;
           background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
-          color: white;
+          color: white !important;
           box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
           transition: all 0.3s ease;
         }
@@ -1252,6 +1386,7 @@ const Navbar = () => {
           transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
           margin-bottom: 8px;
           font-weight: 500;
+          color: inherit;
         }
         
         .dark .mobile-link {
@@ -1404,7 +1539,7 @@ const Navbar = () => {
           font-weight: 600;
           font-size: 14px;
           background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
-          color: white;
+          color: white !important;
           box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
           transition: all 0.3s ease;
         }

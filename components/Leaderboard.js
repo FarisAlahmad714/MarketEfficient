@@ -336,28 +336,22 @@ const Leaderboard = () => {
                           fontWeight: isCurrentUser(entry.userId) ? '600' : 'normal',
                         }}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                           <ProfileAvatar
                             imageUrl={imageUrls[entry.userId]}
                             name={entry.name}
-                            size={30}
+                            size={45}
                             borderRadius="50%"
                             fallbackColor={generateUserColor(entry.name)}
-                            textSize="0.85rem"
+                            textSize="1rem"
                           />
                           <div>
-                            <div>{entry.name}</div>
-                            {entry.email && (
-                              <div
-                                style={{
-                                  fontSize: '0.8rem',
-                                  color: darkMode ? '#b0b0b0' : '#666',
-                                  marginTop: '2px',
-                                }}
-                              >
-                                {entry.email}
-                              </div>
-                            )}
+                            <div style={{ 
+                              fontWeight: isCurrentUser(entry.userId) ? '600' : '500',
+                              fontSize: '15px'
+                            }}>
+                              {entry.name}
+                            </div>
                           </div>
                           {isCurrentUser(entry.userId) && (
                             <span

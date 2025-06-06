@@ -175,26 +175,6 @@ export default function HomePage() {
           : '1px solid rgba(34, 197, 94, 0.4)',
       }}
     >
-      <video
-        autoPlay
-        muted
-        loop
-        playsInline
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          objectFit: 'cover',
-          zIndex: 0,
-          opacity: darkMode ? 0.65 : 0.75,
-          filter: darkMode ? 'brightness(0.8) contrast(1.1)' : 'brightness(0.9) contrast(1.2)',
-        }}
-      >
-        <source src="/videos/background-video.mp4" type="video/mp4" />
-        Your browser does not support the video tag.
-      </video>
       <div
         style={{
           position: 'absolute',
@@ -203,10 +183,9 @@ export default function HomePage() {
           width: '100%',
           height: '100%',
           background: darkMode 
-            ? 'linear-gradient(135deg, rgba(30, 41, 59, 0.5), rgba(22, 101, 52, 0.4))' 
-            : 'linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(34, 197, 94, 0.3))',
+            ? 'linear-gradient(135deg, #1e1b4b 0%, #3730a3 25%, #1e40af 50%, #7c3aed 75%, #1e1b4b 100%)' 
+            : 'linear-gradient(135deg, #dbeafe 0%, #3b82f6 25%, #1d4ed8 50%, #8b5cf6 75%, #dbeafe 100%)',
           zIndex: 1,
-          opacity: 0.5,
         }}
       />
       <motion.div
