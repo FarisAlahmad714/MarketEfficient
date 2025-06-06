@@ -7,7 +7,8 @@ import dynamic from 'next/dynamic';
 import { ThemeContext } from '../../contexts/ThemeContext';
 import CryptoLoader from '../../components/CryptoLoader';
 import TrackedPage from '../../components/TrackedPage';
-import logger from '../../lib/logger'; // Adjust path to your logger utility
+import storage from '../../lib/storage';
+import logger from '../../lib/logger';
 // Import CandlestickChart with SSR disabled
 const CandlestickChart = dynamic(
   () => import('../../components/charts/CandlestickChart'),
@@ -22,6 +23,120 @@ const Results = () => {
   const [loading, setLoading] = useState(true);
   const [debugInfo, setDebugInfo] = useState(null);
   const [hasLoadedResults, setHasLoadedResults] = useState(false); // State to prevent refetching
+  const [outcomeImagesCaptured, setOutcomeImagesCaptured] = useState({}); // Track captured outcome images
+  const [setupImagesCaptured, setSetupImagesCaptured] = useState({}); // Track captured setup images
+
+  // Capture setup chart images
+  const captureSetupChartImage = async (questionId, sessionId) => {
+    try {
+      const setupChartElement = document.getElementById(`setup-chart-${questionId}`);
+      if (!setupChartElement) {
+        console.log(`Setup chart element not found for question ${questionId}`);
+        return null;
+      }
+
+      console.log(`Capturing setup chart for question ${questionId}`);
+
+      // Use html2canvas to capture the setup chart
+      const html2canvas = (await import('html2canvas')).default;
+      const canvas = await html2canvas(setupChartElement, {
+        backgroundColor: darkMode ? '#262626' : '#ffffff',
+        scale: 1.5,
+        useCORS: true,
+        allowTaint: true,
+        logging: false
+      });
+
+      // Convert to data URL
+      const dataUrl = canvas.toDataURL('image/png', 0.8);
+
+      // Upload to server
+      try {
+        const token = await storage.getItem('auth_token');
+        if (token && sessionId) {
+          const uploadResponse = await axios.post('/api/bias-test/upload-chart-image', {
+            imageBlob: dataUrl,
+            sessionId: sessionId,
+            questionId: questionId,
+            imageType: 'setup'
+          }, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+
+          if (uploadResponse.data.success) {
+            console.log(`Setup chart uploaded for question ${questionId}`);
+            return {
+              url: uploadResponse.data.imageUrl,
+              gcsPath: uploadResponse.data.gcsPath
+            };
+          }
+        }
+      } catch (uploadError) {
+        console.error('Error uploading setup chart:', uploadError);
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Error capturing setup chart:', error);
+      return null;
+    }
+  };
+
+  // Capture outcome chart images
+  const captureOutcomeChartImage = async (questionId, sessionId) => {
+    try {
+      const outcomeChartElement = document.getElementById(`outcome-chart-${questionId}`);
+      if (!outcomeChartElement) {
+        console.log(`Outcome chart element not found for question ${questionId}`);
+        return null;
+      }
+
+      console.log(`Capturing outcome chart for question ${questionId}`);
+
+      // Use html2canvas to capture the outcome chart
+      const html2canvas = (await import('html2canvas')).default;
+      const canvas = await html2canvas(outcomeChartElement, {
+        backgroundColor: darkMode ? '#262626' : '#ffffff',
+        scale: 1.5,
+        useCORS: true,
+        allowTaint: true,
+        logging: false
+      });
+
+      // Convert to data URL
+      const dataUrl = canvas.toDataURL('image/png', 0.8);
+
+      // Upload to server
+      try {
+        const token = await storage.getItem('auth_token');
+        if (token && sessionId) {
+          const uploadResponse = await axios.post('/api/bias-test/upload-chart-image', {
+            imageBlob: dataUrl,
+            sessionId: sessionId,
+            questionId: questionId,
+            imageType: 'outcome'
+          }, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+
+          if (uploadResponse.data.success) {
+            console.log(`Outcome chart uploaded for question ${questionId}`);
+            return {
+              url: uploadResponse.data.imageUrl,
+              gcsPath: uploadResponse.data.gcsPath
+            };
+          }
+        }
+      } catch (uploadError) {
+        console.error('Error uploading outcome chart:', uploadError);
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Error capturing outcome chart:', error);
+      return null;
+    }
+  };
 
   useEffect(() => {
     // Wait for router to be ready and prevent duplicate fetches
@@ -152,6 +267,106 @@ const Results = () => {
       });
     }
   }, [results]);
+
+  // Capture both setup and outcome charts after results load
+  useEffect(() => {
+    if (results && results.answers && results.answers.length > 0 && router.query.session_id) {
+      // Add a delay to ensure charts are fully rendered
+      const captureTimer = setTimeout(async () => {
+        try {
+          const setupImages = [];
+          const outcomeImages = [];
+          
+          for (const answer of results.answers) {
+            // Capture setup chart
+            if (!setupImagesCaptured[answer.test_id]) {
+              console.log(`Attempting to capture setup chart for question ${answer.test_id}`);
+              const setupImageResult = await captureSetupChartImage(answer.test_id, router.query.session_id);
+              if (setupImageResult) {
+                setSetupImagesCaptured(prev => ({
+                  ...prev,
+                  [answer.test_id]: true
+                }));
+                setupImages.push({
+                  questionId: answer.test_id,
+                  imageUrl: setupImageResult.url,
+                  gcsPath: setupImageResult.gcsPath
+                });
+                console.log(`Setup chart captured for question ${answer.test_id}`);
+              }
+            }
+
+            // Capture outcome chart
+            if (!outcomeImagesCaptured[answer.test_id]) {
+              console.log(`Attempting to capture outcome chart for question ${answer.test_id}`);
+              const outcomeImageResult = await captureOutcomeChartImage(answer.test_id, router.query.session_id);
+              if (outcomeImageResult) {
+                setOutcomeImagesCaptured(prev => ({
+                  ...prev,
+                  [answer.test_id]: true
+                }));
+                outcomeImages.push({
+                  questionId: answer.test_id,
+                  imageUrl: outcomeImageResult.url,
+                  gcsPath: outcomeImageResult.gcsPath
+                });
+                console.log(`Outcome chart captured for question ${answer.test_id}`);
+              }
+            }
+          }
+          
+          // Update database with both setup and outcome image URLs if any were captured
+          if (setupImages.length > 0 || outcomeImages.length > 0) {
+            try {
+              const token = await storage.getItem('auth_token');
+              if (token) {
+                const updateRequests = [];
+                
+                // Update setup images if captured
+                if (setupImages.length > 0) {
+                  updateRequests.push(
+                    axios.post('/api/bias-test/update-chart-images', {
+                      sessionId: router.query.session_id,
+                      chartImages: setupImages,
+                      imageType: 'setup'
+                    }, {
+                      headers: { 'Authorization': `Bearer ${token}` }
+                    })
+                  );
+                }
+                
+                // Update outcome images if captured
+                if (outcomeImages.length > 0) {
+                  updateRequests.push(
+                    axios.post('/api/bias-test/update-outcome-images', {
+                      sessionId: router.query.session_id,
+                      outcomeImages: outcomeImages
+                    }, {
+                      headers: { 'Authorization': `Bearer ${token}` }
+                    })
+                  );
+                }
+                
+                const responses = await Promise.all(updateRequests);
+                responses.forEach((response, index) => {
+                  if (response.data.success) {
+                    const imageType = index === 0 && setupImages.length > 0 ? 'setup' : 'outcome';
+                    console.log(`Updated ${response.data.updatedCount} ${imageType} images in database`);
+                  }
+                });
+              }
+            } catch (updateError) {
+              console.error('Error updating chart images in database:', updateError);
+            }
+          }
+        } catch (error) {
+          console.error('Error during chart capture:', error);
+        }
+      }, 2000); // 2 second delay to ensure charts are rendered
+
+      return () => clearTimeout(captureTimer);
+    }
+  }, [results, router.query.session_id, setupImagesCaptured, outcomeImagesCaptured]);
 
   const handleTakeAnotherTest = () => {
     // Clear the loaded state before taking a new test
@@ -471,11 +686,14 @@ const Results = () => {
                     }}>
                       Setup Chart
                     </h4>
-                    <div style={{ 
-                      backgroundColor: darkMode ? '#262626' : '#fff', 
-                      padding: '15px', 
-                      borderRadius: '8px'
-                    }}>
+                    <div 
+                      id={`setup-chart-${answer.test_id}`}
+                      style={{ 
+                        backgroundColor: darkMode ? '#262626' : '#fff', 
+                        padding: '15px', 
+                        borderRadius: '8px'
+                      }}
+                    >
                       {ohlcData.length > 0 ? (
                         <>
                           <CandlestickChart data={ohlcData} height={250} />
@@ -596,11 +814,14 @@ const Results = () => {
                         </span>
                       )}
                     </h4>
-                    <div style={{ 
-                      backgroundColor: darkMode ? '#262626' : '#fff', 
-                      padding: '15px', 
-                      borderRadius: '8px'
-                    }}>
+                    <div 
+                      id={`outcome-chart-${answer.test_id}`}
+                      style={{ 
+                        backgroundColor: darkMode ? '#262626' : '#fff', 
+                        padding: '15px', 
+                        borderRadius: '8px'
+                      }}
+                    >
                       {outcomeData.length > 0 ? (
                         <>
                           <CandlestickChart data={outcomeData} height={250} />

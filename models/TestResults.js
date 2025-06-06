@@ -50,6 +50,24 @@ const TestResultsSchema = new mongoose.Schema({
         type: String,
         enum: ['pending', 'completed', 'failed'],
         default: 'pending'
+      },
+      // Enhanced fields for comprehensive sentiment data collection
+      setupImageUrl: String,      // Signed URL for setup chart (temporary)
+      setupImagePath: String,     // GCS path for setup chart (permanent)
+      outcomeImageUrl: String,    // Signed URL for outcome chart (temporary)
+      outcomeImagePath: String,   // GCS path for outcome chart (permanent)
+      confidenceLevel: Number,    // 1-10 scale for prediction confidence
+      timeSpent: Number,         // Seconds spent on this question
+      marketCondition: String,   // trending/sideways/volatile
+      volumeProfile: {           // Volume analysis data
+        avgVolume: Number,
+        volumeTrend: String,     // increasing/decreasing/stable
+        volumeSpikes: Number     // Count of significant volume spikes
+      },
+      technicalFactors: [String], // Array of technical indicators mentioned in reasoning
+      submittedAt: {             // When this specific question was answered
+        type: Date,
+        default: Date.now
       }
     }]
   },

@@ -129,7 +129,18 @@ async function saveResultsHandler(req, res) {
           aiAnalysis: answer.ai_analysis || null,
           ohlcData: Array.isArray(answer.ohlc_data) ? answer.ohlc_data.slice(0, 100) : [], // Limit array size
           outcomeData: Array.isArray(answer.outcome_data) ? answer.outcome_data.slice(0, 100) : [], // Limit array size
-          analysisStatus: answer.ai_analysis ? 'completed' : 'pending'
+          analysisStatus: answer.ai_analysis ? 'completed' : 'pending',
+          // Enhanced metadata fields
+          setupImageUrl: answer.setupImageUrl || null,
+          setupImagePath: answer.setupImagePath || null,
+          outcomeImageUrl: answer.outcomeImageUrl || null,
+          outcomeImagePath: answer.outcomeImagePath || null,
+          confidenceLevel: parseInt(answer.confidenceLevel) || 5,
+          timeSpent: parseInt(answer.timeSpent) || 0,
+          marketCondition: answer.marketCondition || 'unknown',
+          volumeProfile: answer.volumeProfile || null,
+          technicalFactors: Array.isArray(answer.technicalFactors) ? answer.technicalFactors : [],
+          submittedAt: answer.submittedAt ? new Date(answer.submittedAt) : new Date()
         }));
         
         finalScore = parseInt(results.score) || 0;
@@ -145,7 +156,18 @@ async function saveResultsHandler(req, res) {
           aiAnalysis: answer.ai_analysis || null,
           ohlcData: Array.isArray(answer.ohlc_data) ? answer.ohlc_data.slice(0, 100) : [],
           outcomeData: Array.isArray(answer.outcome_data) ? answer.outcome_data.slice(0, 100) : [],
-          analysisStatus: answer.ai_analysis ? 'completed' : 'pending'
+          analysisStatus: answer.ai_analysis ? 'completed' : 'pending',
+          // Enhanced metadata fields
+          setupImageUrl: answer.setupImageUrl || null,
+          setupImagePath: answer.setupImagePath || null,
+          outcomeImageUrl: answer.outcomeImageUrl || null,
+          outcomeImagePath: answer.outcomeImagePath || null,
+          confidenceLevel: parseInt(answer.confidenceLevel) || 5,
+          timeSpent: parseInt(answer.timeSpent) || 0,
+          marketCondition: answer.marketCondition || 'unknown',
+          volumeProfile: answer.volumeProfile || null,
+          technicalFactors: Array.isArray(answer.technicalFactors) ? answer.technicalFactors : [],
+          submittedAt: answer.submittedAt ? new Date(answer.submittedAt) : new Date()
         }));
         
         finalScore = parseInt(score) || 0;

@@ -9,19 +9,25 @@ import { requireAuth } from '../../../middleware/auth';
 import { composeMiddleware } from '../../../lib/api-handler';
 
 // Store sessions in memory (in a real app, this would be a database)
-const sessions = {};
+// Use global to persist across Next.js module reloads in development
+if (!global.biasTestSessions) {
+  global.biasTestSessions = {};
+  logger.log('Initialized new global bias test sessions object');
+}
+const sessions = global.biasTestSessions;
 
-// Clean up old sessions to prevent memory leaks
-const SESSION_EXPIRY = 60 * 60 * 1000; // 1 hour in milliseconds
-setInterval(() => {
-  const now = Date.now();
-  Object.keys(sessions).forEach(key => {
-    if (sessions[key].timestamp && (now - sessions[key].timestamp) > SESSION_EXPIRY) {
-      delete sessions[key];
-      logger.log('Cleaned up expired session');
-    }
-  });
-}, 15 * 60 * 1000); // Check every 15 minutes
+// Clean up old sessions to prevent memory leaks (temporarily disabled for debugging)
+const SESSION_EXPIRY = 4 * 60 * 60 * 1000; // 4 hours in milliseconds
+// Disable automatic cleanup during development
+// setInterval(() => {
+//   const now = Date.now();
+//   Object.keys(sessions).forEach(key => {
+//     if (sessions[key].timestamp && (now - sessions[key].timestamp) > SESSION_EXPIRY) {
+//       delete sessions[key];
+//       logger.log(`Cleaned up expired session: ${key}`);
+//     }
+//   });
+// }, 60 * 60 * 1000); // Check every hour
 
 // Get AI analysis for a trading decision with correct parameter order
 async function getAIAnalysis(chartData, outcomeData, prediction, reasoning, correctAnswer, wasCorrect) {
@@ -310,10 +316,191 @@ function getTimeIncrement(timeframe) {
   }
 }
 
+/**
+ * Handle test submission (POST requests)
+ */
+async function handleTestSubmission(req, res, assetSymbol) {
+  const { session_id } = req.query;
+  const { answers, chartData } = req.body;
+  const userId = req.user.id;
+  
+  logger.log(`Test submission for session ${session_id}, user ${userId}`);
+  logger.log(`Received ${answers?.length || 0} answers`);
+  
+  if (!session_id) {
+    return res.status(400).json({ error: 'Session ID is required' });
+  }
+  
+  if (!answers || !Array.isArray(answers)) {
+    return res.status(400).json({ error: 'Answers array is required' });
+  }
+  
+  // Get the test session
+  const testSessionKey = session_id + '_test';
+  const testSession = sessions[testSessionKey];
+  
+  // Debug: Log all available sessions
+  logger.log(`Available session keys: ${Object.keys(sessions)} (total: ${Object.keys(sessions).length})`);
+  logger.log(`Looking for session key: ${testSessionKey}`);
+  logger.log(`Sessions object keys and values:`, Object.keys(sessions).map(key => ({key, hasData: !!sessions[key]})));
+  
+  if (!testSession) {
+    logger.error(`Test session not found for ${session_id}`);
+    logger.error(`Available sessions: ${JSON.stringify(Object.keys(sessions))}`);
+    return res.status(404).json({ 
+      error: 'Test session not found. Please start a new test.',
+      code: 'SESSION_NOT_FOUND',
+      debug: {
+        searchKey: testSessionKey,
+        availableKeys: Object.keys(sessions)
+      }
+    });
+  }
+  
+  logger.log(`Found test session with ${testSession.questions?.length || 0} questions`);
+  
+  // Prepare results with AI analysis
+  const resultAnswersPromises = answers.map(async (answer) => {
+    const question = testSession.questions.find(q => q.id === answer.test_id);
+    if (!question) {
+      logger.error(`Question ${answer.test_id} not found in test session`);
+      return null;
+    }
+    
+    const isCorrect = answer.prediction.toLowerCase() === question.correct_answer.toLowerCase();
+    
+    // Get AI analysis for this answer
+    const aiAnalysis = await getAIAnalysis(
+      question.ohlc_data || [],
+      question.outcome_data || [],
+      answer.prediction,
+      answer.reasoning,
+      question.correct_answer,
+      isCorrect
+    );
+    
+    return {
+      test_id: answer.test_id,
+      user_prediction: answer.prediction,
+      user_reasoning: answer.reasoning,
+      correct_answer: question.correct_answer,
+      is_correct: isCorrect,
+      timeframe: question.timeframe,
+      ohlc_data: question.ohlc_data || [],
+      outcome_data: question.outcome_data || [],
+      ai_analysis: aiAnalysis, // Add AI analysis
+      // Enhanced metadata from frontend
+      confidenceLevel: answer.confidenceLevel || 5,
+      timeSpent: answer.timeSpent || 0,
+      marketCondition: answer.marketCondition || 'unknown',
+      volumeProfile: answer.volumeProfile || null,
+      technicalFactors: answer.technicalFactors || [],
+      setupImageUrl: answer.setupImageUrl || null,
+      setupImagePath: answer.setupImagePath || null,
+      submittedAt: answer.submittedAt ? new Date(answer.submittedAt) : new Date()
+    };
+  });
+  
+  // Wait for all AI analyses to complete
+  const answersArray = (await Promise.all(resultAnswersPromises)).filter(Boolean);
+  
+  // Calculate score after processing all answers
+  const score = answersArray.filter(answer => answer.is_correct).length;
+  
+  if (answersArray.length === 0) {
+    return res.status(400).json({ error: 'No valid answers found' });
+  }
+  
+  logger.log(`Calculated score: ${score}/${answersArray.length}`);
+  
+  // Store results in session for immediate retrieval
+  const results = {
+    asset_name: testSession.asset_name,
+    asset_symbol: testSession.asset_symbol,
+    session_id: session_id,
+    score: score,
+    total: answersArray.length,
+    answers: answersArray,
+    timestamp: Date.now()
+  };
+  
+  sessions[session_id] = results;
+  logger.log(`Stored results for session ${session_id}`);
+  
+  // Save to database using the enhanced save-results endpoint
+  try {
+    await connectDB();
+    
+    // Create the test result using our enhanced model
+    const testDetails = answersArray.map(answer => ({
+      question: answer.test_id,
+      prediction: answer.user_prediction,
+      correctAnswer: answer.correct_answer,
+      isCorrect: answer.is_correct,
+      reasoning: answer.user_reasoning || '',
+      aiAnalysis: answer.ai_analysis, // Include AI analysis
+      ohlcData: answer.ohlc_data || [],
+      outcomeData: answer.outcome_data || [],
+      analysisStatus: answer.ai_analysis ? 'completed' : 'pending',
+      // Enhanced fields
+      setupImageUrl: answer.setupImageUrl,
+      setupImagePath: answer.setupImagePath,
+      outcomeImageUrl: answer.outcomeImageUrl,
+      outcomeImagePath: answer.outcomeImagePath,
+      confidenceLevel: answer.confidenceLevel,
+      timeSpent: answer.timeSpent,
+      marketCondition: answer.marketCondition,
+      volumeProfile: answer.volumeProfile,
+      technicalFactors: answer.technicalFactors,
+      submittedAt: answer.submittedAt
+    }));
+    
+    const testResult = new TestResults({
+      userId: userId,
+      testType: 'bias-test',
+      assetSymbol: assetSymbol,
+      score: score,
+      totalPoints: answersArray.length,
+      status: testDetails.every(detail => detail.aiAnalysis) ? 'completed' : 'processing',
+      details: {
+        timeframe: testSession.selected_timeframe,
+        sessionId: session_id,
+        testDetails: testDetails
+      },
+      completedAt: new Date()
+    });
+    
+    // If all analysis is complete, set analysisCompletedAt
+    if (testDetails.every(detail => detail.aiAnalysis)) {
+      testResult.analysisCompletedAt = new Date();
+    }
+    
+    await testResult.save();
+    logger.log(`Enhanced bias test result saved to database for session ${session_id}`);
+    
+  } catch (dbError) {
+    logger.error('Error saving to database:', dbError);
+    // Continue even if database save fails
+  }
+  
+  return res.status(200).json({
+    success: true,
+    message: 'Test submitted successfully',
+    session_id: session_id,
+    score: score,
+    total: answersArray.length
+  });
+}
+
 // Handler function for API requests
 async function handler(req, res) {
   const { assetSymbol } = req.query;
   const timeframe = req.query.timeframe || 'daily';
+  
+  // Handle POST requests (test submissions)
+  if (req.method === 'POST') {
+    return await handleTestSubmission(req, res, assetSymbol);
+  }
   
   // Generate a new session ID if:
   // 1. No sessionId is provided (new test)
@@ -683,6 +870,7 @@ async function handler(req, res) {
     const testSessionKey = sessionId + '_test';
     sessions[testSessionKey] = testData;
     logger.log(`Stored test session with key: ${testSessionKey}`);
+    logger.log(`Total sessions after storing: ${Object.keys(sessions).length}`);
     
     // Test session stored in memory - database backup removed to avoid validation issues
     
@@ -770,6 +958,8 @@ async function handler(req, res) {
     // Store test session for validation of answers later
     const testSessionKey = sessionId + '_test';
     sessions[testSessionKey] = mockTestData;
+    logger.log(`Stored mock test session with key: ${testSessionKey}`);
+    logger.log(`Total sessions after storing mock: ${Object.keys(sessions).length}`);
     
     // Send only necessary data to client (remove correct answers)
     const clientTestData = {

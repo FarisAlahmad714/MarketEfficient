@@ -86,7 +86,7 @@ async function handler(req, res) {
       }],
       mode: 'payment',
       success_url: `${process.env.NEXT_PUBLIC_APP_URL}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/pricing?cancelled=true&email=${encodeURIComponent(registrationData.email)}&plan=${plan}`,
+      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/auth/register?cancelled=true&token=${tempToken}`,
       customer_email: registrationData.email,
       expires_at: Math.floor((Date.now() + 30 * 60 * 1000) / 1000),
       metadata: {

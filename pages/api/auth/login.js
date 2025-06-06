@@ -196,4 +196,14 @@ async function loginApiRouteHandler(req, res) {
   return res.status(405).json({ error: `Method ${req.method} Not Allowed` });
 }
 
-export default withCsrfProtect(loginApiRouteHandler);
+// Apply rate limiting before CSRF protection
+const rateLimitedHandler = (req, res) => {
+  return new Promise((resolve) => {
+    authRateLimit(req, res, () => {
+      withCsrfProtect(loginApiRouteHandler)(req, res);
+      resolve();
+    });
+  });
+};
+
+export default rateLimitedHandler;

@@ -49,6 +49,8 @@ export default function AssetTestPage() {
   const [reasoningInputs, setReasoningInputs] = useState({}); // Store reasoning inputs
   const [validationError, setValidationError] = useState(""); // For validation messages
   const [showVolume, setShowVolume] = useState(true); // State to toggle volume display
+  const [questionTimestamps, setQuestionTimestamps] = useState({}); // Track time spent per question
+  const [confidenceLevels, setConfidenceLevels] = useState({}); // Track confidence per question
   const cryptoLoaderRef = useRef(null);
   const { darkMode } = useContext(ThemeContext);
 
@@ -68,6 +70,90 @@ export default function AssetTestPage() {
     } catch (e) {
       return dateString;
     }
+  };
+
+
+  // Analyze volume profile
+  const analyzeVolumeProfile = (ohlcData) => {
+    if (!ohlcData || ohlcData.length === 0) return null;
+    
+    const volumes = ohlcData
+      .filter(candle => candle.volume > 0)
+      .map(candle => candle.volume);
+    
+    if (volumes.length === 0) return null;
+
+    const avgVolume = volumes.reduce((sum, vol) => sum + vol, 0) / volumes.length;
+    const recentVolumes = volumes.slice(-5); // Last 5 candles
+    const earlierVolumes = volumes.slice(0, -5);
+    
+    let volumeTrend = 'stable';
+    if (recentVolumes.length > 0 && earlierVolumes.length > 0) {
+      const recentAvg = recentVolumes.reduce((sum, vol) => sum + vol, 0) / recentVolumes.length;
+      const earlierAvg = earlierVolumes.reduce((sum, vol) => sum + vol, 0) / earlierVolumes.length;
+      
+      if (recentAvg > earlierAvg * 1.2) volumeTrend = 'increasing';
+      else if (recentAvg < earlierAvg * 0.8) volumeTrend = 'decreasing';
+    }
+
+    // Count volume spikes (2x average or more)
+    const volumeSpikes = volumes.filter(vol => vol > avgVolume * 2).length;
+
+    return {
+      avgVolume: Math.round(avgVolume),
+      volumeTrend,
+      volumeSpikes
+    };
+  };
+
+  // Detect market condition from OHLC data
+  const detectMarketCondition = (ohlcData) => {
+    if (!ohlcData || ohlcData.length < 5) return 'unknown';
+    
+    const closes = ohlcData.map(candle => candle.close);
+    const highs = ohlcData.map(candle => candle.high);
+    const lows = ohlcData.map(candle => candle.low);
+    
+    // Calculate volatility (average true range)
+    let totalRange = 0;
+    for (let i = 1; i < ohlcData.length; i++) {
+      const trueHigh = Math.max(highs[i], closes[i-1]);
+      const trueLow = Math.min(lows[i], closes[i-1]);
+      totalRange += trueHigh - trueLow;
+    }
+    const avgTrueRange = totalRange / (ohlcData.length - 1);
+    const avgClose = closes.reduce((sum, close) => sum + close, 0) / closes.length;
+    const volatilityRatio = avgTrueRange / avgClose;
+
+    // Calculate trend strength
+    const firstClose = closes[0];
+    const lastClose = closes[closes.length - 1];
+    const trendStrength = Math.abs((lastClose - firstClose) / firstClose);
+
+    if (volatilityRatio > 0.02) return 'volatile';
+    if (trendStrength > 0.05) return 'trending';
+    return 'sideways';
+  };
+
+  // Extract technical factors from reasoning text
+  const extractTechnicalFactors = (reasoning) => {
+    const factors = [];
+    const reasoningLower = reasoning.toLowerCase();
+    
+    const technicalTerms = [
+      'support', 'resistance', 'trend', 'bullish', 'bearish',
+      'breakout', 'breakdown', 'volume', 'macd', 'rsi',
+      'moving average', 'fibonacci', 'pattern', 'candlestick',
+      'momentum', 'oversold', 'overbought', 'divergence'
+    ];
+    
+    technicalTerms.forEach(term => {
+      if (reasoningLower.includes(term)) {
+        factors.push(term);
+      }
+    });
+    
+    return factors;
   };
 
   // Helper functions for volume display
@@ -118,12 +204,18 @@ export default function AssetTestPage() {
         // Initialize userAnswers and reasoningInputs with empty values
         const initialAnswers = {};
         const initialReasoning = {};
+        const initialTimestamps = {};
+        const initialConfidence = {};
         response.data.questions.forEach(q => {
           initialAnswers[q.id] = '';
           initialReasoning[q.id] = '';
+          initialTimestamps[q.id] = Date.now(); // Start tracking time for each question
+          initialConfidence[q.id] = 5; // Default confidence level
         });
         setUserAnswers(initialAnswers);
         setReasoningInputs(initialReasoning);
+        setQuestionTimestamps(initialTimestamps);
+        setConfidenceLevels(initialConfidence);
         setLoading(false);
         
         // Set a small timeout to simulate charts loading
@@ -145,7 +237,7 @@ export default function AssetTestPage() {
     fetchTestData();
   }, [assetSymbol, timeframe]);
 
-  const handleAnswerSelect = (questionId, prediction) => {
+  const handleAnswerSelect = async (questionId, prediction) => {
     setUserAnswers(prev => ({
       ...prev,
       [questionId]: prediction
@@ -157,6 +249,14 @@ export default function AssetTestPage() {
     setReasoningInputs(prev => ({
       ...prev,
       [questionId]: reasoning
+    }));
+  };
+
+  // Handle confidence level changes
+  const handleConfidenceChange = (questionId, confidence) => {
+    setConfidenceLevels(prev => ({
+      ...prev,
+      [questionId]: confidence
     }));
   };
 
@@ -211,12 +311,24 @@ export default function AssetTestPage() {
     }
     
     try {
-      // Format answers data
-      const formattedAnswers = Object.keys(userAnswers).map(testId => ({
-        test_id: parseInt(testId, 10),
-        prediction: userAnswers[testId],
-        reasoning: reasoningInputs[testId]
-      }));
+      // Format answers data with enhanced metadata
+      const formattedAnswers = Object.keys(userAnswers).map(testId => {
+        const question = testData.questions.find(q => q.id === parseInt(testId));
+        const timeSpent = Math.round((Date.now() - questionTimestamps[testId]) / 1000);
+        
+        return {
+          test_id: parseInt(testId, 10),
+          prediction: userAnswers[testId],
+          reasoning: reasoningInputs[testId],
+          // Enhanced metadata
+          confidenceLevel: confidenceLevels[testId] || 5,
+          timeSpent: timeSpent,
+          marketCondition: detectMarketCondition(question?.ohlc_data),
+          volumeProfile: analyzeVolumeProfile(question?.ohlc_data),
+          technicalFactors: extractTechnicalFactors(reasoningInputs[testId] || ''),
+          submittedAt: new Date()
+        };
+      });
       
       // Get auth token from storage - AWAIT THE ASYNCHRONOUS CALL
       const token = await storage.getItem('auth_token');
@@ -467,8 +579,7 @@ export default function AssetTestPage() {
               ) : (
                 question.ohlc_data && question.ohlc_data.length > 0 ? (
                   <>
-                    {/* Add ID to chart container for possible screenshot capture */}
-                    <div id={`chart-${question.id}`}>
+                    <div>
                       {/* Main price chart */}
                       <CandlestickChart 
                         data={question.ohlc_data} 
@@ -656,11 +767,49 @@ export default function AssetTestPage() {
                   }}
                 />
                 
+                {/* Confidence Level Slider */}
+                <div style={{ marginTop: '15px' }}>
+                  <label style={{ 
+                    display: 'block',
+                    fontSize: '14px',
+                    fontWeight: 'bold',
+                    marginBottom: '8px',
+                    color: darkMode ? '#e0e0e0' : '#333'
+                  }}>
+                    Confidence Level: {confidenceLevels[question.id]}/10
+                  </label>
+                  <input
+                    type="range"
+                    min="1"
+                    max="10"
+                    value={confidenceLevels[question.id]}
+                    onChange={(e) => handleConfidenceChange(question.id, parseInt(e.target.value))}
+                    style={{
+                      width: '100%',
+                      height: '6px',
+                      borderRadius: '3px',
+                      background: darkMode ? '#333' : '#ddd',
+                      outline: 'none',
+                      WebkitAppearance: 'none'
+                    }}
+                  />
+                  <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between',
+                    fontSize: '12px',
+                    color: darkMode ? '#999' : '#666',
+                    marginTop: '5px'
+                  }}>
+                    <span>Low Confidence</span>
+                    <span>High Confidence</span>
+                  </div>
+                </div>
+
                 {/* Small hint for users */}
                 <p style={{ 
                   fontSize: '12px', 
                   color: darkMode ? '#999' : '#666',
-                  marginTop: '5px'
+                  marginTop: '15px'
                 }}>
                   <i className="fas fa-info-circle" style={{ marginRight: '5px' }}></i>
                   Your reasoning will be analyzed by AI after submission to help improve your trading skills.

@@ -32,6 +32,8 @@ const RegisterWithPricing = () => {
   const [promoValidation, setPromoValidation] = useState(null);
   const [isValidatingPromo, setIsValidatingPromo] = useState(false);
   const [currentStep, setCurrentStep] = useState(1); // 1: Account Info, 2: Plan Selection
+  const [csrfToken, setCsrfToken] = useState('');
+  const [restoredToken, setRestoredToken] = useState(null);
 
   const { darkMode } = useContext(ThemeContext);
   const { register } = useContext(AuthContext);
@@ -40,8 +42,8 @@ const RegisterWithPricing = () => {
   const plans = {
     monthly: {
       name: 'Monthly Plan',
-      price: 29,
-      originalPrice: 29,
+      price: 39,
+      originalPrice: 39,
       interval: 'month',
       description: 'Full access to all premium features',
       features: [
@@ -55,14 +57,14 @@ const RegisterWithPricing = () => {
     },
     annual: {
       name: 'Annual Plan',
-      price: 249,
-      originalPrice: 249,
+      price: 360,
+      originalPrice: 360,
       interval: 'year',
-      savings: 99,
-      description: 'Best value - 2 months free!',
+      savings: 108,
+      description: 'Best value - save $108 a year!',
       features: [
         'Everything in Monthly',
-        '2 months FREE',
+        'Save $108 a year',
         'Priority support',
         'Advanced analytics',
         'Custom indicators',
@@ -71,27 +73,66 @@ const RegisterWithPricing = () => {
     },
   };
 
+  // Fetch CSRF token on component mount
+  useEffect(() => {
+    const fetchCsrfToken = async () => {
+      try {
+        const response = await fetch('/api/auth/csrf-token');
+        const data = await response.json();
+        setCsrfToken(data.csrfToken);
+      } catch (error) {
+        console.error('Failed to fetch CSRF token:', error);
+        setError('Could not initialize secure session. Please refresh the page.');
+      }
+    };
+    fetchCsrfToken();
+  }, []);
+
   // Check for cancelled checkout session on page load
   useEffect(() => {
+    const restoreSession = async (token) => {
+      setIsLoading(true);
+      setError('');
+      try {
+        const response = await fetch('/api/auth/get-pending-registration', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ token }),
+        });
+        const data = await response.json();
+        if (response.ok) {
+          setName(data.name || '');
+          setEmail(data.email || '');
+          setSelectedPlan(data.plan || 'monthly');
+          setPromoCode(data.promoCode || '');
+          setRestoredToken(token);
+          setCurrentStep(2);
+          setError('Your previous session has been restored. Please confirm your plan and proceed.');
+          // Clear the URL now that state is set
+          router.replace('/auth/register', undefined, { shallow: true });
+        } else {
+          throw new Error(data.error);
+        }
+      } catch (err) {
+        console.error('Failed to restore session:', err);
+        setError(err.message || 'Could not restore your previous session. Please start again.');
+        // Clear the URL on failure too
+        router.replace('/auth/register', undefined, { shallow: true });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
     const urlParams = new URLSearchParams(window.location.search);
     const cancelled = urlParams.get('cancelled');
-    const cancelledEmail = urlParams.get('email');
-    const cancelledPlan = urlParams.get('plan');
+    const token = urlParams.get('token');
     
-    if (cancelled === 'true' && cancelledEmail) {
-      // Pre-fill the form with their previous data
-      setEmail(decodeURIComponent(cancelledEmail));
-      if (cancelledPlan) {
-        setSelectedPlan(cancelledPlan);
-      }
-      
-      // Show a friendly message
-      setError('No problem! You can try a different plan or update your information.');
-      
-      // Clear the URL params
-      window.history.replaceState({}, document.title, '/pricing');
+    if (cancelled === 'true' && token) {
+      restoreSession(token);
     }
-  }, []);
+  }, [router]);
 
   // Validate email format instantly
   const validateEmailFormat = (email) => {
@@ -175,6 +216,7 @@ const RegisterWithPricing = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken,
         },
         body: JSON.stringify({
           promoCode: promoCode.toUpperCase(),
@@ -256,61 +298,70 @@ const RegisterWithPricing = () => {
     setError('');
 
     try {
-      const response = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name,
-          email,
-          password,
-          promoCode: promoCode.toUpperCase() || undefined,
-        }),
-      });
+      let tokenToUse = restoredToken;
 
-      const data = await response.json();
+      // If we are not in a restored session, we need to register first to get a token.
+      if (!tokenToUse) {
+        const registerResponse = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': csrfToken,
+          },
+          body: JSON.stringify({
+            name,
+            email,
+            password,
+            plan: selectedPlan,
+            promoCode: promoCode.toUpperCase() || undefined,
+          }),
+        });
 
-      if (response.ok && data.requiresPayment) {
-        // Use the new checkout endpoint
+        const registerData = await registerResponse.json();
+        
+        if (!registerResponse.ok) {
+          setError(registerData.error || 'Registration failed. Please try again.');
+          setIsLoading(false);
+          return;
+        }
+
+        if (registerData.requiresPayment) {
+          tokenToUse = registerData.tempToken;
+        } else {
+          // This case handles free promo codes or other non-payment scenarios
+          setRegisteredUserData({ name, email });
+          setShowEmailVerification(true);
+          setSuccess(registerData.message || 'Registration successful! Please check your email.');
+          setIsLoading(false);
+          return;
+        }
+      }
+
+      // At this point, we must have a token to proceed to checkout
+      if (tokenToUse) {
         const checkoutResponse = await fetch('/api/payment/create-checkout-registration', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'X-CSRF-Token': csrfToken,
           },
           body: JSON.stringify({
             plan: selectedPlan,
             promoCode: promoCode ? promoCode.toUpperCase() : null,
-            tempToken: data.tempToken,
+            tempToken: tokenToUse,
           }),
         });
 
         const checkoutData = await checkoutResponse.json();
 
         if (checkoutData.url) {
-          // Store token for potential use later
-          storage.setItem('registrationToken', data.tempToken);
+          storage.setItem('registrationToken', tokenToUse);
           window.location.href = checkoutData.url;
         } else {
           setError(checkoutData.error || 'Failed to create checkout session');
         }
-        return;
-      }
-
-      const success = response.ok && !data.requiresPayment;
-
-      if (success) {
-        await register(name, email, password, promoCode.toUpperCase() || undefined);
-        setRegisteredUserData({ name, email });
-        setShowEmailVerification(true);
-
-        if (promoValidation?.valid && promoValidation.finalPrice === 0) {
-          setSuccess('Registration successful! Your promo code gives you free access. No payment required!');
-        } else {
-          setSuccess('Registration successful! Please check your email to verify your account.');
-        }
       } else {
-        setError(data.error || 'Registration failed. Please try again.');
+        setError('Could not obtain a registration session token. Please try again.');
       }
     } catch (err) {
       setError(err.message || 'An error occurred during registration');

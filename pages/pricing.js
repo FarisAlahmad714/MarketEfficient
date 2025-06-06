@@ -10,6 +10,21 @@ export default function Pricing() {
   const router = useRouter();
   const { user, isAuthenticated, isLoading } = useContext(AuthContext);
   const { cancelled, email, plan, tempToken } = router.query;
+  const [csrfToken, setCsrfToken] = useState('');
+
+  // Fetch CSRF token on component mount
+  useEffect(() => {
+    const fetchCsrfToken = async () => {
+      try {
+        const response = await fetch('/api/auth/csrf-token');
+        const data = await response.json();
+        setCsrfToken(data.csrfToken);
+      } catch (error) {
+        console.error('Failed to fetch CSRF token:', error);
+      }
+    };
+    fetchCsrfToken();
+  }, []);
 
   // Store tempToken for registration flow
   useEffect(() => {
@@ -35,6 +50,7 @@ export default function Pricing() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken,
           ...(isAuthenticated && user?.token && { 'Authorization': `Bearer ${user.token}` })
         },
         body: JSON.stringify({

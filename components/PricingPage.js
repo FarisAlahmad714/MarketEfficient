@@ -14,8 +14,8 @@ const PricingPage = ({ user, onPlanSelect, isRegistrationFlow }) => {
   const plans = {
     monthly: {
       name: 'Monthly Plan',
-      price: 29,
-      originalPrice: 29,
+      price: 39,
+      originalPrice: 39,
       interval: 'month',
       features: [
         'Real-time market analysis',
@@ -28,13 +28,13 @@ const PricingPage = ({ user, onPlanSelect, isRegistrationFlow }) => {
     },
     annual: {
       name: 'Annual Plan',
-      price: 249,
-      originalPrice: 249,
+      price: 360,
+      originalPrice: 360,
       interval: 'year',
-      savings: 99,
+      savings: 108,
       features: [
         'Everything in Monthly',
-        '2 months FREE',
+        'Save $108 a year',
         'Priority support',
         'Advanced analytics',
         'Custom indicators',
@@ -136,7 +136,7 @@ const PricingPage = ({ user, onPlanSelect, isRegistrationFlow }) => {
           onClick={() => setSelectedPlan('annual')}
         >
           Annual
-          <span className={styles.savingsBadge}>Save $99</span>
+          <span className={styles.savingsBadge}>Save $108</span>
         </button>
       </div>
 

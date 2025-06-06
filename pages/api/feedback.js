@@ -1,12 +1,14 @@
 import { createApiHandler } from '../../lib/api-handler';
 import { composeMiddleware } from '../../lib/api-handler';
 import { sanitizeInput } from '../../middleware/sanitization';
-import { authRateLimit } from '../../middleware/rateLimit';
+import { apiRateLimit, strictRateLimit } from '../../middleware/rateLimit';
 import { withCsrfProtect } from '../../middleware/csrf';
 import Feedback from '../../models/Feedback';
 import User from '../../models/User';
 import connectDB from '../../lib/database';
 import logger from '../../lib/logger';
+import { sanitizeError } from '../../lib/error-handler';
+import { validateFeedback, ValidationError } from '../../lib/validation';
 import jwt from 'jsonwebtoken';
 
 async function feedbackHandler(req, res) {
@@ -26,8 +28,8 @@ async function feedbackHandler(req, res) {
       return res.status(405).json({ error: 'Method Not Allowed' });
     }
   } catch (error) {
-    logger.error('Feedback API error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    const sanitizedError = sanitizeError(error);
+    return res.status(500).json(sanitizedError);
   }
 }
 
@@ -42,36 +44,22 @@ async function handleFeedbackSubmission(req, res) {
     cookies: req.cookies
   });
 
-  const { type, subject, message, rating } = req.body;
-
-  // Validate required fields
-  if (!type || !subject || !message) {
-    logger.log('Validation failed: missing required fields');
-    return res.status(400).json({ 
-      error: 'Type, subject, and message are required' 
-    });
+  // Validate and sanitize input
+  let validatedData;
+  try {
+    validatedData = validateFeedback(req.body);
+  } catch (error) {
+    if (error instanceof ValidationError) {
+      logger.log('Validation failed:', error.message);
+      return res.status(400).json({ 
+        error: error.message,
+        field: error.field 
+      });
+    }
+    throw error; // Re-throw unexpected errors
   }
 
-  // Validate input lengths
-  if (subject.length > 200) {
-    return res.status(400).json({ 
-      error: 'Subject must be 200 characters or less' 
-    });
-  }
-
-  if (message.length > 2000) {
-    return res.status(400).json({ 
-      error: 'Message must be 2000 characters or less' 
-    });
-  }
-
-  // Validate rating if provided
-  if (rating && (rating < 1 || rating > 5)) {
-    return res.status(400).json({ 
-      error: 'Rating must be between 1 and 5' 
-    });
-  }
-
+  const { type, subject, message, rating } = validatedData;
   let userId = null;
   let userEmail = null;
   let userName = null;
@@ -334,10 +322,19 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
-  try {
-    await feedbackHandler(req, res);
-  } catch (error) {
-    console.error('Feedback API error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
-  }
+  // Apply rate limiting
+  const rateLimiter = req.method === 'POST' ? strictRateLimit : apiRateLimit;
+  
+  return new Promise((resolve) => {
+    rateLimiter(req, res, async () => {
+      try {
+        await feedbackHandler(req, res);
+        resolve();
+      } catch (error) {
+        const sanitizedError = sanitizeError(error);
+        res.status(500).json(sanitizedError);
+        resolve();
+      }
+    });
+  });
 };
