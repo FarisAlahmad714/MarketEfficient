@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@google-cloud/storage": "^7.16.0",
+    "@sentry/nextjs": "^9.27.0",
     "@stripe/stripe-js": "^7.3.1",
     "axios": "^1.9.0",
     "bcrypt": "^5.1.1",
@@ -32,7 +33,7 @@
     "lodash.debounce": "^4.0.8",
     "lucide-react": "^0.510.0",
     "mongoose": "^8.14.1",
-    "next": "^13.4.0",
+    "next": "14.2.29",
     "node-cron": "^4.0.7",
     "node-mailjet": "^6.0.8",
     "nodemailer": "^7.0.3",
