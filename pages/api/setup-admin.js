@@ -17,18 +17,18 @@ export default async function handler(req, res) {
   try {
     await connectDB();
 
-    // Check if admin already exists
+    // Check if admin already exists and delete if found (for password update)
     const existingAdmin = await User.findOne({ 
       email: process.env.ADMIN_EMAIL || 'support@chartsense.trade' 
     });
 
     if (existingAdmin) {
-      return res.status(400).json({ error: 'Admin user already exists' });
+      await User.deleteOne({ _id: existingAdmin._id });
     }
 
     // Create admin user
     const hashedPassword = await bcrypt.hash(
-      process.env.ADMIN_PASSWORD || '123', 
+      process.env.ADMIN_PASSWORD || 'admin123', 
       12
     );
 
