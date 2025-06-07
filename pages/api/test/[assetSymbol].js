@@ -36,14 +36,20 @@ import OpenAI from 'openai';
 async function getAIAnalysis(chartData, outcomeData, prediction, reasoning, correctAnswer, wasCorrect) {
   try {
     // Check if we have OpenAI API key
-    if (!process.env.OPENAI_API_KEY) {
+    const apiKey = process.env.OPENAI_API_KEY?.trim();
+    if (!apiKey) {
       console.warn('OPENAI_API_KEY not set, skipping AI analysis');
+      return null;
+    }
+    
+    if (!apiKey.startsWith('sk-')) {
+      console.warn('Invalid OPENAI_API_KEY format, skipping AI analysis');
       return null;
     }
     
     // Initialize OpenAI client directly
     const openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
+      apiKey: apiKey,
     });
 
     // Get the most recent candle data for explicit reference
