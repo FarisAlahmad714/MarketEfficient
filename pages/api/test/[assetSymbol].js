@@ -29,6 +29,9 @@ const SESSION_EXPIRY = 4 * 60 * 60 * 1000; // 4 hours in milliseconds
 //   });
 // }, 60 * 60 * 1000); // Check every hour
 
+// Import the analyze function directly
+import analyzeHandler from '../analyze-trading-gpt4o';
+
 // Get AI analysis for a trading decision with correct parameter order
 async function getAIAnalysis(chartData, outcomeData, prediction, reasoning, correctAnswer, wasCorrect) {
   try {
@@ -38,31 +41,47 @@ async function getAIAnalysis(chartData, outcomeData, prediction, reasoning, corr
       return null;
     }
     
-    // Call analyze-trading-gpt4o endpoint
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 
-                   process.env.BASE_URL || 
-                   (process.env.NODE_ENV === 'production' ? 'https://www.chartsense.trade' : 'http://localhost:3000');
-    const response = await fetch(`${baseUrl}/api/analyze-trading-gpt4o`, {
+    // Call the analyze function directly instead of making HTTP request
+    // Create mock req/res objects for the handler
+    const mockReq = {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
+      body: {
         chartData,
         outcomeData,
         prediction,
         reasoning,
         correctAnswer,
         wasCorrect
-      }),
-    });
+      }
+    };
     
-    if (!response.ok) {
-      throw new Error(`AI analysis failed with status: ${response.status}`);
+    const mockRes = {
+      status: (code) => mockRes,
+      json: (data) => data,
+      _result: null,
+      _status: 200
+    };
+    
+    // Override json to capture the result
+    mockRes.json = (data) => {
+      mockRes._result = data;
+      return mockRes;
+    };
+    
+    // Override status to capture status code
+    mockRes.status = (code) => {
+      mockRes._status = code;
+      return mockRes;
+    };
+    
+    // Call the handler directly
+    await analyzeHandler(mockReq, mockRes);
+    
+    if (mockRes._status === 200 && mockRes._result?.analysis) {
+      return mockRes._result.analysis;
+    } else {
+      throw new Error(`AI analysis failed with status: ${mockRes._status}`);
     }
-    
-    const data = await response.json();
-    return data.analysis;
   } catch (error) {
     console.error('Error getting AI analysis:', error);
     return null;
