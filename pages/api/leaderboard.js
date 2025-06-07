@@ -9,7 +9,7 @@ import User from '../../models/User';
 
 async function leaderboardHandler(req, res) {
   // Extract query parameters
-  const { testType, period = 'all', limit = 10 } = req.query;
+  const { testType, period = 'all', limit = 5 } = req.query;
   
   // Calculate time frame based on period
   let startDate = null;

@@ -65,17 +65,8 @@ async function resetPasswordHandler(req, res) {
   }
 }
 
-// TEMP: Remove middleware until rate limiting is fixed  
-export default resetPasswordHandler;
-
-// TODO: Restore middleware after fixing rate limiting
-/*
+// Apply rate limiting and sanitization middleware
 export default createApiHandler(
-  composeMiddleware(
-    authRateLimit,
-    sanitizeInput,
-    resetPasswordHandler
-  ),
+  composeMiddleware(authRateLimit, sanitizeInput(), resetPasswordHandler),
   { methods: ['POST'] }
 );
-*/

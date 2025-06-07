@@ -2,6 +2,7 @@ import { useRouter } from 'next/router';
 import { useEffect, useState, useContext } from 'react';
 import Link from 'next/link';
 import styled from 'styled-components';
+import Confetti from 'react-confetti';
 import { ThemeContext } from '../../contexts/ThemeContext';
 import { motion } from 'framer-motion';
 import CryptoLoader from '../../components/CryptoLoader';
@@ -14,6 +15,8 @@ const Container = styled.div`
   margin: 0 auto;
   padding: 40px 20px;
   font-family: 'Inter', sans-serif;
+  position: relative;
+  z-index: 1;
 `;
 
 const LoadingContainer = styled.div`
@@ -284,6 +287,21 @@ const ChartExamResults = () => {
   const [currentExamType, setCurrentExamType] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [windowSize, setWindowSize] = useState({ width: undefined, height: undefined });
+  const [showConfetti, setShowConfetti] = useState(false);
+
+  // Handle window resize for confetti
+  useEffect(() => {
+    function handleResize() {
+      setWindowSize({
+        width: window.innerWidth,
+        height: window.innerHeight,
+      });
+    }
+    window.addEventListener('resize', handleResize);
+    handleResize();
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     const loadResults = async () => {
@@ -355,13 +373,16 @@ const ChartExamResults = () => {
             setCurrentExamType(queryExamType);
         }
 
+        setLoading(false);
+        setShowConfetti(true);
+        const timer = setTimeout(() => setShowConfetti(false), 10000); // Confetti for 10 seconds
+        return () => clearTimeout(timer);
+
       } catch (e) {
         if (process.env.NODE_ENV === 'development') {
           console.error("[ResultsPage] Error loading exam results:", e);
         }
         setError('An unexpected error occurred while loading exam results.');
-      } finally {
-        setLoading(false);
       }
     };
 
@@ -421,7 +442,14 @@ const ChartExamResults = () => {
   
   return (
     <TrackedPage pageName="ChartExamResults">
-      <Container>
+      <Container isDarkMode={darkMode}>
+        {showConfetti && (
+          <Confetti
+            width={windowSize.width}
+            height={windowSize.height}
+            style={{ position: 'fixed', top: 0, left: 0, zIndex: 9999 }}
+          />
+        )}
         <Header>
           <Title isDarkMode={darkMode}>Exam Results</Title>
           <Subtitle isDarkMode={darkMode}>

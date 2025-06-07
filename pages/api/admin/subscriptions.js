@@ -67,12 +67,18 @@ async function getSubscriptions(req, res) {
     
     const query = {};
     
-    // Search filter (by user email or name)
+    // Search filter (by user email or name) with regex injection protection
     if (search) {
+      // Escape special regex characters to prevent ReDoS attacks
+      function escapeRegex(string) {
+        return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      }
+      
+      const escapedSearch = escapeRegex(search);
       const users = await User.find({
         $or: [
-          { email: { $regex: search, $options: 'i' } },
-          { name: { $regex: search, $options: 'i' } }
+          { email: { $regex: escapedSearch, $options: 'i' } },
+          { name: { $regex: escapedSearch, $options: 'i' } }
         ]
       }).select('_id');
       

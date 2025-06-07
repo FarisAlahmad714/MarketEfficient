@@ -1,4 +1,5 @@
 import React, { useState, useContext, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { AuthContext } from '../contexts/AuthContext';
 import styles from '../styles/FeedbackModal.module.css';
 
@@ -12,6 +13,11 @@ const FeedbackModal = ({ isOpen, onClose }) => {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState(null);
+  const [isBrowser, setIsBrowser] = useState(false);
+
+  useEffect(() => {
+    setIsBrowser(true);
+  }, []);
 
   // Lock body scroll when modal is open
   useEffect(() => {
@@ -88,9 +94,9 @@ const FeedbackModal = ({ isOpen, onClose }) => {
     }
   };
 
-  if (!isOpen) return null;
+  if (!isOpen || !isBrowser) return null;
 
-  return (
+  const modalContent = (
     <div className={styles.modalOverlay} onClick={onClose}>
       <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
         <div className={styles.modalHeader}>
@@ -205,6 +211,11 @@ const FeedbackModal = ({ isOpen, onClose }) => {
         </form>
       </div>
     </div>
+  );
+
+  return createPortal(
+    modalContent,
+    document.getElementById('modal-root')
   );
 };
 

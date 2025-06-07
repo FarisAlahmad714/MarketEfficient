@@ -16,13 +16,20 @@ async function usersHandler(req, res) {
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
-    // Get search parameter
+    // Get search parameter with regex injection protection
     const search = req.query.search || '';
-    const searchRegex = new RegExp(search, 'i');
-
-    // Build query
+    
+    // Escape special regex characters to prevent ReDoS attacks
+    function escapeRegex(string) {
+      return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+    
+    // Build query with escaped search term
     const query = search
-      ? { $or: [{ name: searchRegex }, { email: searchRegex }] }
+      ? { $or: [
+          { name: { $regex: escapeRegex(search), $options: 'i' } },
+          { email: { $regex: escapeRegex(search), $options: 'i' } }
+        ] }
       : {};
 
     // Get users with pagination

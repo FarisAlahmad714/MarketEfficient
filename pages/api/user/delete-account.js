@@ -64,7 +64,7 @@ async function handler(req, res) {
 
   } catch (error) {
     logger.error('Error deleting account:', error);
-    return res.status(500).json({ error: 'Failed to delete account.', details: error.message });
+    return res.status(500).json({ error: 'Failed to delete account. Please try again later.' });
   }
 }
 

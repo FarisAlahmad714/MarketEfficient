@@ -506,7 +506,7 @@ const Leaderboard = () => {
               <strong>{totalParticipants}</strong>{' '}
               {totalParticipants === 1 ? 'participant' : 'participants'} in total
             </div>
-            <div>Showing top {leaderboardData.length} users</div>
+            <div>Showing top {Math.min(leaderboardData.length, 5)} of {totalParticipants} users</div>
           </div>
         </>
       )}

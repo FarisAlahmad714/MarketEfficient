@@ -359,6 +359,14 @@ export default function AssetTestPage() {
       
       await new Promise(resolve => setTimeout(resolve, 1000));
       router.push(`/results/${assetSymbol}?session_id=${testData.session_id}`);
+
+      // Update state with results and feedback
+      setTestData(prevData => ({
+        ...prevData,
+        results: response.data.results,
+        feedback: response.data.feedback,
+        scores: response.data.scores
+      }));
     } catch (err) {
       console.error('Error submitting test:', err);
       alert('Failed to submit test. Please try again.');
@@ -447,12 +455,15 @@ export default function AssetTestPage() {
   );
 
   return (
-    <div style={{ 
-      maxWidth: '1200px', 
-      margin: '0 auto', 
-      padding: '20px', 
-      color: darkMode ? '#e0e0e0' : '#333'
+    <div style={{
+      maxWidth: '1200px',
+      margin: '0 auto',
+      padding: '20px',
+      fontFamily: "'Roboto', sans-serif",
+      color: darkMode ? '#EAEAEA' : '#333',
     }}>
+      
+      {/* Page Title */}
       <h1 style={{ 
         textAlign: 'center', 
         marginBottom: '30px',

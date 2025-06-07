@@ -8,6 +8,7 @@ import { ShieldCheck, BarChart2, Users, Zap, Brain, LineChart as LucideLineChart
 import { motion } from 'framer-motion';
 import TrackedPage from '../components/TrackedPage';
 import logger from '../lib/logger';
+import heroStyles from '../styles/Hero.module.css';
 
 // FeatureCard Component with Enhanced Design and Information
 const FeatureCard = ({ darkMode, icon, title, description, link, linkText, color, accentColor, benefits }) => {
@@ -49,19 +50,14 @@ const FeatureCard = ({ darkMode, icon, title, description, link, linkText, color
           : `0 15px 40px rgba(0, 0, 0, 0.1), inset 0 0 2px ${accentColor}22`;
       }}
     >
-      {/* Dynamic Background Element */}
-      <div style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        width: '100%',
-        height: '100%',
-        background: `radial-gradient(circle at 20% 20%, ${accentColor}11 0%, transparent 50%)`,
-        opacity: darkMode ? 0.6 : 0.4,
-        zIndex: 0,
-        transform: 'rotate(10deg)',
-      }}></div>
-
+      <div className={`${heroStyles.heroBackground} ${darkMode ? heroStyles.dark : heroStyles.light}`}>
+        <div className={heroStyles.animatedGradient}></div>
+        <ul className={heroStyles.particles}>
+          {Array.from({ length: 10 }).map((_, i) => (
+            <li key={i} className={heroStyles.particle}></li>
+          ))}
+        </ul>
+      </div>
       <div style={{ zIndex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: '25px' }}>
           {IconComponent && (
@@ -175,19 +171,14 @@ export default function HomePage() {
           : '1px solid rgba(34, 197, 94, 0.4)',
       }}
     >
-      <div
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          background: darkMode 
-            ? 'linear-gradient(135deg, #1e1b4b 0%, #3730a3 25%, #1e40af 50%, #7c3aed 75%, #1e1b4b 100%)' 
-            : 'linear-gradient(135deg, #dbeafe 0%, #3b82f6 25%, #1d4ed8 50%, #8b5cf6 75%, #dbeafe 100%)',
-          zIndex: 1,
-        }}
-      />
+      <div className={`${heroStyles.heroBackground} ${darkMode ? heroStyles.dark : heroStyles.light}`}>
+        <div className={heroStyles.animatedGradient}></div>
+        <ul className={heroStyles.particles}>
+          {Array.from({ length: 10 }).map((_, i) => (
+            <li key={i} className={heroStyles.particle}></li>
+          ))}
+        </ul>
+      </div>
       <motion.div
         style={{ position: 'relative', zIndex: 2 }}
         initial={{ y: 30, opacity: 0 }}
@@ -249,70 +240,45 @@ export default function HomePage() {
                 transition: 'all 0.3s ease',
                 boxShadow: '0 6px 20px rgba(34, 197, 94, 0.5), 0 0 15px rgba(34, 197, 94, 0.3)',
               }}
-              onMouseOver={(e) => {
-                e.currentTarget.style.transform = 'scale(1.05) translateY(-5px)';
-                e.currentTarget.style.boxShadow = '0 10px 25px rgba(34, 197, 94, 0.7), 0 0 20px rgba(34, 197, 94, 0.5)';
-              }}
-              onMouseOut={(e) => {
-                e.currentTarget.style.transform = 'scale(1) translateY(0)';
-                e.currentTarget.style.boxShadow = '0 6px 20px rgba(34, 197, 94, 0.5), 0 0 15px rgba(34, 197, 94, 0.3)';
-              }}
             >
               Dive into Your Dashboard
             </Link>
           ) : (
-            <Link 
-              href="/auth/register" 
-              style={{
-                padding: '16px 40px',
-                background: 'linear-gradient(90deg, #3B82F6, #60A5FA)',
-                color: '#FFFFFF',
-                textDecoration: 'none',
-                borderRadius: '12px',
-                fontSize: '1.2rem',
-                fontWeight: 700,
-                transition: 'all 0.3s ease',
-                boxShadow: '0 6px 20px rgba(59, 130, 246, 0.5), 0 0 15px rgba(59, 130, 246, 0.3)',
-              }}
-              onMouseOver={(e) => {
-                e.currentTarget.style.transform = 'scale(1.05) translateY(-5px)';
-                e.currentTarget.style.boxShadow = '0 10px 25px rgba(59, 130, 246, 0.7), 0 0 20px rgba(59, 130, 246, 0.5)';
-              }}
-              onMouseOut={(e) => {
-                e.currentTarget.style.transform = 'scale(1) translateY(0)';
-                e.currentTarget.style.boxShadow = '0 6px 20px rgba(59, 130, 246, 0.5), 0 0 15px rgba(59, 130, 246, 0.3)';
-              }}
-            >
-              Begin Your Epic Journey
-            </Link>
+            <>
+              <Link
+                href="/learn-more"
+                style={{
+                  padding: '16px 40px',
+                  background: 'linear-gradient(90deg, #22C55E, #4ADE80)',
+                  color: '#FFFFFF',
+                  textDecoration: 'none',
+                  borderRadius: '12px',
+                  fontSize: '1.2rem',
+                  fontWeight: 700,
+                  transition: 'all 0.3s ease',
+                  boxShadow: '0 6px 20px rgba(34, 197, 94, 0.5), 0 0 15px rgba(34, 197, 94, 0.3)',
+                }}
+              >
+                Learn More
+              </Link>
+              <Link 
+                href="/auth/register" 
+                style={{
+                  padding: '16px 40px',
+                  background: 'transparent',
+                  color: '#FFFFFF',
+                  textDecoration: 'none',
+                  borderRadius: '12px',
+                  fontSize: '1.2rem',
+                  fontWeight: 700,
+                  transition: 'all 0.3s ease',
+                  border: '2px solid #FFFFFF',
+                }}
+              >
+                Register Now!
+              </Link>
+            </>
           )}
-          <Link 
-            href="auth/register" 
-            style={{
-              padding: '16px 40px',
-              background: 'transparent',
-              border: `2px solid ${darkMode ? '#FFFFFF' : '#FFFFFF'}`,
-              color: '#FFFFFF',
-              textDecoration: 'none',
-              borderRadius: '12px',
-              fontSize: '1.2rem',
-              fontWeight: 600,
-              transition: 'all 0.3s ease',
-              boxShadow: '0 4px 15px rgba(255, 255, 255, 0.2)',
-            }}
-            onMouseOver={(e) => {
-              e.currentTarget.style.background = '#FFFFFF33';
-              e.currentTarget.style.transform = 'scale(1.05) translateY(-5px)';
-              e.currentTarget.style.boxShadow = '0 8px 20px rgba(255, 255, 255, 0.3)';
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.background = 'transparent';
-              e.currentTarget.style.transform = 'scale(1) translateY(0)';
-              e.currentTarget.style.boxShadow = '0 4px 15px rgba(255, 255, 255, 0.2)';
-            }}
-          >
-           Register Now!
-          </Link>
         </motion.div>
       </motion.div>
     </motion.section>
@@ -338,7 +304,7 @@ export default function HomePage() {
             darkMode={darkMode}
             icon={Brain}
             title="AI-Powered Bias Test"
-            description="Dive into daily challenges that expose your hidden market biases. Submit predictions and reasoning based on real historical data, then get a personalized AI breakdown of your decision-making. This isn’t just a test—it’s a mirror to sharpen your instincts and dominate the markets."
+            description="Dive into daily challenges that expose your hidden market biases. Submit predictions and reasoning based on real historical data, then get a personalized AI breakdown of your decision-making. This isn't just a test—it's a mirror to sharpen your instincts and dominate the markets."
             benefits={[
               "Reveal unconscious trading blind spots",
               "Boost decision-making precision with AI insights",
@@ -353,7 +319,7 @@ export default function HomePage() {
             darkMode={darkMode}
             icon={LucideLineChart}
             title="Hands-On Charting Exams"
-            description="Step into the ultimate charting dojo. Practice spotting swing points, drawing Fibonacci levels, and identifying fair value gaps on interactive, simulated charts. It’s like a gym for your technical analysis skills—train hard, trade smart."
+            description="Step into the ultimate charting dojo. Practice spotting swing points, drawing Fibonacci levels, and identifying fair value gaps on interactive, simulated charts. It's like a gym for your technical analysis skills—train hard, trade smart."
             benefits={[
               "Master advanced charting techniques",
               "Develop razor-sharp pattern recognition",

@@ -51,11 +51,17 @@ async function getPromoCodes(req, res) {
     
     const query = {};
     
-    // Search filter
+    // Search filter with regex injection protection
     if (search) {
+      // Escape special regex characters to prevent ReDoS attacks
+      function escapeRegex(string) {
+        return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      }
+      
+      const escapedSearch = escapeRegex(search);
       query.$or = [
-        { code: { $regex: search, $options: 'i' } },
-        { description: { $regex: search, $options: 'i' } }
+        { code: { $regex: escapedSearch, $options: 'i' } },
+        { description: { $regex: escapedSearch, $options: 'i' } }
       ];
     }
     

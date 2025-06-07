@@ -239,15 +239,17 @@ const Navbar = () => {
                       </div>
                     </Link>
                     
-                    <Link href="/profile" className="dropdown-item" onClick={() => setShowUserMenu(false)}>
-                      <div className="item-icon">
-                        <FaUserCog />
-                      </div>
-                      <div className="item-content">
-                        <span className="item-title">Profile Settings</span>
-                        <span className="item-subtitle">Manage your account</span>
-                      </div>
-                    </Link>
+                    {!user?.isAdmin && (
+                      <Link href="/profile" className="dropdown-item" onClick={() => setShowUserMenu(false)}>
+                        <div className="item-icon">
+                          <FaUserCog />
+                        </div>
+                        <div className="item-content">
+                          <span className="item-title">Profile Settings</span>
+                          <span className="item-subtitle">Manage your account</span>
+                        </div>
+                      </Link>
+                    )}
                     
                     {user?.isAdmin && (
                       <Link href="/admin" className="dropdown-item admin-item" onClick={() => setShowUserMenu(false)}>
@@ -261,21 +263,25 @@ const Navbar = () => {
                       </Link>
                     )}
 
-                    <button 
-                      className="dropdown-item" 
-                      onClick={() => {
-                        setShowUserMenu(false);
-                        setShowFeedbackModal(true);
-                      }}
-                    >
-                      <div className="item-icon">
-                        <FaCommentDots />
-                      </div>
-                      <div className="item-content">
-                        <span className="item-title">Send Feedback</span>
-                        <span className="item-subtitle">Help us improve</span>
-                      </div>
-                    </button>
+                    {!user?.isAdmin && (
+                      <Link
+                        href="#"
+                        className="dropdown-item"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setShowUserMenu(false);
+                          setShowFeedbackModal(true);
+                        }}
+                      >
+                        <div className="item-icon">
+                          <FaCommentDots />
+                        </div>
+                        <div className="item-content">
+                          <span className="item-title">Send Feedback</span>
+                          <span className="item-subtitle">Help us improve</span>
+                        </div>
+                      </Link>
+                    )}
                   </div>
                   
                   <div className="dropdown-footer">
@@ -361,10 +367,12 @@ const Navbar = () => {
                   </div>
                 </div>
                 
-                <Link href="/profile" className="mobile-link" onClick={() => setMobileMenuOpen(false)}>
-                  <FaUserCog className="mobile-icon" />
-                  <span>Profile Settings</span>
-                </Link>
+                {!user?.isAdmin && (
+                  <Link href="/profile" className="mobile-link" onClick={() => setMobileMenuOpen(false)}>
+                    <FaUserCog className="mobile-icon" />
+                    <span>Profile Settings</span>
+                  </Link>
+                )}
                 
                 {user?.isAdmin && (
                   <Link href="/admin" className="mobile-link admin" onClick={() => setMobileMenuOpen(false)}>
