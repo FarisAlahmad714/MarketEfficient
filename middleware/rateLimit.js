@@ -81,17 +81,45 @@ export function rateLimit(options = {}) {
   };
 }
 
-// Specific rate limiters for different endpoints
-export const authRateLimit = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  maxRequests: 5, // 5 login attempts per 15 minutes
-  message: 'Too many authentication attempts. Please try again in 15 minutes.',
-  keyGenerator: (req) => {
-    const forwarded = req.headers['x-forwarded-for'];
-    const ip = forwarded ? forwarded.split(',')[0] : req.connection?.remoteAddress || 'unknown';
-    return `auth_${ip}`;
-  }
-});
+// Hybrid authentication rate limiter - checks both email and IP limits
+export const authRateLimit = (req, res, next) => {
+  const email = req.body?.email;
+  const forwarded = req.headers['x-forwarded-for'];
+  const ip = forwarded ? forwarded.split(',')[0] : req.connection?.remoteAddress || 'unknown';
+  
+  // Email-based rate limiter (5 attempts per email per 15 minutes)
+  const emailRateLimit = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    maxRequests: 5, // 5 login attempts per email
+    message: 'Too many login attempts for this email. Please try again in 15 minutes.',
+    keyGenerator: () => email && typeof email === 'string' ? `auth_email_${email.toLowerCase().trim()}` : `auth_no_email_${ip}`
+  });
+  
+  // IP-based rate limiter (20 attempts per IP per 15 minutes)
+  const ipRateLimit = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    maxRequests: 20, // 20 login attempts per IP (allows multiple emails)
+    message: 'Too many login attempts from this location. Please try again in 15 minutes.',
+    keyGenerator: () => `auth_ip_${ip}`
+  });
+  
+  // Check email rate limit first
+  emailRateLimit(req, res, (emailError) => {
+    if (emailError || res.headersSent) {
+      return; // Email rate limit exceeded, response already sent
+    }
+    
+    // If email limit passes, check IP rate limit
+    ipRateLimit(req, res, (ipError) => {
+      if (ipError || res.headersSent) {
+        return; // IP rate limit exceeded, response already sent
+      }
+      
+      // Both limits passed, continue
+      next();
+    });
+  });
+};
 
 export const apiRateLimit = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes

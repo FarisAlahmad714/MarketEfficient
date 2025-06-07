@@ -14,6 +14,8 @@ const RegisterWithPricing = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [showEmailVerification, setShowEmailVerification] = useState(false);
@@ -468,13 +470,35 @@ const RegisterWithPricing = () => {
 
               <div className={styles.formGroup}>
                 <label htmlFor="password">Password</label>
-                <input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
+                <div style={{ position: 'relative' }}>
+                  <input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    style={{ paddingRight: '45px' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    style={{
+                      position: 'absolute',
+                      right: '12px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      color: darkMode ? '#b0b0b0' : '#666',
+                      padding: '4px',
+                      fontSize: '16px'
+                    }}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? '👁️‍🗨️' : '👁️'}
+                  </button>
+                </div>
                 {password && (
                   <div className={styles.passwordStrength}>
                     <div className={styles.strengthBar}>
@@ -493,14 +517,36 @@ const RegisterWithPricing = () => {
 
               <div className={styles.formGroup}>
                 <label htmlFor="confirmPassword">Confirm Password</label>
-                <input
-                  id="confirmPassword"
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  required
-                  className={confirmPassword && !passwordMatch ? styles.invalid : ''}
-                />
+                <div style={{ position: 'relative' }}>
+                  <input
+                    id="confirmPassword"
+                    type={showConfirmPassword ? "text" : "password"}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                    className={confirmPassword && !passwordMatch ? styles.invalid : ''}
+                    style={{ paddingRight: '45px' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    style={{
+                      position: 'absolute',
+                      right: '12px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      color: darkMode ? '#b0b0b0' : '#666',
+                      padding: '4px',
+                      fontSize: '16px'
+                    }}
+                    aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                  >
+                    {showConfirmPassword ? '👁️‍🗨️' : '👁️'}
+                  </button>
+                </div>
                 {confirmPassword && !passwordMatch && (
                   <p className={styles.errorText}>Passwords don't match</p>
                 )}

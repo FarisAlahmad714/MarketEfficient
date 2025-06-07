@@ -3,7 +3,8 @@
     "allow": [
       "Bash(npm install:*)",
       "Bash(git stash:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(git add:*)"
     ],
     "deny": []
   }

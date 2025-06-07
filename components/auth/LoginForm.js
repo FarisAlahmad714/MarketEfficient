@@ -9,6 +9,7 @@ import storage from '../../lib/storage';
 const LoginForm = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   
@@ -144,22 +145,43 @@ const LoginForm = () => {
               Forgot Password?
             </Link>
           </div>
-          <input
-            id="password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            style={{
-              width: '100%',
-              padding: '12px',
-              borderRadius: '4px',
-              border: `1px solid ${darkMode ? '#444' : '#ddd'}`,
-              backgroundColor: darkMode ? '#333' : '#fff',
-              color: darkMode ? '#e0e0e0' : '#333',
-              fontSize: '16px'
-            }}
-          />
+          <div style={{ position: 'relative' }}>
+            <input
+              id="password"
+              type={showPassword ? "text" : "password"}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              style={{
+                width: '100%',
+                padding: '12px 45px 12px 12px',
+                borderRadius: '4px',
+                border: `1px solid ${darkMode ? '#444' : '#ddd'}`,
+                backgroundColor: darkMode ? '#333' : '#fff',
+                color: darkMode ? '#e0e0e0' : '#333',
+                fontSize: '16px'
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              style={{
+                position: 'absolute',
+                right: '12px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                color: darkMode ? '#b0b0b0' : '#666',
+                padding: '4px',
+                fontSize: '16px'
+              }}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+            >
+              {showPassword ? '👁️‍🗨️' : '👁️'}
+            </button>
+          </div>
         </div>
         
         <button
