@@ -136,3 +136,9 @@ dist
 *-service-account-key.json
 gcs-service-account-key.json
 *.pem
+
+# Admin/debug scripts with sensitive data
+check-admin-password.js
+fix-admin-password.js
+test-gcs-creds.js
+unlock-admin-script.js
