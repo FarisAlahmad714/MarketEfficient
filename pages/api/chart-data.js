@@ -1,7 +1,7 @@
 // lib/data-services.js
 
 import axios from 'axios';
-import logger from '../lib/logger';
+import logger from '../../lib/logger';
 
 // Available coins and timeframes
 const allCoins = ['bitcoin', 'ethereum', 'binancecoin', 'solana', 'cosmos', 'ripple', 'litecoin', 'chainlink'];
