@@ -39,7 +39,10 @@ async function getAIAnalysis(chartData, outcomeData, prediction, reasoning, corr
     }
     
     // Call analyze-trading-gpt4o endpoint
-    const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || process.env.BASE_URL || 'http://localhost:3000'}/api/analyze-trading-gpt4o`, {
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 
+                   process.env.BASE_URL || 
+                   (process.env.NODE_ENV === 'production' ? 'https://chartsense.trade' : 'http://localhost:3000');
+    const response = await fetch(`${baseUrl}/api/analyze-trading-gpt4o`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
