@@ -29,8 +29,8 @@ const SESSION_EXPIRY = 4 * 60 * 60 * 1000; // 4 hours in milliseconds
 //   });
 // }, 60 * 60 * 1000); // Check every hour
 
-// Import the analyze function directly
-import analyzeHandler from '../analyze-trading-gpt4o';
+// Import OpenAI directly to avoid proxy issues in serverless
+import OpenAI from 'openai';
 
 // Get AI analysis for a trading decision with correct parameter order
 async function getAIAnalysis(chartData, outcomeData, prediction, reasoning, correctAnswer, wasCorrect) {
@@ -41,47 +41,70 @@ async function getAIAnalysis(chartData, outcomeData, prediction, reasoning, corr
       return null;
     }
     
-    // Call the analyze function directly instead of making HTTP request
-    // Create mock req/res objects for the handler
-    const mockReq = {
-      method: 'POST',
-      body: {
-        chartData,
-        outcomeData,
-        prediction,
-        reasoning,
-        correctAnswer,
-        wasCorrect
-      }
-    };
+    // Initialize OpenAI client directly
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+
+    // Get the most recent candle data for explicit reference
+    const lastCandle = chartData[chartData.length - 1];
+    const isBullish = lastCandle.close > lastCandle.open;
+    const candleType = isBullish ? "BULLISH" : "BEARISH";
     
-    const mockRes = {
-      status: (code) => mockRes,
-      json: (data) => data,
-      _result: null,
-      _status: 200
-    };
-    
-    // Override json to capture the result
-    mockRes.json = (data) => {
-      mockRes._result = data;
-      return mockRes;
-    };
-    
-    // Override status to capture status code
-    mockRes.status = (code) => {
-      mockRes._status = code;
-      return mockRes;
-    };
-    
-    // Call the handler directly
-    await analyzeHandler(mockReq, mockRes);
-    
-    if (mockRes._status === 200 && mockRes._result?.analysis) {
-      return mockRes._result.analysis;
-    } else {
-      throw new Error(`AI analysis failed with status: ${mockRes._status}`);
-    }
+    // Get the outcome candle data if available
+    const nextCandle = outcomeData && outcomeData.length > 0 ? outcomeData[0] : null;
+    const nextCandleType = nextCandle ? (nextCandle.close > nextCandle.open ? "BULLISH" : "BEARISH") : correctAnswer.toUpperCase();
+
+    // Create a simplified analysis prompt
+    const prompt = `You are a professional trading analyst providing expert feedback on a trader's market prediction.
+
+TRADING SCENARIO:
+- Trader's Prediction: ${prediction.toUpperCase()}
+- Actual Outcome: ${correctAnswer.toUpperCase()}
+- Prediction Was: ${wasCorrect ? "CORRECT" : "INCORRECT"}
+- Trader's Reasoning: "${reasoning}"
+
+Please provide a comprehensive analysis in HTML format with the following sections:
+
+<h3>📊 Market Scenario Analysis</h3>
+<p>Analyze what happened in this specific trading scenario and why the outcome was ${correctAnswer.toUpperCase()}.</p>
+
+<h3>🎯 Analysis of Your Reasoning</h3>
+<p>Examine the trader's reasoning: "${reasoning}" and explain how it related to the actual outcome.</p>
+
+<h3>✅ Strengths in Your Analysis</h3>
+<ul>
+<li>Identify what the trader did well in their analysis</li>
+</ul>
+
+<h3>🔍 Areas for Improvement</h3>
+<ul>
+<li>Point out what could be improved in their analysis</li>
+</ul>
+
+<h3>🎓 Key Takeaway</h3>
+<p>Provide the most important lesson from this trade.</p>
+
+Keep the analysis specific and educational.`;
+
+    // Call OpenAI API
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "system",
+          content: "You are a professional trading analyst providing expert feedback."
+        },
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+      temperature: 0.3,
+      max_tokens: 1500,
+    });
+
+    return completion.choices[0].message.content;
   } catch (error) {
     console.error('Error getting AI analysis:', error);
     return null;

@@ -57,8 +57,8 @@ async function loginApiRouteHandler(req, res) {
               return resolve();
             }
 
-            // Validate password length
-            if (password.length < 6 || password.length > 128) {
+            // Validate password length (match User schema requirements)
+            if (password.length < 8 || password.length > 128) {
               res.status(400).json({ error: 'Invalid credentials' });
               return resolve();
             }
