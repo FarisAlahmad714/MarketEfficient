@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createChart, CrosshairMode, LineStyle } from 'lightweight-charts';
 import styled from 'styled-components';
 import ToolPanel from './common/ToolPanel';
@@ -6,6 +6,7 @@ import logger from '../../lib/logger'; // Adjust path to your logger utility
 // Adjust path to your logger utility
 
 // Styled components
+
 const ChartWrapper = styled.div`
   position: relative;
   width: 100%;
@@ -34,6 +35,17 @@ const FVGPanel = styled.div`
   overflow-y: auto;
   padding-bottom: 5px;
   color: ${props => props.$isDarkMode ? '#e0e0e0' : '#333'};
+
+  @media (max-width: 768px) {
+    position: relative;
+    width: 100%;
+    max-height: none;
+    margin-top: 20px;
+    margin-bottom: 20px;
+    border-radius: 8px;
+    left: auto !important;
+    top: auto !important;
+  }
 `;
 
 const PanelHeader = styled.div`
@@ -43,6 +55,10 @@ const PanelHeader = styled.div`
   text-align: center;
   cursor: move;
   font-weight: bold;
+
+  @media (max-width: 768px) {
+    cursor: default;
+  }
 `;
 
 const PanelContent = styled.div`
@@ -223,6 +239,7 @@ const FairValueGaps = ({
   const [isLoading, setIsLoading] = useState(false);
   const [showClearNotification, setShowClearNotification] = useState(false);
   const [prevPart, setPrevPart] = useState(part);
+  const [isMobile, setIsMobile] = useState(false);
 
   const colors = {
     bullish: 'rgba(76, 175, 80, 0.3)',
@@ -231,14 +248,26 @@ const FairValueGaps = ({
     correctBearish: 'rgba(244, 67, 54, 0.6)'
   };
 
+  // Check for mobile screen size
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
   // Set initial panel position
   useEffect(() => {
-    if (chartContainerRef.current && panelRef.current) {
+    if (chartContainerRef.current && panelRef.current && !isMobile) {
       const containerWidth = chartContainerRef.current.clientWidth;
       const panelWidth = panelRef.current.clientWidth;
       setPanelOffset({ x: containerWidth - panelWidth - 10, y: 10 });
     }
-  }, [chartContainerRef, panelRef]);
+  }, [chartContainerRef, panelRef, isMobile]);
 
   // Auto-clear drawings when part changes
   useEffect(() => {
@@ -251,6 +280,66 @@ const FairValueGaps = ({
       setTimeout(() => setShowClearNotification(false), 2000);
     }
   }, [part, prevPart]);
+
+  // Handle chart interaction for drawing (both mouse and touch)
+  const handleChartInteraction = useCallback((point) => {
+    if (!chartRef.current || !candleSeriesRef.current || !drawingMode || !point) return;
+    
+    const { time: timePoint, price } = point;
+    
+    if (!price || !timePoint) return;
+    
+    const nearestCandle = findCandleByTime(timePoint);
+    if (!nearestCandle) return;
+    
+    resetNoFvgsState();
+    
+    if (drawingMode === 'draw-rectangle') {
+      if (!startPoint) {
+        setStartPoint({ time: nearestCandle.time, price });
+      } else {
+        const fvgType = part === 1 ? 'bullish' : 'bearish';
+        const topPrice = Math.max(startPoint.price, price);
+        const bottomPrice = Math.min(startPoint.price, price);
+        
+        const newRect = drawRectangle(
+          startPoint.time,
+          nearestCandle.time,
+          topPrice,
+          bottomPrice,
+          fvgType
+        );
+        
+        if (newRect) {
+          setRectangles(prev => [...prev, newRect]);
+          setUserFVGs(prev => [...prev, {
+            startTime: startPoint.time,
+            endTime: nearestCandle.time,
+            topPrice: topPrice,
+            bottomPrice: bottomPrice,
+            type: fvgType
+          }]);
+        }
+        
+        setStartPoint(null);
+      }
+    } else if (drawingMode === 'draw-hline') {
+      const fvgType = part === 1 ? 'bullish' : 'bearish';
+      const newLine = drawHLine(nearestCandle.time, price, fvgType);
+      
+      if (newLine) {
+        setHlines(prev => [...prev, newLine]);
+        setUserFVGs(prev => [...prev, {
+          startTime: nearestCandle.time,
+          endTime: nearestCandle.time,
+          topPrice: price,
+          bottomPrice: price,
+          type: fvgType,
+          drawingType: 'hline'
+        }]);
+      }
+    }
+  }, [drawingMode, startPoint, part]);
 
   // Initialize chart
   useEffect(() => {
@@ -314,6 +403,29 @@ const FairValueGaps = ({
     });
   }, [isDarkMode]);
 
+  // Subscribe to chart clicks for drawing interactions
+  useEffect(() => {
+    if (chartRef.current && candleSeriesRef.current) {
+      const chart = chartRef.current;
+      const candleSeries = candleSeriesRef.current;
+      
+      const handleClick = (param) => {
+        if (param.time && drawingMode) {
+          const price = candleSeries.coordinateToPrice(param.point.y);
+          if (price) {
+            handleChartInteraction({ time: param.time, price });
+          }
+        }
+      };
+      
+      chart.subscribeClick(handleClick);
+      
+      return () => {
+        chart.unsubscribeClick(handleClick);
+      };
+    }
+  }, [drawingMode, handleChartInteraction]);
+
   // Notify parent about drawings update
   useEffect(() => {
     if (onDrawingsUpdate) {
@@ -346,70 +458,6 @@ const FairValueGaps = ({
     )[0];
   };
 
-  // Handle chart click for drawing
-  const handleChartClick = (e) => {
-    if (!chartRef.current || !candleSeriesRef.current || !drawingMode) return;
-    
-    const rect = chartContainerRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    
-    const price = candleSeriesRef.current.coordinateToPrice(y);
-    const timePoint = chartRef.current.timeScale().coordinateToTime(x);
-    
-    if (!price || !timePoint) return;
-    
-    const nearestCandle = findCandleByTime(timePoint);
-    if (!nearestCandle) return;
-    
-    resetNoFvgsState();
-    
-    if (drawingMode === 'draw-rectangle') {
-      if (!startPoint) {
-        setStartPoint({ time: nearestCandle.time, price });
-      } else {
-        const fvgType = part === 1 ? 'bullish' : 'bearish';
-        const topPrice = Math.max(startPoint.price, price);
-        const bottomPrice = Math.min(startPoint.price, price);
-        
-        const newRect = drawRectangle(
-          startPoint.time,
-          nearestCandle.time,
-          topPrice,
-          bottomPrice,
-          fvgType
-        );
-        
-        if (newRect) {
-          setRectangles(prev => [...prev, newRect]);
-          setUserFVGs(prev => [...prev, {
-            startTime: startPoint.time,
-            endTime: nearestCandle.time,
-            topPrice: topPrice,
-            bottomPrice: bottomPrice,
-            type: fvgType
-          }]);
-        }
-        
-        setStartPoint(null);
-      }
-    } else if (drawingMode === 'draw-hline') {
-      const fvgType = part === 1 ? 'bullish' : 'bearish';
-      const newLine = drawHLine(nearestCandle.time, price, fvgType);
-      
-      if (newLine) {
-        setHlines(prev => [...prev, newLine]);
-        setUserFVGs(prev => [...prev, {
-          startTime: nearestCandle.time,
-          endTime: nearestCandle.time,
-          topPrice: price,
-          bottomPrice: price,
-          type: fvgType,
-          drawingType: 'hline'
-        }]);
-      }
-    }
-  };
 
   // Draw rectangle on chart
   const drawRectangle = (startTime, endTime, topPrice, bottomPrice, type = 'bullish') => {
@@ -917,20 +965,32 @@ const FairValueGaps = ({
         onMouseUp={stopPanelDragging}
         onMouseLeave={stopPanelDragging}
       >
-        <ChartContainer 
-          ref={chartContainerRef} 
-          onClick={handleChartClick}
-        />
-        
-        {drawingMode && (
-          <DrawingModeIndicator $isDarkMode={isDarkMode}>
-            {drawingMode === 'draw-rectangle' ? 'Drawing Rectangle' : 'Drawing H-Line'}
-          </DrawingModeIndicator>
-        )}
-        
+          <ChartContainer 
+            ref={chartContainerRef} 
+          />
+          
+          {drawingMode && (
+            <DrawingModeIndicator $isDarkMode={isDarkMode}>
+              {drawingMode === 'draw-rectangle' ? 'Drawing Rectangle' : 'Drawing H-Line'}
+            </DrawingModeIndicator>
+          )}
+          
+          
+          {userFVGs.length === 1 && userFVGs[0].no_fvgs_found && (
+            <NoFVGOverlay>
+              <NoFVGMessage>
+                No {part === 1 ? 'Bullish' : 'Bearish'} FVGs Found
+              </NoFVGMessage>
+            </NoFVGOverlay>
+          )}
+        </ChartWrapper>
+
         <FVGPanel
           ref={panelRef}
-          style={{ left: `${panelOffset.x}px`, top: `${panelOffset.y}px` }}
+          style={isMobile ? {} : { 
+            left: `${panelOffset.x}px`, 
+            top: `${panelOffset.y}px`
+          }}
           onMouseDown={startPanelDragging}
           $isDarkMode={isDarkMode}
         >
@@ -995,15 +1055,6 @@ const FairValueGaps = ({
             )}
           </PanelContent>
         </FVGPanel>
-        
-        {userFVGs.length === 1 && userFVGs[0].no_fvgs_found && (
-          <NoFVGOverlay>
-            <NoFVGMessage>
-              No {part === 1 ? 'Bullish' : 'Bearish'} FVGs Found
-            </NoFVGMessage>
-          </NoFVGOverlay>
-        )}
-      </ChartWrapper>
       
       <LoadingOverlay $isActive={isLoading}>
         <LoadingContent>

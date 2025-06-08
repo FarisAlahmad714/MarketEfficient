@@ -169,6 +169,17 @@ const DraggablePanel = styled.div`
   overflow-y: auto;
   padding-bottom: 5px;
   color: ${props => props.$isDarkMode ? '#e0e0e0' : '#333'};
+
+  @media (max-width: 768px) {
+    position: relative;
+    width: 100%;
+    max-height: none;
+    margin-top: 20px;
+    margin-bottom: 20px;
+    border-radius: 8px;
+    left: auto !important;
+    top: auto !important;
+  }
 `;
 
 const PanelHeader = styled.div`
@@ -178,6 +189,10 @@ const PanelHeader = styled.div`
   text-align: center;
   cursor: move;
   font-weight: bold;
+
+  @media (max-width: 768px) {
+    cursor: default;
+  }
 `;
 
 const PanelContent = styled.div`
@@ -356,15 +371,28 @@ const FibonacciRetracement = ({ chartData, onDrawingsUpdate, part, chartCount, i
   const [panelOffset, setPanelOffset] = useState({ x: 0, y: 10 });
   const [isDragging, setIsDragging] = useState(false);
   const [currentCoords, setCurrentCoords] = useState({ x: 0, y: 0 });
+  const [isMobile, setIsMobile] = useState(false);
+  
+  // Check for mobile screen size
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
   
   // Set initial panel position
   useEffect(() => {
-    if (containerRef.current && panelRef.current) {
+    if (containerRef.current && panelRef.current && !isMobile) {
       const containerWidth = containerRef.current.clientWidth;
       const panelWidth = panelRef.current.clientWidth;
       setPanelOffset({ x: containerWidth - panelWidth - 10, y: 10 });
     }
-  }, [containerRef, panelRef]);
+  }, [containerRef, panelRef, isMobile]);
   
   useEffect(() => {
     if (prevPart !== part && prevPart !== undefined) {
@@ -693,14 +721,14 @@ const FibonacciRetracement = ({ chartData, onDrawingsUpdate, part, chartCount, i
             />
           )}
           
-          
-          {/* Draggable Panel */}
-          <DraggablePanel
-            ref={panelRef}
-            style={{ left: `${panelOffset.x}px`, top: `${panelOffset.y}px` }}
-            onMouseDown={startPanelDragging}
-            $isDarkMode={isDarkMode}
-          >
+        </ChartWrapper>
+
+        <DraggablePanel
+          ref={panelRef}
+          style={isMobile ? {} : { left: `${panelOffset.x}px`, top: `${panelOffset.y}px` }}
+          onMouseDown={startPanelDragging}
+          $isDarkMode={isDarkMode}
+        >
             <PanelHeader className="panel-header">Fibonacci Retracements</PanelHeader>
             <PanelContent>
               {drawings.length === 0 ? (
@@ -760,8 +788,7 @@ const FibonacciRetracement = ({ chartData, onDrawingsUpdate, part, chartCount, i
                 </>
               )}
             </PanelContent>
-          </DraggablePanel>
-        </ChartWrapper>
+        </DraggablePanel>
       </ChartContainer>
       
       <FibGuidelinesWrapper $isDarkMode={isDarkMode}>

@@ -1,0 +1,264 @@
+/* BiasTestResults.module.css */
+
+.resultsContainer {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.scoreContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 30px;
+  text-align: center;
+}
+
+.scoreText {
+  font-size: 18px;
+  margin-bottom: 10px;
+}
+
+.scoreNumber {
+  font-size: 48px;
+  font-weight: bold;
+  color: #2196F3;
+}
+
+.scorePercentage {
+  padding: 5px 15px;
+  border-radius: 20px;
+  display: inline-block;
+  margin-top: 10px;
+}
+
+.questionContainer {
+  margin-bottom: 30px;
+  border-radius: 8px;
+  padding: 20px;
+  border-left: 5px solid;
+  transition: all 0.3s ease;
+}
+
+.questionHeader {
+  margin-bottom: 15px;
+}
+
+.questionTitle {
+  margin-bottom: 15px;
+}
+
+.questionTimeframe {
+  font-size: 14px;
+  font-weight: normal;
+  margin-left: 10px;
+}
+
+.chartsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+/* Mobile responsive styles */
+@media (max-width: 768px) {
+  .resultsContainer {
+    padding: 15px;
+  }
+
+  .scoreContainer {
+    padding: 15px;
+    margin-bottom: 20px;
+  }
+
+  .scoreText {
+    font-size: 16px;
+  }
+
+  .scoreNumber {
+    font-size: 36px;
+  }
+
+  .questionContainer {
+    padding: 15px;
+    margin-bottom: 20px;
+  }
+
+  .chartsGrid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .questionTimeframe {
+    display: block;
+    margin-left: 0;
+    margin-top: 5px;
+  }
+}
+
+@media (max-width: 480px) {
+  .resultsContainer {
+    padding: 10px;
+  }
+
+  .scoreContainer {
+    padding: 15px 10px;
+  }
+
+  .scoreText {
+    font-size: 14px;
+  }
+
+  .scoreNumber {
+    font-size: 28px;
+  }
+
+  .questionContainer {
+    padding: 12px;
+  }
+
+  .chartsGrid {
+    gap: 15px;
+  }
+}
+
+.chartContainer {
+  border-radius: 8px;
+  padding: 15px;
+}
+
+.chartHeader {
+  margin-bottom: 10px;
+  border-bottom: 1px solid;
+  padding-bottom: 5px;
+}
+
+.lastCandleInfo {
+  text-align: center;
+  font-weight: bold;
+  padding: 8px;
+  border-radius: 4px;
+  margin-top: 10px;
+  border: 1px solid;
+}
+
+.ohlcData {
+  margin-top: 15px;
+}
+
+.ohlcTitle {
+  font-weight: bold;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.ohlcGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+@media (max-width: 480px) {
+  .ohlcGrid {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+}
+
+.ohlcItem {
+  padding: 6px;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.analysisContainer {
+  border-radius: 8px;
+  padding: 15px;
+  margin-top: 20px;
+}
+
+.analysisHeader {
+  font-weight: bold;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid;
+}
+
+.analysisGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+@media (max-width: 768px) {
+  .analysisGrid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+}
+
+.analysisItem {
+  text-align: center;
+  padding: 10px;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.percentageChange {
+  font-weight: bold;
+  font-size: 16px;
+}
+
+.explanationText {
+  font-size: 14px;
+  line-height: 1.5;
+  margin-top: 10px;
+}
+
+.navigationButtons {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  margin-top: 30px;
+}
+
+@media (max-width: 480px) {
+  .navigationButtons {
+    flex-direction: column;
+    gap: 10px;
+  }
+}
+
+.button {
+  padding: 12px 24px;
+  text-decoration: none;
+  border-radius: 4px;
+  font-weight: bold;
+  text-align: center;
+  transition: all 0.3s ease;
+  border: none;
+  cursor: pointer;
+  display: inline-block;
+}
+
+.primaryButton {
+  background-color: #2196F3;
+  color: white;
+}
+
+.primaryButton:hover {
+  background-color: #1976D2;
+}
+
+.secondaryButton {
+  background-color: #4CAF50;
+  color: white;
+}
+
+.secondaryButton:hover {
+  background-color: #388E3C;
+}

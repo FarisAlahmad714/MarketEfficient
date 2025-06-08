@@ -10,6 +10,7 @@ import CryptoLoader from '../../components/CryptoLoader';
 import TrackedPage from '../../components/TrackedPage';
 import storage from '../../lib/storage';
 import logger from '../../lib/logger';
+import styles from '../../styles/BiasTestResults.module.css';
 // Import CandlestickChart with SSR disabled
 const CandlestickChart = dynamic(
   () => import('../../components/charts/CandlestickChart'),
@@ -837,10 +838,7 @@ const Results = () => {
           style={{ position: 'fixed', top: 0, left: 0, zIndex: 9999 }}
         />
       )}
-      <div style={{ 
-        maxWidth: '1000px', 
-        margin: '0 auto', 
-        padding: '20px', 
+      <div className={styles.resultsContainer} style={{ 
         color: darkMode ? '#e0e0e0' : '#333'
       }}>
         <h1 style={{ 
@@ -867,35 +865,19 @@ const Results = () => {
           </div>
         )}
         
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'center', 
-          alignItems: 'center', 
+        <div className={styles.scoreContainer} style={{ 
           backgroundColor: darkMode ? '#1e1e1e' : '#f8f9fa', 
-          borderRadius: '8px', 
-          padding: '20px',
-          marginBottom: '30px',
           boxShadow: darkMode ? '0 2px 8px rgba(0,0,0,0.3)' : '0 2px 4px rgba(0,0,0,0.1)'
         }}>
-          <div style={{ textAlign: 'center' }}>
-            <p style={{ 
-              fontSize: '18px', 
-              marginBottom: '10px',
+          <div>
+            <p className={styles.scoreText} style={{ 
               color: darkMode ? '#b0b0b0' : 'inherit'
             }}>Your score:</p>
-            <div style={{ 
-              fontSize: '48px', 
-              fontWeight: 'bold',
-              color: '#2196F3'
-            }}>
+            <div className={styles.scoreNumber}>
               {score} / {total}
             </div>
-            <div style={{ 
+            <div className={styles.scorePercentage} style={{ 
               backgroundColor: darkMode ? '#0d47a1' : '#e3f2fd', 
-              padding: '5px 15px', 
-              borderRadius: '20px',
-              display: 'inline-block',
-              marginTop: '10px',
               color: darkMode ? '#90caf9' : '#0d47a1'
             }}>
               {total > 0 ? Math.round((score / total) * 100) : 0}%
@@ -940,72 +922,52 @@ const Results = () => {
               return (
                 <div 
                   key={answer.test_id || index} 
+                  className={styles.questionContainer}
                   style={{ 
-                    marginBottom: '30px',
                     backgroundColor: darkMode
                       ? (answer.is_correct ? '#1b3620' : '#3a181a')
                       : (answer.is_correct ? '#e8f5e9' : '#ffebee'),
-                    borderRadius: '8px',
-                    padding: '20px',
                     boxShadow: darkMode 
                       ? '0 2px 8px rgba(0,0,0,0.2)'
                       : '0 2px 8px rgba(0,0,0,0.1)',
-                    borderLeft: answer.is_correct 
-                      ? '5px solid #4CAF50' 
-                      : '5px solid #F44336',
-                    transition: 'all 0.3s ease'
+                    borderLeftColor: answer.is_correct 
+                      ? '#4CAF50' 
+                      : '#F44336'
                   }}
                 >
-                  <h3 style={{ 
-                    marginBottom: '15px',
+                  <h3 className={styles.questionTitle} style={{ 
                     color: darkMode ? '#e0e0e0' : 'inherit'
                   }}>
                     Question {index + 1}
-                    <span style={{ 
-                      fontSize: '14px', 
-                      fontWeight: 'normal', 
-                      color: darkMode ? '#b0b0b0' : '#666', 
-                      marginLeft: '10px' 
+                    <span className={styles.questionTimeframe} style={{ 
+                      color: darkMode ? '#b0b0b0' : '#666'
                     }}>
                       - {answer.timeframe || 'Unknown'} Timeframe
                     </span>
                   </h3>
                   
-                  <div style={{ 
-                    display: 'grid', 
-                    gridTemplateColumns: '1fr 1fr', 
-                    gap: '15px',
-                    marginBottom: '20px'
-                  }}>
+                  <div className={styles.chartsGrid}>
                     {/* Setup Chart with last candle date and data */}
                     <div>
-                      <h4 style={{ 
-                        marginBottom: '10px', 
-                        borderBottom: `1px solid ${darkMode ? '#333' : '#eee'}`, 
-                        paddingBottom: '5px',
+                      <h4 className={styles.chartHeader} style={{ 
+                        borderBottomColor: darkMode ? '#333' : '#eee',
                         color: darkMode ? '#e0e0e0' : 'inherit'
                       }}>
                         Setup Chart
                       </h4>
                       <div 
                         id={`setup-chart-${answer.test_id}`}
+                        className={styles.chartContainer}
                         style={{ 
-                          backgroundColor: darkMode ? '#262626' : '#fff', 
-                          padding: '15px', 
-                          borderRadius: '8px'
+                          backgroundColor: darkMode ? '#262626' : '#fff'
                         }}
                       >
                         {ohlcData.length > 0 ? (
                           <>
                             <CandlestickChart data={ohlcData} height={250} />
-                            <div style={{ 
-                              textAlign: 'center', 
-                              fontWeight: 'bold',
+                            <div className={styles.lastCandleInfo} style={{ 
                               backgroundColor: darkMode ? '#1a2e1a' : '#e8f5e9', 
-                              padding: '8px', 
-                              borderRadius: '4px',
-                              marginTop: '10px',
-                              border: `1px solid ${darkMode ? '#265426' : '#c8e6c9'}`,
+                              borderColor: darkMode ? '#265426' : '#c8e6c9',
                               color: darkMode ? '#81c784' : 'inherit'
                             }}>
                               Last Candle Date: {lastSetupCandleDate}
@@ -1013,48 +975,33 @@ const Results = () => {
                             
                             {/* Last Setup Candle OHLC Data */}
                             {lastSetupCandle && (
-                              <div style={{ marginTop: '15px' }}>
-                                <p style={{ 
-                                  fontWeight: 'bold', 
-                                  marginBottom: '8px', 
-                                  fontSize: '14px',
+                              <div className={styles.ohlcData}>
+                                <p className={styles.ohlcTitle} style={{ 
                                   color: darkMode ? '#e0e0e0' : 'inherit'
                                 }}>
                                   Last Candle OHLC Data:
                                 </p>
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
-                                  <div style={{ 
+                                <div className={styles.ohlcGrid}>
+                                  <div className={styles.ohlcItem} style={{ 
                                     backgroundColor: darkMode ? '#333' : '#f5f5f5', 
-                                    padding: '6px', 
-                                    borderRadius: '4px',
-                                    fontSize: '13px',
                                     color: darkMode ? '#e0e0e0' : 'inherit'
                                   }}>
                                     <strong>Open:</strong> {lastSetupCandle.open.toFixed(2)}
                                   </div>
-                                  <div style={{ 
-                                    backgroundColor: darkMode ? '#333' : '#f5f5f5', 
-                                    padding: '6px', 
-                                    borderRadius: '4px',
-                                    fontSize: '13px',
+                                  <div className={styles.ohlcItem} style={{ 
+                                    backgroundColor: darkMode ? '#333' : '#f5f5f5',
                                     color: darkMode ? '#e0e0e0' : 'inherit'
                                   }}>
                                     <strong>High:</strong> {lastSetupCandle.high.toFixed(2)}
                                   </div>
-                                  <div style={{ 
+                                  <div className={styles.ohlcItem} style={{ 
                                     backgroundColor: darkMode ? '#333' : '#f5f5f5', 
-                                    padding: '6px', 
-                                    borderRadius: '4px',
-                                    fontSize: '13px',
                                     color: darkMode ? '#e0e0e0' : 'inherit'
                                   }}>
                                     <strong>Low:</strong> {lastSetupCandle.low.toFixed(2)}
                                   </div>
-                                  <div style={{ 
+                                  <div className={styles.ohlcItem} style={{ 
                                     backgroundColor: darkMode ? '#333' : '#f5f5f5', 
-                                    padding: '6px', 
-                                    borderRadius: '4px',
-                                    fontSize: '13px',
                                     color: darkMode ? '#e0e0e0' : 'inherit'
                                   }}>
                                     <strong>Close:</strong> {lastSetupCandle.close.toFixed(2)}
@@ -1374,36 +1321,16 @@ const Results = () => {
           </div>
         )}
         
-        <div style={{ display: 'flex', gap: '15px', marginTop: '30px' }}>
+        <div className={styles.navigationButtons}>
           <button 
             onClick={handleTakeAnotherTest}
-            style={{
-              flex: 1,
-              padding: '12px',
-              backgroundColor: '#4CAF50',
-              color: 'white',
-              textAlign: 'center',
-              textDecoration: 'none',
-              borderRadius: '4px',
-              fontWeight: 'bold',
-              border: 'none',
-              cursor: 'pointer'
-            }}
+            className={`${styles.button} ${styles.secondaryButton}`}
           >
             Take Another Test
           </button>
           <Link 
             href="/bias-test"
-            style={{
-              flex: 1,
-              padding: '12px',
-              backgroundColor: '#2196F3',
-              color: 'white',
-              textAlign: 'center',
-              textDecoration: 'none',
-              borderRadius: '4px',
-              fontWeight: 'bold'
-            }}
+            className={`${styles.button} ${styles.primaryButton}`}
           >
             Back to Asset Selection
           </Link>

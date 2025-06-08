@@ -171,6 +171,7 @@ const Chart = dynamic(
 );
 
 // Styled Components
+
 const ChartWrapper = styled.div`
   position: relative;
   width: 100%;
@@ -193,6 +194,17 @@ const MarkerPanel = styled.div`
   overflow-y: auto;
   padding-bottom: 5px;
   color: ${props => props.$isDarkMode ? '#e0e0e0' : '#333'};
+
+  @media (max-width: 768px) {
+    position: relative;
+    width: 100%;
+    max-height: none;
+    margin-top: 20px;
+    margin-bottom: 20px;
+    border-radius: 8px;
+    left: auto !important;
+    top: auto !important;
+  }
 `;
 
 const PanelHeader = styled.div`
@@ -202,6 +214,10 @@ const PanelHeader = styled.div`
   text-align: center;
   cursor: move;
   font-weight: bold;
+
+  @media (max-width: 768px) {
+    cursor: default;
+  }
 `;
 
 const PanelContent = styled.div`
@@ -331,6 +347,7 @@ const SwingAnalysis = ({ chartData, onDrawingsUpdate, chartCount, isDarkMode, va
   const [panelOffset, setPanelOffset] = useState({ x: 0, y: 10 });
   const [isDragging, setIsDragging] = useState(false);
   const [currentCoords, setCurrentCoords] = useState({ x: 0, y: 0 });
+  const [isMobile, setIsMobile] = useState(false);
   const [feedbackMarkers, setFeedbackMarkers] = useState([]);
 
   // Define all functions before toolsConfig to avoid ReferenceError
@@ -352,14 +369,26 @@ const SwingAnalysis = ({ chartData, onDrawingsUpdate, chartCount, isDarkMode, va
     setDrawings([{ no_swings_found: true, type: 'none' }]);
   };
 
+  // Check for mobile screen size
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
   // Set initial panel position
   useEffect(() => {
-    if (containerRef.current && panelRef.current) {
+    if (containerRef.current && panelRef.current && !isMobile) {
       const containerWidth = containerRef.current.clientWidth;
       const panelWidth = panelRef.current.clientWidth;
       setPanelOffset({ x: containerWidth - panelWidth - 10, y: 10 });
     }
-  }, [containerRef, panelRef]);
+  }, [containerRef, panelRef, isMobile]);
 
   // Format chart data
   const formattedChartData = React.useMemo(() => {
@@ -665,9 +694,16 @@ const SwingAnalysis = ({ chartData, onDrawingsUpdate, chartCount, isDarkMode, va
           </div>
         )}
         
+        {drawings.length === 1 && drawings[0].no_swings_found && (
+          <NoSwingOverlay>
+            <NoSwingMessage>No Significant Swing Points Found</NoSwingMessage>
+          </NoSwingOverlay>
+        )}
+        </ChartWrapper>
+
         <MarkerPanel
           ref={panelRef}
-          style={{ left: `${panelOffset.x}px`, top: `${panelOffset.y}px` }}
+          style={isMobile ? {} : { left: `${panelOffset.x}px`, top: `${panelOffset.y}px` }}
           onMouseDown={startPanelDragging}
           onMouseMove={dragPanel}
           onMouseUp={stopPanelDragging}
@@ -712,13 +748,6 @@ const SwingAnalysis = ({ chartData, onDrawingsUpdate, chartCount, isDarkMode, va
             )}
           </PanelContent>
         </MarkerPanel>
-        
-        {drawings.length === 1 && drawings[0].no_swings_found && (
-          <NoSwingOverlay>
-            <NoSwingMessage>No Significant Swing Points Found</NoSwingMessage>
-          </NoSwingOverlay>
-        )}
-      </ChartWrapper>
       
       {validationResults && (
         <FeedbackSummary $isDarkMode={isDarkMode} $score={validationResults.matchPercentage || 0}>
