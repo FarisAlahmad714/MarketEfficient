@@ -199,7 +199,7 @@ const Results = () => {
           // Trigger confetti after a short delay to ensure UI is ready
           setTimeout(() => {
             setShowConfetti(true);
-            setTimeout(() => setShowConfetti(false), 10000);
+            setTimeout(() => setShowConfetti(false), 15000);
           }, 500);
           
           return;
@@ -227,7 +227,7 @@ const Results = () => {
               // Trigger confetti after a short delay to ensure UI is ready
               setTimeout(() => {
                 setShowConfetti(true);
-                setTimeout(() => setShowConfetti(false), 10000);
+                setTimeout(() => setShowConfetti(false), 15000);
               }, 500);
               
               return;
@@ -248,7 +248,7 @@ const Results = () => {
                 // Trigger confetti after a short delay to ensure UI is ready
                 setTimeout(() => {
                   setShowConfetti(true);
-                  setTimeout(() => setShowConfetti(false), 10000);
+                  setTimeout(() => setShowConfetti(false), 15000);
                 }, 500);
                 
                 return;
@@ -565,13 +565,275 @@ const Results = () => {
     }
   };
 
+  // Asset mapping for confetti (crypto + equities)
+  const getAssetSymbolAndColors = (assetSymbol) => {
+    const upperAssetSymbol = assetSymbol?.toUpperCase();
+    const assetMap = {
+      // Cryptocurrencies
+      'BTC': { symbol: '₿', colors: ['#f7931a', '#ffb84d', '#ff9500'], name: 'Bitcoin', type: 'crypto' },
+      'ETH': { symbol: 'Ξ', colors: ['#627eea', '#8a9df7', '#4169e1'], name: 'Ethereum', type: 'crypto' },
+      'ADA': { symbol: '₳', colors: ['#0033ad', '#3468d1', '#1976d2'], name: 'Cardano', type: 'crypto' },
+      'SOL': { symbol: '◎', colors: ['#9945ff', '#b366ff', '#8e2de2'], name: 'Solana', type: 'crypto' },
+      'DOT': { symbol: '●', colors: ['#e6007a', '#ff4da6', '#e91e63'], name: 'Polkadot', type: 'crypto' },
+      'MATIC': { symbol: 'Ⓜ', colors: ['#8247e5', '#9c59f7', '#7b1fa2'], name: 'Polygon', type: 'crypto' },
+      'AVAX': { symbol: '▲', colors: ['#e84142', '#ff6b6b', '#f44336'], name: 'Avalanche', type: 'crypto' },
+      'LINK': { symbol: '🔗', colors: ['#2a5ada', '#4285f4', '#1976d2'], name: 'Chainlink', type: 'crypto' },
+      'UNI': { symbol: '🦄', colors: ['#ff007a', '#ff4da6', '#e91e63'], name: 'Uniswap', type: 'crypto' },
+      'LTC': { symbol: 'Ł', colors: ['#bfbbbb', '#d4d4d4', '#9e9e9e'], name: 'Litecoin', type: 'crypto' },
+      'XRP': { symbol: '✕', colors: ['#23292f', '#525252', '#616161'], name: 'Ripple', type: 'crypto' },
+      'DOGE': { symbol: 'Ð', colors: ['#c2a633', '#d4af37', '#fdd835'], name: 'Dogecoin', type: 'crypto' },
+      'SHIB': { symbol: '🐕', colors: ['#ffa800', '#ffb74d', '#ff9800'], name: 'Shiba Inu', type: 'crypto' },
+      'BNB': { symbol: 'Ⓑ', colors: ['#f3ba2f', '#ffc107', '#ffb300'], name: 'Binance Coin', type: 'crypto' },
+      'TRX': { symbol: '◊', colors: ['#ff0013', '#f44336', '#d32f2f'], name: 'TRON', type: 'crypto' },
+      'TON': { symbol: '💎', colors: ['#0088cc', '#29b6f6', '#03a9f4'], name: 'Toncoin', type: 'crypto' },
+      'ALGO': { symbol: '◢', colors: ['#000000', '#424242', '#616161'], name: 'Algorand', type: 'crypto' },
+      'ATOM': { symbol: '⚛', colors: ['#2e3148', '#5c6bc0', '#3f51b5'], name: 'Cosmos', type: 'crypto' },
+      'FTM': { symbol: '👻', colors: ['#1969ff', '#2196f3', '#1976d2'], name: 'Fantom', type: 'crypto' },
+      'NEAR': { symbol: 'Ⓝ', colors: ['#00ec97', '#4caf50', '#388e3c'], name: 'NEAR Protocol', type: 'crypto' },
+      
+      // Major Tech Stocks
+      'AAPL': { symbol: '', colors: ['#007aff', '#5ac8fa', '#34aadc'], name: 'Apple', type: 'equity' },
+      'GOOGL': { symbol: 'G', colors: ['#4285f4', '#34a853', '#ea4335'], name: 'Google', type: 'equity' },
+      'GOOG': { symbol: 'G', colors: ['#4285f4', '#34a853', '#ea4335'], name: 'Google', type: 'equity' },
+      'MSFT': { symbol: '⊞', colors: ['#00bcf2', '#0078d4', '#106ebe'], name: 'Microsoft', type: 'equity' },
+      'AMZN': { symbol: '📦', colors: ['#ff9900', '#ffb84d', '#ff8f00'], name: 'Amazon', type: 'equity' },
+      'TSLA': { symbol: '⚡', colors: ['#cc0000', '#e53935', '#f44336'], name: 'Tesla', type: 'equity' },
+      'META': { symbol: 'f', colors: ['#1877f2', '#42a5f5', '#2196f3'], name: 'Meta', type: 'equity' },
+      'NVDA': { symbol: '🎮', colors: ['#76b900', '#8bc34a', '#689f38'], name: 'NVIDIA', type: 'equity' },
+      'NFLX': { symbol: '🎬', colors: ['#e50914', '#f44336', '#d32f2f'], name: 'Netflix', type: 'equity' },
+      'AMD': { symbol: '🔥', colors: ['#ed1c24', '#f44336', '#d32f2f'], name: 'AMD', type: 'equity' },
+      
+      // Financial Stocks
+      'JPM': { symbol: '🏦', colors: ['#0066cc', '#1976d2', '#1565c0'], name: 'JPMorgan', type: 'equity' },
+      'BAC': { symbol: '🏛️', colors: ['#e31837', '#f44336', '#d32f2f'], name: 'Bank of America', type: 'equity' },
+      'WFC': { symbol: '🐎', colors: ['#d71e2b', '#f44336', '#d32f2f'], name: 'Wells Fargo', type: 'equity' },
+      'GS': { symbol: '💰', colors: ['#0066cc', '#1976d2', '#1565c0'], name: 'Goldman Sachs', type: 'equity' },
+      'V': { symbol: '💳', colors: ['#1a1f71', '#3f51b5', '#303f9f'], name: 'Visa', type: 'equity' },
+      'MA': { symbol: '🔴', colors: ['#eb001b', '#f44336', '#d32f2f'], name: 'Mastercard', type: 'equity' },
+      
+      // Consumer & Retail
+      'WMT': { symbol: '🛒', colors: ['#0071ce', '#1976d2', '#1565c0'], name: 'Walmart', type: 'equity' },
+      'PG': { symbol: '🧼', colors: ['#003da5', '#1976d2', '#1565c0'], name: 'Procter & Gamble', type: 'equity' },
+      'KO': { symbol: '🥤', colors: ['#f40009', '#f44336', '#d32f2f'], name: 'Coca-Cola', type: 'equity' },
+      'PEP': { symbol: '🥤', colors: ['#004b93', '#1976d2', '#1565c0'], name: 'PepsiCo', type: 'equity' },
+      'NKE': { symbol: '👟', colors: ['#ff6900', '#ff9800', '#f57c00'], name: 'Nike', type: 'equity' },
+      'MCD': { symbol: '🍟', colors: ['#ffc72c', '#ffc107', '#ff8f00'], name: 'McDonald\'s', type: 'equity' },
+      
+      // Healthcare & Pharma
+      'JNJ': { symbol: '💊', colors: ['#cc0000', '#f44336', '#d32f2f'], name: 'Johnson & Johnson', type: 'equity' },
+      'PFE': { symbol: '💉', colors: ['#0093d0', '#2196f3', '#1976d2'], name: 'Pfizer', type: 'equity' },
+      'UNH': { symbol: '🏥', colors: ['#002677', '#1976d2', '#1565c0'], name: 'UnitedHealth', type: 'equity' },
+      
+      // Industrial & Energy
+      'XOM': { symbol: '⛽', colors: ['#ff1744', '#f44336', '#d32f2f'], name: 'ExxonMobil', type: 'equity' },
+      'CVX': { symbol: '🛢️', colors: ['#1f4e79', '#1976d2', '#1565c0'], name: 'Chevron', type: 'equity' },
+      'BA': { symbol: '✈️', colors: ['#5090d3', '#2196f3', '#1976d2'], name: 'Boeing', type: 'equity' },
+      'CAT': { symbol: '🚜', colors: ['#ffcd11', '#ffc107', '#ff8f00'], name: 'Caterpillar', type: 'equity' },
+      
+      // Popular ETFs
+      'SPY': { symbol: '📊', colors: ['#1f4e79', '#1976d2', '#1565c0'], name: 'SPDR S&P 500', type: 'etf' },
+      'QQQ': { symbol: '📈', colors: ['#4caf50', '#66bb6a', '#388e3c'], name: 'Invesco QQQ', type: 'etf' },
+      'IWM': { symbol: '📉', colors: ['#ff9800', '#ffb74d', '#f57c00'], name: 'iShares Russell 2000', type: 'etf' },
+      'VTI': { symbol: '🌍', colors: ['#1976d2', '#42a5f5', '#1565c0'], name: 'Vanguard Total Stock', type: 'etf' }
+    };
+
+    // Default fallback for unknown assets
+    const result = assetMap[upperAssetSymbol] || { 
+      symbol: upperAssetSymbol?.charAt(0) || '?', 
+      colors: ['#2196f3', '#42a5f5', '#1976d2'], 
+      name: upperAssetSymbol || 'Unknown',
+      type: 'unknown'
+    };
+    
+    return result;
+  };
+
+  // Fixed: Generate size inside draw function to avoid hydration issues
+
+  // Fast brand logo drawers using simple shapes + Unicode (like Bitcoin!)
+  const drawAppleLogo = (ctx, colors, size) => {
+    // Simple circle with bite (fast geometric shapes)
+    ctx.fillStyle = colors[0];
+    ctx.beginPath();
+    ctx.arc(0, 0, size * 0.8, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Apple bite (simple circle cutout)
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(size * 0.4, -size * 0.2, size * 0.3, 0, Math.PI * 2);
+    ctx.fill();
+  };
+
+  const drawGoogleLogo = (ctx, colors, size) => {
+    // Google "G" with geometric shapes
+    ctx.fillStyle = colors[0];
+    ctx.font = `bold ${size * 0.8}px Arial`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('G', 0, 0);
+  };
+
+  const drawTeslaLogo = (ctx, colors, size) => {
+    // Tesla "T" stylized
+    ctx.fillStyle = '#ffffff';
+    ctx.font = `bold ${size * 0.8}px Arial`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('T', 0, 0);
+  };
+
+  const drawNvidiaLogo = (ctx, colors, size) => {
+    // NVIDIA eye shape (simple geometric)
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, size * 0.8, size * 0.4, 0, 0, Math.PI * 2);
+    ctx.fill();
+  };
+
+  // Custom asset shape drawer (crypto coins, stock symbols, ETF badges)
+  const drawAssetShape = (ctx, assetSymbol) => {
+    const asset = getAssetSymbolAndColors(assetSymbol);
+    const pieceSize = Math.random() * 8 + 8; // Generate size only during drawing (client-side)
+    
+    ctx.save();
+    
+    if (asset.type === 'crypto') {
+      // Optimized crypto coin drawing
+      const gradient = ctx.createRadialGradient(-pieceSize * 0.3, -pieceSize * 0.3, 0, 0, 0, pieceSize);
+      gradient.addColorStop(0, asset.colors[1]);
+      gradient.addColorStop(0.6, asset.colors[0]);
+      gradient.addColorStop(1, asset.colors[2]);
+      
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.arc(0, 0, pieceSize, 0, 2 * Math.PI);
+      ctx.fill();
+      
+      // Optimized border
+      ctx.strokeStyle = asset.colors[2];
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      
+      // Draw crypto symbol
+      ctx.fillStyle = '#ffffff';
+      ctx.font = `bold ${pieceSize * 0.7}px Arial`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(asset.symbol, 0, 0);
+      
+    } else if (asset.type === 'equity') {
+      // Draw background circle/shape first
+      const gradient = ctx.createRadialGradient(-pieceSize * 0.3, -pieceSize * 0.3, 0, 0, 0, pieceSize);
+      gradient.addColorStop(0, asset.colors[1]);
+      gradient.addColorStop(1, asset.colors[0]);
+      
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.arc(0, 0, pieceSize, 0, 2 * Math.PI);
+      ctx.fill();
+      
+      // Border
+      ctx.strokeStyle = asset.colors[2];
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      
+      // Special brand logo handling
+      if (assetSymbol === 'AAPL') {
+        drawAppleLogo(ctx, asset.colors, pieceSize);
+      } else if (assetSymbol === 'GOOGL' || assetSymbol === 'GOOG') {
+        drawGoogleLogo(ctx, asset.colors, pieceSize);
+      } else if (assetSymbol === 'TSLA') {
+        drawTeslaLogo(ctx, asset.colors, pieceSize);
+      } else if (assetSymbol === 'NVDA') {
+        drawNvidiaLogo(ctx, asset.colors, pieceSize);
+      } else {
+        // Default symbol
+        ctx.fillStyle = '#ffffff';
+        ctx.font = `bold ${pieceSize * 0.6}px Arial`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(asset.symbol, 0, 0);
+      }
+      
+    } else if (asset.type === 'etf') {
+      // Optimized ETF hexagon
+      const radius = pieceSize;
+      const sides = 6;
+      
+      const gradient = ctx.createRadialGradient(-radius * 0.3, -radius * 0.3, 0, 0, 0, radius);
+      gradient.addColorStop(0, asset.colors[1]);
+      gradient.addColorStop(1, asset.colors[0]);
+      
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      
+      for (let i = 0; i < sides; i++) {
+        const angle = (i * 2 * Math.PI) / sides;
+        const x = radius * Math.cos(angle);
+        const y = radius * Math.sin(angle);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.fill();
+      
+      // Border
+      ctx.strokeStyle = asset.colors[2];
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      
+      // Draw symbol
+      ctx.fillStyle = '#ffffff';
+      ctx.font = `bold ${pieceSize * 0.5}px Arial`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(asset.symbol, 0, 0);
+      
+    } else {
+      // Default optimized shape
+      ctx.fillStyle = asset.colors[0];
+      ctx.beginPath();
+      ctx.arc(0, 0, pieceSize, 0, 2 * Math.PI);
+      ctx.fill();
+      
+      ctx.fillStyle = '#ffffff';
+      ctx.font = `bold ${pieceSize * 0.7}px Arial`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(asset.symbol, 0, 0);
+    }
+    
+    ctx.restore();
+  };
 
   return (
-    <TrackedPage pageName="BiasTestResults" eventProperties={{ asset: results.asset, timeframe: results.timeframe }}>
-      {showConfetti && typeof window !== 'undefined' && (
+    <TrackedPage pageName="BiasTestResults" eventProperties={{ asset: router.query.assetSymbol, timeframe: results.timeframe }}>
+      {showConfetti && typeof window !== 'undefined' && results && windowSize.width && (
         <Confetti
           width={windowSize.width}
           height={windowSize.height}
+          numberOfPieces={120}
+          gravity={0.08}
+          wind={0.005}
+          friction={0.996}
+          initialVelocityX={5}
+          initialVelocityY={10}
+          recycle={true}
+          tweenDuration={12000}
+          drawShape={(ctx) => {
+            try {
+              const assetSymbol = router.query.assetSymbol;
+              drawAssetShape(ctx, assetSymbol);
+            } catch (error) {
+              console.error('Error drawing confetti shape:', error);
+              // Fallback
+              ctx.fillStyle = '#2196f3';
+              ctx.beginPath();
+              ctx.arc(0, 0, 6, 0, 2 * Math.PI);
+              ctx.fill();
+            }
+          }}
           style={{ position: 'fixed', top: 0, left: 0, zIndex: 9999 }}
         />
       )}

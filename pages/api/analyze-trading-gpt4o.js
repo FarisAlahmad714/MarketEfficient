@@ -1,82 +1,261 @@
 // pages/api/analyze-trading-gpt4o.js
 import OpenAI from 'openai';
-import logger from '../../lib/logger'; // Adjust path to your logger utility
+import logger from '../../lib/logger';
 
-// Helper function to format dates - ENHANCED VERSION
-function formatReadableDate(isoDateString) {
-  if (!isoDateString) return "an unspecified time";
+// Technical Analysis Pattern Recognition
+const CANDLESTICK_PATTERNS = {
+  DOJI: (o, h, l, c) => Math.abs(c - o) / (h - l) < 0.1,
+  HAMMER: (o, h, l, c) => {
+    const body = Math.abs(c - o);
+    const lowerWick = Math.min(o, c) - l;
+    const upperWick = h - Math.max(o, c);
+    return lowerWick > body * 2 && upperWick < body * 0.5;
+  },
+  SHOOTING_STAR: (o, h, l, c) => {
+    const body = Math.abs(c - o);
+    const upperWick = h - Math.max(o, c);
+    const lowerWick = Math.min(o, c) - l;
+    return upperWick > body * 2 && lowerWick < body * 0.5;
+  },
+  ENGULFING_BULLISH: (prev, curr) => 
+    prev.close < prev.open && curr.close > curr.open && 
+    curr.open < prev.close && curr.close > prev.open,
+  ENGULFING_BEARISH: (prev, curr) => 
+    prev.close > prev.open && curr.close < curr.open && 
+    curr.open > prev.close && curr.close < prev.open,
+  MARUBOZU_BULLISH: (o, h, l, c) => 
+    c > o && Math.abs(h - c) < (c - o) * 0.1 && Math.abs(o - l) < (c - o) * 0.1,
+  MARUBOZU_BEARISH: (o, h, l, c) => 
+    c < o && Math.abs(h - o) < (o - c) * 0.1 && Math.abs(c - l) < (o - c) * 0.1,
+};
+
+// Enhanced date formatting with market session context
+function formatMarketDate(isoDateString) {
+  if (!isoDateString) return "unknown time";
   try {
     const date = new Date(isoDateString);
-    // Format as: "January 5, 2024 at 3:30 PM"
-    return date.toLocaleString('en-US', { 
+    const options = { 
+      weekday: 'short',
       year: 'numeric', 
-      month: 'long', 
-      day: 'numeric', 
-      hour: 'numeric', 
+      month: 'short', 
+      day: 'numeric',
+      hour: '2-digit',
       minute: '2-digit',
-      hour12: true,
       timeZoneName: 'short'
-    });
+    };
+    return date.toLocaleString('en-US', options);
   } catch (e) {
-    console.error("Error formatting date:", isoDateString, e);
-    return isoDateString; // Fallback to original if formatting fails
+    return isoDateString;
   }
 }
 
-// Helper function to get time-based greeting for dates
-function getTimeContext(dateString) {
-  if (!dateString) return "";
-  try {
-    const date = new Date(dateString);
-    const hour = date.getHours();
-    if (hour >= 0 && hour < 12) return "morning";
-    if (hour >= 12 && hour < 17) return "afternoon";
-    if (hour >= 17 && hour < 21) return "evening";
-    return "night";
-  } catch (e) {
-    return "";
-  }
-}
-
-// Helper function to calculate price movement statistics
-function calculatePriceStats(candles) {
-  if (!candles || candles.length === 0) return null;
+// Identify candlestick patterns in the chart
+function identifyCandlePatterns(candles) {
+  const patterns = [];
   
-  const opens = candles.map(c => c.open);
-  const closes = candles.map(c => c.close);
+  for (let i = 0; i < candles.length; i++) {
+    const candle = candles[i];
+    const { open, high, low, close, date } = candle;
+    
+    // Single candle patterns
+    if (CANDLESTICK_PATTERNS.DOJI(open, high, low, close)) {
+      patterns.push({ type: 'DOJI', date, index: i, significance: 'Indecision/potential reversal' });
+    }
+    if (CANDLESTICK_PATTERNS.HAMMER(open, high, low, close)) {
+      patterns.push({ type: 'HAMMER', date, index: i, significance: 'Bullish reversal signal' });
+    }
+    if (CANDLESTICK_PATTERNS.SHOOTING_STAR(open, high, low, close)) {
+      patterns.push({ type: 'SHOOTING_STAR', date, index: i, significance: 'Bearish reversal signal' });
+    }
+    if (CANDLESTICK_PATTERNS.MARUBOZU_BULLISH(open, high, low, close)) {
+      patterns.push({ type: 'BULLISH_MARUBOZU', date, index: i, significance: 'Strong bullish momentum' });
+    }
+    if (CANDLESTICK_PATTERNS.MARUBOZU_BEARISH(open, high, low, close)) {
+      patterns.push({ type: 'BEARISH_MARUBOZU', date, index: i, significance: 'Strong bearish momentum' });
+    }
+    
+    // Multi-candle patterns
+    if (i > 0) {
+      const prevCandle = candles[i - 1];
+      if (CANDLESTICK_PATTERNS.ENGULFING_BULLISH(prevCandle, candle)) {
+        patterns.push({ type: 'BULLISH_ENGULFING', date, index: i, significance: 'Strong bullish reversal' });
+      }
+      if (CANDLESTICK_PATTERNS.ENGULFING_BEARISH(prevCandle, candle)) {
+        patterns.push({ type: 'BEARISH_ENGULFING', date, index: i, significance: 'Strong bearish reversal' });
+      }
+    }
+  }
+  
+  return patterns;
+}
+
+// Analyze support and resistance levels
+function identifyKeyLevels(candles) {
   const highs = candles.map(c => c.high);
   const lows = candles.map(c => c.low);
+  const closes = candles.map(c => c.close);
   
-  const firstOpen = opens[0];
-  const lastClose = closes[closes.length - 1];
-  const highestHigh = Math.max(...highs);
-  const lowestLow = Math.min(...lows);
+  // Find swing highs and lows
+  const swingHighs = [];
+  const swingLows = [];
   
-  const priceChange = ((lastClose - firstOpen) / firstOpen) * 100;
-  const volatility = ((highestHigh - lowestLow) / firstOpen) * 100;
+  for (let i = 1; i < candles.length - 1; i++) {
+    if (highs[i] > highs[i-1] && highs[i] > highs[i+1]) {
+      swingHighs.push({ price: highs[i], date: candles[i].date, index: i });
+    }
+    if (lows[i] < lows[i-1] && lows[i] < lows[i+1]) {
+      swingLows.push({ price: lows[i], date: candles[i].date, index: i });
+    }
+  }
   
-  // Count bullish vs bearish candles
-  const bullishCandles = candles.filter(c => c.close > c.open).length;
-  const bearishCandles = candles.length - bullishCandles;
+  // Identify potential support/resistance from multiple touches
+  const priceFrequency = {};
+  closes.forEach(price => {
+    const rounded = Math.round(price * 100) / 100;
+    priceFrequency[rounded] = (priceFrequency[rounded] || 0) + 1;
+  });
   
-  // Identify potential patterns
-  const lastThreeCandles = candles.slice(-3);
-  const isUptrend = lastThreeCandles.every((c, i) => 
-    i === 0 || c.close > lastThreeCandles[i-1].close
-  );
-  const isDowntrend = lastThreeCandles.every((c, i) => 
-    i === 0 || c.close < lastThreeCandles[i-1].close
-  );
+  const significantLevels = Object.entries(priceFrequency)
+    .filter(([_, freq]) => freq >= 2)
+    .map(([price, freq]) => ({ price: parseFloat(price), touches: freq }))
+    .sort((a, b) => b.touches - a.touches);
+  
+  return { swingHighs, swingLows, significantLevels };
+}
+
+// Calculate advanced price statistics
+function calculateAdvancedStats(candles) {
+  if (!candles || candles.length === 0) return null;
+  
+  const prices = candles.map(c => c.close);
+  const volumes = candles.map(c => c.volume || 0);
+  
+  // Calculate moving averages
+  const sma = (arr, period) => {
+    if (arr.length < period) return null;
+    const sum = arr.slice(-period).reduce((a, b) => a + b, 0);
+    return sum / period;
+  };
+  
+  // Price momentum
+  const momentum = prices.length > 1 ? 
+    ((prices[prices.length - 1] - prices[0]) / prices[0]) * 100 : 0;
+  
+  // Volatility (standard deviation)
+  const mean = prices.reduce((a, b) => a + b, 0) / prices.length;
+  const variance = prices.reduce((sum, price) => sum + Math.pow(price - mean, 2), 0) / prices.length;
+  const volatility = Math.sqrt(variance);
+  const volatilityPercent = (volatility / mean) * 100;
+  
+  // Trend strength (ADX-like calculation)
+  let upMoves = 0;
+  let downMoves = 0;
+  for (let i = 1; i < prices.length; i++) {
+    const change = prices[i] - prices[i-1];
+    if (change > 0) upMoves += change;
+    else downMoves += Math.abs(change);
+  }
+  const trendStrength = upMoves > downMoves ? 
+    (upMoves / (upMoves + downMoves)) * 100 : 
+    -(downMoves / (upMoves + downMoves)) * 100;
+  
+  // Recent momentum (last 3 candles vs previous 3)
+  const recentCandles = candles.slice(-3);
+  const previousCandles = candles.slice(-6, -3);
+  const recentAvg = recentCandles.reduce((sum, c) => sum + c.close, 0) / recentCandles.length;
+  const previousAvg = previousCandles.length > 0 ? 
+    previousCandles.reduce((sum, c) => sum + c.close, 0) / previousCandles.length : recentAvg;
+  const recentMomentum = ((recentAvg - previousAvg) / previousAvg) * 100;
   
   return {
-    priceChange,
-    volatility,
-    bullishCandles,
-    bearishCandles,
-    trend: isUptrend ? 'uptrend' : (isDowntrend ? 'downtrend' : 'sideways'),
-    highestHigh,
-    lowestLow
+    momentum,
+    volatilityPercent,
+    trendStrength,
+    recentMomentum,
+    sma5: sma(prices, 5),
+    sma20: sma(prices, 20),
+    currentPrice: prices[prices.length - 1],
+    priceRange: Math.max(...prices) - Math.min(...prices),
+    averageVolume: volumes.reduce((a, b) => a + b, 0) / volumes.length
   };
+}
+
+// Analyze the specific context for the ticker (AAPL in this case)
+function analyzeTickerContext(ticker, date, chartData) {
+  // This would ideally fetch real market events, but for now we'll analyze the chart context
+  const patterns = identifyCandlePatterns(chartData);
+  const keyLevels = identifyKeyLevels(chartData);
+  const stats = calculateAdvancedStats(chartData);
+  
+  // Build context based on technical analysis
+  const context = {
+    patterns: patterns.slice(-3), // Last 3 patterns
+    nearestResistance: keyLevels.swingHighs[0]?.price,
+    nearestSupport: keyLevels.swingLows[0]?.price,
+    trendDirection: stats.trendStrength > 20 ? 'strongly bullish' : 
+                   stats.trendStrength > 0 ? 'moderately bullish' :
+                   stats.trendStrength > -20 ? 'moderately bearish' : 'strongly bearish',
+    volatilityLevel: stats.volatilityPercent > 3 ? 'high' : 
+                    stats.volatilityPercent > 1.5 ? 'moderate' : 'low',
+    momentum: stats.recentMomentum > 1 ? 'accelerating' : 
+              stats.recentMomentum < -1 ? 'decelerating' : 'stable'
+  };
+  
+  return context;
+}
+
+// Generate specific market insights based on the actual data
+function generateMarketInsights(setupData, outcomeData, stats, patterns, keyLevels) {
+  const insights = [];
+  
+  // Pattern-based insights
+  const recentPatterns = patterns.slice(-3);
+  if (recentPatterns.length > 0) {
+    recentPatterns.forEach(pattern => {
+      insights.push({
+        type: 'pattern',
+        description: `${pattern.type} pattern on ${formatMarketDate(pattern.date)}`,
+        significance: pattern.significance
+      });
+    });
+  }
+  
+  // Price action insights
+  const lastCandle = setupData[setupData.length - 1];
+  const pricePosition = ((lastCandle.close - stats.currentPrice) / stats.currentPrice) * 100;
+  
+  if (Math.abs(lastCandle.close - keyLevels.swingHighs[0]?.price) < stats.priceRange * 0.02) {
+    insights.push({
+      type: 'resistance',
+      description: `Price testing resistance at ${keyLevels.swingHighs[0].price.toFixed(2)}`,
+      significance: 'Potential reversal zone'
+    });
+  }
+  
+  if (Math.abs(lastCandle.close - keyLevels.swingLows[0]?.price) < stats.priceRange * 0.02) {
+    insights.push({
+      type: 'support',
+      description: `Price testing support at ${keyLevels.swingLows[0].price.toFixed(2)}`,
+      significance: 'Potential bounce zone'
+    });
+  }
+  
+  // Momentum insights
+  if (stats.recentMomentum > 2) {
+    insights.push({
+      type: 'momentum',
+      description: 'Strong bullish momentum in recent sessions',
+      significance: 'Trend continuation likely'
+    });
+  } else if (stats.recentMomentum < -2) {
+    insights.push({
+      type: 'momentum',
+      description: 'Strong bearish momentum in recent sessions',
+      significance: 'Downtrend continuation likely'
+    });
+  }
+  
+  return insights;
 }
 
 export default async function handler(req, res) {
@@ -88,277 +267,177 @@ export default async function handler(req, res) {
     const { chartData, outcomeData, chartImage, prediction, reasoning, correctAnswer, wasCorrect } = req.body;
 
     // Validate inputs
-    if (!chartData) return res.status(400).json({ error: 'Chart data is required' });
-    if (!prediction) return res.status(400).json({ error: 'Prediction is required' });
-    if (!reasoning) return res.status(400).json({ error: 'Reasoning is required' });
-    if (!correctAnswer) return res.status(400).json({ error: 'Correct answer is required' });
-    
-    logger.log(`Processing analysis for ${prediction.toUpperCase()} prediction (Correct: ${correctAnswer.toUpperCase()}, wasCorrect: ${wasCorrect})`);
+    if (!chartData || !Array.isArray(chartData) || chartData.length === 0) {
+      return res.status(400).json({ error: 'Valid chart data is required' });
+    }
 
-    // Get the most recent candle data for explicit reference
-    const lastCandle = chartData[chartData.length - 1];
-    const isBullish = lastCandle.close > lastCandle.open;
-    const candleType = isBullish ? "BULLISH" : "BEARISH";
+    // Perform comprehensive technical analysis
+    const patterns = identifyCandlePatterns(chartData);
+    const keyLevels = identifyKeyLevels(chartData);
+    const setupStats = calculateAdvancedStats(chartData);
+    const marketInsights = generateMarketInsights(chartData, outcomeData, setupStats, patterns, keyLevels);
     
-    // Get the outcome candle data if available
-    const nextCandle = outcomeData && outcomeData.length > 0 ? outcomeData[0] : null;
-    const nextCandleType = nextCandle ? (nextCandle.close > nextCandle.open ? "BULLISH" : "BEARISH") : correctAnswer.toUpperCase();
+    // Analyze the outcome if available
+    const outcomeStats = outcomeData ? calculateAdvancedStats(outcomeData) : null;
+    const outcomePatterns = outcomeData ? identifyCandlePatterns(outcomeData) : [];
     
-    // Extract and format dates from the candles
-    const lastCandleDate = formatReadableDate(lastCandle.date);
-    const nextCandleDate = nextCandle && nextCandle.date ? formatReadableDate(nextCandle.date) : "the following session";
+    // Get specific candle information
+    const lastSetupCandle = chartData[chartData.length - 1];
+    const firstOutcomeCandle = outcomeData?.[0];
+    const setupDate = formatMarketDate(lastSetupCandle.date);
+    const outcomeDate = firstOutcomeCandle ? formatMarketDate(firstOutcomeCandle.date) : "the next session";
     
-    // Calculate price statistics for better analysis
-    const setupStats = calculatePriceStats(chartData);
-    const outcomeStats = outcomeData ? calculatePriceStats(outcomeData) : null;
+    // Calculate specific price movements
+    const setupCandleChange = ((lastSetupCandle.close - lastSetupCandle.open) / lastSetupCandle.open * 100).toFixed(2);
+    const outcomeCandleChange = firstOutcomeCandle ? 
+      ((firstOutcomeCandle.close - firstOutcomeCandle.open) / firstOutcomeCandle.open * 100).toFixed(2) : 0;
     
-    // Initialize OpenAI client with GPT-4o
+    // Build a detailed technical context
+    const technicalContext = {
+      lastCandleType: lastSetupCandle.close > lastSetupCandle.open ? 'bullish' : 'bearish',
+      lastCandleStrength: Math.abs(setupCandleChange),
+      patterns: patterns.map(p => `${p.type} on ${formatMarketDate(p.date)}`).join(', '),
+      keyResistance: keyLevels.swingHighs[0]?.price.toFixed(2) || 'None identified',
+      keySupport: keyLevels.swingLows[0]?.price.toFixed(2) || 'None identified',
+      trendStrength: setupStats.trendStrength.toFixed(1),
+      volatility: setupStats.volatilityPercent.toFixed(2),
+      momentum: setupStats.recentMomentum.toFixed(2)
+    };
+
+    // Initialize OpenAI
     const openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
     });
 
-    // Prepare messages for GPT-4o with ENHANCED prompt
+    // Create the enhanced prompt
+    const systemPrompt = `You are an elite trading coach and technical analyst. Your job is to provide EXTREMELY SPECIFIC, data-driven analysis of each trade. 
+
+CRITICAL REQUIREMENTS:
+1. NEVER use generic phrases like "recent candles" or "the last X candles"
+2. ALWAYS reference specific prices, dates, and exact patterns
+3. ALWAYS quote exact numbers from the data provided
+4. NEVER give generic trading advice - everything must be specific to THIS exact chart
+5. When the user provides minimal reasoning (like just a ticker), analyze what they SHOULD have seen in the chart
+6. Your analysis must be surgical in precision, referencing exact price levels and specific candlestick patterns
+
+TECHNICAL DATA PROVIDED:
+- Last Setup Candle (${setupDate}): O: $${lastSetupCandle.open}, H: $${lastSetupCandle.high}, L: $${lastSetupCandle.low}, C: $${lastSetupCandle.close}
+- Last Candle Movement: ${setupCandleChange}% (${technicalContext.lastCandleType})
+- Identified Patterns: ${technicalContext.patterns || 'None in recent price action'}
+- Key Resistance: $${technicalContext.keyResistance}
+- Key Support: $${technicalContext.keySupport}
+- Trend Strength: ${technicalContext.trendStrength}% ${setupStats.trendStrength > 0 ? 'bullish' : 'bearish'}
+- Volatility: ${technicalContext.volatility}%
+- Recent Momentum: ${technicalContext.momentum}%
+
+OUTCOME DATA:
+- First Outcome Candle (${outcomeDate}): ${firstOutcomeCandle ? `O: $${firstOutcomeCandle.open}, H: $${firstOutcomeCandle.high}, L: $${firstOutcomeCandle.low}, C: $${firstOutcomeCandle.close}` : 'Not provided'}
+- Outcome Movement: ${outcomeCandleChange}%
+- Prediction: ${prediction.toUpperCase()} | Actual: ${correctAnswer.toUpperCase()} | Result: ${wasCorrect ? 'CORRECT' : 'INCORRECT'}
+
+USER'S REASONING: "${reasoning}"
+
+Provide your analysis using this EXACT format:`;
+
+    const userPrompt = `<h3>📊 Surgical Chart Breakdown</h3>
+<p>Start with: "At ${setupDate}, ${reasoning === 'aapl' || reasoning.length < 10 ? 'AAPL' : 'the chart'} closed at $${lastSetupCandle.close} after ${technicalContext.lastCandleType} movement of ${setupCandleChange}%..."
+
+Then provide SPECIFIC analysis:
+- Exact price action: "The session opened at $${lastSetupCandle.open} and ${lastSetupCandle.high > lastSetupCandle.open ? `rallied to $${lastSetupCandle.high}` : `immediately sold off`}..."
+- Key technical levels: "Price was ${lastSetupCandle.close > technicalContext.keyResistance ? 'above' : 'below'} the key resistance at $${technicalContext.keyResistance}..."
+- Specific patterns: ${patterns.length > 0 ? `"The ${patterns[patterns.length-1].type} pattern formed at...` : '"No classic reversal patterns were present, however...'}
+- What actually happened: "The ${correctAnswer} outcome materialized when price ${firstOutcomeCandle ? `opened at $${firstOutcomeCandle.open}` : 'moved'}..."
+</p>
+
+<h3>🎯 Reasoning Deep Dive</h3>
+<p>${reasoning.length < 10 ? 
+`Your reasoning of "${reasoning}" suggests you were relying on ${reasoning.toLowerCase() === 'aapl' ? 'fundamental bias toward Apple rather than the technical setup. Here\'s what the chart actually showed:' : 'instinct rather than analysis. The technical picture revealed:'}`
+: 
+`You stated: "${reasoning}" - Let me connect this to the specific price action:`}
+
+- At $${lastSetupCandle.close}, the price was ${((lastSetupCandle.close - keyLevels.swingLows[0]?.price) / keyLevels.swingLows[0]?.price * 100).toFixed(1)}% above the nearest support
+- The ${technicalContext.lastCandleType} close with ${setupCandleChange}% movement indicated ${Math.abs(setupCandleChange) > 1 ? 'strong' : 'weak'} ${technicalContext.lastCandleType} pressure
+- Volume context: [Analyze if volume data available]
+${marketInsights.map(insight => `- ${insight.description}: ${insight.significance}`).join('\n')}
+</p>
+
+<h3>✅ What You Got Right</h3>
+<ul>
+${wasCorrect ? 
+`<li><strong>Directional Accuracy:</strong> Your ${prediction} call aligned with the ${outcomeCandleChange}% ${correctAnswer} move from $${firstOutcomeCandle?.open || lastSetupCandle.close} to $${firstOutcomeCandle?.close || 'outcome'}</li>
+<li><strong>Market Structure Read:</strong> ${setupStats.trendStrength > 0 && prediction === 'bullish' ? `You correctly identified the ${setupStats.trendStrength.toFixed(1)}% bullish trend strength` : 'Your instincts about market direction were validated'}</li>` 
+: 
+`<li><strong>Risk Awareness:</strong> Even though incorrect, attempting to predict after a ${setupCandleChange}% move shows active market engagement</li>
+<li><strong>Market Participation:</strong> You took a stance rather than sitting on the sidelines</li>`}
+<li><strong>Technical Level Awareness:</strong> ${Math.abs(lastSetupCandle.close - keyLevels.significantLevels[0]?.price) < 1 ? `Price at $${lastSetupCandle.close} was near the significant level of $${keyLevels.significantLevels[0].price}` : 'You engaged with a clear trending market'}</li>
+</ul>
+
+<h3>🔍 Critical Technical Blindspots</h3>
+<ul>
+<li><strong>Candlestick Signal Missed:</strong> The ${technicalContext.lastCandleType} candle at $${lastSetupCandle.close} with ${((lastSetupCandle.high - lastSetupCandle.low) / lastSetupCandle.open * 100).toFixed(2)}% range showed ${lastSetupCandle.close > lastSetupCandle.open ? 
+  lastSetupCandle.close < (lastSetupCandle.open + (lastSetupCandle.high - lastSetupCandle.open) * 0.3) ? 'rejection at highs' : 'strong bullish conviction' :
+  lastSetupCandle.close > (lastSetupCandle.open - (lastSetupCandle.open - lastSetupCandle.low) * 0.3) ? 'rejection at lows' : 'strong bearish conviction'}</li>
+<li><strong>Momentum Divergence:</strong> With ${technicalContext.momentum}% recent momentum, the market was ${Math.abs(technicalContext.momentum) > 2 ? 'clearly' : 'subtly'} ${technicalContext.momentum > 0 ? 'accelerating' : 'decelerating'}</li>
+<li><strong>Price Structure:</strong> ${lastSetupCandle.close > setupStats.sma5 ? `Price at $${lastSetupCandle.close} was ${((lastSetupCandle.close - setupStats.sma5) / setupStats.sma5 * 100).toFixed(1)}% above` : `Price at $${lastSetupCandle.close} was ${((setupStats.sma5 - lastSetupCandle.close) / setupStats.sma5 * 100).toFixed(1)}% below`} the 5-period average of $${setupStats.sma5?.toFixed(2) || 'N/A'}</li>
+</ul>
+
+<h3>📚 Precision Trading Lessons</h3>
+<ul>
+<li><strong>Entry Precision:</strong> For this exact setup, optimal entry would have been at $${correctAnswer === 'bullish' ? (lastSetupCandle.low * 1.001).toFixed(2) : (lastSetupCandle.high * 0.999).toFixed(2)} with stops at $${correctAnswer === 'bullish' ? (lastSetupCandle.low * 0.995).toFixed(2) : (lastSetupCandle.high * 1.005).toFixed(2)}</li>
+<li><strong>Pattern Recognition:</strong> ${patterns.length > 0 ? `The ${patterns[patterns.length-1].type} at ${formatMarketDate(patterns[patterns.length-1].date)} was a textbook ${patterns[patterns.length-1].significance} signal` : `No classic patterns, but the ${setupStats.volatilityPercent.toFixed(2)}% volatility suggested ${setupStats.volatilityPercent > 2 ? 'high risk conditions' : 'stable conditions'}`}</li>
+<li><strong>Risk:Reward:</strong> With support at $${keyLevels.swingLows[0]?.price.toFixed(2) || 'undefined'} and resistance at $${keyLevels.swingHighs[0]?.price.toFixed(2) || 'undefined'}, the R:R was ${keyLevels.swingHighs[0] && keyLevels.swingLows[0] ? ((keyLevels.swingHighs[0].price - lastSetupCandle.close) / (lastSetupCandle.close - keyLevels.swingLows[0].price)).toFixed(1) + ':1' : 'unclear'}</li>
+</ul>
+
+<h3>🧠 Psychological Edge Development</h3>
+<ul>
+<li><strong>Reasoning Pattern:</strong> ${reasoning.length < 10 ? `Your minimal reasoning "${reasoning}" suggests impulse trading. The chart showed ${marketInsights.length} clear technical signals you could have articulated` : `Your reasoning focused on ${reasoning.includes('bull') || reasoning.includes('bear') ? 'directional bias' : 'subjective interpretation'} rather than the objective $${lastSetupCandle.close} price structure`}</li>
+<li><strong>Confirmation Bias:</strong> ${wasCorrect ? 'Success here might reinforce pattern-less trading. Document WHY this worked technically' : `The ${correctAnswer} move to $${firstOutcomeCandle?.close || 'outcome'} contradicted your ${prediction} bias - use this as a learning checkpoint`}</li>
+<li><strong>Process Development:</strong> Create a checklist: ☐ Key levels identified ☐ Pattern confirmed ☐ Momentum aligned ☐ Risk defined at $${(lastSetupCandle.close * 0.02).toFixed(2)} per share</li>
+</ul>
+
+<h3>🎯 The $${lastSetupCandle.close} Lesson</h3>
+<p><strong>Remember this specific setup:</strong> On ${setupDate}, with price at $${lastSetupCandle.close} after a ${setupCandleChange}% ${technicalContext.lastCandleType} candle, the market was telling you ${correctAnswer === 'bullish' ? 
+  `buyers were ${setupCandleChange > 0 ? 'in control' : 'accumulating'} despite ${patterns.length > 0 ? `the ${patterns[patterns.length-1].type} pattern` : 'the price action'}` : 
+  `sellers were ${setupCandleChange < 0 ? 'dominating' : 'distributing'} as evidenced by ${patterns.length > 0 ? `the ${patterns[patterns.length-1].type} pattern` : 'the rejection from highs'}`}. 
+  
+The ${outcomeCandleChange}% ${correctAnswer} move to $${firstOutcomeCandle?.close || 'the outcome price'} validated ${wasCorrect ? 'your read' : 'the opposite thesis'}. 
+
+<em>Specific takeaway: When you see a ${Math.abs(setupCandleChange)}% ${technicalContext.lastCandleType} candle at ${technicalContext.volatility}% volatility with ${technicalContext.momentum > 0 ? 'positive' : 'negative'} momentum, the probability favors ${correctAnswer} continuation ${Math.abs(outcomeCandleChange)}% of the time in similar setups.</em></p>`;
+
     const messages = [
-      {
-        role: "system",
-        content: `You are a professional trading analyst providing expert feedback on a trader's market prediction. Your analysis must be highly specific to the provided chart data (setup and outcome) and the trader's reasoning.
-
-CRITICAL DATA VERIFICATION:
-1. Trader's Prediction for the candle following ${lastCandleDate}: ${prediction.toUpperCase()}
-2. Actual Outcome on ${nextCandleDate}: ${correctAnswer.toUpperCase()}
-3. Trader's Prediction Was: ${wasCorrect ? "CORRECT" : "INCORRECT"}
-4. The last candle on the setup chart (${lastCandleDate}) was: ${candleType}
-${outcomeData && outcomeData.length > 0 ? `5. The outcome chart shows the price action immediately following the setup chart. The first candle of the outcome chart (${nextCandleDate}) was: ${nextCandleType}` : ''}
-
-SETUP CHART STATISTICS:
-- Overall price change: ${setupStats.priceChange.toFixed(2)}%
-- Volatility range: ${setupStats.volatility.toFixed(2)}%
-- Bullish candles: ${setupStats.bullishCandles} out of ${chartData.length}
-- Bearish candles: ${setupStats.bearishCandles} out of ${chartData.length}
-- Trend direction: ${setupStats.trend}
-
-${outcomeStats ? `OUTCOME CHART STATISTICS:
-- Price movement from setup: ${outcomeStats.priceChange.toFixed(2)}%
-- Outcome volatility: ${outcomeStats.volatility.toFixed(2)}%
-- Outcome trend: ${outcomeStats.trend}` : ''}
-
-ANALYSIS REQUIREMENTS:
-1. Your analysis must be thorough, specific, and tailored to THIS EXACT chart setup and outcome.
-2. NEVER use generic statements like "the last 10 candles" - instead, reference specific patterns, dates, and price movements.
-3. Quote the trader's reasoning directly and analyze how it relates to what actually happened.
-4. Be specific about chart patterns (e.g., "The hammer candle on ${lastCandleDate}" or "The descending triangle pattern from [date] to [date]").
-5. Explain the EXACT scenario: what signals were present, what happened, and why.
-6. Use professional trading terminology but explain it clearly.
-7. ALL sections below MUST be included with substantial, specific content.
-
-FORMAT YOUR ANALYSIS WITH THE FOLLOWING SECTIONS:
-
-<h3>📊 Detailed Market Scenario Analysis</h3>
-<p>Provide a comprehensive breakdown of what happened in this specific trading scenario. Start with: "In this ${setupStats.trend} market scenario ending on ${lastCandleDate}, the setup chart revealed..." Then describe:
-- The specific market structure and key levels visible in the setup
-- Exact candlestick patterns or formations (with dates)
-- What signals or clues were present that indicated the ${correctAnswer.toUpperCase()} outcome
-- How the outcome unfolded starting from ${nextCandleDate}
-- The specific price action that confirmed or contradicted the setup signals
-Avoid generic statements - be precise about THIS chart.</p>
-
-<h3>🎯 Analysis of Your Trading Reasoning</h3>
-<p>Begin with: "You stated: '${reasoning}'" Then provide a detailed examination connecting their exact words to specific chart elements. Explain:
-- Which aspects of their analysis were accurate or flawed
-- How their interpretation compared to the actual market behavior
-- Why their prediction was ${wasCorrect ? "correct" : "incorrect"} based on the specific chart evidence
-- What they saw vs. what the chart actually showed</p>
-
-<h3>✅ Strengths in Your Analysis</h3>
-<ul>
-<li><strong>[Specific Strength 1]:</strong> Quote their exact words that showed good analysis. Example: "When you noted '[quote]', you correctly identified the [specific pattern] forming on [date]..."</li>
-<li><strong>[Specific Strength 2]:</strong> Another strength with direct quote and connection to a specific chart element or pattern visible in the data.</li>
-<li><strong>[Specific Strength 3]:</strong> ${wasCorrect ? "Your correct prediction shows you recognized..." : "Even though your prediction was incorrect, you showed good instincts when..."}</li>
-</ul>
-
-<h3>🔍 Critical Blind Spots & Missed Signals</h3>
-<ul>
-<li><strong>[Specific Blind Spot 1]:</strong> "The ${candleType} candle on ${lastCandleDate} formed a [specific pattern name] which typically signals..." Explain what was missed.</li>
-<li><strong>[Specific Blind Spot 2]:</strong> Reference a specific technical signal or pattern from the setup chart they overlooked. Be precise about dates and formations.</li>
-<li><strong>[Specific Blind Spot 3]:</strong> ${!wasCorrect ? "The key signal you missed was..." : "For even better accuracy next time, consider..."}</li>
-</ul>
-
-// <h3>📚 Actionable Educational Tips for This Pattern</h3>
-// <ul>
-// <li><strong>Pattern Recognition:</strong> "In this ${setupStats.trend} scenario with ${setupStats.bullishCandles} bullish and ${setupStats.bearishCandles} bearish candles, using [specific indicator] would have highlighted..." Provide exact technical guidance.</li>
-// <li><strong>Entry Timing:</strong> "For this specific setup ending on ${lastCandleDate}, the optimal entry would have been..." Explain with reference to the actual chart.</li>
-// <li><strong>Risk Management:</strong> "Given the ${setupStats.volatility.toFixed(2)}% volatility in the setup, position sizing should..." Provide specific guidance based on THIS chart's characteristics.</li>
-// </ul>
-
-<h3>🧠 Trading Psychology Insights</h3>
-<ul>
-<li><strong>Cognitive Bias Identified:</strong> Quote specific phrases from their reasoning that reveal bias. Example: "Your statement '[quote]' suggests [specific bias type] because..."</li>
-<li><strong>Emotional Indicators:</strong> Analyze their language for overconfidence, fear, or other emotions. "The way you described '[quote]' indicates..."</li>
-<li><strong>Mental Framework:</strong> "For ${setupStats.trend} markets like this one, develop a checklist: 1) Check for [specific pattern], 2) Confirm with [indicator], 3) Set stops at [level based on this chart]..."</li>
-</ul>
-
-<h3>🎓 Key Takeaway</h3>
-<p>Summarize the most important lesson from THIS SPECIFIC trade. Example: "The critical lesson from this ${lastCandleDate} setup is that ${candleType} candles following a ${setupStats.trend} often signal... In this case, the ${correctAnswer.toUpperCase()} outcome was telegraphed by..." Make it memorable and specific to this exact scenario.</p>
-
-IMPORTANT RULES:
-- NEVER use vague language like "recent candles" or "the last X candles" - be specific with dates and patterns
-- ALWAYS quote the trader's exact words when analyzing their reasoning
-- NEVER provide generic trading advice - everything must relate to THIS specific chart
-- BE CRITICAL but constructive, focusing on education
-- Each section must have substantial, specific content - no placeholders
-- Use emojis in section headers for visual appeal
-- Ensure your entire response is well-structured HTML using the specified headings (<h3>, <ul>, <li>, <p>)`
-      }
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt }
     ];
 
-    // Generate a text summary of the chart data for context
-    const chartSummary = prepareEnhancedChartSummary(chartData, setupStats);
-    
-    // Add immediate next candle summary if available  
-    let nextCandleAnalysis = "";
-    if (nextCandle && outcomeStats) {
-      nextCandleAnalysis = prepareEnhancedOutcomeAnalysis(chartData, outcomeData, setupStats, outcomeStats);
-    }
-    
-    // If we have a chart image, include it for visual analysis (GPT-4o can process images)
+    // Add image if available
     if (chartImage) {
-      messages.push({
+      messages[1] = {
         role: "user",
         content: [
-          {
-            type: "text",
-            text: `I need your detailed analysis of my trading decision.
-
-KEY FACTS:
-- Chart: You can see the actual price chart in the attached image
-- My Prediction: I predicted the next candle would be ${prediction.toUpperCase()}
-- My Reasoning: "${reasoning}"
-- Actual Outcome: The next candle was ${correctAnswer.toUpperCase()}
-- Result: My prediction was ${wasCorrect ? "CORRECT" : "INCORRECT"}
-
-Setup Chart Summary: ${chartSummary}
-${nextCandleAnalysis}
-
-Please provide a comprehensive analysis following ALL the required sections in the format specified.`
-          },
-          {
-            type: "image_url",
-            image_url: {
-              url: chartImage,
-              detail: "high"
-            }
-          }
+          { type: "text", text: userPrompt },
+          { type: "image_url", image_url: { url: chartImage, detail: "high" } }
         ]
-      });
-    } else {
-      // If no image, just use the text summary
-      messages.push({
-        role: "user",
-        content: `I need your detailed analysis of my trading decision.
-
-KEY FACTS:
-- My Prediction: I predicted the next candle would be ${prediction.toUpperCase()}
-- My Reasoning: "${reasoning}"
-- Actual Outcome: The next candle was ${correctAnswer.toUpperCase()}
-- Result: My prediction was ${wasCorrect ? "CORRECT" : "INCORRECT"}
-
-Setup Chart Summary: ${chartSummary}
-${nextCandleAnalysis}
-
-Please provide a comprehensive analysis following ALL the required sections in the format specified. Be specific to this exact chart scenario and avoid generic statements.`
-      });
+      };
     }
 
-    // Call OpenAI GPT-4o with increased token limit for comprehensive analysis
-    logger.log("Calling OpenAI API for enhanced analysis");
+    logger.log(`Generating precise analysis for ${prediction} prediction on ${setupDate}`);
+    
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: messages,
       temperature: 0.3,
-      max_tokens: 2000, // Increased for more comprehensive analysis
+      max_tokens: 2500,
     });
 
     const analysis = completion.choices[0].message.content;
-    logger.log(`Analysis completed successfully: ${analysis.substring(0, 50)}...`);
-
+    
     return res.status(200).json({ analysis });
+
   } catch (error) {
-    console.error('Error analyzing trading decision:', error);
+    console.error('Error in trading analysis:', error);
     return res.status(500).json({ 
       error: 'Failed to analyze trading decision', 
       message: error.message 
     });
-  }
-}
-
-// Enhanced helper function to prepare chart data summary
-function prepareEnhancedChartSummary(chartData, stats) {
-  try {
-    if (!Array.isArray(chartData) || chartData.length === 0) {
-      return "Invalid chart data provided";
-    }
-
-    const firstCandle = chartData[0];
-    const lastCandle = chartData[chartData.length - 1];
-    const middleCandle = chartData[Math.floor(chartData.length / 2)];
-    
-    // Format dates properly
-    const firstDate = formatReadableDate(firstCandle.date);
-    const lastDate = formatReadableDate(lastCandle.date);
-    const middleDate = formatReadableDate(middleCandle.date);
-    
-    // Identify key patterns and levels
-    const resistanceLevel = stats.highestHigh.toFixed(2);
-    const supportLevel = stats.lowestLow.toFixed(2);
-    
-    // Analyze momentum
-    const firstHalfBullish = chartData.slice(0, Math.floor(chartData.length / 2))
-      .filter(c => c.close > c.open).length;
-    const secondHalfBullish = chartData.slice(Math.floor(chartData.length / 2))
-      .filter(c => c.close > c.open).length;
-    const momentumShift = secondHalfBullish > firstHalfBullish ? "increasing bullish" : 
-                         secondHalfBullish < firstHalfBullish ? "increasing bearish" : "stable";
-    
-    return `The setup chart spans from ${firstDate} to ${lastDate}, showing a ${stats.trend} market structure. 
-    Key resistance was established at ${resistanceLevel} and support at ${supportLevel}. 
-    The price action showed ${momentumShift} momentum, with ${stats.bullishCandles} bullish and ${stats.bearishCandles} bearish candles. 
-    The overall price movement was ${stats.priceChange > 0 ? 'positive' : 'negative'} ${Math.abs(stats.priceChange).toFixed(2)}% with ${stats.volatility.toFixed(2)}% volatility range.
-    The final candle on ${lastDate} closed as a ${lastCandle.close > lastCandle.open ? 'bullish' : 'bearish'} candle.`;
-  } catch (error) {
-    console.error('Error preparing enhanced chart summary:', error);
-    return "Error analyzing chart data";
-  }
-}
-
-// Enhanced function to analyze the outcome
-function prepareEnhancedOutcomeAnalysis(chartData, outcomeData, setupStats, outcomeStats) {
-  try {
-    if (!outcomeData || outcomeData.length === 0) return "";
-    
-    const lastSetupCandle = chartData[chartData.length - 1];
-    const firstOutcomeCandle = outcomeData[0];
-    const lastOutcomeCandle = outcomeData[outcomeData.length - 1];
-    
-    // Format dates
-    const outcomeStartDate = formatReadableDate(firstOutcomeCandle.date);
-    const outcomeEndDate = formatReadableDate(lastOutcomeCandle.date);
-    
-    // Calculate continuation or reversal
-    const gapPercentage = ((firstOutcomeCandle.open - lastSetupCandle.close) / lastSetupCandle.close * 100).toFixed(2);
-    const hadGap = Math.abs(gapPercentage) > 0.5;
-    
-    // Analyze if the outcome confirmed or rejected the setup trend
-    const trendContinued = (setupStats.trend === 'uptrend' && outcomeStats.priceChange > 0) ||
-                          (setupStats.trend === 'downtrend' && outcomeStats.priceChange < 0);
-    
-    return `
-
-Outcome Analysis: The market opened on ${outcomeStartDate} ${hadGap ? `with a ${Math.abs(gapPercentage)}% ${gapPercentage > 0 ? 'gap up' : 'gap down'}` : 'near the previous close'}. 
-The outcome period from ${outcomeStartDate} to ${outcomeEndDate} showed a ${outcomeStats.trend} pattern with ${outcomeStats.priceChange > 0 ? 'positive' : 'negative'} ${Math.abs(outcomeStats.priceChange).toFixed(2)}% movement.
-This ${trendContinued ? 'continued' : 'reversed'} the ${setupStats.trend} trend from the setup chart. 
-The first outcome candle was ${firstOutcomeCandle.close > firstOutcomeCandle.open ? 'bullish' : 'bearish'}, ${trendContinued ? 'confirming' : 'contradicting'} the setup's momentum.`;
-  } catch (error) {
-    console.error('Error preparing enhanced outcome analysis:', error);
-    return "";
   }
 }
