@@ -293,16 +293,31 @@ export default function CronTestPage() {
             color: darkMode ? '#e0e0e0' : '#333',
             marginBottom: '15px'
           }}>
-            📅 Current Cron Schedule:
+            📅 Current Cron Schedule (Vercel Hobby Plan):
           </h3>
           <ul style={{
             color: darkMode ? '#b0b0b0' : '#666',
             lineHeight: '1.8'
           }}>
-            <li><strong>Weekly Metrics:</strong> Sundays at 9:00 AM</li>
-            <li><strong>Monthly Metrics:</strong> 1st of month at 9:00 AM</li>
-            <li><strong>Inactive Reminders:</strong> Mondays at 10:00 AM</li>
+            <li><strong>📧 Email Automation:</strong> Daily at 9:00 AM</li>
+            <li style={{ marginLeft: '20px', fontSize: '14px' }}>
+              • Sundays: Weekly Metrics<br/>
+              • Mondays: Inactive Reminders<br/>
+              • 1st of month: Monthly Metrics
+            </li>
+            <li><strong>💳 Subscription Sync:</strong> Daily at 6:00 AM</li>
           </ul>
+          <div style={{
+            marginTop: '15px',
+            padding: '10px',
+            backgroundColor: darkMode ? 'rgba(255, 152, 0, 0.1)' : '#fff3e0',
+            borderRadius: '6px',
+            border: '1px solid #ff9800'
+          }}>
+            <div style={{ color: '#f57c00', fontSize: '12px', fontWeight: '500' }}>
+              ⚠️ Hobby Plan: Using 2/2 cron jobs (individual endpoints available for manual testing)
+            </div>
+          </div>
         </div>
 
         {/* Dry Run Toggle */}
@@ -413,6 +428,60 @@ export default function CronTestPage() {
             }}
           >
             📧 Test Inactive Reminders
+          </button>
+
+          <button
+            onClick={() => runTest('email-automation')}
+            disabled={isRunning}
+            style={{
+              padding: '20px',
+              backgroundColor: isRunning ? (darkMode ? '#7c2d12' : '#fed7aa') : '#EA580C',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '16px',
+              fontWeight: '500',
+              cursor: isRunning ? 'default' : 'pointer',
+              opacity: isRunning ? 0.7 : 1,
+              position: 'relative'
+            }}
+          >
+            🚀 Test Email Automation
+            <div style={{
+              position: 'absolute',
+              top: '-8px',
+              right: '-8px',
+              backgroundColor: '#22C55E',
+              color: 'white',
+              borderRadius: '50%',
+              width: '20px',
+              height: '20px',
+              fontSize: '10px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: 'bold'
+            }}>
+              NEW
+            </div>
+          </button>
+
+          <button
+            onClick={() => runTest('subscription-sync')}
+            disabled={isRunning}
+            style={{
+              padding: '20px',
+              backgroundColor: isRunning ? (darkMode ? '#581c87' : '#ddd6fe') : '#8B5CF6',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '16px',
+              fontWeight: '500',
+              cursor: isRunning ? 'default' : 'pointer',
+              opacity: isRunning ? 0.7 : 1
+            }}
+          >
+            💳 Test Subscription Sync
           </button>
         </div>
 

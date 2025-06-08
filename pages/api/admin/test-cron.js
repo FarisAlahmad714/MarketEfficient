@@ -26,6 +26,8 @@ export default async function handler(req, res) {
             return await testInactiveReminders(req, res, dryRun);
           case 'subscription-sync':
             return await testSubscriptionSync(req, res, dryRun);
+          case 'email-automation':
+            return await testEmailAutomation(req, res, dryRun);
           default:
             return res.status(400).json({ error: 'Invalid test type' });
         }
@@ -285,4 +287,90 @@ async function testInactiveReminders(req, res, dryRun = false) {
     console.error('Inactive reminders test error:', error);
     return res.status(500).json({ error: error.message });
   }
-} 
+}
+
+async function testEmailAutomation(req, res, dryRun = false) {
+  try {
+    console.log('Starting email automation test...');
+    
+    // Simulate calling the email automation endpoint
+    const today = new Date();
+    const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
+    const dayOfMonth = today.getDate();
+    
+    console.log(`Test day: ${dayOfWeek}, Date: ${dayOfMonth}`);
+    
+    const results = {
+      dayOfWeek,
+      dayOfMonth,
+      scheduledTasks: []
+    };
+    
+    // Check what would run today
+    if (dayOfWeek === 0) {
+      console.log('Would run weekly metrics...');
+      results.scheduledTasks.push('weekly-metrics');
+      if (!dryRun) {
+        const weeklyResult = await testWeeklyMetrics(req, res, null, false);
+        // Don't return early, we want to continue and return our own response
+      }
+    }
+    
+    if (dayOfMonth === 1) {
+      console.log('Would run monthly metrics...');
+      results.scheduledTasks.push('monthly-metrics');
+      if (!dryRun) {
+        await testMonthlyMetrics(req, res, null, false);
+      }
+    }
+    
+    if (dayOfWeek === 1) {
+      console.log('Would run inactive reminders...');
+      results.scheduledTasks.push('inactive-reminders');
+      if (!dryRun) {
+        await testInactiveReminders(req, res, false);
+      }
+    }
+    
+    // If no tasks for today
+    if (results.scheduledTasks.length === 0) {
+      results.message = 'No email tasks scheduled for today';
+      results.nextTasks = getNextScheduledTasks(dayOfWeek, dayOfMonth);
+    } else {
+      results.message = `Email automation test completed${dryRun ? ' (dry run)' : ''} - Tasks: ${results.scheduledTasks.join(', ')}`;
+    }
+    
+    return res.status(200).json({
+      message: `Email automation test completed${dryRun ? ' (dry run)' : ''}`,
+      dryRun,
+      results
+    });
+    
+  } catch (error) {
+    console.error('Email automation test error:', error);
+    return res.status(500).json({ error: error.message });
+  }
+}
+
+function getNextScheduledTasks(currentDay, currentDate) {
+  const tasks = [];
+  
+  // Next Sunday for weekly metrics
+  const daysUntilSunday = currentDay === 0 ? 7 : 7 - currentDay;
+  tasks.push(`Weekly Metrics: in ${daysUntilSunday} days (Sunday)`);
+  
+  // Next Monday for inactive reminders  
+  const daysUntilMonday = currentDay <= 1 ? (1 - currentDay) : (8 - currentDay);
+  if (daysUntilMonday > 0) {
+    tasks.push(`Inactive Reminders: in ${daysUntilMonday} days (Monday)`);
+  }
+  
+  // Next 1st of month for monthly metrics
+  const nextMonth = new Date();
+  nextMonth.setMonth(nextMonth.getMonth() + 1);
+  nextMonth.setDate(1);
+  const daysUntilFirstOfMonth = Math.ceil((nextMonth - new Date()) / (1000 * 60 * 60 * 24));
+  tasks.push(`Monthly Metrics: in ${daysUntilFirstOfMonth} days (1st of month)`);
+  
+  return tasks;
+}

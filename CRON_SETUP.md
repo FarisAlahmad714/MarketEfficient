@@ -2,40 +2,62 @@
 
 This guide explains how to set up automated email sending for your ChartSense application across different deployment platforms.
 
-## 📧 Available Cron Jobs
+## 📧 Cron Jobs Configuration
 
-### 1. Weekly Metrics (`/api/cron/weekly-metrics`)
-- **Schedule**: Sundays at 9:00 AM
-- **Function**: Sends weekly performance metrics to active users
-- **Cron**: `0 9 * * 0`
+### Current Setup (Vercel Hobby Plan - 2 Jobs Max)
 
-### 2. Monthly Metrics (`/api/cron/monthly-metrics`)
-- **Schedule**: 1st of every month at 9:00 AM  
-- **Function**: Sends monthly performance summaries
-- **Cron**: `0 9 1 * *`
+### 1. Email Automation (`/api/cron/email-automation`) - **ACTIVE**
+- **Schedule**: Daily at 9:00 AM
+- **Function**: Smart scheduler that runs different tasks based on day:
+  - **Sundays**: Weekly performance metrics
+  - **Mondays**: Inactive user reminders (30+ days)
+  - **1st of month**: Monthly performance summaries
+- **Cron**: `0 9 * * *`
 
-### 3. Inactive User Reminders (`/api/cron/inactive-reminders`)
-- **Schedule**: Mondays at 10:00 AM
-- **Function**: Reminds users who haven't been active for 30+ days
-- **Cron**: `0 10 * * 1`
-
-### 4. Subscription Sync (`/api/cron/subscription-sync`)
-- **Schedule**: Every 6 hours
+### 2. Subscription Sync (`/api/cron/subscription-sync`) - **ACTIVE**
+- **Schedule**: Daily at 6:00 AM
 - **Function**: Syncs subscription status with Stripe
-- **Cron**: `0 */6 * * *`
+- **Cron**: `0 6 * * *`
+
+### Individual Endpoints (Available for Manual Testing)
+
+### 3. Weekly Metrics (`/api/cron/weekly-metrics`) - **COMMENTED OUT**
+- **Function**: Sends weekly performance metrics to active users
+- **Manual URL**: `/api/cron/weekly-metrics?secret=YOUR_SECRET`
+
+### 4. Monthly Metrics (`/api/cron/monthly-metrics`) - **COMMENTED OUT**
+- **Function**: Sends monthly performance summaries
+- **Manual URL**: `/api/cron/monthly-metrics?secret=YOUR_SECRET`
+
+### 5. Inactive User Reminders (`/api/cron/inactive-reminders`) - **COMMENTED OUT**
+- **Function**: Reminds users who haven't been active for 30+ days
+- **Manual URL**: `/api/cron/inactive-reminders?secret=YOUR_SECRET`
 
 ## 🚀 Platform Setup Instructions
 
-### Vercel (Recommended)
-The `vercel.json` file is already configured. Simply:
+### Vercel (Current Setup)
+The `vercel.json` file is configured for Hobby plan (2 jobs max):
 
 1. **Add Environment Variable**:
    ```bash
    CRON_SECRET=your_secure_random_string_here
    ```
 
-2. **Deploy**: Vercel will automatically set up the cron jobs
+2. **Deploy**: Vercel will automatically set up 2 cron jobs:
+   - Email automation (daily at 9 AM)
+   - Subscription sync (daily at 6 AM)
+
 3. **Verify**: Check Vercel dashboard for cron job status
+
+#### Hobby Plan Limitations:
+- ⚠️ **Only 2 cron jobs** allowed (currently using both)
+- ⚠️ **Daily scheduling only** (no hourly jobs)
+- ⚠️ **Approximate timing** (jobs may run ±59 minutes from scheduled time)
+
+#### Upgrade Benefits (Pro Plan):
+- ✅ **40 cron jobs** per account
+- ✅ **Unlimited scheduling** (hourly, minute-level precision)
+- ✅ **Exact timing** guarantees
 
 ### Railway
 1. **Add Environment Variable**:
