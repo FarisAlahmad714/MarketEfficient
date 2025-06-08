@@ -143,7 +143,8 @@ const DEFAULT_FIBONACCI_LEVELS = [
 // Styled components
 const ChartContainer = styled.div`
   width: 100%;
-  margin-bottom: 20px;
+  height: 100%;
+  position: relative;
 `;
 
 const ChartWrapper = styled.div`
@@ -698,98 +699,91 @@ const FibonacciRetracement = ({ chartData, onDrawingsUpdate, part, chartCount, i
         </div>
       )}
       
-      <ChartContainer>
-        <ChartWrapper 
-          $isDarkMode={isDarkMode} 
-          ref={containerRef}
-          onMouseMove={dragPanel}
-          onMouseUp={stopPanelDragging}
-          onMouseLeave={stopPanelDragging}
-        >
-          {containerRef.current && (
-            <Chart 
-              key={chartKey}
-              container={containerRef} 
-              chartData={formattedChartData} 
-              options={{
-                isDarkMode,
-                drawingMode,
-                markers: chartMarkers,
-                ...chartOptions
-              }}
-              onClick={handlePointClick}
-            />
-          )}
-          
+      <div style={{ position: 'relative' }}>
+        <ChartWrapper $isDarkMode={isDarkMode}>
+          <ChartContainer ref={containerRef}>
+            {containerRef.current && (
+              <Chart 
+                key={chartKey}
+                container={containerRef} 
+                chartData={formattedChartData} 
+                options={{
+                  isDarkMode,
+                  drawingMode,
+                  markers: chartMarkers,
+                  ...chartOptions
+                }}
+                onClick={handlePointClick}
+              />
+            )}
+          </ChartContainer>
         </ChartWrapper>
-
+        
         <DraggablePanel
           ref={panelRef}
           style={isMobile ? {} : { left: `${panelOffset.x}px`, top: `${panelOffset.y}px` }}
           onMouseDown={startPanelDragging}
           $isDarkMode={isDarkMode}
         >
-            <PanelHeader className="panel-header">Fibonacci Retracements</PanelHeader>
-            <PanelContent>
-              {drawings.length === 0 ? (
-                <p style={{ color: isDarkMode ? '#b0b0b0' : '#666', fontSize: '0.9rem' }}>
-                                Drawing {part === 1 ? 'Uptrend' : 'Downtrend'} Fibonacci
-                                {startPoint ? (
-              <p>
-                Great! Start point set at {startPoint.price.toFixed(2)}<br />
-                Now click to set the {part === 1 ? 'low' : 'high'} point
-              </p>
+          <PanelHeader className="panel-header">Fibonacci Retracements</PanelHeader>
+          <PanelContent>
+            {drawings.length === 0 ? (
+              <div style={{ color: isDarkMode ? '#b0b0b0' : '#666', fontSize: '0.9rem' }}>
+                <p>Drawing {part === 1 ? 'Uptrend' : 'Downtrend'} Fibonacci</p>
+                {startPoint ? (
+                  <p>
+                    Great! Start point set at {startPoint.price.toFixed(2)}<br />
+                    Now click to set the {part === 1 ? 'low' : 'high'} point
+                  </p>
+                ) : (
+                  <p>
+                    Click to set the start point ({part === 1 ? 'high' : 'low'})
+                  </p>
+                )}
+              </div>
             ) : (
-              <p>
-                Click to set the start point ({part === 1 ? 'high' : 'low'})
-              </p>
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
+                  <span style={{ display: 'inline-block', background: '#2196F3', color: 'white', padding: '3px 8px', borderRadius: '12px', fontSize: '0.8rem' }}>
+                    Total: {drawings.length}
+                  </span>
+                  <span style={{ display: 'inline-block', background: part === 1 ? '#4CAF50' : '#F44336', color: 'white', padding: '3px 8px', borderRadius: '12px', fontSize: '0.8rem' }}>
+                    {part === 1 ? 'Uptrend' : 'Downtrend'}
+                  </span>
+                </div>
+                {[...drawings]
+                  .sort((a, b) => a.start.time - b.start.time)
+                  .map((drawing, index) => (
+                    <DrawingItem key={index} $isDarkMode={isDarkMode}>
+                      <div className="drawing-header">
+                        <h4>{drawing.direction === 'uptrend' ? 'Uptrend' : 'Downtrend'} #{index + 1}</h4>
+                        <button onClick={() => removeDrawing(index)}>×</button>
+                      </div>
+                      <div className="drawing-details">
+                        <div className="detail-row">
+                          <span>Start:</span>
+                          <span>{drawing.start.price.toFixed(2)}</span>
+                        </div>
+                        <div className="detail-row">
+                          <span>End:</span>
+                          <span>{drawing.end.price.toFixed(2)}</span>
+                        </div>
+                        <div className="detail-row">
+                          <span>Range:</span>
+                          <span>{Math.abs(drawing.start.price - drawing.end.price).toFixed(2)}</span>
+                        </div>
+                        <div className="detail-row">
+                          <span>Date:</span>
+                          <span>{formatDate(drawing.start.time)}</span>
+                        </div>
+                      </div>
+                    </DrawingItem>
+                  ))}
+              </>
             )}
-
-                
-                </p>
-              ) : (
-                <>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
-                    <span style={{ display: 'inline-block', background: '#2196F3', color: 'white', padding: '3px 8px', borderRadius: '12px', fontSize: '0.8rem' }}>
-                      Total: {drawings.length}
-                    </span>
-                    <span style={{ display: 'inline-block', background: part === 1 ? '#4CAF50' : '#F44336', color: 'white', padding: '3px 8px', borderRadius: '12px', fontSize: '0.8rem' }}>
-                      {part === 1 ? 'Uptrend' : 'Downtrend'}
-                    </span>
-                  </div>
-                  {[...drawings]
-                    .sort((a, b) => a.start.time - b.start.time)
-                    .map((drawing, index) => (
-                      <DrawingItem key={index} $isDarkMode={isDarkMode}>
-                        <div className="drawing-header">
-                          <h4>{drawing.direction === 'uptrend' ? 'Uptrend' : 'Downtrend'} #{index + 1}</h4>
-                          <button onClick={() => removeDrawing(index)}>×</button>
-                        </div>
-                        <div className="drawing-details">
-                          <div className="detail-row">
-                            <span>Start:</span>
-                            <span>{drawing.start.price.toFixed(2)}</span>
-                          </div>
-                          <div className="detail-row">
-                            <span>End:</span>
-                            <span>{drawing.end.price.toFixed(2)}</span>
-                          </div>
-                          <div className="detail-row">
-                            <span>Range:</span>
-                            <span>{Math.abs(drawing.start.price - drawing.end.price).toFixed(2)}</span>
-                          </div>
-                          <div className="detail-row">
-                            <span>Date:</span>
-                            <span>{formatDate(drawing.start.time)}</span>
-                          </div>
-                        </div>
-                      </DrawingItem>
-                    ))}
-                </>
-              )}
-            </PanelContent>
+          </PanelContent>
         </DraggablePanel>
-      </ChartContainer>
+      </div>
       
       <FibGuidelinesWrapper $isDarkMode={isDarkMode}>
           <h3>Fibonacci Retracement Guidelines</h3>

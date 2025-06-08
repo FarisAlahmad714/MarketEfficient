@@ -14,7 +14,7 @@ const Chart = dynamic(
       useEffect(() => {
         if (!container.current) return;
         
-        // Create tooltip element if it doesn’t exist
+        // Create tooltip element if it doesn't exist
         if (!tooltipRef.current) {
           tooltipRef.current = document.createElement('div');
           tooltipRef.current.className = 'marker-tooltip';
@@ -180,6 +180,12 @@ const ChartWrapper = styled.div`
   overflow: hidden;
   background-color: ${props => props.$isDarkMode ? '#1e1e1e' : '#ffffff'};
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+`;
+
+const ChartContainer = styled.div`
+  width: 100%;
+  height: 100%;
+  position: relative;
 `;
 
 const MarkerPanel = styled.div`
@@ -531,7 +537,7 @@ const SwingAnalysis = ({ chartData, onDrawingsUpdate, chartCount, isDarkMode, va
     if (onDrawingsUpdate) onDrawingsUpdate(drawings);
   }, [drawings, onDrawingsUpdate]);
 
-  // Define toolsConfig after functions to ensure they’re available
+  // Define toolsConfig after functions to ensure they're available
   const toolsConfig = [
     {
       id: 'mark-swing-points',
@@ -666,39 +672,42 @@ const SwingAnalysis = ({ chartData, onDrawingsUpdate, chartCount, isDarkMode, va
         isDarkMode={isDarkMode}
       />
       
-      <ChartWrapper $isDarkMode={isDarkMode} ref={containerRef}>
-        {markingMode === 'mark-swing-points' && (
-          <MarkingModeIndicator $isDarkMode={isDarkMode}>
-            Marking Mode Active
-          </MarkingModeIndicator>
-        )}
-        
-        {containerRef.current && formattedChartData.length > 0 ? (
-          <Chart 
-            container={containerRef} 
-            chartData={formattedChartData} 
-            options={{ isDarkMode, markers: chartMarkers }}
-            onClick={handlePointClick}
-          />
-        ) : (
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center', 
-            height: '100%',
-            backgroundColor: isDarkMode ? '#1e1e1e' : '#f8f9fa',
-            color: isDarkMode ? '#b0b0b0' : '#666',
-            borderRadius: '8px'
-          }}>
-            {formattedChartData.length === 0 ? 'No valid chart data available' : 'Chart container not initialized'}
-          </div>
-        )}
-        
-        {drawings.length === 1 && drawings[0].no_swings_found && (
-          <NoSwingOverlay>
-            <NoSwingMessage>No Significant Swing Points Found</NoSwingMessage>
-          </NoSwingOverlay>
-        )}
+      <div style={{ position: 'relative' }}>
+        <ChartWrapper $isDarkMode={isDarkMode}>
+          <ChartContainer ref={containerRef}>
+            {markingMode === 'mark-swing-points' && (
+              <MarkingModeIndicator $isDarkMode={isDarkMode}>
+                Marking Mode Active
+              </MarkingModeIndicator>
+            )}
+            
+            {containerRef.current && formattedChartData.length > 0 ? (
+              <Chart 
+                container={containerRef} 
+                chartData={formattedChartData} 
+                options={{ isDarkMode, markers: chartMarkers }}
+                onClick={handlePointClick}
+              />
+            ) : (
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                height: '100%',
+                backgroundColor: isDarkMode ? '#1e1e1e' : '#f8f9fa',
+                color: isDarkMode ? '#b0b0b0' : '#666',
+                borderRadius: '8px'
+              }}>
+                {formattedChartData.length === 0 ? 'No valid chart data available' : 'Chart container not initialized'}
+              </div>
+            )}
+            
+            {drawings.length === 1 && drawings[0].no_swings_found && (
+              <NoSwingOverlay>
+                <NoSwingMessage>No Significant Swing Points Found</NoSwingMessage>
+              </NoSwingOverlay>
+            )}
+          </ChartContainer>
         </ChartWrapper>
 
         <MarkerPanel
@@ -748,7 +757,8 @@ const SwingAnalysis = ({ chartData, onDrawingsUpdate, chartCount, isDarkMode, va
             )}
           </PanelContent>
         </MarkerPanel>
-      
+      </div>
+
       {validationResults && (
         <FeedbackSummary $isDarkMode={isDarkMode} $score={validationResults.matchPercentage || 0}>
           <h3>Analysis Feedback</h3>

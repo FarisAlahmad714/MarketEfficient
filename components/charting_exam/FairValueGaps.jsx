@@ -959,12 +959,13 @@ const FairValueGaps = ({
         onNoFvgsFound={markNoFvgsFound}
       />
       
-      <ChartWrapper 
-        $isDarkMode={isDarkMode}
-        onMouseMove={dragPanel}
-        onMouseUp={stopPanelDragging}
-        onMouseLeave={stopPanelDragging}
-      >
+      <div style={{ position: 'relative' }}>
+        <ChartWrapper 
+          $isDarkMode={isDarkMode}
+          onMouseMove={dragPanel}
+          onMouseUp={stopPanelDragging}
+          onMouseLeave={stopPanelDragging}
+        >
           <ChartContainer 
             ref={chartContainerRef} 
           />
@@ -1055,6 +1056,7 @@ const FairValueGaps = ({
             )}
           </PanelContent>
         </FVGPanel>
+      </div>
       
       <LoadingOverlay $isActive={isLoading}>
         <LoadingContent>
