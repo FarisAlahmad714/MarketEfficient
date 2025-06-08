@@ -700,7 +700,7 @@ const FibonacciRetracement = ({ chartData, onDrawingsUpdate, part, chartCount, i
       )}
       
       <div style={{ position: 'relative' }}>
-        <ChartWrapper $isDarkMode={isDarkMode}>
+        <ChartWrapper $isDarkMode={isDarkMode} onMouseMove={dragPanel} onMouseUp={stopPanelDragging} onMouseLeave={stopPanelDragging}>
           <ChartContainer ref={containerRef}>
             {containerRef.current && (
               <Chart 

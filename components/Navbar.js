@@ -299,7 +299,19 @@ const Navbar = () => {
               )}
             </div>
           ) : (
-            <Link href="/auth/login" className="login-button premium-button">
+            <Link 
+              href="/auth/login" 
+              className="login-button premium-button"
+              style={!darkMode ? {
+                color: '#1e293b',
+                background: 'rgba(0, 0, 0, 0.04)',
+                border: '1px solid rgba(0, 0, 0, 0.1)'
+              } : {
+                color: 'white',
+                background: 'linear-gradient(135deg, #3b82f6 0%, #6366f1 100%)',
+                boxShadow: '0 8px 20px rgba(59, 130, 246, 0.3)'
+              }}
+            >
               <span>Sign In</span>
               <span className="button-glow"></span>
             </Link>
@@ -330,22 +342,22 @@ const Navbar = () => {
             </div>
             
             <div className="mobile-nav">
-              <Link href="/" className={`mobile-link ${router.pathname === '/' ? 'active' : ''}`} onClick={() => setMobileMenuOpen(false)}>
+              <Link href="/" className={`mobile-link mobile-link-1 ${router.pathname === '/' ? 'active' : ''}`} onClick={() => setMobileMenuOpen(false)}>
                 <BiHomeAlt className="mobile-icon" />
                 <span>Home</span>
               </Link>
               
-              <Link href="/bias-test" className={`mobile-link ${router.pathname.includes('/bias-test') ? 'active' : ''}`} onClick={() => setMobileMenuOpen(false)}>
+              <Link href="/bias-test" className={`mobile-link mobile-link-2 ${router.pathname.includes('/bias-test') ? 'active' : ''}`} onClick={() => setMobileMenuOpen(false)}>
                 <TbScale className="mobile-icon" />
                 <span>Bias Test</span>
               </Link>
               
-              <Link href="/chart-exam" className={`mobile-link ${router.pathname.includes('/chart-exam') ? 'active' : ''}`} onClick={() => setMobileMenuOpen(false)}>
+              <Link href="/chart-exam" className={`mobile-link mobile-link-3 ${router.pathname.includes('/chart-exam') ? 'active' : ''}`} onClick={() => setMobileMenuOpen(false)}>
                 <TbChartLine className="mobile-icon" />
                 <span>Chart Exam</span>
               </Link>
               
-              <Link href="/dashboard" className={`mobile-link ${router.pathname.includes('/dashboard') ? 'active' : ''}`} onClick={() => setMobileMenuOpen(false)}>
+              <Link href="/dashboard" className={`mobile-link mobile-link-4 ${router.pathname.includes('/dashboard') ? 'active' : ''}`} onClick={() => setMobileMenuOpen(false)}>
                 <FaTachometerAlt className="mobile-icon" />
                 <span>Dashboard</span>
               </Link>
@@ -379,6 +391,20 @@ const Navbar = () => {
                     <FaUserShield className="mobile-icon" />
                     <span>Admin Panel</span>
                   </Link>
+                )}
+                
+                {!user?.isAdmin && (
+                  <button
+                    className="mobile-link mobile-link-5"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setMobileMenuOpen(false);
+                      setShowFeedbackModal(true);
+                    }}
+                  >
+                    <FaCommentDots className="mobile-icon" />
+                    <span>Send Feedback</span>
+                  </button>
                 )}
               </div>
             )}
@@ -522,12 +548,6 @@ const Navbar = () => {
         }
         
         /* Specific overrides for styled elements */
-        .navbar .login-button,
-        .navbar .login-button:any-link,
-        .navbar .login-button:link,
-        .navbar .login-button:visited,
-        .navbar .login-button:hover,
-        .navbar .login-button:active,
         .navbar .mobile-login,
         .navbar .mobile-login:any-link,
         .navbar .mobile-login:link,
@@ -1313,15 +1333,7 @@ const Navbar = () => {
           font-weight: 600;
           text-decoration: none;
           font-size: 14px;
-          background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
-          color: white !important;
-          box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
           transition: all 0.3s ease;
-        }
-        
-        .login-button:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 12px 30px rgba(59, 130, 246, 0.4);
         }
         
         .mobile-menu-overlay {
@@ -1330,9 +1342,21 @@ const Navbar = () => {
           left: 0;
           width: 100%;
           height: 100%;
-          background: rgba(0, 0, 0, 0.5);
+          background: rgba(0, 0, 0, 0.7);
           z-index: 99998;
-          backdrop-filter: blur(5px);
+          backdrop-filter: blur(10px);
+          animation: overlayFadeIn 0.3s ease-out;
+        }
+        
+        @keyframes overlayFadeIn {
+          from {
+            opacity: 0;
+            backdrop-filter: blur(0px);
+          }
+          to {
+            opacity: 1;
+            backdrop-filter: blur(10px);
+          }
         }
         
         .premium-mobile-menu {
@@ -1344,58 +1368,101 @@ const Navbar = () => {
           z-index: 99999;
           display: flex;
           flex-direction: column;
-          animation: mobileSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          animation: mobileSlideIn 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), 
+                     mobileFloat 6s ease-in-out infinite 1s;
           overflow-y: auto;
+          box-shadow: -20px 0 60px rgba(0, 0, 0, 0.3);
         }
         
         @keyframes mobileSlideIn {
           from {
             transform: translateX(100%);
+            opacity: 0.8;
           }
           to {
             transform: translateX(0);
+            opacity: 1;
           }
         }
         
         .dark .premium-mobile-menu {
-          background: rgba(10, 12, 30, 0.98);
-          border-left: 1px solid rgba(255, 255, 255, 0.1);
-          backdrop-filter: blur(30px);
+          background: linear-gradient(160deg, 
+            rgba(10, 12, 30, 0.98) 0%, 
+            rgba(15, 20, 35, 0.98) 50%, 
+            rgba(8, 15, 25, 0.98) 100%);
+          border-left: 1px solid rgba(255, 255, 255, 0.15);
+          backdrop-filter: blur(40px);
+          box-shadow: 
+            -20px 0 60px rgba(0, 0, 0, 0.4),
+            inset 1px 0 0 rgba(255, 255, 255, 0.1),
+            -1px 0 0 rgba(59, 130, 246, 0.1);
         }
         
         .light .premium-mobile-menu {
-          background: rgba(255, 255, 255, 0.98);
-          border-left: 1px solid rgba(0, 0, 0, 0.1);
-          backdrop-filter: blur(30px);
+          background: linear-gradient(160deg, 
+            rgba(255, 255, 255, 0.98) 0%, 
+            rgba(250, 251, 252, 0.98) 50%, 
+            rgba(245, 247, 250, 0.98) 100%);
+          border-left: 1px solid rgba(0, 0, 0, 0.15);
+          backdrop-filter: blur(40px);
+          box-shadow: 
+            -20px 0 60px rgba(0, 0, 0, 0.15),
+            inset 1px 0 0 rgba(255, 255, 255, 0.8),
+            -1px 0 0 rgba(59, 130, 246, 0.1);
         }
         
         .mobile-header {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: 20px 24px;
+          padding: 24px 28px;
           border-bottom: 1px solid;
+          position: relative;
+          overflow: hidden;
+          opacity: 0;
+          animation: mobileItemSlideIn 0.5s ease-out 0.05s forwards;
+        }
+        
+        .mobile-header::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: linear-gradient(90deg, 
+            transparent 0%, 
+            rgba(59, 130, 246, 0.05) 50%, 
+            transparent 100%);
+          animation: headerShimmer 3s ease-in-out infinite;
+        }
+        
+        @keyframes headerShimmer {
+          0%, 100% { opacity: 0; }
+          50% { opacity: 1; }
         }
         
         .dark .mobile-header {
-          border-color: rgba(255, 255, 255, 0.1);
+          border-color: rgba(255, 255, 255, 0.12);
+          background: rgba(255, 255, 255, 0.02);
         }
         
         .light .mobile-header {
-          border-color: rgba(0, 0, 0, 0.1);
+          border-color: rgba(0, 0, 0, 0.12);
+          background: rgba(0, 0, 0, 0.01);
         }
         
         .mobile-title {
-          font-size: 18px;
-          font-weight: 700;
-        }
-        
-        .dark .mobile-title {
-          color: rgba(255, 255, 255, 0.95);
-        }
-        
-        .light .mobile-title {
-          color: rgba(0, 0, 0, 0.95);
+          font-size: 20px;
+          font-weight: 800;
+          letter-spacing: -0.5px;
+          position: relative;
+          z-index: 2;
+          background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+          text-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
         }
         
         .mobile-close {
@@ -1403,203 +1470,452 @@ const Navbar = () => {
           border: none;
           font-size: 24px;
           cursor: pointer;
-          padding: 8px;
-          border-radius: 8px;
-          transition: all 0.2s ease;
-        }
-        
-        .dark .mobile-close {
-          color: rgba(255, 255, 255, 0.7);
-        }
-        
-        .light .mobile-close {
-          color: rgba(0, 0, 0, 0.7);
-        }
-        
-        .dark .mobile-close:hover {
-          background: rgba(255, 255, 255, 0.1);
-        }
-        
-        .light .mobile-close:hover {
-          background: rgba(0, 0, 0, 0.05);
-        }
-        
-        .mobile-nav {
-          padding: 20px 16px;
-          flex: 1;
-        }
-        
-        .mobile-link {
+          padding: 12px;
+          border-radius: 12px;
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          position: relative;
+          z-index: 2;
           display: flex;
           align-items: center;
-          gap: 16px;
-          padding: 16px 16px;
-          border-radius: 12px;
-          text-decoration: none;
-          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-          margin-bottom: 8px;
-          font-weight: 500;
-          color: inherit;
-        }
-        
-        .dark .mobile-link {
-          color: rgba(255, 255, 255, 0.8);
-        }
-        
-        .light .mobile-link {
-          color: rgba(0, 0, 0, 0.8);
-        }
-        
-        .dark .mobile-link:hover {
-          background: rgba(255, 255, 255, 0.08);
-          color: rgba(255, 255, 255, 0.95);
-        }
-        
-        .light .mobile-link:hover {
-          background: rgba(0, 0, 0, 0.04);
-          color: rgba(0, 0, 0, 0.95);
-        }
-        
-        .mobile-link.active {
-          font-weight: 600;
-        }
-        
-        .dark .mobile-link.active {
-          color: #3b82f6;
-          background: rgba(59, 130, 246, 0.1);
-        }
-        
-        .light .mobile-link.active {
-          color: #3b82f6;
-          background: rgba(59, 130, 246, 0.05);
-        }
-        
-        .mobile-icon {
-          font-size: 20px;
-          width: 24px;
-          display: flex;
           justify-content: center;
         }
         
-        .mobile-user-section {
-          padding: 20px 16px;
-          border-top: 1px solid;
-        }
-        
-        .dark .mobile-user-section {
-          border-color: rgba(255, 255, 255, 0.1);
-        }
-        
-        .light .mobile-user-section {
-          border-color: rgba(0, 0, 0, 0.1);
-        }
-        
-        .mobile-user-info {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          padding: 16px;
-          border-radius: 12px;
-          margin-bottom: 16px;
-        }
-        
-        .dark .mobile-user-info {
+        .dark .mobile-close {
+          color: rgba(255, 255, 255, 0.8);
           background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 255, 0.1);
         }
         
-        .light .mobile-user-info {
+        .light .mobile-close {
+          color: rgba(0, 0, 0, 0.8);
           background: rgba(0, 0, 0, 0.03);
+          border: 1px solid rgba(0, 0, 0, 0.1);
         }
         
-        .mobile-avatar {
-          flex-shrink: 0;
+        .dark .mobile-close:hover {
+          background: rgba(239, 68, 68, 0.1);
+          border-color: rgba(239, 68, 68, 0.2);
+          color: #ef4444;
+          transform: scale(1.05) rotate(90deg);
         }
         
-        .mobile-user-details {
+        .light .mobile-close:hover {
+          background: rgba(239, 68, 68, 0.05);
+          border-color: rgba(239, 68, 68, 0.1);
+          color: #ef4444;
+          transform: scale(1.05) rotate(90deg);
+        }
+        
+        .mobile-nav {
+          padding: 24px 20px;
           flex: 1;
           display: flex;
           flex-direction: column;
           gap: 4px;
         }
         
-        .mobile-username {
-          font-size: 14px;
+        .mobile-link {
+          display: flex;
+          align-items: center;
+          gap: 18px;
+          padding: 18px 20px;
+          border-radius: 16px;
+          text-decoration: none;
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          margin-bottom: 6px;
+          font-weight: 500;
+          color: inherit;
+          position: relative;
+          overflow: hidden;
+          border: 1px solid transparent;
+        }
+        
+        .mobile-link::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: -100%;
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(90deg, 
+            transparent 0%, 
+            rgba(59, 130, 246, 0.1) 50%, 
+            transparent 100%);
+          transition: left 0.5s ease;
+        }
+        
+        .mobile-link:hover::before {
+          left: 100%;
+        }
+        
+        .dark .mobile-link {
+          color: rgba(255, 255, 255, 0.85);
+          background: rgba(255, 255, 255, 0.02);
+          border-color: rgba(255, 255, 255, 0.05);
+        }
+        
+        .light .mobile-link {
+          color: rgba(0, 0, 0, 0.85);
+          background: rgba(0, 0, 0, 0.01);
+          border-color: rgba(0, 0, 0, 0.05);
+        }
+        
+        .dark .mobile-link:hover {
+          background: rgba(59, 130, 246, 0.08);
+          border-color: rgba(59, 130, 246, 0.2);
+          color: rgba(255, 255, 255, 0.95);
+          transform: translateX(8px) scale(1.02);
+          box-shadow: 0 8px 25px rgba(59, 130, 246, 0.15);
+        }
+        
+        .light .mobile-link:hover {
+          background: rgba(59, 130, 246, 0.04);
+          border-color: rgba(59, 130, 246, 0.1);
+          color: rgba(0, 0, 0, 0.95);
+          transform: translateX(8px) scale(1.02);
+          box-shadow: 0 8px 25px rgba(59, 130, 246, 0.1);
+        }
+        
+        .mobile-link.active {
           font-weight: 600;
+          transform: translateX(8px);
+        }
+        
+        .dark .mobile-link.active {
+          color: #60a5fa;
+          background: rgba(59, 130, 246, 0.15);
+          border-color: rgba(59, 130, 246, 0.3);
+          box-shadow: 0 8px 25px rgba(59, 130, 246, 0.2);
+        }
+        
+        .light .mobile-link.active {
+          color: #2563eb;
+          background: rgba(59, 130, 246, 0.08);
+          border-color: rgba(59, 130, 246, 0.2);
+          box-shadow: 0 8px 25px rgba(59, 130, 246, 0.15);
+        }
+        
+        .mobile-icon {
+          font-size: 22px;
+          width: 28px;
+          display: flex;
+          justify-content: center;
+          transition: all 0.3s ease;
+          position: relative;
+          z-index: 2;
+        }
+        
+        .mobile-link:hover .mobile-icon {
+          transform: scale(1.2) rotate(5deg);
+        }
+        
+        .mobile-link.active .mobile-icon {
+          transform: scale(1.1);
+        }
+        
+        /* Staggered animations for mobile menu items */
+        .mobile-link {
+          opacity: 0;
+          animation: mobileItemSlideIn 0.5s ease-out forwards;
+        }
+        
+        .mobile-link-1 {
+          animation-delay: 0.1s;
+        }
+        
+        .mobile-link-2 {
+          animation-delay: 0.2s;
+        }
+        
+        .mobile-link-3 {
+          animation-delay: 0.3s;
+        }
+        
+        .mobile-link-4 {
+          animation-delay: 0.4s;
+        }
+        
+        .mobile-link-5 {
+          animation-delay: 0.45s;
+        }
+        
+        @keyframes mobileItemSlideIn {
+          from {
+            opacity: 0;
+            transform: translateX(30px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+        
+        @keyframes mobileFloat {
+          0%, 100% {
+            transform: translateX(0) translateY(0);
+          }
+          50% {
+            transform: translateX(0) translateY(-2px);
+          }
+        }
+        
+        .mobile-user-section {
+          padding: 24px 20px;
+          border-top: 1px solid;
+          position: relative;
+          opacity: 0;
+          animation: mobileItemSlideIn 0.5s ease-out 0.5s forwards;
+        }
+        
+        .mobile-user-section::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 1px;
+          background: linear-gradient(90deg, 
+            transparent 0%, 
+            rgba(59, 130, 246, 0.3) 50%, 
+            transparent 100%);
+        }
+        
+        .dark .mobile-user-section {
+          border-color: rgba(255, 255, 255, 0.12);
+          background: rgba(255, 255, 255, 0.01);
+        }
+        
+        .light .mobile-user-section {
+          border-color: rgba(0, 0, 0, 0.12);
+          background: rgba(0, 0, 0, 0.005);
+        }
+        
+        .mobile-user-info {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          padding: 20px;
+          border-radius: 18px;
+          margin-bottom: 20px;
+          border: 1px solid transparent;
+          transition: all 0.3s ease;
+          position: relative;
+          overflow: hidden;
+        }
+        
+        .mobile-user-info::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: linear-gradient(135deg, 
+            rgba(59, 130, 246, 0.05) 0%, 
+            rgba(99, 102, 241, 0.05) 100%);
+          opacity: 0;
+          transition: opacity 0.3s ease;
+        }
+        
+        .mobile-user-info:hover::before {
+          opacity: 1;
+        }
+        
+        .dark .mobile-user-info {
+          background: rgba(255, 255, 255, 0.06);
+          border-color: rgba(255, 255, 255, 0.1);
+          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        
+        .light .mobile-user-info {
+          background: rgba(0, 0, 0, 0.04);
+          border-color: rgba(0, 0, 0, 0.08);
+          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.05);
+        }
+        
+        .dark .mobile-user-info:hover {
+          border-color: rgba(59, 130, 246, 0.2);
+          transform: translateY(-2px);
+          box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+        }
+        
+        .light .mobile-user-info:hover {
+          border-color: rgba(59, 130, 246, 0.1);
+          transform: translateY(-2px);
+          box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08);
+        }
+        
+        .mobile-avatar {
+          flex-shrink: 0;
+          transition: transform 0.3s ease;
+          position: relative;
+          z-index: 2;
+        }
+        
+        .mobile-user-info:hover .mobile-avatar {
+          transform: scale(1.05);
+        }
+        
+        .mobile-user-details {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+          position: relative;
+          z-index: 2;
+        }
+        
+        .mobile-username {
+          font-size: 16px;
+          font-weight: 700;
+          letter-spacing: -0.2px;
         }
         
         .dark .mobile-username {
-          color: rgba(255, 255, 255, 0.9);
+          color: rgba(255, 255, 255, 0.95);
         }
         
         .light .mobile-username {
-          color: rgba(0, 0, 0, 0.9);
+          color: rgba(0, 0, 0, 0.95);
         }
         
         .mobile-email {
-          font-size: 12px;
+          font-size: 13px;
+          font-weight: 500;
         }
         
         .dark .mobile-email {
-          color: rgba(255, 255, 255, 0.6);
+          color: rgba(255, 255, 255, 0.65);
         }
         
         .light .mobile-email {
-          color: rgba(0, 0, 0, 0.6);
+          color: rgba(0, 0, 0, 0.65);
         }
         
         .mobile-footer {
-          padding: 20px 16px;
+          padding: 24px 20px;
           border-top: 1px solid;
+          position: relative;
+          opacity: 0;
+          animation: mobileItemSlideIn 0.5s ease-out 0.6s forwards;
+        }
+        
+        .mobile-footer::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 1px;
+          background: linear-gradient(90deg, 
+            transparent 0%, 
+            rgba(59, 130, 246, 0.3) 50%, 
+            transparent 100%);
         }
         
         .dark .mobile-footer {
-          border-color: rgba(255, 255, 255, 0.1);
+          border-color: rgba(255, 255, 255, 0.12);
+          background: rgba(255, 255, 255, 0.01);
         }
         
         .light .mobile-footer {
-          border-color: rgba(0, 0, 0, 0.1);
+          border-color: rgba(0, 0, 0, 0.12);
+          background: rgba(0, 0, 0, 0.005);
         }
         
         .mobile-logout {
           display: flex;
           align-items: center;
-          gap: 16px;
-          padding: 16px;
-          border-radius: 12px;
+          gap: 18px;
+          padding: 18px 20px;
+          border-radius: 16px;
           background: none;
-          border: none;
+          border: 1px solid rgba(239, 68, 68, 0.2);
           cursor: pointer;
           text-align: left;
           font-family: inherit;
-          font-size: 14px;
-          font-weight: 500;
+          font-size: 15px;
+          font-weight: 600;
           width: 100%;
-          transition: all 0.2s ease;
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
           color: #ef4444;
+          position: relative;
+          overflow: hidden;
+        }
+        
+        .mobile-logout::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: -100%;
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(90deg, 
+            transparent 0%, 
+            rgba(239, 68, 68, 0.1) 50%, 
+            transparent 100%);
+          transition: left 0.5s ease;
+        }
+        
+        .mobile-logout:hover::before {
+          left: 100%;
         }
         
         .mobile-logout:hover {
           background: rgba(239, 68, 68, 0.1);
+          border-color: rgba(239, 68, 68, 0.3);
+          transform: translateY(-2px) scale(1.02);
+          box-shadow: 0 8px 25px rgba(239, 68, 68, 0.2);
+        }
+        
+        .mobile-logout .mobile-icon {
+          transition: transform 0.3s ease;
+        }
+        
+        .mobile-logout:hover .mobile-icon {
+          transform: scale(1.2) rotate(-5deg);
         }
         
         .mobile-login {
           display: flex;
           align-items: center;
           justify-content: center;
-          padding: 16px;
-          border-radius: 12px;
+          padding: 18px 24px;
+          border-radius: 16px;
           text-decoration: none;
-          font-weight: 600;
-          font-size: 14px;
+          font-weight: 700;
+          font-size: 15px;
           background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
           color: white !important;
-          box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
-          transition: all 0.3s ease;
+          box-shadow: 0 8px 25px rgba(59, 130, 246, 0.3);
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          position: relative;
+          overflow: hidden;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .mobile-login::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: -100%;
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(90deg, 
+            transparent 0%, 
+            rgba(255, 255, 255, 0.2) 50%, 
+            transparent 100%);
+          transition: left 0.5s ease;
+        }
+        
+        .mobile-login:hover::before {
+          left: 100%;
         }
         
         .mobile-login:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 12px 30px rgba(59, 130, 246, 0.4);
+          transform: translateY(-3px) scale(1.02);
+          box-shadow: 0 15px 40px rgba(59, 130, 246, 0.4);
+          background: linear-gradient(135deg, #2563eb 0%, #5b21b6 100%);
         }
         
         @media (max-width: 768px) {

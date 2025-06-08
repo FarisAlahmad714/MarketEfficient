@@ -15,17 +15,17 @@ export default async function handler(req, res) {
       try {
         await connectDB();
         
-        const { type, userId } = req.body;
+        const { type, userId, dryRun = false } = req.body;
         
         switch (type) {
           case 'weekly-metrics':
-            return await testWeeklyMetrics(req, res, userId);
+            return await testWeeklyMetrics(req, res, userId, dryRun);
           case 'monthly-metrics':
-            return await testMonthlyMetrics(req, res, userId);
+            return await testMonthlyMetrics(req, res, userId, dryRun);
           case 'inactive-reminders':
-            return await testInactiveReminders(req, res);
-            case 'subscription-sync':
-            return await testSubscriptionSync(req, res);
+            return await testInactiveReminders(req, res, dryRun);
+          case 'subscription-sync':
+            return await testSubscriptionSync(req, res, dryRun);
           default:
             return res.status(400).json({ error: 'Invalid test type' });
         }
@@ -98,7 +98,7 @@ async function testSubscriptionSync(req, res) {
   }
 }
 
-async function testWeeklyMetrics(req, res, userId) {
+async function testWeeklyMetrics(req, res, userId, dryRun = false) {
   try {
     let users;
     
@@ -114,16 +114,21 @@ async function testWeeklyMetrics(req, res, userId) {
     }
     
     const results = [];
+    let processedCount = 0;
     
     for (const user of users) {
       try {
         const metrics = await getUserMetrics(user._id, 'weekly');
         
         if (metrics.testsTaken > 0) {
-          await sendMetricsEmail(user, metrics, 'weekly');
+          if (!dryRun) {
+            await sendMetricsEmail(user, metrics, 'weekly');
+            // Add small delay to avoid rate limiting
+            await new Promise(resolve => setTimeout(resolve, 200));
+          }
           results.push({
             email: user.email,
-            status: 'sent',
+            status: dryRun ? 'would_send' : 'sent',
             metrics
           });
         } else {
@@ -134,7 +139,9 @@ async function testWeeklyMetrics(req, res, userId) {
             metrics
           });
         }
+        processedCount++;
       } catch (error) {
+        console.error(`Error processing weekly metrics for ${user.email}:`, error);
         results.push({
           email: user.email,
           status: 'error',
@@ -144,15 +151,19 @@ async function testWeeklyMetrics(req, res, userId) {
     }
     
     return res.status(200).json({
-      message: 'Weekly metrics test completed',
+      message: `Weekly metrics test completed${dryRun ? ' (dry run)' : ''}`,
+      totalUsers: users.length,
+      processed: processedCount,
+      dryRun,
       results
     });
   } catch (error) {
+    console.error('Weekly metrics test error:', error);
     return res.status(500).json({ error: error.message });
   }
 }
 
-async function testMonthlyMetrics(req, res, userId) {
+async function testMonthlyMetrics(req, res, userId, dryRun = false) {
   try {
     let users;
     
@@ -166,16 +177,21 @@ async function testMonthlyMetrics(req, res, userId) {
     }
     
     const results = [];
+    let processedCount = 0;
     
     for (const user of users) {
       try {
         const metrics = await getUserMetrics(user._id, 'monthly');
         
         if (metrics.testsTaken > 0) {
-          await sendMetricsEmail(user, metrics, 'monthly');
+          if (!dryRun) {
+            await sendMetricsEmail(user, metrics, 'monthly');
+            // Add small delay to avoid rate limiting
+            await new Promise(resolve => setTimeout(resolve, 200));
+          }
           results.push({
             email: user.email,
-            status: 'sent',
+            status: dryRun ? 'would_send' : 'sent',
             metrics
           });
         } else {
@@ -186,7 +202,9 @@ async function testMonthlyMetrics(req, res, userId) {
             metrics
           });
         }
+        processedCount++;
       } catch (error) {
+        console.error(`Error processing monthly metrics for ${user.email}:`, error);
         results.push({
           email: user.email,
           status: 'error',
@@ -196,33 +214,57 @@ async function testMonthlyMetrics(req, res, userId) {
     }
     
     return res.status(200).json({
-      message: 'Monthly metrics test completed',
+      message: `Monthly metrics test completed${dryRun ? ' (dry run)' : ''}`,
+      totalUsers: users.length,
+      processed: processedCount,
+      dryRun,
       results
     });
   } catch (error) {
+    console.error('Monthly metrics test error:', error);
     return res.status(500).json({ error: error.message });
   }
 }
 
-async function testInactiveReminders(req, res) {
+async function testInactiveReminders(req, res, dryRun = false) {
   try {
+    console.log('Starting inactive reminders test...');
     const inactiveUsers = await getInactiveUsers(30);
+    console.log(`Found ${inactiveUsers.length} inactive users`);
     
     // Filter users who have email notifications enabled and limit for testing
     const eligibleUsers = inactiveUsers
-      .filter(user => user.notifications?.email !== false)
+      .filter(user => {
+        const hasEmailEnabled = user.notifications?.email !== false;
+        console.log(`User ${user.email}: email enabled = ${hasEmailEnabled}`);
+        return hasEmailEnabled;
+      })
       .slice(0, 5); // Limit to 5 for testing
     
+    console.log(`${eligibleUsers.length} users are eligible for inactive reminders`);
+    
     const results = [];
+    let processedCount = 0;
     
     for (const user of eligibleUsers) {
       try {
-        await sendInactiveUserReminder(user);
+        console.log(`Processing user ${user.email} for inactive reminder...`);
+        if (!dryRun) {
+          console.log(`Sending inactive reminder email to ${user.email}...`);
+          const emailResult = await sendInactiveUserReminder(user);
+          console.log(`Email result for ${user.email}:`, emailResult);
+          // Add small delay to avoid rate limiting
+          await new Promise(resolve => setTimeout(resolve, 200));
+        }
         results.push({
           email: user.email,
-          status: 'sent'
+          status: dryRun ? 'would_send' : 'sent',
+          lastLoginAt: user.lastLoginAt
         });
+        processedCount++;
+        console.log(`Successfully processed ${user.email}`);
       } catch (error) {
+        console.error(`Error sending inactive reminder to ${user.email}:`, error);
         results.push({
           email: user.email,
           status: 'error',
@@ -232,12 +274,15 @@ async function testInactiveReminders(req, res) {
     }
     
     return res.status(200).json({
-      message: 'Inactive user reminders test completed',
+      message: `Inactive user reminders test completed${dryRun ? ' (dry run)' : ''}`,
       totalInactive: inactiveUsers.length,
       eligible: eligibleUsers.length,
+      processed: processedCount,
+      dryRun,
       results
     });
   } catch (error) {
+    console.error('Inactive reminders test error:', error);
     return res.status(500).json({ error: error.message });
   }
 } 

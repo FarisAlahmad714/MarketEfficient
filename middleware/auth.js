@@ -116,6 +116,7 @@ export const authenticate = (options = {}) => {
       
       // Attach user to request
       req.user = {
+        _id: user._id,
         id: user._id.toString(),
         userId: user._id.toString(), // For backwards compatibility
         email: user.email,

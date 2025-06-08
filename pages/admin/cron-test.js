@@ -21,8 +21,17 @@ export default function CronTestPage() {
     subject: '',
     message: '',
     userGroup: 'all',
-    scheduledFor: ''
+    scheduledFor: '',
+    templateId: '',
+    customRecipients: []
   });
+  const [templates, setTemplates] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [userSearchQuery, setUserSearchQuery] = useState('');
+  const [showUserSelector, setShowUserSelector] = useState(false);
+  const [selectedUsers, setSelectedUsers] = useState([]);
+  const [usersPagination, setUsersPagination] = useState({ currentPage: 1, totalPages: 1 });
+  const [dryRun, setDryRun] = useState(true);
 
   useEffect(() => {
     if (!isLoading && (!user || !user.isAdmin)) {
@@ -41,7 +50,7 @@ export default function CronTestPage() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${storage.getItem('auth_token')}`
         },
-        body: JSON.stringify({ type: testType })
+        body: JSON.stringify({ type: testType, dryRun })
       });
       
       const data = await response.json();
@@ -78,11 +87,100 @@ export default function CronTestPage() {
     }
   };
 
+  const fetchTemplates = async () => {
+    try {
+      const response = await fetch('/api/admin/email-templates', {
+        headers: {
+          'Authorization': `Bearer ${storage.getItem('auth_token')}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setTemplates(data.templates);
+      }
+    } catch (error) {
+      console.error('Error fetching templates:', error);
+    }
+  };
+
+  const fetchUsers = async (page = 1, search = '') => {
+    try {
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: '20',
+        search,
+        filter: 'verified'
+      });
+      
+      const response = await fetch(`/api/admin/users-list?${params}`, {
+        headers: {
+          'Authorization': `Bearer ${storage.getItem('auth_token')}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setUsers(data.users);
+        setUsersPagination(data.pagination);
+      }
+    } catch (error) {
+      console.error('Error fetching users:', error);
+    }
+  };
+
   const handleShowEmailManagement = () => {
     setShowEmailManagement(true);
     if (!emailData) {
       fetchEmailData();
     }
+    if (templates.length === 0) {
+      fetchTemplates();
+    }
+  };
+
+  const handleTemplateSelect = (templateId) => {
+    const template = templates.find(t => t.id === templateId);
+    if (template) {
+      setBulkEmailData({
+        ...bulkEmailData,
+        templateId,
+        subject: template.subject,
+        message: template.message
+      });
+    } else {
+      setBulkEmailData({
+        ...bulkEmailData,
+        templateId: '',
+        subject: '',
+        message: ''
+      });
+    }
+  };
+
+  const handleShowUserSelector = () => {
+    setShowUserSelector(true);
+    if (users.length === 0) {
+      fetchUsers();
+    }
+  };
+
+  const handleUserSelect = (userId) => {
+    const updatedUsers = selectedUsers.includes(userId)
+      ? selectedUsers.filter(id => id !== userId)
+      : [...selectedUsers, userId];
+    
+    setSelectedUsers(updatedUsers);
+    setBulkEmailData({
+      ...bulkEmailData,
+      customRecipients: updatedUsers,
+      userGroup: updatedUsers.length > 0 ? 'custom' : 'all'
+    });
+  };
+
+  const handleSearchUsers = (query) => {
+    setUserSearchQuery(query);
+    fetchUsers(1, query);
   };
 
   const sendBulkEmail = async () => {
@@ -100,7 +198,16 @@ export default function CronTestPage() {
       const result = await response.json();
       if (response.ok) {
         alert(`Email sent successfully to ${result.sentCount} users`);
-        setBulkEmailData({ subject: '', message: '', userGroup: 'all', scheduledFor: '' });
+        setBulkEmailData({ 
+          subject: '', 
+          message: '', 
+          userGroup: 'all', 
+          scheduledFor: '',
+          templateId: '',
+          customRecipients: []
+        });
+        setSelectedUsers([]);
+        fetchEmailData(); // Refresh email data to show recent activity
       } else {
         alert(`Error: ${result.error}`);
       }
@@ -196,6 +303,56 @@ export default function CronTestPage() {
             <li><strong>Monthly Metrics:</strong> 1st of month at 9:00 AM</li>
             <li><strong>Inactive Reminders:</strong> Mondays at 10:00 AM</li>
           </ul>
+        </div>
+
+        {/* Dry Run Toggle */}
+        <div style={{
+          backgroundColor: darkMode ? '#2a2a2a' : '#f8f9fa',
+          padding: '20px',
+          borderRadius: '8px',
+          marginBottom: '20px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between'
+        }}>
+          <div>
+            <h4 style={{
+              color: darkMode ? '#e0e0e0' : '#333',
+              margin: '0 0 5px 0'
+            }}>
+              🧪 Test Mode
+            </h4>
+            <p style={{
+              color: darkMode ? '#b0b0b0' : '#666',
+              margin: 0,
+              fontSize: '14px'
+            }}>
+              {dryRun ? 'Dry run enabled - no emails will be sent' : 'Live mode - emails will be sent to users'}
+            </p>
+          </div>
+          <label style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            cursor: 'pointer'
+          }}>
+            <input
+              type="checkbox"
+              checked={dryRun}
+              onChange={(e) => setDryRun(e.target.checked)}
+              style={{
+                width: '18px',
+                height: '18px',
+                cursor: 'pointer'
+              }}
+            />
+            <span style={{
+              color: darkMode ? '#e0e0e0' : '#333',
+              fontWeight: '500'
+            }}>
+              Dry Run
+            </span>
+          </label>
         </div>
 
         <div style={{
@@ -524,6 +681,7 @@ export default function CronTestPage() {
                       </h3>
                       
                       <div style={{ display: 'grid', gap: '16px' }}>
+                        {/* Email Template Selection */}
                         <div>
                           <label style={{ 
                             display: 'block', 
@@ -531,11 +689,11 @@ export default function CronTestPage() {
                             color: darkMode ? '#e0e0e0' : '#333',
                             fontWeight: '500'
                           }}>
-                            Target Group:
+                            📧 Email Template:
                           </label>
                           <select
-                            value={bulkEmailData.userGroup}
-                            onChange={(e) => setBulkEmailData({...bulkEmailData, userGroup: e.target.value})}
+                            value={bulkEmailData.templateId}
+                            onChange={(e) => handleTemplateSelect(e.target.value)}
                             style={{
                               width: '100%',
                               padding: '10px',
@@ -545,11 +703,70 @@ export default function CronTestPage() {
                               color: darkMode ? '#e0e0e0' : '#333'
                             }}
                           >
-                            <option value="all">All Verified Users</option>
-                            <option value="subscribers">Active Subscribers</option>
-                            <option value="free">Free Users</option>
-                            <option value="inactive">Inactive Users (30+ days)</option>
+                            <option value="">Custom Message (No Template)</option>
+                            {templates.map(template => (
+                              <option key={template.id} value={template.id}>
+                                {template.name} ({template.category})
+                              </option>
+                            ))}
                           </select>
+                        </div>
+
+                        <div>
+                          <label style={{ 
+                            display: 'block', 
+                            marginBottom: '8px', 
+                            color: darkMode ? '#e0e0e0' : '#333',
+                            fontWeight: '500'
+                          }}>
+                            🎯 Target Group:
+                          </label>
+                          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                            <select
+                              value={bulkEmailData.userGroup}
+                              onChange={(e) => setBulkEmailData({...bulkEmailData, userGroup: e.target.value})}
+                              style={{
+                                flex: 1,
+                                padding: '10px',
+                                borderRadius: '6px',
+                                border: `1px solid ${darkMode ? '#444' : '#ddd'}`,
+                                backgroundColor: darkMode ? '#333' : '#fff',
+                                color: darkMode ? '#e0e0e0' : '#333'
+                              }}
+                            >
+                              <option value="all">All Verified Users</option>
+                              <option value="subscribers">Active Subscribers</option>
+                              <option value="free">Free Users</option>
+                              <option value="inactive">Inactive Users (30+ days)</option>
+                              <option value="custom">Custom Recipients ({selectedUsers.length})</option>
+                            </select>
+                            <button
+                              type="button"
+                              onClick={handleShowUserSelector}
+                              style={{
+                                padding: '10px 16px',
+                                backgroundColor: '#3B82F6',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                fontSize: '12px',
+                                fontWeight: '500',
+                                whiteSpace: 'nowrap'
+                              }}
+                            >
+                              👥 Select Users
+                            </button>
+                          </div>
+                          {selectedUsers.length > 0 && (
+                            <div style={{ 
+                              marginTop: '8px', 
+                              fontSize: '12px', 
+                              color: darkMode ? '#b0b0b0' : '#666' 
+                            }}>
+                              {selectedUsers.length} custom recipient{selectedUsers.length !== 1 ? 's' : ''} selected
+                            </div>
+                          )}
                         </div>
 
                         <div>
@@ -679,6 +896,225 @@ export default function CronTestPage() {
                     )}
                   </>
                 )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* User Selector Modal */}
+        {showUserSelector && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 2000,
+            padding: '20px'
+          }}>
+            <div style={{
+              backgroundColor: darkMode ? '#1e1e1e' : 'white',
+              borderRadius: '12px',
+              width: '90%',
+              maxWidth: '600px',
+              maxHeight: '80vh',
+              overflow: 'hidden',
+              boxShadow: darkMode ? '0 20px 60px rgba(0,0,0,0.5)' : '0 20px 60px rgba(0,0,0,0.2)'
+            }}>
+              {/* Modal Header */}
+              <div style={{
+                padding: '20px',
+                borderBottom: `1px solid ${darkMode ? '#333' : '#eee'}`,
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}>
+                <h3 style={{ color: darkMode ? '#e0e0e0' : '#333', margin: 0 }}>👥 Select Recipients</h3>
+                <button
+                  onClick={() => setShowUserSelector(false)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    fontSize: '24px',
+                    cursor: 'pointer',
+                    color: darkMode ? '#e0e0e0' : '#333'
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+
+              {/* Search Bar */}
+              <div style={{ padding: '20px', borderBottom: `1px solid ${darkMode ? '#333' : '#eee'}` }}>
+                <input
+                  type="text"
+                  placeholder="Search users by name or email..."
+                  value={userSearchQuery}
+                  onChange={(e) => handleSearchUsers(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    borderRadius: '6px',
+                    border: `1px solid ${darkMode ? '#444' : '#ddd'}`,
+                    backgroundColor: darkMode ? '#333' : '#fff',
+                    color: darkMode ? '#e0e0e0' : '#333'
+                  }}
+                />
+              </div>
+
+              {/* Users List */}
+              <div style={{ 
+                padding: '20px', 
+                maxHeight: '400px', 
+                overflowY: 'auto' 
+              }}>
+                {users.length > 0 ? (
+                  <div style={{ display: 'grid', gap: '8px' }}>
+                    {users.map(user => (
+                      <div
+                        key={user.id}
+                        onClick={() => handleUserSelect(user.id)}
+                        style={{
+                          padding: '12px',
+                          borderRadius: '6px',
+                          border: `1px solid ${darkMode ? '#444' : '#ddd'}`,
+                          backgroundColor: selectedUsers.includes(user.id)
+                            ? (darkMode ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)')
+                            : (darkMode ? '#2a2a2a' : '#f8f9fa'),
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center'
+                        }}
+                      >
+                        <div>
+                          <div style={{
+                            color: darkMode ? '#e0e0e0' : '#333',
+                            fontWeight: '500'
+                          }}>
+                            {user.name}
+                          </div>
+                          <div style={{
+                            color: darkMode ? '#b0b0b0' : '#666',
+                            fontSize: '12px'
+                          }}>
+                            {user.email}
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          {user.isAdmin && (
+                            <span style={{
+                              padding: '2px 6px',
+                              borderRadius: '4px',
+                              fontSize: '10px',
+                              fontWeight: '500',
+                              backgroundColor: '#22C55E',
+                              color: 'white'
+                            }}>
+                              Admin
+                            </span>
+                          )}
+                          {selectedUsers.includes(user.id) && (
+                            <span style={{ color: '#3B82F6', fontSize: '16px' }}>✓</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{
+                    textAlign: 'center',
+                    color: darkMode ? '#b0b0b0' : '#666',
+                    padding: '40px'
+                  }}>
+                    No users found
+                  </div>
+                )}
+
+                {/* Pagination */}
+                {usersPagination.totalPages > 1 && (
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    marginTop: '16px',
+                    paddingTop: '16px',
+                    borderTop: `1px solid ${darkMode ? '#333' : '#eee'}`
+                  }}>
+                    <button
+                      onClick={() => fetchUsers(usersPagination.currentPage - 1, userSearchQuery)}
+                      disabled={!usersPagination.hasPrev}
+                      style={{
+                        padding: '6px 12px',
+                        borderRadius: '4px',
+                        border: `1px solid ${darkMode ? '#444' : '#ddd'}`,
+                        backgroundColor: darkMode ? '#333' : '#fff',
+                        color: darkMode ? '#e0e0e0' : '#333',
+                        cursor: usersPagination.hasPrev ? 'pointer' : 'default',
+                        opacity: usersPagination.hasPrev ? 1 : 0.5
+                      }}
+                    >
+                      Previous
+                    </button>
+                    <span style={{
+                      padding: '6px 12px',
+                      color: darkMode ? '#b0b0b0' : '#666'
+                    }}>
+                      {usersPagination.currentPage} / {usersPagination.totalPages}
+                    </span>
+                    <button
+                      onClick={() => fetchUsers(usersPagination.currentPage + 1, userSearchQuery)}
+                      disabled={!usersPagination.hasNext}
+                      style={{
+                        padding: '6px 12px',
+                        borderRadius: '4px',
+                        border: `1px solid ${darkMode ? '#444' : '#ddd'}`,
+                        backgroundColor: darkMode ? '#333' : '#fff',
+                        color: darkMode ? '#e0e0e0' : '#333',
+                        cursor: usersPagination.hasNext ? 'pointer' : 'default',
+                        opacity: usersPagination.hasNext ? 1 : 0.5
+                      }}
+                    >
+                      Next
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Footer */}
+              <div style={{
+                padding: '20px',
+                borderTop: `1px solid ${darkMode ? '#333' : '#eee'}`,
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}>
+                <div style={{
+                  color: darkMode ? '#b0b0b0' : '#666',
+                  fontSize: '14px'
+                }}>
+                  {selectedUsers.length} user{selectedUsers.length !== 1 ? 's' : ''} selected
+                </div>
+                <button
+                  onClick={() => setShowUserSelector(false)}
+                  style={{
+                    padding: '8px 16px',
+                    backgroundColor: '#22C55E',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: '500'
+                  }}
+                >
+                  Done
+                </button>
               </div>
             </div>
           </div>
