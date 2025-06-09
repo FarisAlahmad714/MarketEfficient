@@ -1,5 +1,5 @@
 // pages/admin/visual-analytics.js - ULTIMATE TRADING PSYCHOLOGY DASHBOARD
-import { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { useRouter } from 'next/router';
 import { AuthContext } from '../../contexts/AuthContext';
 import { ThemeContext } from '../../contexts/ThemeContext';
@@ -74,6 +74,10 @@ const VisualAnalyticsDashboard = () => {
 
   const handleFilterChange = (key, value) => {
     setFilters(prev => ({ ...prev, [key]: value }));
+    // Force immediate data refresh when filters change
+    setTimeout(() => {
+      fetchAnalytics();
+    }, 100);
   };
 
   if (loading) {
@@ -403,493 +407,1223 @@ const StatCard = ({ title, value, subtitle, darkMode }) => (
   </div>
 );
 
-// 🔥 OVERVIEW TAB
-const OverviewTab = ({ data, darkMode }) => (
-  <div>
-    <h2 style={{ color: darkMode ? '#e0e0e0' : '#333', marginBottom: '20px' }}>
-      📊 Analytics Overview
-    </h2>
-    
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px' }}>
+// 🔥 OVERVIEW TAB - Enhanced with Real Business Intelligence
+const OverviewTab = ({ data, darkMode }) => {
+  const totalValue = data.business_metrics?.monetization?.estimated_research_value || 0;
+  const totalTests = data.business_metrics?.overview?.total_tests_completed || 0;
+  const totalImages = data.business_metrics?.overview?.total_images_uploaded || 0;
+  
+  return (
+    <div>
+      <h2 style={{ color: darkMode ? '#e0e0e0' : '#333', marginBottom: '20px' }}>
+        📊 Trading Psychology Data Overview
+      </h2>
       
-      {/* Data Sources */}
-      <div>
-        <h3 style={{ color: darkMode ? '#e0e0e0' : '#333', marginBottom: '15px' }}>
-          🔗 Data Sources
-        </h3>
-        <div style={{ 
-          backgroundColor: darkMode ? '#333' : '#f5f5f5',
-          borderRadius: '8px',
-          padding: '15px'
-        }}>
-          <div style={{ marginBottom: '10px' }}>
-            <strong style={{ color: darkMode ? '#e0e0e0' : '#333' }}>MongoDB Records:</strong>
-            <span style={{ color: darkMode ? '#b0b0b0' : '#666', marginLeft: '10px' }}>
-              {data.data_sources?.mongodb_records || 0}
-            </span>
-          </div>
-          <div style={{ marginBottom: '10px' }}>
-            <strong style={{ color: darkMode ? '#e0e0e0' : '#333' }}>GCS Metadata Files:</strong>
-            <span style={{ color: darkMode ? '#b0b0b0' : '#666', marginLeft: '10px' }}>
-              {data.data_sources?.gcs_metadata_files || 0}
-            </span>
-          </div>
-          <div>
-            <strong style={{ color: darkMode ? '#e0e0e0' : '#333' }}>Images Available:</strong>
-            <span style={{ 
-              color: data.data_sources?.images_available ? '#4CAF50' : '#f44336',
-              marginLeft: '10px',
-              fontWeight: '600'
-            }}>
-              {data.data_sources?.images_available ? '✅ Yes' : '❌ No'}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Business Metrics */}
-      <div>
-        <h3 style={{ color: darkMode ? '#e0e0e0' : '#333', marginBottom: '15px' }}>
-          💼 Business Metrics
-        </h3>
-        <div style={{ 
-          backgroundColor: darkMode ? '#333' : '#f5f5f5',
-          borderRadius: '8px',
-          padding: '15px'
-        }}>
-          <div style={{ marginBottom: '10px' }}>
-            <strong style={{ color: darkMode ? '#e0e0e0' : '#333' }}>Data Richness Score:</strong>
-            <span style={{ color: '#2196F3', marginLeft: '10px', fontWeight: '600' }}>
-              {data.business_metrics?.overview?.data_richness_score || 0}/1000
-            </span>
-          </div>
-          <div style={{ marginBottom: '10px' }}>
-            <strong style={{ color: darkMode ? '#e0e0e0' : '#333' }}>Completion Rate:</strong>
-            <span style={{ color: '#4CAF50', marginLeft: '10px' }}>
-              {data.business_metrics?.engagement?.completion_rate?.toFixed(1) || 0}%
-            </span>
-          </div>
-          <div>
-            <strong style={{ color: darkMode ? '#e0e0e0' : '#333' }}>Premium Data Points:</strong>
-            <span style={{ color: darkMode ? '#b0b0b0' : '#666', marginLeft: '10px' }}>
-              {data.business_metrics?.monetization?.premium_data_points || 0}
-            </span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    {/* Test Distribution */}
-    <div style={{ marginTop: '30px' }}>
-      <h3 style={{ color: darkMode ? '#e0e0e0' : '#333', marginBottom: '15px' }}>
-        📈 Test Type Distribution
-      </h3>
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', 
-        gap: '15px' 
+      {/* Revenue & Value Metrics */}
+      <div style={{
+        backgroundColor: darkMode ? '#1a2332' : '#f0f7ff',
+        borderRadius: '12px',
+        padding: '25px',
+        marginBottom: '30px',
+        border: `2px solid ${darkMode ? '#2196F3' : '#b3d9ff'}`
       }}>
-        {Object.entries(data.business_metrics?.engagement?.tests_by_type || {}).map(([type, count]) => (
-          <div key={type} style={{
+        <h3 style={{ color: darkMode ? '#e0e0e0' : '#333', marginBottom: '20px', fontSize: '18px' }}>
+          💰 Data Monetization Analytics
+        </h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '32px', fontWeight: '700', color: '#2196F3', marginBottom: '8px' }}>
+              ${totalValue.toLocaleString()}
+            </div>
+            <div style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '14px' }}>
+              Total Research Value
+            </div>
+            <div style={{ color: darkMode ? '#888' : '#999', fontSize: '12px', marginTop: '4px' }}>
+              Psychology Tests: ${(totalTests * 15).toLocaleString()} + Visual Data: ${(totalImages * 25).toLocaleString()}
+            </div>
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '28px', fontWeight: '600', color: '#4CAF50', marginBottom: '8px' }}>
+              ${((totalValue / Math.max(totalTests + totalImages, 1))).toFixed(0)}
+            </div>
+            <div style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '14px' }}>
+              Value Per Data Point
+            </div>
+            <div style={{ color: darkMode ? '#888' : '#999', fontSize: '12px', marginTop: '4px' }}>
+              Industry benchmark: $20-40
+            </div>
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '28px', fontWeight: '600', color: '#FF9800', marginBottom: '8px' }}>
+              {data.business_metrics?.overview?.data_richness_score || 0}
+            </div>
+            <div style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '14px' }}>
+              Data Quality Score
+            </div>
+            <div style={{ color: darkMode ? '#888' : '#999', fontSize: '12px', marginTop: '4px' }}>
+              Out of 1000 (Premium: 800+)
+            </div>
+          </div>
+        </div>
+      </div>
+    
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px' }}>
+        
+        {/* Data Sources & Quality */}
+        <div>
+          <h3 style={{ color: darkMode ? '#e0e0e0' : '#333', marginBottom: '15px' }}>
+            🔗 Data Infrastructure
+          </h3>
+          <div style={{ 
             backgroundColor: darkMode ? '#333' : '#f5f5f5',
             borderRadius: '8px',
-            padding: '15px',
-            textAlign: 'center'
+            padding: '20px'
           }}>
-            <div style={{ fontSize: '20px', fontWeight: '600', color: '#2196F3' }}>
-              {count}
+            <div style={{ marginBottom: '15px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <strong style={{ color: darkMode ? '#e0e0e0' : '#333' }}>Psychology Database (MongoDB)</strong>
+                <span style={{ 
+                  backgroundColor: '#4CAF50',
+                  color: 'white',
+                  padding: '2px 8px',
+                  borderRadius: '4px',
+                  fontSize: '12px'
+                }}>
+                  {data.data_sources?.mongodb_records || 0} records
+                </span>
+              </div>
+              <div style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '13px' }}>
+                Test results, user responses, confidence levels, reasoning data
+              </div>
             </div>
-            <div style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '12px' }}>
-              {type.replace('-', ' ').toUpperCase()}
+            
+            <div style={{ marginBottom: '15px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <strong style={{ color: darkMode ? '#e0e0e0' : '#333' }}>Visual Assets (Google Cloud)</strong>
+                <span style={{ 
+                  backgroundColor: '#2196F3',
+                  color: 'white',
+                  padding: '2px 8px',
+                  borderRadius: '4px',
+                  fontSize: '12px'
+                }}>
+                  {data.data_sources?.gcs_metadata_files || 0} files
+                </span>
+              </div>
+              <div style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '13px' }}>
+                Chart images, metadata, timestamps, behavioral analytics
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  </div>
-);
-
-// 🔥 VISUAL DATA TAB
-const VisualDataTab = ({ data, darkMode }) => (
-  <div>
-    <h2 style={{ color: darkMode ? '#e0e0e0' : '#333', marginBottom: '20px' }}>
-      🖼️ Visual Data Gallery
-    </h2>
-    
-    {data.combined_analytics && data.combined_analytics.length > 0 ? (
-      <div style={{ display: 'grid', gap: '20px' }}>
-        {data.combined_analytics
-          .filter(item => item.gcs_images && item.gcs_images.length > 0)
-          .slice(0, 10) // Show first 10 entries with images
-          .map((item, index) => (
-            <div key={index} style={{
-              backgroundColor: darkMode ? '#2a2a2a' : '#f8f9fa',
-              borderRadius: '12px',
-              padding: '20px',
-              border: `1px solid ${darkMode ? '#444' : '#e0e0e0'}`
+            
+            <div style={{
+              marginTop: '20px',
+              padding: '12px',
+              backgroundColor: data.data_sources?.images_available ? 
+                (darkMode ? 'rgba(76, 175, 80, 0.1)' : '#e8f5e9') : 
+                (darkMode ? 'rgba(244, 67, 54, 0.1)' : '#ffebee'),
+              borderRadius: '6px',
+              fontSize: '14px',
+              color: data.data_sources?.images_available ? '#4CAF50' : '#f44336'
             }}>
-              {/* Test Info */}
-              <div style={{ marginBottom: '15px' }}>
-                <h4 style={{ color: darkMode ? '#e0e0e0' : '#333', margin: '0 0 5px 0' }}>
-                  👤 {item.mongodb_data.user_name} - {item.mongodb_data.test_type.toUpperCase()}
-                </h4>
-                <p style={{ color: darkMode ? '#b0b0b0' : '#666', margin: 0, fontSize: '14px' }}>
-                  📈 {item.mongodb_data.asset_symbol} | 
-                  🎯 Score: {item.mongodb_data.score}/{item.mongodb_data.total_points} |
-                  🧠 Confidence: {item.psychological_insights.confidence_avg.toFixed(1)}/10
-                </p>
-              </div>
-
-              {/* Images Gallery */}
-              <div style={{ 
-                display: 'grid', 
-                gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', 
-                gap: '15px' 
-              }}>
-                {item.gcs_images.map((image, imgIndex) => (
-                  <div key={imgIndex} style={{
-                    backgroundColor: darkMode ? '#333' : '#fff',
-                    borderRadius: '8px',
-                    padding: '10px',
-                    border: `1px solid ${darkMode ? '#555' : '#ddd'}`
-                  }}>
-                    <div style={{ marginBottom: '10px' }}>
-                      <span style={{ 
-                        backgroundColor: '#2196F3',
-                        color: 'white',
-                        padding: '4px 8px',
-                        borderRadius: '4px',
-                        fontSize: '12px',
-                        fontWeight: '600'
-                      }}>
-                        {image.image_analytics?.image_type || 'Unknown'}
-                      </span>
-                    </div>
-                    
-                    {image.signed_url ? (
-                      <div>
-                        <img 
-                          src={image.signed_url}
-                          alt={`${image.image_analytics?.image_type || 'Chart'} image`}
-                          style={{
-                            width: '100%',
-                            height: '200px',
-                            objectFit: 'cover',
-                            borderRadius: '6px',
-                            border: `1px solid ${darkMode ? '#555' : '#ddd'}`
-                          }}
-                          onError={(e) => {
-                            e.target.style.display = 'none';
-                            e.target.nextSibling.style.display = 'block';
-                          }}
-                        />
-                        <div style={{ 
-                          display: 'none',
-                          padding: '20px',
-                          textAlign: 'center',
-                          color: darkMode ? '#b0b0b0' : '#666',
-                          backgroundColor: darkMode ? '#2a2a2a' : '#f5f5f5',
-                          borderRadius: '6px'
-                        }}>
-                          🖼️ Image temporarily unavailable
-                        </div>
-                      </div>
-                    ) : (
-                      <div style={{ 
-                        padding: '20px',
-                        textAlign: 'center',
-                        color: darkMode ? '#b0b0b0' : '#666',
-                        backgroundColor: darkMode ? '#2a2a2a' : '#f5f5f5',
-                        borderRadius: '6px'
-                      }}>
-                        🔗 No signed URL available
-                      </div>
-                    )}
-                    
-                    <div style={{ marginTop: '10px', fontSize: '12px', color: darkMode ? '#b0b0b0' : '#666' }}>
-                      📅 {new Date(image.image_analytics?.upload_timestamp || '').toLocaleString()}
-                      <br />
-                      📁 {(image.storage_details?.file_size_mb || 0)} MB
-                    </div>
-                  </div>
-                ))}
-              </div>
+              {data.data_sources?.images_available ? 
+                '✅ Full visual dataset available for research' : 
+                '⚠️ Visual data limited - enable image collection'
+              }
             </div>
-          ))}
-      </div>
-    ) : (
-      <div style={{
-        textAlign: 'center',
-        padding: '40px',
-        color: darkMode ? '#b0b0b0' : '#666'
-      }}>
-        <h3>🖼️ No Visual Data Available</h3>
-        <p>Enable "Include Images" filter and ensure users have uploaded chart images.</p>
-      </div>
-    )}
-  </div>
-);
-
-// 🔥 PSYCHOLOGY TAB
-const PsychologyTab = ({ data, darkMode }) => (
-  <div>
-    <h2 style={{ color: darkMode ? '#e0e0e0' : '#333', marginBottom: '20px' }}>
-      🧠 Psychological Insights
-    </h2>
-    
-    <div style={{ display: 'grid', gap: '30px' }}>
-      
-      {/* High Confidence Scenarios */}
-      {data.visual_insights?.test_patterns?.highest_confidence_scenarios && (
-        <div>
-          <h3 style={{ color: darkMode ? '#e0e0e0' : '#333', marginBottom: '15px' }}>
-            🎯 High Confidence Predictions
-          </h3>
-          <div style={{ display: 'grid', gap: '10px' }}>
-            {data.visual_insights.test_patterns.highest_confidence_scenarios.slice(0, 5).map((scenario, index) => (
-              <div key={index} style={{
-                backgroundColor: darkMode ? '#2a2a2a' : '#f8f9fa',
-                borderRadius: '8px',
-                padding: '15px',
-                border: `1px solid ${darkMode ? '#444' : '#e0e0e0'}`
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                  <span style={{ color: darkMode ? '#e0e0e0' : '#333', fontWeight: '600' }}>
-                    📈 {scenario.asset}
-                  </span>
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    <span style={{
-                      backgroundColor: '#2196F3',
-                      color: 'white',
-                      padding: '2px 8px',
-                      borderRadius: '4px',
-                      fontSize: '12px'
-                    }}>
-                      Confidence: {scenario.confidence}/10
-                    </span>
-                    <span style={{
-                      backgroundColor: scenario.correct ? '#4CAF50' : '#f44336',
-                      color: 'white',
-                      padding: '2px 8px',
-                      borderRadius: '4px',
-                      fontSize: '12px'
-                    }}>
-                      {scenario.correct ? '✅ Correct' : '❌ Wrong'}
-                    </span>
-                  </div>
-                </div>
-                <p style={{ color: darkMode ? '#b0b0b0' : '#666', margin: 0, fontSize: '14px' }}>
-                  {scenario.reasoning}
-                </p>
-              </div>
-            ))}
           </div>
         </div>
-      )}
 
-      {/* Confidence vs Accuracy */}
-      {data.visual_insights?.user_behavior?.confidence_accuracy_correlation && (
+        {/* Research Insights */}
         <div>
           <h3 style={{ color: darkMode ? '#e0e0e0' : '#333', marginBottom: '15px' }}>
-            📊 Confidence vs Accuracy Analysis
+            🧠 Research Intelligence
           </h3>
-          <div style={{
-            backgroundColor: darkMode ? '#2a2a2a' : '#f8f9fa',
+          <div style={{ 
+            backgroundColor: darkMode ? '#333' : '#f5f5f5',
             borderRadius: '8px',
-            padding: '20px',
-            border: `1px solid ${darkMode ? '#444' : '#e0e0e0'}`
+            padding: '20px'
           }}>
-            <p style={{ color: darkMode ? '#b0b0b0' : '#666', marginBottom: '15px' }}>
-              Analysis of {data.visual_insights.user_behavior.confidence_accuracy_correlation.length} predictions:
-            </p>
-            
-            {/* Simple visualization */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, 1fr)', gap: '5px', marginBottom: '15px' }}>
-              {[1,2,3,4,5,6,7,8,9,10].map(confidence => {
-                const predictions = data.visual_insights.user_behavior.confidence_accuracy_correlation.filter(
-                  item => item.confidence === confidence
-                );
-                const accuracy = predictions.length > 0 
-                  ? (predictions.filter(p => p.correct).length / predictions.length) * 100 
-                  : 0;
-                
-                return (
-                  <div key={confidence} style={{ textAlign: 'center' }}>
-                    <div style={{
-                      height: `${Math.max(accuracy, 10)}px`,
-                      backgroundColor: accuracy > 50 ? '#4CAF50' : '#f44336',
-                      borderRadius: '2px',
-                      marginBottom: '5px'
-                    }}></div>
-                    <div style={{ fontSize: '10px', color: darkMode ? '#b0b0b0' : '#666' }}>
-                      {confidence}
-                    </div>
-                  </div>
-                );
-              })}
+            <div style={{ marginBottom: '15px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <span style={{ color: darkMode ? '#e0e0e0' : '#333', fontWeight: '500' }}>User Engagement</span>
+                <span style={{ color: '#4CAF50', fontWeight: '600' }}>
+                  {data.business_metrics?.engagement?.completion_rate?.toFixed(1) || 0}%
+                </span>
+              </div>
+              <div style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '13px' }}>
+                Test completion rate indicates data quality
+              </div>
             </div>
             
-            <p style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '12px', margin: 0 }}>
-              Confidence Level (1-10) vs Accuracy Rate
-            </p>
+            <div style={{ marginBottom: '15px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <span style={{ color: darkMode ? '#e0e0e0' : '#333', fontWeight: '500' }}>Psychological Insights</span>
+                <span style={{ color: '#2196F3', fontWeight: '600' }}>
+                  {data.business_metrics?.monetization?.psychological_insights_count || 0}
+                </span>
+              </div>
+              <div style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '13px' }}>
+                Detailed responses with confidence and reasoning
+              </div>
+            </div>
+            
+            <div style={{ marginBottom: '15px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <span style={{ color: darkMode ? '#e0e0e0' : '#333', fontWeight: '500' }}>Avg Questions/Test</span>
+                <span style={{ color: '#FF9800', fontWeight: '600' }}>
+                  {data.business_metrics?.engagement?.average_questions_per_test?.toFixed(1) || 0}
+                </span>
+              </div>
+              <div style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '13px' }}>
+                Data depth indicator for research value
+              </div>
+            </div>
           </div>
         </div>
-      )}
+      </div>
 
-      {/* Reasoning Complexity */}
-      {data.visual_insights?.user_behavior?.reasoning_complexity && (
-        <div>
-          <h3 style={{ color: darkMode ? '#e0e0e0' : '#333', marginBottom: '15px' }}>
-            📝 Reasoning Quality Distribution
-          </h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px' }}>
-            {Object.entries(data.visual_insights.user_behavior.reasoning_complexity).map(([level, count]) => (
-              <div key={level} style={{
-                backgroundColor: darkMode ? '#2a2a2a' : '#f8f9fa',
-                borderRadius: '8px',
-                padding: '15px',
+      {/* Test Type Performance */}
+      <div style={{ marginTop: '30px' }}>
+        <h3 style={{ color: darkMode ? '#e0e0e0' : '#333', marginBottom: '15px' }}>
+          📈 Test Performance by Category
+        </h3>
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', 
+          gap: '20px' 
+        }}>
+          {Object.entries(data.business_metrics?.engagement?.tests_by_type || {}).map(([type, count]) => {
+            const valuePerType = count * 15; // $15 per test
+            const percentage = totalTests > 0 ? (count / totalTests * 100) : 0;
+            
+            return (
+              <div key={type} style={{
+                backgroundColor: darkMode ? '#2a2a2a' : '#ffffff',
+                borderRadius: '12px',
+                padding: '20px',
                 textAlign: 'center',
-                border: `1px solid ${darkMode ? '#444' : '#e0e0e0'}`
+                border: `1px solid ${darkMode ? '#444' : '#e0e0e0'}`,
+                boxShadow: darkMode ? '0 2px 8px rgba(0,0,0,0.2)' : '0 2px 8px rgba(0,0,0,0.1)'
               }}>
-                <div style={{ fontSize: '24px', fontWeight: '600', color: '#2196F3', marginBottom: '5px' }}>
+                <div style={{ fontSize: '28px', fontWeight: '700', color: '#2196F3', marginBottom: '8px' }}>
                   {count}
                 </div>
-                <div style={{ color: darkMode ? '#e0e0e0' : '#333', fontWeight: '600', marginBottom: '5px' }}>
-                  {level.charAt(0).toUpperCase() + level.slice(1)}
+                <div style={{ color: darkMode ? '#e0e0e0' : '#333', fontWeight: '600', marginBottom: '8px', fontSize: '14px' }}>
+                  {type.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
                 </div>
-                <div style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '12px' }}>
-                  {level === 'detailed' ? '200+ chars' : level === 'moderate' ? '100-200 chars' : '< 100 chars'}
+                <div style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '12px', marginBottom: '8px' }}>
+                  {percentage.toFixed(1)}% of tests
                 </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  </div>
-);
-
-// 🔥 INSIGHTS TAB
-const InsightsTab = ({ data, darkMode }) => (
-  <div>
-    <h2 style={{ color: darkMode ? '#e0e0e0' : '#333', marginBottom: '20px' }}>
-      💡 Advanced Insights
-    </h2>
-    
-    <div style={{ display: 'grid', gap: '30px' }}>
-      
-      {/* Most Challenging Assets */}
-      {data.visual_insights?.test_patterns?.most_challenging_assets && (
-        <div>
-          <h3 style={{ color: darkMode ? '#e0e0e0' : '#333', marginBottom: '15px' }}>
-            📉 Most Challenging Assets
-          </h3>
-          <div style={{ display: 'grid', gap: '10px' }}>
-            {data.visual_insights.test_patterns.most_challenging_assets.map((asset, index) => (
-              <div key={index} style={{
-                backgroundColor: darkMode ? '#2a2a2a' : '#f8f9fa',
-                borderRadius: '8px',
-                padding: '15px',
-                border: `1px solid ${darkMode ? '#444' : '#e0e0e0'}`,
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
-              }}>
-                <div>
-                  <span style={{ color: darkMode ? '#e0e0e0' : '#333', fontWeight: '600' }}>
-                    📈 {asset.asset}
-                  </span>
-                  <span style={{ color: darkMode ? '#b0b0b0' : '#666', marginLeft: '10px' }}>
-                    ({asset.test_count} tests)
-                  </span>
-                </div>
-                <div style={{
-                  backgroundColor: asset.avg_score < 0.5 ? '#f44336' : asset.avg_score < 0.7 ? '#ff9800' : '#4CAF50',
-                  color: 'white',
-                  padding: '4px 12px',
-                  borderRadius: '4px',
-                  fontSize: '14px',
-                  fontWeight: '600'
-                }}>
-                  {(asset.avg_score * 100).toFixed(1)}%
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Common Mistakes */}
-      {data.visual_insights?.test_patterns?.common_mistake_patterns && (
-        <div>
-          <h3 style={{ color: darkMode ? '#e0e0e0' : '#333', marginBottom: '15px' }}>
-            ❌ Common Mistake Patterns
-          </h3>
-          <div style={{ display: 'grid', gap: '10px' }}>
-            {data.visual_insights.test_patterns.common_mistake_patterns.map((mistake, index) => (
-              <div key={index} style={{
-                backgroundColor: darkMode ? '#2a2a2a' : '#f8f9fa',
-                borderRadius: '8px',
-                padding: '15px',
-                border: `1px solid ${darkMode ? '#444' : '#e0e0e0'}`,
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
-              }}>
-                <span style={{ color: darkMode ? '#e0e0e0' : '#333' }}>
-                  {mistake.mistake.replace('_vs_', ' → ')}
-                </span>
-                <div style={{
-                  backgroundColor: '#f44336',
+                <div style={{ 
+                  backgroundColor: '#4CAF50',
                   color: 'white',
                   padding: '4px 8px',
                   borderRadius: '4px',
                   fontSize: '12px',
                   fontWeight: '600'
                 }}>
-                  {mistake.count} times
+                  ${valuePerType.toLocaleString()} value
                 </div>
               </div>
-            ))}
-          </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// 🔥 VISUAL DATA TAB - Enhanced with User-Centric Organization and Timeline
+const VisualDataTab = ({ data, darkMode }) => {
+  // Group data by user for better organization
+  const groupedByUser = React.useMemo(() => {
+    if (!data.combined_analytics) return {};
+    
+    const grouped = {};
+    data.combined_analytics
+      .filter(item => item.gcs_images && item.gcs_images.length > 0)
+      .forEach(item => {
+        const userId = item.mongodb_data.user_email || item.mongodb_data.user_name || 'Unknown User';
+        if (!grouped[userId]) {
+          grouped[userId] = {
+            user_info: {
+              name: item.mongodb_data.user_name,
+              email: item.mongodb_data.user_email
+            },
+            tests: [],
+            total_images: 0,
+            total_score: 0,
+            total_possible: 0,
+            avg_confidence: 0,
+            test_dates: []
+          };
+        }
+        
+        grouped[userId].tests.push(item);
+        grouped[userId].total_images += item.gcs_images.length;
+        grouped[userId].total_score += item.mongodb_data.score || 0;
+        grouped[userId].total_possible += item.mongodb_data.total_points || 0;
+        grouped[userId].avg_confidence += item.psychological_insights.confidence_avg || 0;
+        grouped[userId].test_dates.push(new Date(item.mongodb_data.completed_at));
+      });
+    
+    // Calculate averages and sort dates
+    Object.values(grouped).forEach(userGroup => {
+      userGroup.avg_confidence = userGroup.avg_confidence / userGroup.tests.length;
+      userGroup.test_dates.sort((a, b) => a - b); // Sort dates chronologically
+      userGroup.date_range = {
+        first_test: userGroup.test_dates[0],
+        latest_test: userGroup.test_dates[userGroup.test_dates.length - 1],
+        span_days: Math.ceil((userGroup.test_dates[userGroup.test_dates.length - 1] - userGroup.test_dates[0]) / (1000 * 60 * 60 * 24))
+      };
+    });
+    
+    return grouped;
+  }, [data.combined_analytics]);
+
+  return (
+    <div>
+      <h2 style={{ color: darkMode ? '#e0e0e0' : '#333', marginBottom: '20px' }}>
+        👥 User Journey & Visual Analytics
+      </h2>
+      
+      {Object.keys(groupedByUser).length > 0 ? (
+        <div style={{ display: 'grid', gap: '30px' }}>
+          {Object.entries(groupedByUser).map(([userId, userGroup], index) => (
+            <div key={index} style={{
+              backgroundColor: darkMode ? '#1a1a1a' : '#ffffff',
+              borderRadius: '16px',
+              padding: '30px',
+              border: `2px solid ${darkMode ? '#333' : '#e0e0e0'}`,
+              boxShadow: darkMode ? '0 8px 25px rgba(0,0,0,0.3)' : '0 8px 25px rgba(0,0,0,0.1)'
+            }}>
+              
+              {/* 🔥 USER HEADER WITH STATS */}
+              <div style={{
+                backgroundColor: darkMode ? '#2a2a2a' : '#f8f9fa',
+                borderRadius: '12px',
+                padding: '20px',
+                marginBottom: '25px',
+                border: `1px solid ${darkMode ? '#444' : '#e0e0e0'}`
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '15px' }}>
+                  <div>
+                    <h3 style={{ color: darkMode ? '#e0e0e0' : '#333', margin: '0 0 5px 0', fontSize: '20px' }}>
+                      👤 {userGroup.user_info.name || 'Anonymous User'}
+                    </h3>
+                    <p style={{ color: darkMode ? '#b0b0b0' : '#666', margin: 0, fontSize: '14px' }}>
+                      📧 {userGroup.user_info.email || 'No email provided'}
+                    </p>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ 
+                      backgroundColor: '#2196F3',
+                      color: 'white',
+                      padding: '6px 12px',
+                      borderRadius: '6px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      marginBottom: '8px'
+                    }}>
+                      {userGroup.tests.length} Tests Completed
+                    </div>
+                    <div style={{ 
+                      backgroundColor: '#4CAF50',
+                      color: 'white',
+                      padding: '4px 8px',
+                      borderRadius: '4px',
+                      fontSize: '12px',
+                      fontWeight: '500'
+                    }}>
+                      {userGroup.total_images} Images
+                    </div>
+                  </div>
+                </div>
+
+                {/* 🔥 TIMELINE & PERFORMANCE SUMMARY */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
+                  <div style={{
+                    backgroundColor: darkMode ? '#333' : '#fff',
+                    borderRadius: '8px',
+                    padding: '15px',
+                    textAlign: 'center'
+                  }}>
+                    <div style={{ fontSize: '18px', fontWeight: '600', color: '#2196F3', marginBottom: '5px' }}>
+                      {((userGroup.total_score / userGroup.total_possible) * 100).toFixed(1)}%
+                    </div>
+                    <div style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '12px' }}>
+                      Overall Accuracy
+                    </div>
+                  </div>
+                  
+                  <div style={{
+                    backgroundColor: darkMode ? '#333' : '#fff',
+                    borderRadius: '8px',
+                    padding: '15px',
+                    textAlign: 'center'
+                  }}>
+                    <div style={{ fontSize: '18px', fontWeight: '600', color: '#FF9800', marginBottom: '5px' }}>
+                      {userGroup.avg_confidence.toFixed(1)}/10
+                    </div>
+                    <div style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '12px' }}>
+                      Avg Confidence
+                    </div>
+                  </div>
+                  
+                  <div style={{
+                    backgroundColor: darkMode ? '#333' : '#fff',
+                    borderRadius: '8px',
+                    padding: '15px',
+                    textAlign: 'center'
+                  }}>
+                    <div style={{ fontSize: '18px', fontWeight: '600', color: '#9C27B0', marginBottom: '5px' }}>
+                      {userGroup.date_range.span_days}
+                    </div>
+                    <div style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '12px' }}>
+                      Days Active
+                    </div>
+                  </div>
+                  
+                  <div style={{
+                    backgroundColor: darkMode ? '#333' : '#fff',
+                    borderRadius: '8px',
+                    padding: '15px',
+                    textAlign: 'center'
+                  }}>
+                    <div style={{ fontSize: '14px', fontWeight: '600', color: '#607D8B', marginBottom: '5px' }}>
+                      {userGroup.date_range.first_test.toLocaleDateString()}
+                    </div>
+                    <div style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '12px' }}>
+                      First Test
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 🔥 CHRONOLOGICAL TEST TIMELINE */}
+              <div style={{ marginBottom: '25px' }}>
+                <h4 style={{ color: darkMode ? '#e0e0e0' : '#333', marginBottom: '15px', fontSize: '16px' }}>
+                  📅 Test Timeline (Chronological Order)
+                </h4>
+                <div style={{ position: 'relative' }}>
+                  {/* Timeline Line */}
+                  <div style={{
+                    position: 'absolute',
+                    left: '20px',
+                    top: '20px',
+                    bottom: '20px',
+                    width: '2px',
+                    backgroundColor: darkMode ? '#444' : '#ddd'
+                  }}></div>
+                  
+                  {/* Timeline Items */}
+                  <div style={{ display: 'grid', gap: '15px' }}>
+                    {userGroup.tests
+                      .sort((a, b) => new Date(a.mongodb_data.completed_at) - new Date(b.mongodb_data.completed_at))
+                      .map((test, testIndex) => (
+                        <div key={testIndex} style={{ display: 'flex', alignItems: 'flex-start', gap: '15px' }}>
+                          {/* Timeline Dot */}
+                          <div style={{
+                            width: '12px',
+                            height: '12px',
+                            borderRadius: '50%',
+                            backgroundColor: '#2196F3',
+                            marginTop: '8px',
+                            zIndex: 1,
+                            border: `3px solid ${darkMode ? '#1a1a1a' : '#ffffff'}`
+                          }}></div>
+                          
+                          {/* Test Content */}
+                          <div style={{
+                            backgroundColor: darkMode ? '#333' : '#f8f9fa',
+                            borderRadius: '8px',
+                            padding: '15px',
+                            flex: 1,
+                            border: `1px solid ${darkMode ? '#555' : '#ddd'}`
+                          }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                              <h5 style={{ color: darkMode ? '#e0e0e0' : '#333', margin: 0, fontSize: '14px' }}>
+                                🧪 {test.mongodb_data.test_type.replace('-', ' ').toUpperCase()} - {test.mongodb_data.asset_symbol}
+                              </h5>
+                              <span style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '12px' }}>
+                                {new Date(test.mongodb_data.completed_at).toLocaleString()}
+                              </span>
+                            </div>
+                            
+                            <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
+                              <span style={{
+                                backgroundColor: test.mongodb_data.score / test.mongodb_data.total_points >= 0.7 ? '#4CAF50' : '#FF9800',
+                                color: 'white',
+                                padding: '2px 8px',
+                                borderRadius: '4px',
+                                fontSize: '11px'
+                              }}>
+                                Score: {test.mongodb_data.score}/{test.mongodb_data.total_points}
+                              </span>
+                              <span style={{
+                                backgroundColor: '#607D8B',
+                                color: 'white',
+                                padding: '2px 8px',
+                                borderRadius: '4px',
+                                fontSize: '11px'
+                              }}>
+                                Confidence: {test.psychological_insights.confidence_avg.toFixed(1)}/10
+                              </span>
+                              <span style={{
+                                backgroundColor: '#9C27B0',
+                                color: 'white',
+                                padding: '2px 8px',
+                                borderRadius: '4px',
+                                fontSize: '11px'
+                              }}>
+                                {test.gcs_images.length} Images
+                              </span>
+                            </div>
+                            
+                            {/* 🔥 MINI IMAGE PREVIEW */}
+                            {test.gcs_images.length > 0 && (
+                              <div style={{ 
+                                display: 'grid', 
+                                gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))', 
+                                gap: '8px',
+                                marginTop: '10px'
+                              }}>
+                                {test.gcs_images.slice(0, 4).map((image, imgIndex) => (
+                                  <div key={imgIndex} style={{ position: 'relative' }}>
+                                    {image.signed_url ? (
+                                      <img 
+                                        src={image.signed_url}
+                                        alt={`Chart ${imgIndex + 1}`}
+                                        style={{
+                                          width: '100%',
+                                          height: '60px',
+                                          objectFit: 'cover',
+                                          borderRadius: '4px',
+                                          border: `1px solid ${darkMode ? '#666' : '#ccc'}`,
+                                          cursor: 'pointer'
+                                        }}
+                                        title={`${image.image_analytics?.image_type || 'Image'} - ${new Date(image.image_analytics?.upload_timestamp || '').toLocaleString()}`}
+                                        onError={(e) => {
+                                          e.target.style.display = 'none';
+                                        }}
+                                      />
+                                    ) : (
+                                      <div style={{
+                                        width: '100%',
+                                        height: '60px',
+                                        backgroundColor: darkMode ? '#444' : '#e0e0e0',
+                                        borderRadius: '4px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        fontSize: '10px',
+                                        color: darkMode ? '#888' : '#999'
+                                      }}>
+                                        📷
+                                      </div>
+                                    )}
+                                    
+                                    {/* Image Type Badge */}
+                                    <div style={{
+                                      position: 'absolute',
+                                      top: '2px',
+                                      left: '2px',
+                                      backgroundColor: 'rgba(0,0,0,0.7)',
+                                      color: 'white',
+                                      padding: '1px 4px',
+                                      borderRadius: '2px',
+                                      fontSize: '8px',
+                                      fontWeight: '600'
+                                    }}>
+                                      {(image.image_analytics?.image_type || 'img').toUpperCase().slice(0,3)}
+                                    </div>
+                                  </div>
+                                ))}
+                                
+                                {/* Show more indicator */}
+                                {test.gcs_images.length > 4 && (
+                                  <div style={{
+                                    width: '100%',
+                                    height: '60px',
+                                    backgroundColor: darkMode ? '#444' : '#e0e0e0',
+                                    borderRadius: '4px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: '12px',
+                                    color: darkMode ? '#ccc' : '#666',
+                                    fontWeight: '600'
+                                  }}>
+                                    +{test.gcs_images.length - 4}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* 🔥 USER INSIGHTS SUMMARY */}
+              <div style={{
+                backgroundColor: darkMode ? '#2a2a2a' : '#f0f7ff',
+                borderRadius: '8px',
+                padding: '15px',
+                border: `1px solid ${darkMode ? '#444' : '#b3d9ff'}`
+              }}>
+                <h5 style={{ color: darkMode ? '#e0e0e0' : '#333', margin: '0 0 10px 0', fontSize: '14px' }}>
+                  💡 User Journey Insights
+                </h5>
+                <div style={{ fontSize: '13px', color: darkMode ? '#b0b0b0' : '#666' }}>
+                  {userGroup.tests.length === 1 
+                    ? `New user with their first test completed.`
+                    : `Engaged user with ${userGroup.tests.length} tests over ${userGroup.date_range.span_days} days. `
+                  }
+                  {userGroup.avg_confidence >= 7 
+                    ? 'Shows high confidence in predictions.' 
+                    : userGroup.avg_confidence >= 5 
+                    ? 'Moderate confidence levels.' 
+                    : 'Lower confidence, may benefit from additional guidance.'
+                  }
+                  {(userGroup.total_score / userGroup.total_possible) >= 0.7 
+                    ? ' Strong performance overall.' 
+                    : ' Room for improvement in accuracy.'
+                  }
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div style={{
+          textAlign: 'center',
+          padding: '40px',
+          color: darkMode ? '#b0b0b0' : '#666'
+        }}>
+          <h3>👥 No User Data Available</h3>
+          <p>Enable "Include Images" filter and ensure users have uploaded chart images to see their individual journeys.</p>
         </div>
       )}
+    </div>
+  );
+};
 
-      {/* Upload Patterns */}
-      {data.visual_insights?.upload_patterns?.peak_activity_hours && (
-        <div>
-          <h3 style={{ color: darkMode ? '#e0e0e0' : '#333', marginBottom: '15px' }}>
-            ⏰ Peak Activity Hours
-          </h3>
-          <div style={{
-            backgroundColor: darkMode ? '#2a2a2a' : '#f8f9fa',
-            borderRadius: '8px',
-            padding: '20px',
-            border: `1px solid ${darkMode ? '#444' : '#e0e0e0'}`
-          }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: '5px', marginBottom: '15px' }}>
-              {data.visual_insights.upload_patterns.peak_activity_hours.slice(0, 12).map((hour, index) => (
-                <div key={index} style={{ textAlign: 'center' }}>
+// 🔥 PSYCHOLOGY TAB - Deep Behavioral Analytics
+const PsychologyTab = ({ data, darkMode }) => {
+  const totalPredictions = data.visual_insights?.user_behavior?.confidence_accuracy_correlation?.length || 0;
+  const avgConfidence = totalPredictions > 0 ? 
+    data.visual_insights.user_behavior.confidence_accuracy_correlation.reduce((sum, item) => sum + item.confidence, 0) / totalPredictions : 0;
+  const overallAccuracy = totalPredictions > 0 ? 
+    (data.visual_insights.user_behavior.confidence_accuracy_correlation.filter(item => item.correct).length / totalPredictions) * 100 : 0;
+  
+  return (
+    <div>
+      <h2 style={{ color: darkMode ? '#e0e0e0' : '#333', marginBottom: '20px' }}>
+        🧠 Trading Psychology Deep Dive
+      </h2>
+      
+      {/* Psychology Overview */}
+      <div style={{
+        backgroundColor: darkMode ? '#1a2332' : '#f0f7ff',
+        borderRadius: '12px',
+        padding: '25px',
+        marginBottom: '30px',
+        border: `2px solid ${darkMode ? '#2196F3' : '#b3d9ff'}`
+      }}>
+        <h3 style={{ color: darkMode ? '#e0e0e0' : '#333', marginBottom: '20px', fontSize: '18px' }}>
+          🎯 Behavioral Performance Summary
+        </h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '32px', fontWeight: '700', color: '#2196F3', marginBottom: '8px' }}>
+              {avgConfidence.toFixed(1)}/10
+            </div>
+            <div style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '14px' }}>
+              Average User Confidence
+            </div>
+            <div style={{ color: darkMode ? '#888' : '#999', fontSize: '12px', marginTop: '4px' }}>
+              {avgConfidence >= 7 ? 'High confidence traders' : avgConfidence >= 5 ? 'Moderate confidence' : 'Conservative traders'}
+            </div>
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '32px', fontWeight: '700', color: '#4CAF50', marginBottom: '8px' }}>
+              {overallAccuracy.toFixed(1)}%
+            </div>
+            <div style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '14px' }}>
+              Overall Accuracy Rate
+            </div>
+            <div style={{ color: darkMode ? '#888' : '#999', fontSize: '12px', marginTop: '4px' }}>
+              Across {totalPredictions} total predictions
+            </div>
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '32px', fontWeight: '700', color: '#FF9800', marginBottom: '8px' }}>
+              {Math.abs(avgConfidence * 10 - overallAccuracy).toFixed(1)}
+            </div>
+            <div style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '14px' }}>
+              Confidence-Reality Gap
+            </div>
+            <div style={{ color: darkMode ? '#888' : '#999', fontSize: '12px', marginTop: '4px' }}>
+              {Math.abs(avgConfidence * 10 - overallAccuracy) < 10 ? 'Well calibrated' : 'Overconfident traders'}
+            </div>
+          </div>
+        </div>
+      </div>
+    
+      <div style={{ display: 'grid', gap: '30px' }}>
+        
+        {/* Confidence vs Accuracy - Enhanced */}
+        {data.visual_insights?.user_behavior?.confidence_accuracy_correlation && (
+          <div>
+            <h3 style={{ color: darkMode ? '#e0e0e0' : '#333', marginBottom: '15px' }}>
+              📊 Confidence Calibration Analysis
+            </h3>
+            <div style={{
+              backgroundColor: darkMode ? '#2a2a2a' : '#f8f9fa',
+              borderRadius: '12px',
+              padding: '25px',
+              border: `1px solid ${darkMode ? '#444' : '#e0e0e0'}`
+            }}>
+              <p style={{ color: darkMode ? '#b0b0b0' : '#666', marginBottom: '20px', fontSize: '16px' }}>
+                Analyzing how trader confidence correlates with actual performance across {totalPredictions} predictions:
+              </p>
+              
+              {/* Enhanced visualization */}
+              <div style={{ marginBottom: '25px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, 1fr)', gap: '8px', marginBottom: '15px' }}>
+                  {[1,2,3,4,5,6,7,8,9,10].map(confidence => {
+                    const predictions = data.visual_insights.user_behavior.confidence_accuracy_correlation.filter(
+                      item => item.confidence === confidence
+                    );
+                    const accuracy = predictions.length > 0 
+                      ? (predictions.filter(p => p.correct).length / predictions.length) * 100 
+                      : 0;
+                    const height = Math.max(accuracy * 1.5, 15);
+                    const isOverconfident = accuracy < confidence * 10;
+                    
+                    return (
+                      <div key={confidence} style={{ textAlign: 'center' }}>
+                        <div style={{
+                          height: `${height}px`,
+                          backgroundColor: isOverconfident ? '#f44336' : accuracy > 70 ? '#4CAF50' : '#FF9800',
+                          borderRadius: '4px',
+                          marginBottom: '8px',
+                          position: 'relative',
+                          display: 'flex',
+                          alignItems: 'flex-end',
+                          justifyContent: 'center'
+                        }}>
+                          {predictions.length > 0 && (
+                            <span style={{ 
+                              color: 'white', 
+                              fontSize: '10px', 
+                              fontWeight: '600',
+                              marginBottom: '2px'
+                            }}>
+                              {predictions.length}
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ fontSize: '12px', color: darkMode ? '#b0b0b0' : '#666', fontWeight: '600' }}>
+                          {confidence}
+                        </div>
+                        <div style={{ fontSize: '10px', color: darkMode ? '#888' : '#999' }}>
+                          {accuracy.toFixed(0)}%
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', color: darkMode ? '#b0b0b0' : '#666' }}>
+                  <span>Confidence Level (1-10)</span>
+                  <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <div style={{ width: '12px', height: '12px', backgroundColor: '#4CAF50', borderRadius: '2px' }}></div>
+                      <span>Well Calibrated</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <div style={{ width: '12px', height: '12px', backgroundColor: '#FF9800', borderRadius: '2px' }}></div>
+                      <span>Moderate</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <div style={{ width: '12px', height: '12px', backgroundColor: '#f44336', borderRadius: '2px' }}></div>
+                      <span>Overconfident</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Key Insights */}
+              <div style={{
+                backgroundColor: darkMode ? '#333' : '#ffffff',
+                borderRadius: '8px',
+                padding: '15px',
+                border: `1px solid ${darkMode ? '#555' : '#ddd'}`
+              }}>
+                <h4 style={{ color: darkMode ? '#e0e0e0' : '#333', margin: '0 0 10px 0', fontSize: '14px' }}>
+                  🔍 Psychological Insights
+                </h4>
+                <ul style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '13px', margin: 0, paddingLeft: '20px' }}>
+                  <li style={{ marginBottom: '5px' }}>
+                    Traders show {avgConfidence >= 7 ? 'high' : avgConfidence >= 5 ? 'moderate' : 'low'} confidence levels on average
+                  </li>
+                  <li style={{ marginBottom: '5px' }}>
+                    {overallAccuracy >= 70 ? 'Strong' : overallAccuracy >= 50 ? 'Moderate' : 'Weak'} predictive accuracy overall
+                  </li>
+                  <li style={{ marginBottom: '5px' }}>
+                    {Math.abs(avgConfidence * 10 - overallAccuracy) < 10 ? 
+                      'Well-calibrated confidence (realistic self-assessment)' : 
+                      'Overconfidence bias detected (confidence exceeds actual performance)'
+                    }
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* High Confidence Scenarios - Enhanced */}
+        {data.visual_insights?.test_patterns?.highest_confidence_scenarios && (
+          <div>
+            <h3 style={{ color: darkMode ? '#e0e0e0' : '#333', marginBottom: '15px' }}>
+              🎯 Peak Confidence Trading Scenarios
+            </h3>
+            <div style={{ display: 'grid', gap: '12px' }}>
+              {data.visual_insights.test_patterns.highest_confidence_scenarios.slice(0, 6).map((scenario, index) => (
+                <div key={index} style={{
+                  backgroundColor: darkMode ? '#2a2a2a' : '#f8f9fa',
+                  borderRadius: '12px',
+                  padding: '20px',
+                  border: `1px solid ${darkMode ? '#444' : '#e0e0e0'}`,
+                  borderLeft: `4px solid ${scenario.correct ? '#4CAF50' : '#f44336'}`
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+                    <div>
+                      <span style={{ color: darkMode ? '#e0e0e0' : '#333', fontWeight: '600', fontSize: '16px' }}>
+                        📈 {scenario.asset}
+                      </span>
+                      <div style={{ color: darkMode ? '#888' : '#999', fontSize: '12px', marginTop: '4px' }}>
+                        Trading Psychology Case Study #{index + 1}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <span style={{
+                        backgroundColor: '#2196F3',
+                        color: 'white',
+                        padding: '4px 10px',
+                        borderRadius: '6px',
+                        fontSize: '12px',
+                        fontWeight: '600'
+                      }}>
+                        {scenario.confidence}/10 Confidence
+                      </span>
+                      <span style={{
+                        backgroundColor: scenario.correct ? '#4CAF50' : '#f44336',
+                        color: 'white',
+                        padding: '4px 10px',
+                        borderRadius: '6px',
+                        fontSize: '12px',
+                        fontWeight: '600'
+                      }}>
+                        {scenario.correct ? '✅ Accurate' : '❌ Incorrect'}
+                      </span>
+                    </div>
+                  </div>
+                  <p style={{ color: darkMode ? '#b0b0b0' : '#666', margin: 0, fontSize: '14px', lineHeight: '1.5' }}>
+                    {scenario.reasoning}
+                  </p>
                   <div style={{
-                    height: `${Math.max((hour.uploads / Math.max(...data.visual_insights.upload_patterns.peak_activity_hours.map(h => h.uploads))) * 60, 5)}px`,
-                    backgroundColor: '#2196F3',
-                    borderRadius: '2px',
-                    marginBottom: '5px'
-                  }}></div>
-                  <div style={{ fontSize: '10px', color: darkMode ? '#b0b0b0' : '#666' }}>
-                    {hour.hour}h
+                    marginTop: '12px',
+                    padding: '8px 12px',
+                    backgroundColor: scenario.correct ? 
+                      (darkMode ? 'rgba(76, 175, 80, 0.1)' : '#e8f5e9') : 
+                      (darkMode ? 'rgba(244, 67, 54, 0.1)' : '#ffebee'),
+                    borderRadius: '6px',
+                    fontSize: '12px',
+                    color: scenario.correct ? '#4CAF50' : '#f44336'
+                  }}>
+                    {scenario.correct ? 
+                      '💡 High confidence + correct prediction = optimal trading psychology' :
+                      '⚠️ High confidence + wrong prediction = overconfidence bias'
+                    }
                   </div>
                 </div>
               ))}
             </div>
-            <p style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '12px', margin: 0 }}>
-              Upload activity by hour of day
-            </p>
+          </div>
+        )}
+
+        {/* Reasoning Quality - Enhanced */}
+        {data.visual_insights?.user_behavior?.reasoning_complexity && (
+          <div>
+            <h3 style={{ color: darkMode ? '#e0e0e0' : '#333', marginBottom: '15px' }}>
+              📝 Decision-Making Quality Analysis
+            </h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
+              {Object.entries(data.visual_insights.user_behavior.reasoning_complexity).map(([level, count]) => {
+                const totalReasons = Object.values(data.visual_insights.user_behavior.reasoning_complexity).reduce((sum, c) => sum + c, 0);
+                const percentage = totalReasons > 0 ? (count / totalReasons * 100) : 0;
+                const valuePerReason = level === 'detailed' ? 8 : level === 'moderate' ? 5 : 2;
+                
+                return (
+                  <div key={level} style={{
+                    backgroundColor: darkMode ? '#2a2a2a' : '#ffffff',
+                    borderRadius: '12px',
+                    padding: '25px',
+                    textAlign: 'center',
+                    border: `1px solid ${darkMode ? '#444' : '#e0e0e0'}`,
+                    boxShadow: darkMode ? '0 2px 8px rgba(0,0,0,0.2)' : '0 2px 8px rgba(0,0,0,0.1)'
+                  }}>
+                    <div style={{ fontSize: '36px', fontWeight: '700', color: '#2196F3', marginBottom: '10px' }}>
+                      {count}
+                    </div>
+                    <div style={{ color: darkMode ? '#e0e0e0' : '#333', fontWeight: '600', marginBottom: '8px', fontSize: '16px' }}>
+                      {level.charAt(0).toUpperCase() + level.slice(1)} Reasoning
+                    </div>
+                    <div style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '13px', marginBottom: '12px' }}>
+                      {level === 'detailed' ? '200+ characters' : level === 'moderate' ? '100-200 characters' : 'Under 100 characters'}
+                    </div>
+                    <div style={{ color: darkMode ? '#888' : '#999', fontSize: '12px', marginBottom: '8px' }}>
+                      {percentage.toFixed(1)}% of responses
+                    </div>
+                    <div style={{ 
+                      backgroundColor: level === 'detailed' ? '#4CAF50' : level === 'moderate' ? '#FF9800' : '#f44336',
+                      color: 'white',
+                      padding: '4px 8px',
+                      borderRadius: '4px',
+                      fontSize: '12px',
+                      fontWeight: '600'
+                    }}>
+                      ${(count * valuePerReason).toLocaleString()} research value
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div style={{
+              marginTop: '20px',
+              padding: '15px',
+              backgroundColor: darkMode ? '#333' : '#f5f5f5',
+              borderRadius: '8px',
+              fontSize: '14px',
+              color: darkMode ? '#b0b0b0' : '#666'
+            }}>
+              💡 <strong>Research Value:</strong> Detailed reasoning provides deeper insights into trader psychology and decision-making patterns, making it more valuable for behavioral finance research.
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// 🔥 INSIGHTS TAB - Advanced Market Intelligence
+const InsightsTab = ({ data, darkMode }) => {
+  const totalTests = data.business_metrics?.overview?.total_tests_completed || 0;
+  const totalImages = data.business_metrics?.overview?.total_images_uploaded || 0;
+  const avgScore = data.business_metrics?.overview?.average_score || 0;
+  
+  return (
+    <div>
+      <h2 style={{ color: darkMode ? '#e0e0e0' : '#333', marginBottom: '20px' }}>
+        💡 Advanced Trading Intelligence
+      </h2>
+      
+      {/* Market Intelligence Summary */}
+      <div style={{
+        backgroundColor: darkMode ? '#1a2332' : '#f0f7ff',
+        borderRadius: '12px',
+        padding: '25px',
+        marginBottom: '30px',
+        border: `2px solid ${darkMode ? '#2196F3' : '#b3d9ff'}`
+      }}>
+        <h3 style={{ color: darkMode ? '#e0e0e0' : '#333', marginBottom: '20px', fontSize: '18px' }}>
+          🎯 Market Psychology Intelligence Summary
+        </h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' }}>
+          <div style={{
+            backgroundColor: darkMode ? '#2a2a2a' : '#ffffff',
+            borderRadius: '8px',
+            padding: '20px',
+            border: `1px solid ${darkMode ? '#444' : '#ddd'}`
+          }}>
+            <h4 style={{ color: darkMode ? '#e0e0e0' : '#333', margin: '0 0 15px 0', fontSize: '14px' }}>
+              🧠 Cognitive Bias Detection
+            </h4>
+            <ul style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '13px', margin: 0, paddingLeft: '20px' }}>
+              <li style={{ marginBottom: '8px' }}>
+                {avgScore >= 70 ? 'Strong analytical skills detected' : avgScore >= 50 ? 'Moderate bias present' : 'Significant cognitive biases identified'}
+              </li>
+              <li style={{ marginBottom: '8px' }}>
+                Overconfidence bias: {data.visual_insights?.user_behavior?.confidence_accuracy_correlation ? 'Analyzed' : 'Needs more data'}
+              </li>
+              <li style={{ marginBottom: '8px' }}>
+                Pattern recognition: {totalTests >= 50 ? 'Reliable sample' : 'Expanding dataset'}
+              </li>
+            </ul>
+          </div>
+          <div style={{
+            backgroundColor: darkMode ? '#2a2a2a' : '#ffffff',
+            borderRadius: '8px',
+            padding: '20px',
+            border: `1px solid ${darkMode ? '#444' : '#ddd'}`
+          }}>
+            <h4 style={{ color: darkMode ? '#e0e0e0' : '#333', margin: '0 0 15px 0', fontSize: '14px' }}>
+              📊 Research Applications
+            </h4>
+            <ul style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '13px', margin: 0, paddingLeft: '20px' }}>
+              <li style={{ marginBottom: '8px' }}>
+                Behavioral finance research: Premium dataset
+              </li>
+              <li style={{ marginBottom: '8px' }}>
+                Trading algorithm training: {totalImages > 0 ? 'Visual + psychological data' : 'Psychological data only'}
+              </li>
+              <li style={{ marginBottom: '8px' }}>
+                Academic publications: {totalTests >= 100 ? 'Publication-ready' : 'Building sample size'}
+              </li>
+            </ul>
           </div>
         </div>
-      )}
+      </div>
+    
+      <div style={{ display: 'grid', gap: '30px' }}>
+        
+        {/* Asset Difficulty Analysis - Enhanced */}
+        {data.visual_insights?.test_patterns?.most_challenging_assets && (
+          <div>
+            <h3 style={{ color: darkMode ? '#e0e0e0' : '#333', marginBottom: '15px' }}>
+              📉 Market Complexity Analysis
+            </h3>
+            <div style={{ display: 'grid', gap: '15px' }}>
+              {data.visual_insights.test_patterns.most_challenging_assets.map((asset, index) => {
+                const difficultyLevel = asset.avg_score < 0.4 ? 'Extremely Challenging' : 
+                                      asset.avg_score < 0.6 ? 'Challenging' : 
+                                      asset.avg_score < 0.8 ? 'Moderate' : 'Accessible';
+                const researchValue = asset.test_count * (1 - asset.avg_score) * 20; // Higher value for more challenging assets
+                
+                return (
+                  <div key={index} style={{
+                    backgroundColor: darkMode ? '#2a2a2a' : '#f8f9fa',
+                    borderRadius: '12px',
+                    padding: '20px',
+                    border: `1px solid ${darkMode ? '#444' : '#e0e0e0'}`,
+                    borderLeft: `4px solid ${asset.avg_score < 0.5 ? '#f44336' : asset.avg_score < 0.7 ? '#ff9800' : '#4CAF50'}`
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '15px' }}>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                          <span style={{ color: darkMode ? '#e0e0e0' : '#333', fontWeight: '600', fontSize: '18px' }}>
+                            📈 {asset.asset}
+                          </span>
+                          <span style={{
+                            backgroundColor: asset.avg_score < 0.5 ? '#f44336' : asset.avg_score < 0.7 ? '#ff9800' : '#4CAF50',
+                            color: 'white',
+                            padding: '4px 10px',
+                            borderRadius: '6px',
+                            fontSize: '12px',
+                            fontWeight: '600'
+                          }}>
+                            {difficultyLevel}
+                          </span>
+                        </div>
+                        <div style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '14px' }}>
+                          {asset.test_count} traders analyzed • {(asset.avg_score * 100).toFixed(1)}% success rate
+                        </div>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ color: '#2196F3', fontWeight: '600', fontSize: '16px' }}>
+                          ${researchValue.toFixed(0)}
+                        </div>
+                        <div style={{ color: darkMode ? '#888' : '#999', fontSize: '12px' }}>
+                          Research Value
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div style={{
+                      backgroundColor: darkMode ? '#333' : '#ffffff',
+                      borderRadius: '6px',
+                      padding: '12px',
+                      fontSize: '13px',
+                      color: darkMode ? '#b0b0b0' : '#666'
+                    }}>
+                      💡 <strong>Intelligence:</strong> {asset.avg_score < 0.5 ? 
+                        'This asset reveals significant market psychology challenges, making it valuable for studying cognitive biases and behavioral patterns.' :
+                        asset.avg_score < 0.7 ?
+                        'Moderate difficulty suggests this asset tests intermediate trading psychology skills.' :
+                        'High success rates indicate this asset pattern is well-understood by traders.'
+                      }
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Behavioral Patterns - Enhanced */}
+        {data.visual_insights?.test_patterns?.common_mistake_patterns && (
+          <div>
+            <h3 style={{ color: darkMode ? '#e0e0e0' : '#333', marginBottom: '15px' }}>
+              🧠 Cognitive Bias Patterns
+            </h3>
+            <div style={{ display: 'grid', gap: '15px' }}>
+              {data.visual_insights.test_patterns.common_mistake_patterns.map((mistake, index) => {
+                const biasType = mistake.mistake.includes('bull') ? 'Bullish Bias' :
+                               mistake.mistake.includes('bear') ? 'Bearish Bias' :
+                               mistake.mistake.includes('up') ? 'Optimism Bias' :
+                               mistake.mistake.includes('down') ? 'Pessimism Bias' : 'Pattern Bias';
+                const severity = mistake.count > 10 ? 'High' : mistake.count > 5 ? 'Moderate' : 'Low';
+                
+                return (
+                  <div key={index} style={{
+                    backgroundColor: darkMode ? '#2a2a2a' : '#f8f9fa',
+                    borderRadius: '12px',
+                    padding: '20px',
+                    border: `1px solid ${darkMode ? '#444' : '#e0e0e0'}`,
+                    borderLeft: `4px solid ${mistake.count > 10 ? '#f44336' : mistake.count > 5 ? '#ff9800' : '#4CAF50'}`
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '15px' }}>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                          <span style={{ color: darkMode ? '#e0e0e0' : '#333', fontWeight: '600', fontSize: '16px' }}>
+                            {biasType}
+                          </span>
+                          <span style={{
+                            backgroundColor: mistake.count > 10 ? '#f44336' : mistake.count > 5 ? '#ff9800' : '#4CAF50',
+                            color: 'white',
+                            padding: '4px 8px',
+                            borderRadius: '4px',
+                            fontSize: '12px',
+                            fontWeight: '600'
+                          }}>
+                            {severity} Frequency
+                          </span>
+                        </div>
+                        <div style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '14px' }}>
+                          Pattern: {mistake.mistake.replace('_vs_', ' → ').replace(/_/g, ' ')}
+                        </div>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ color: '#f44336', fontWeight: '600', fontSize: '18px' }}>
+                          {mistake.count}
+                        </div>
+                        <div style={{ color: darkMode ? '#888' : '#999', fontSize: '12px' }}>
+                          Occurrences
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div style={{
+                      backgroundColor: darkMode ? '#333' : '#ffffff',
+                      borderRadius: '6px',
+                      padding: '12px',
+                      fontSize: '13px',
+                      color: darkMode ? '#b0b0b0' : '#666'
+                    }}>
+                      💡 <strong>Research Value:</strong> This bias pattern indicates {mistake.count > 10 ? 
+                        'systematic cognitive errors that could be valuable for behavioral finance research and bias correction algorithms.' :
+                        mistake.count > 5 ?
+                        'moderate bias tendencies worth monitoring for trading psychology insights.' :
+                        'occasional bias occurrences within normal trading psychology variance.'
+                      }
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Activity Intelligence - Enhanced */}
+        {data.visual_insights?.upload_patterns?.peak_activity_hours && (
+          <div>
+            <h3 style={{ color: darkMode ? '#e0e0e0' : '#333', marginBottom: '15px' }}>
+              ⏰ Behavioral Timing Intelligence
+            </h3>
+            <div style={{
+              backgroundColor: darkMode ? '#2a2a2a' : '#f8f9fa',
+              borderRadius: '12px',
+              padding: '25px',
+              border: `1px solid ${darkMode ? '#444' : '#e0e0e0'}`
+            }}>
+              <div style={{ marginBottom: '20px' }}>
+                <h4 style={{ color: darkMode ? '#e0e0e0' : '#333', margin: '0 0 15px 0', fontSize: '16px' }}>
+                  Trading Activity Patterns
+                </h4>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(24, 1fr)', gap: '4px', marginBottom: '15px' }}>
+                  {Array.from({length: 24}, (_, hour) => {
+                    const hourData = data.visual_insights.upload_patterns.peak_activity_hours.find(h => h.hour === hour);
+                    const uploads = hourData?.uploads || 0;
+                    const maxUploads = Math.max(...data.visual_insights.upload_patterns.peak_activity_hours.map(h => h.uploads));
+                    const height = maxUploads > 0 ? Math.max((uploads / maxUploads) * 80, 5) : 5;
+                    const isMarketHours = hour >= 9 && hour <= 16;
+                    const isPeakActivity = uploads === maxUploads && uploads > 0;
+                    
+                    return (
+                      <div key={hour} style={{ textAlign: 'center' }}>
+                        <div style={{
+                          height: `${height}px`,
+                          backgroundColor: isPeakActivity ? '#f44336' : isMarketHours ? '#2196F3' : '#999',
+                          borderRadius: '2px',
+                          marginBottom: '8px',
+                          position: 'relative'
+                        }} title={`${hour}:00 - ${uploads} activities`}>
+                        </div>
+                        <div style={{ fontSize: '9px', color: darkMode ? '#b0b0b0' : '#666', transform: 'rotate(-45deg)', transformOrigin: 'center' }}>
+                          {hour.toString().padStart(2, '0')}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', color: darkMode ? '#b0b0b0' : '#666', marginBottom: '20px' }}>
+                  <span>Trading Activity by Hour (24h)</span>
+                  <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <div style={{ width: '12px', height: '12px', backgroundColor: '#2196F3', borderRadius: '2px' }}></div>
+                      <span>Market Hours</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <div style={{ width: '12px', height: '12px', backgroundColor: '#f44336', borderRadius: '2px' }}></div>
+                      <span>Peak Activity</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Insights */}
+              <div style={{
+                backgroundColor: darkMode ? '#333' : '#ffffff',
+                borderRadius: '8px',
+                padding: '15px',
+                border: `1px solid ${darkMode ? '#555' : '#ddd'}`
+              }}>
+                <h4 style={{ color: darkMode ? '#e0e0e0' : '#333', margin: '0 0 10px 0', fontSize: '14px' }}>
+                  🔍 Behavioral Intelligence
+                </h4>
+                <ul style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '13px', margin: 0, paddingLeft: '20px' }}>
+                  <li style={{ marginBottom: '5px' }}>
+                    Peak trading psychology activity occurs during {data.visual_insights.upload_patterns.peak_activity_hours[0]?.hour || 'unknown'} hour
+                  </li>
+                  <li style={{ marginBottom: '5px' }}>
+                    Activity patterns suggest {'market hours correlation' || 'after-hours analysis preference'}
+                  </li>
+                  <li style={{ marginBottom: '5px' }}>
+                    Behavioral timing data valuable for understanding trader engagement cycles
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 export default VisualAnalyticsDashboard;

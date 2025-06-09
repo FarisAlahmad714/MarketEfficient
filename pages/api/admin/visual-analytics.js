@@ -173,7 +173,23 @@ function generateBusinessMetrics(testResults, gcsData) {
       premium_data_points: testResults.length + (gcsData?.totalFiles || 0),
       psychological_insights_count: countPsychologicalInsights(testResults),
       visual_data_value: gcsData?.totalFiles || 0,
-      estimated_research_value: (testResults.length * 15) + ((gcsData?.totalFiles || 0) * 25) // $ value
+      
+      // ENHANCED PRICING MODEL - Based on Data Quality & Research Value
+      estimated_research_value: calculateResearchValue(testResults, gcsData),
+      pricing_breakdown: {
+        base_test_value: testResults.length * 12, // $12 per psychological test (industry baseline)
+        detailed_reasoning_bonus: countDetailedReasoning(testResults) * 8, // $8 bonus for detailed analysis
+        confidence_data_value: countConfidenceData(testResults) * 5, // $5 for confidence calibration data
+        visual_chart_value: (gcsData?.totalFiles || 0) * 18, // $18 per chart image with metadata
+        temporal_data_bonus: (gcsData?.totalFiles || 0) * 7, // $7 for temporal/behavioral metadata
+        premium_multiplier: calculatePremiumMultiplier(testResults, gcsData)
+      },
+      market_comparisons: {
+        academic_research_rate: '$20-40 per quality data point',
+        fintech_training_data: '$15-30 per labeled example', 
+        behavioral_finance_premium: '2-3x standard pricing',
+        our_competitive_advantage: 'Unique psychology + visual data combination'
+      }
     }
   };
 
@@ -252,20 +268,49 @@ function analyzeReasoningQuality(testDetails) {
 
 function calculateDataRichnessScore(testResults, gcsData) {
   let score = 0;
-  score += testResults.length * 10; // 10 points per test
-  score += (gcsData?.totalFiles || 0) * 15; // 15 points per image
   
-  // Bonus for detailed data
+  // Base scoring
+  score += testResults.length * 12; // 12 points per test (increased)
+  score += (gcsData?.totalFiles || 0) * 18; // 18 points per image (increased)
+  
+  // Quality bonuses - more sophisticated scoring
   testResults.forEach(test => {
     if (test.details?.testDetails) {
-      score += test.details.testDetails.length * 2; // 2 points per question
+      score += test.details.testDetails.length * 3; // 3 points per question
       test.details.testDetails.forEach(detail => {
-        if (detail.reasoning && detail.reasoning.length > 100) score += 5;
-        if (detail.confidenceLevel) score += 3;
-        if (detail.timeSpent) score += 2;
+        // Detailed reasoning bonus (tiered)
+        if (detail.reasoning) {
+          if (detail.reasoning.length > 200) score += 8; // Premium detailed reasoning
+          else if (detail.reasoning.length > 100) score += 5; // Good reasoning
+          else if (detail.reasoning.length > 50) score += 2; // Basic reasoning
+        }
+        
+        // Confidence data bonus (tiered)
+        if (detail.confidenceLevel) {
+          score += 4; // Base confidence data
+          if (detail.confidenceLevel >= 8 || detail.confidenceLevel <= 3) {
+            score += 2; // Extreme confidence levels are more valuable
+          }
+        }
+        
+        // Time spent data
+        if (detail.timeSpent && detail.timeSpent > 10) score += 3; // Thoughtful responses
+        
+        // Correctness tracking
+        if (detail.isCorrect !== undefined) score += 2;
       });
     }
   });
+  
+  // Combined data synergy bonus
+  if (testResults.length > 0 && gcsData?.totalFiles > 0) {
+    const synergyBonus = Math.min(testResults.length, gcsData.totalFiles) * 5;
+    score += synergyBonus;
+  }
+  
+  // Scale bonuses
+  if (score > 800) score += 50; // Premium dataset bonus
+  if (score > 500) score += 25; // Substantial dataset bonus
   
   return Math.min(score, 1000); // Cap at 1000
 }
@@ -290,6 +335,71 @@ function countPsychologicalInsights(testResults) {
       detail.reasoning || detail.confidenceLevel || detail.timeSpent
     ).length;
   }, 0);
+}
+
+// ENHANCED PRICING CALCULATION FUNCTIONS
+function calculateResearchValue(testResults, gcsData) {
+  let totalValue = 0;
+  
+  // Base psychological test value
+  totalValue += testResults.length * 12;
+  
+  // Quality bonuses
+  totalValue += countDetailedReasoning(testResults) * 8;
+  totalValue += countConfidenceData(testResults) * 5;
+  
+  // Visual data value
+  totalValue += (gcsData?.totalFiles || 0) * 18;
+  totalValue += (gcsData?.totalFiles || 0) * 7; // temporal metadata bonus
+  
+  // Premium multiplier for combined psychology + visual data
+  const multiplier = calculatePremiumMultiplier(testResults, gcsData);
+  totalValue *= multiplier;
+  
+  return Math.round(totalValue);
+}
+
+function countDetailedReasoning(testResults) {
+  return testResults.reduce((count, test) => {
+    if (!test.details?.testDetails) return count;
+    return count + test.details.testDetails.filter(detail => 
+      detail.reasoning && detail.reasoning.length > 150 // Detailed reasoning threshold
+    ).length;
+  }, 0);
+}
+
+function countConfidenceData(testResults) {
+  return testResults.reduce((count, test) => {
+    if (!test.details?.testDetails) return count;
+    return count + test.details.testDetails.filter(detail => 
+      detail.confidenceLevel && detail.confidenceLevel > 0
+    ).length;
+  }, 0);
+}
+
+function calculatePremiumMultiplier(testResults, gcsData) {
+  let multiplier = 1.0;
+  
+  // Combined data bonus (psychology + visual)
+  if (testResults.length > 0 && gcsData?.totalFiles > 0) {
+    multiplier += 0.3; // 30% bonus for combined dataset
+  }
+  
+  // High-quality data bonus
+  const avgDetailedReasoning = countDetailedReasoning(testResults) / Math.max(testResults.length, 1);
+  if (avgDetailedReasoning > 0.7) {
+    multiplier += 0.2; // 20% bonus for high-quality reasoning
+  }
+  
+  // Scale bonus for large datasets
+  const totalDataPoints = testResults.length + (gcsData?.totalFiles || 0);
+  if (totalDataPoints > 500) {
+    multiplier += 0.15; // 15% bonus for substantial dataset
+  } else if (totalDataPoints > 100) {
+    multiplier += 0.1; // 10% bonus for moderate dataset
+  }
+  
+  return Math.min(multiplier, 2.0); // Cap at 2x multiplier
 }
 
 function findMostChallengingAssets(testResults) {
