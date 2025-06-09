@@ -54,6 +54,7 @@ const AdminPanel = () => {
   // Define tools for the admin panel
   const tools = [
     { name: 'User Management', description: 'View, edit, and manage users', link: '/admin/users', icon: '👥' },
+    { name: 'Visual Analytics', description: 'Trading psychology insights with chart data', link: '/admin/visual-analytics', icon: '🧠' },
     { name: 'Financial Analytics', description: 'Monitor revenue and subscriptions', link: '/admin/financial-analytics', icon: '💰' },
     { name: 'Promo Codes', description: 'Create and manage promo codes', link: '/admin/promo-codes', icon: '🎫' },
     { name: 'Feedback Management', description: 'View and respond to user feedback', link: '/admin/feedback', icon: '💬' },

@@ -33,13 +33,16 @@ async function uploadChartImageHandler(req, res) {
         });
       }
       
-      // Upload to GCS
-      const { gcsPath } = await uploadChartImageToGCS(
+      // Upload to GCS with analytics format
+      const { gcsPath, metadataPath, analyticsData } = await uploadChartImageToGCS(
         imageBlob, 
         userId, 
         sessionId, 
         questionId, 
-        imageType || 'setup'
+        imageType || 'setup',
+        'bias-test', // testType for bias tests
+        req.user.name, // userName from authenticated user
+        null // testResultId - we don't have it in this context yet
       );
       
       // Generate signed URL for immediate access
