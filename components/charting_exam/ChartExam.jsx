@@ -12,6 +12,8 @@ import { ThemeContext } from '../../contexts/ThemeContext';
 import CryptoLoader from '../CryptoLoader';
 import logger from '../../lib/logger';
 import storage from '../../lib/storage';
+import AppModal from '../common/AppModal';
+import { useModal } from '../../lib/useModal';
 // Styled components with $-prefixed props to prevent DOM forwarding
 const ExamContainer = styled.div`
   max-width: 1200px;
@@ -118,6 +120,7 @@ const ChartExam = ({ examType }) => {
   const [showFocusWarning, setShowFocusWarning] = useState(false);
   const [focusWarningTime, setFocusWarningTime] = useState(60);
   const chartRef = useRef(null);
+  const { isOpen: modalOpen, modalProps, hideModal, showAlert, showError } = useModal();
   // Start a new chart session
   const startChartSession = async () => {
     try {
@@ -152,16 +155,22 @@ const ChartExam = ({ examType }) => {
   // Handle time expiry
   const handleTimeExpired = async () => {
     setTimeRemaining(0);
-    alert('Time expired! Moving to next chart...');
-    await continueExam();
+    showAlert('Time expired! Moving to next chart...', 'Time Expired', 'warning');
+    setTimeout(async () => {
+      hideModal();
+      await continueExam();
+    }, 2000);
   };
 
   // Handle focus warning timeout (reset exam)
   const handleFocusTimeout = async () => {
     setShowFocusWarning(false);
     setIsTimerPaused(false);
-    alert('You were away too long! Exam progress has been reset. Moving to next chart...');
-    await continueExam();
+    showAlert('You were away too long! Exam progress has been reset. Moving to next chart...', 'Focus Lost', 'warning');
+    setTimeout(async () => {
+      hideModal();
+      await continueExam();
+    }, 2500);
   };
 
   // Handle return from focus warning
@@ -240,7 +249,7 @@ const ChartExam = ({ examType }) => {
   
     // Check if there are drawings to validate
     if (drawings.length === 0 && !drawings[0]?.no_fvgs_found && !drawings[0]?.no_swings_found) {
-      alert('Please mark at least one point before submitting.');
+      showAlert('Please mark at least one point before submitting.', 'Missing Input', 'warning');
       return;
     }
     
@@ -287,12 +296,15 @@ const ChartExam = ({ examType }) => {
         
         // Handle time expiry specifically
         if (data.code === 'TIME_LIMIT_EXCEEDED') {
-          alert('Time limit exceeded for this chart. Moving to next chart...');
-          await continueExam();
+          showAlert('Time limit exceeded for this chart. Moving to next chart...', 'Time Limit Exceeded', 'warning');
+          setTimeout(async () => {
+            hideModal();
+            await continueExam();
+          }, 2000);
           return;
         }
         
-        alert(`Validation error: ${data.message || 'Something went wrong'}`);
+        showError(`Validation error: ${data.message || 'Something went wrong'}`);
         setSubmitting(false);
         return;
       }
@@ -326,7 +338,7 @@ const ChartExam = ({ examType }) => {
       
     } catch (error) {
       console.error('Error validating drawings:', error);
-      alert('Error validating your submission. Please try again.');
+      showError('Error validating your submission. Please try again.', 'Validation Error');
     } finally {
       setSubmitting(false);
     }
@@ -624,6 +636,12 @@ useEffect(() => {
         onTimeout={handleFocusTimeout}
         isDarkMode={darkMode}
         warningSeconds={focusWarningTime}
+      />
+
+      <AppModal
+        isOpen={modalOpen}
+        onClose={hideModal}
+        {...modalProps}
       />
     </ExamContainer>
   );

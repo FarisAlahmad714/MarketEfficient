@@ -8,6 +8,8 @@ import { FaUser, FaCamera, FaCreditCard, FaCheckCircle,
 import Head from 'next/head';
 import CryptoLoader from '../components/CryptoLoader';
 import storage from '../lib/storage';
+import AppModal from '../components/common/AppModal';
+import { useModal } from '../lib/useModal';
 
 const ProfilePage = () => {
   const { darkMode } = useContext(ThemeContext);
@@ -29,6 +31,7 @@ const ProfilePage = () => {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordLoading, setPasswordLoading] = useState(false);
+  const { isOpen: modalOpen, modalProps, hideModal, showDangerConfirm, showModal } = useModal();
   
   const [formData, setFormData] = useState({
     name: '',
@@ -221,29 +224,33 @@ const ProfilePage = () => {
   };
 
   const handleCancelSubscription = async () => {
-    if (!confirm('Are you sure you want to cancel your subscription?')) return;
-    
-    setLoading(true);
-    try {
-      const token = storage.getItem('auth_token');
-      const response = await fetch('/api/user/subscription/cancel', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+    showDangerConfirm(
+      'Are you sure you want to cancel your subscription? You will continue to have access until the end of your current billing period.',
+      async () => {
+        setLoading(true);
+        try {
+          const token = storage.getItem('auth_token');
+          const response = await fetch('/api/user/subscription/cancel', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          if (!response.ok) throw new Error('Failed to cancel subscription');
+          
+          setSaveSuccess(true);
+          setTimeout(() => setSaveSuccess(false), 5000);
+          await fetchUserData();
+        } catch (error) {
+          setSaveError('Failed to cancel subscription');
+        } finally {
+          setLoading(false);
         }
-      });
-      
-      if (!response.ok) throw new Error('Failed to cancel subscription');
-      
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 5000);
-      await fetchUserData();
-    } catch (error) {
-      setSaveError('Failed to cancel subscription');
-    } finally {
-      setLoading(false);
-    }
+      },
+      'Cancel Subscription'
+    );
   };
 
   const handleReactivateSubscription = async () => {
@@ -349,52 +356,106 @@ const ProfilePage = () => {
   };
 
   const handleDeleteAccount = async () => {
-    const confirmed = confirm(
-      'Are you absolutely sure you want to delete your account? This action cannot be undone and will permanently delete all your data, including:\n\n' +
-      '• Your profile and settings\n' +
-      '• All test results and progress\n' +
-      '• Subscription and billing history\n' +
-      '• Any uploaded images\n\n' +
-      'Type "DELETE" to confirm'
-    );
-    
-    if (!confirmed) return;
-    
-    const deleteConfirmation = prompt('Please type "DELETE" to confirm account deletion:');
-    if (deleteConfirmation !== 'DELETE') {
-      setSaveError('Account deletion cancelled - confirmation text did not match');
-      return;
-    }
-    
-    setLoading(true);
-    setSaveError(null);
-    
-    try {
-      const token = storage.getItem('auth_token');
-      
-      const response = await fetch('/api/user/delete-account', {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
+    showModal({
+      title: 'Delete Account',
+      type: 'error',
+      children: (
+        <div>
+          <p style={{ marginBottom: '16px', color: darkMode ? '#b0b0b0' : '#555' }}>
+            Are you absolutely sure you want to delete your account? This action cannot be undone and will permanently delete all your data, including:
+          </p>
+          <ul style={{ 
+            marginBottom: '20px', 
+            paddingLeft: '20px',
+            color: darkMode ? '#b0b0b0' : '#555',
+            lineHeight: '1.6'
+          }}>
+            <li>Your profile and settings</li>
+            <li>All test results and progress</li>
+            <li>Subscription and billing history</li>
+            <li>Any uploaded images</li>
+          </ul>
+          <div style={{
+            backgroundColor: darkMode ? '#3f1f1f' : '#ffebee',
+            padding: '12px',
+            borderRadius: '6px',
+            border: '1px solid #F44336',
+            marginBottom: '16px'
+          }}>
+            <p style={{ 
+              margin: 0, 
+              fontSize: '14px', 
+              color: '#F44336',
+              fontWeight: '500' 
+            }}>
+              ⚠️ Type "DELETE" in the box below to confirm
+            </p>
+          </div>
+          <input
+            type="text"
+            id="delete-confirmation"
+            placeholder="Type DELETE to confirm"
+            style={{
+              width: '100%',
+              padding: '10px',
+              borderRadius: '6px',
+              border: `1px solid ${darkMode ? '#444' : '#ddd'}`,
+              backgroundColor: darkMode ? '#333' : '#fff',
+              color: darkMode ? '#e0e0e0' : '#333',
+              fontSize: '14px'
+            }}
+          />
+        </div>
+      ),
+      primaryAction: {
+        text: 'Delete Account',
+        variant: 'danger',
+        onClick: async () => {
+          const input = document.getElementById('delete-confirmation');
+          if (input?.value !== 'DELETE') {
+            setSaveError('Account deletion cancelled - confirmation text did not match');
+            hideModal();
+            return;
+          }
+          
+          setLoading(true);
+          setSaveError(null);
+          hideModal();
+          
+          try {
+            const token = storage.getItem('auth_token');
+            
+            const response = await fetch('/api/user/delete-account', {
+              method: 'DELETE',
+              headers: {
+                'Authorization': `Bearer ${token}`
+              }
+            });
+            
+            if (!response.ok) {
+              const errorData = await response.json();
+              throw new Error(errorData.error || 'Failed to delete account');
+            }
+            
+            // Account deleted successfully, log out and redirect
+            await logout();
+            router.push('/');
+            
+          } catch (error) {
+            console.error('Error deleting account:', error);
+            setSaveError(error.message);
+            setTimeout(() => setSaveError(null), 5000);
+          } finally {
+            setLoading(false);
+          }
         }
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to delete account');
-      }
-      
-      // Account deleted successfully, log out and redirect
-      await logout();
-      router.push('/');
-      
-    } catch (error) {
-      console.error('Error deleting account:', error);
-      setSaveError(error.message);
-      setTimeout(() => setSaveError(null), 5000);
-    } finally {
-      setLoading(false);
-    }
+      },
+      secondaryAction: {
+        text: 'Cancel',
+        onClick: hideModal
+      },
+      preventCloseOnOverlay: true
+    });
   };
 
   const formatPrice = (cents) => {
@@ -1331,6 +1392,12 @@ const ProfilePage = () => {
           </div>
         </div>
       </div>
+
+      <AppModal
+        isOpen={modalOpen}
+        onClose={hideModal}
+        {...modalProps}
+      />
     </>
   );
 };

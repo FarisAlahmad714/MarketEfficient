@@ -2,6 +2,8 @@
 import React, { useState, useContext, useRef } from 'react';
 import { ThemeContext } from '../contexts/ThemeContext';
 import html2canvas from 'html2canvas';
+import AppModal from './common/AppModal';
+import { useModal } from '../lib/useModal';
 
 const TradingAnalysis = ({ chartData, prediction, questionId }) => {
   const [userReasoning, setUserReasoning] = useState('');
@@ -10,10 +12,11 @@ const TradingAnalysis = ({ chartData, prediction, questionId }) => {
   const [showAnalysisInput, setShowAnalysisInput] = useState(false);
   const { darkMode } = useContext(ThemeContext);
   const chartRef = useRef(null);
+  const { isOpen: modalOpen, modalProps, hideModal, showAlert } = useModal();
 
   const handleAnalysis = async () => {
     if (!userReasoning.trim()) {
-      alert('Please explain your reasoning first.');
+      showAlert('Please explain your reasoning first.', 'Missing Reasoning', 'warning');
       return;
     }
 
@@ -216,6 +219,12 @@ const TradingAnalysis = ({ chartData, prediction, questionId }) => {
           </div>
         </div>
       )}
+
+      <AppModal
+        isOpen={modalOpen}
+        onClose={hideModal}
+        {...modalProps}
+      />
     </div>
   );
 };

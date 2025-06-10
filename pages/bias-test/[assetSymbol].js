@@ -8,6 +8,8 @@ import Link from 'next/link';
 import CryptoLoader from '../../components/CryptoLoader';
 import { ThemeContext } from '../../contexts/ThemeContext';
 import storage from '../../lib/storage';
+import AppModal from '../../components/common/AppModal';
+import { useModal } from '../../lib/useModal';
 
 // Import CandlestickChart with SSR disabled
 const CandlestickChart = dynamic(
@@ -53,6 +55,7 @@ export default function AssetTestPage() {
   const [confidenceLevels, setConfidenceLevels] = useState({}); // Track confidence per question
   const cryptoLoaderRef = useRef(null);
   const { darkMode } = useContext(ThemeContext);
+  const { isOpen: modalOpen, modalProps, hideModal, showAlert, showError } = useModal();
 
   // Helper function to format dates nicely
   const formatDate = (dateString) => {
@@ -336,7 +339,7 @@ export default function AssetTestPage() {
       // Check if the token was retrieved successfully
       if (!token) {
         console.error('Auth token not found. Cannot submit test.');
-        alert('Authentication error. Please log in again.');
+        showError('Authentication error. Please log in again.', 'Authentication Required');
         setIsSubmitting(false);
         if (typeof window !== 'undefined' && window.hideGlobalLoader) {
           window.hideGlobalLoader();
@@ -369,7 +372,7 @@ export default function AssetTestPage() {
       }));
     } catch (err) {
       console.error('Error submitting test:', err);
-      alert('Failed to submit test. Please try again.');
+      showError('Failed to submit test. Please try again.', 'Submission Error');
       
       setIsSubmitting(false);
       if (typeof window !== 'undefined' && window.hideGlobalLoader) {
@@ -850,6 +853,12 @@ export default function AssetTestPage() {
           {isSubmitting ? 'Submitting...' : 'Submit Answers & Get Analysis'}
         </button>
       </div>
+
+      <AppModal
+        isOpen={modalOpen}
+        onClose={hideModal}
+        {...modalProps}
+      />
     </div>
   );
 }

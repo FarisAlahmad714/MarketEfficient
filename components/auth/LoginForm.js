@@ -115,7 +115,8 @@ const LoginForm = () => {
               border: `1px solid ${darkMode ? '#444' : '#ddd'}`,
               backgroundColor: darkMode ? '#333' : '#fff',
               color: darkMode ? '#e0e0e0' : '#333',
-              fontSize: '16px'
+              fontSize: '16px',
+              boxSizing: 'border-box'
             }}
           />
         </div>
@@ -159,7 +160,8 @@ const LoginForm = () => {
                 border: `1px solid ${darkMode ? '#444' : '#ddd'}`,
                 backgroundColor: darkMode ? '#333' : '#fff',
                 color: darkMode ? '#e0e0e0' : '#333',
-                fontSize: '16px'
+                fontSize: '16px',
+                boxSizing: 'border-box'
               }}
             />
             <button
