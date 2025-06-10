@@ -6,6 +6,7 @@ import logger from '../../../lib/logger';
 import { createApiHandler } from '../../../lib/api-handler';
 import { requireAuth } from '../../../middleware/auth';
 import { composeMiddleware } from '../../../lib/api-handler';
+import { validateTimeWindow, recordSubmission, endChartSession } from '../../../lib/timeWindow';
 
 async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -17,6 +18,18 @@ async function handler(req, res) {
     const userId = req.user.id;
     
     const { drawings, chartData, chartCount, part } = req.body;
+    
+    // Validate time window
+    const timeValidation = validateTimeWindow(userId, 'fibonacci', chartCount, part);
+    if (!timeValidation.valid) {
+      return res.status(400).json({
+        error: timeValidation.error,
+        message: timeValidation.message,
+        code: timeValidation.code,
+        timeSpent: timeValidation.timeSpent,
+        attempts: timeValidation.attempts
+      });
+    }
     
     if (!drawings || !Array.isArray(drawings)) {
       return res.status(400).json({ error: 'Invalid drawings data' });
@@ -69,6 +82,18 @@ async function handler(req, res) {
     await testResult.save();
   logger.log(`Fibonacci test result saved, score: ${validationResult.score}/${validationResult.totalExpectedPoints}`);
     
+    // Record submission for analytics
+    recordSubmission(timeValidation.session.sessionKey || `${userId}_fibonacci_${chartCount}_${part}`, {
+      score: validationResult.score,
+      totalPoints: validationResult.totalExpectedPoints,
+      drawings: drawings.length,
+      timeSpent: timeValidation.timeSpent,
+      part: part
+    });
+    
+    // End session and collect analytics
+    const sessionAnalytics = endChartSession(userId, 'fibonacci', chartCount, part);
+    
     return res.status(200).json({
       success: true,
       message: validationResult.message,
@@ -82,7 +107,10 @@ async function handler(req, res) {
         levels: calculateFibonacciLevels(expectedRetracement.start, expectedRetracement.end).levels
       },
       chart_count: chartCount,
-      next_part: part === 1 ? 2 : null
+      next_part: part === 1 ? 2 : null,
+      timeRemaining: timeValidation.timeRemaining,
+      timeSpent: timeValidation.timeSpent,
+      attempts: timeValidation.attempts
     });
   } catch (error) {
     console.error('Error in validate-fibonacci API:', error);

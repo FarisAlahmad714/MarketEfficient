@@ -6,13 +6,26 @@ import { requireAuth } from '../../../middleware/auth';
 import { composeMiddleware } from '../../../lib/api-handler';
 import { detectFairValueGaps } from './utils/fvg-detection';
 import TestResults from '../../../models/TestResults';
-import logger from '../../../lib/logger'; // Adjust path to your logger utility
+import logger from '../../../lib/logger';
+import { validateTimeWindow, recordSubmission, endChartSession } from '../../../lib/timeWindow';
 async function validateFvgHandler(req, res) {
   // User is already authenticated via middleware
   const userId = req.user.id;
   
   // Get the data from the request body instead of relying on session
   const { drawings, chartData, chartCount, part, timeframe } = req.body;
+  
+  // Validate time window
+  const timeValidation = validateTimeWindow(userId, 'fvg', chartCount, part);
+  if (!timeValidation.valid) {
+    return res.status(400).json({
+      error: timeValidation.error,
+      message: timeValidation.message,
+      code: timeValidation.code,
+      timeSpent: timeValidation.timeSpent,
+      attempts: timeValidation.attempts
+    });
+  }
   
   if (!drawings) {
     return res.status(400).json({ 
@@ -62,6 +75,18 @@ async function validateFvgHandler(req, res) {
   await testResult.save();
   logger.log(`FVG test result saved, score: ${validationResult.score}/${validationResult.totalExpectedPoints}`);
   
+  // Record submission for analytics
+  recordSubmission(timeValidation.session.sessionKey || `${userId}_fvg_${chartCount}_${part}`, {
+    score: validationResult.score,
+    totalPoints: validationResult.totalExpectedPoints,
+    drawings: drawings.length,
+    timeSpent: timeValidation.timeSpent,
+    part: part
+  });
+  
+  // End session and collect analytics
+  const sessionAnalytics = endChartSession(userId, 'fvg', chartCount, part);
+  
   return res.status(200).json({
     success: true,
     message: validationResult.message,
@@ -70,7 +95,10 @@ async function validateFvgHandler(req, res) {
     feedback: validationResult.feedback,
     expected: { gaps: expectedGaps },
     chart_count: chartCount,
-    next_part: part === 1 ? 2 : null
+    next_part: part === 1 ? 2 : null,
+    timeRemaining: timeValidation.timeRemaining,
+    timeSpent: timeValidation.timeSpent,
+    attempts: timeValidation.attempts
   });
 }
 

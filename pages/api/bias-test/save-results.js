@@ -3,6 +3,7 @@ import { createApiHandler } from '../../../lib/api-handler';
 import { requireAuth } from '../../../middleware/auth';
 import { sanitizeInput, sanitizeAssetSymbol, sanitizeObjectId } from '../../../middleware/sanitization';
 import TestResults from '../../../models/TestResults';
+import { processBiasTestAnalytics } from '../../../lib/biasTestAnalytics';
 import logger from '../../../lib/logger';
 
 // Validation function for test results
@@ -212,6 +213,23 @@ async function saveResultsHandler(req, res) {
         
         await testResult.save();
         logger.log(`Bias test result saved, score: ${finalScore}/${totalPoints} for ${sanitizedAssetSymbol}`);
+        
+        // Process analytics data asynchronously
+        try {
+          const deviceInfo = {
+            userAgent: req.headers['user-agent'] || '',
+            screenResolution: req.headers['x-screen-resolution'] || '',
+            isMobile: /Mobile|Android|iPhone|iPad/.test(req.headers['user-agent'] || ''),
+            timezone: req.headers['x-timezone'] || 'UTC',
+            language: req.headers['accept-language']?.split(',')[0] || 'en'
+          };
+          
+          await processBiasTestAnalytics(testResult, deviceInfo);
+          logger.log(`Analytics processed for bias test: ${testResult._id}`);
+        } catch (analyticsError) {
+          logger.error('Error processing bias test analytics:', analyticsError);
+          // Don't fail the main request if analytics processing fails
+        }
         
         return res.status(200).json({
           success: true,

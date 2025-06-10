@@ -6,10 +6,12 @@ import FibonacciRetracement from './FibonacciRetracement';
 import FairValueGaps from './FairValueGaps';
 import ExamProgress from './common/ExamProgress';
 import ResultsPanel from './common/ResultsPanel';
+import CountdownTimer from './common/CountdownTimer';
+import FocusWarningModal from './common/FocusWarningModal';
 import { ThemeContext } from '../../contexts/ThemeContext';
 import CryptoLoader from '../CryptoLoader';
-import logger from '../../lib/logger'; // Adjust path to your logger utility
-import storage from '../../lib/storage'; // Added import
+import logger from '../../lib/logger';
+import storage from '../../lib/storage';
 // Styled components with $-prefixed props to prevent DOM forwarding
 const ExamContainer = styled.div`
   max-width: 1200px;
@@ -110,10 +112,69 @@ const ChartExam = ({ examType }) => {
   const [symbol, setSymbol] = useState('');
   const [timeframe, setTimeframe] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [timeRemaining, setTimeRemaining] = useState(null);
+  const [sessionStarted, setSessionStarted] = useState(false);
+  const [isTimerPaused, setIsTimerPaused] = useState(false);
+  const [showFocusWarning, setShowFocusWarning] = useState(false);
+  const [focusWarningTime, setFocusWarningTime] = useState(60);
   const chartRef = useRef(null);
+  // Start a new chart session
+  const startChartSession = async () => {
+    try {
+      const token = await storage.getItem('auth_token');
+      const response = await fetch('/api/charting-exam/start-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          examType: examType === 'swing-analysis' ? 'swing' : 
+                    examType === 'fibonacci-retracement' ? 'fibonacci' : 'fvg',
+          chartCount,
+          part: (examType === 'fibonacci-retracement' || examType === 'fair-value-gaps') ? part : 1
+        })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setTimeRemaining(data.session.timeRemaining);
+        setSessionStarted(true);
+        logger.log('Chart session started:', data.session);
+      } else {
+        console.error('Failed to start session:', data.message);
+      }
+    } catch (error) {
+      console.error('Error starting chart session:', error);
+    }
+  };
+
+  // Handle time expiry
+  const handleTimeExpired = async () => {
+    setTimeRemaining(0);
+    alert('Time expired! Moving to next chart...');
+    await continueExam();
+  };
+
+  // Handle focus warning timeout (reset exam)
+  const handleFocusTimeout = async () => {
+    setShowFocusWarning(false);
+    setIsTimerPaused(false);
+    alert('You were away too long! Exam progress has been reset. Moving to next chart...');
+    await continueExam();
+  };
+
+  // Handle return from focus warning
+  const handleReturnToExam = () => {
+    setShowFocusWarning(false);
+    setIsTimerPaused(false);
+    setFocusWarningTime(60); // Reset warning timer
+  };
+
   // Fetch chart data with improved data processing
   const fetchChartData = async () => {
     setLoading(true);
+    setSessionStarted(false);
     try {
       const response = await fetch(`/api/charting-exam/fetch-chart?examType=${examType}`);
       const data = await response.json();
@@ -223,9 +284,22 @@ const ChartExam = ({ examType }) => {
       // Handle validation failures more gracefully
       if (data.error) {
         console.error('Validation error:', data.error, data.message);
+        
+        // Handle time expiry specifically
+        if (data.code === 'TIME_LIMIT_EXCEEDED') {
+          alert('Time limit exceeded for this chart. Moving to next chart...');
+          await continueExam();
+          return;
+        }
+        
         alert(`Validation error: ${data.message || 'Something went wrong'}`);
         setSubmitting(false);
         return;
+      }
+      
+      // Update time remaining from response
+      if (data.timeRemaining !== undefined) {
+        setTimeRemaining(data.timeRemaining);
       }
       
       // Update scores
@@ -299,8 +373,13 @@ const ChartExam = ({ examType }) => {
         part === 1 && results?.next_part === 2) {
       // Go to part 2 (same chart)
       setPart(2);
+      setTimeRemaining(null);
+      setSessionStarted(false);
+      // Session will be restarted automatically when part state updates
     } else {
       // Finish the current chart
+      setTimeRemaining(null);
+      setSessionStarted(false);
       
       // Check if we've completed all charts
       if (chartCount >= 5) {
@@ -327,6 +406,8 @@ const ChartExam = ({ examType }) => {
       // Move to the next chart
       setChartCount(chartCount + 1);
       setPart(1);
+      setTimeRemaining(null);
+      setSessionStarted(false);
       await fetchChartData();
     }
   };
@@ -384,6 +465,43 @@ useEffect(() => {
   useEffect(() => {
     fetchChartData();
   }, []);
+  
+  // Restart session when part changes (for fibonacci/fvg exams)
+  useEffect(() => {
+    if (!loading && chartData.length > 0 && !sessionStarted) {
+      startChartSession();
+    }
+  }, [part, loading, chartData, sessionStarted]);
+  
+  // Focus detection - pause timer when user switches tabs/browsers
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden && sessionStarted && timeRemaining > 0) {
+        // User switched away from tab
+        setIsTimerPaused(true);
+        setShowFocusWarning(true);
+        setFocusWarningTime(60); // Reset to 60 seconds
+      } else if (!document.hidden && showFocusWarning) {
+        // User returned to tab - don't auto-resume, let them click button
+      }
+    };
+
+    const handleBeforeUnload = (e) => {
+      if (sessionStarted && timeRemaining > 0) {
+        e.preventDefault();
+        e.returnValue = 'Your exam progress will be lost if you leave this page. Are you sure?';
+        return 'Your exam progress will be lost if you leave this page. Are you sure?';
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [sessionStarted, timeRemaining, showFocusWarning]);
   
   // Get instructions based on exam type and part
   const getInstructions = () => {
@@ -444,6 +562,17 @@ useEffect(() => {
         hasParts={examType === 'fibonacci-retracement' || examType === 'fair-value-gaps'}
       />
       
+      {sessionStarted && timeRemaining !== null && (
+        <CountdownTimer
+          timeRemaining={timeRemaining}
+          examType={examType === 'swing-analysis' ? 'swing' : 
+                    examType === 'fibonacci-retracement' ? 'fibonacci' : 'fvg'}
+          onTimeExpired={handleTimeExpired}
+          isDarkMode={darkMode}
+          isPaused={isTimerPaused}
+        />
+      )}
+      
       <ChartContainer>
         {loading ? (
           <div style={{ 
@@ -462,7 +591,7 @@ useEffect(() => {
       <ControlPanel>
         <Button 
           onClick={validateDrawings} 
-          disabled={loading || submitting}
+          disabled={loading || submitting || timeRemaining === 0 || isTimerPaused}
           $isDarkMode={darkMode}
         >
           Submit Answer
@@ -488,6 +617,14 @@ useEffect(() => {
           </div>
         </LoadingOverlay>
       )}
+
+      <FocusWarningModal
+        isVisible={showFocusWarning}
+        onReturn={handleReturnToExam}
+        onTimeout={handleFocusTimeout}
+        isDarkMode={darkMode}
+        warningSeconds={focusWarningTime}
+      />
     </ExamContainer>
   );
 };

@@ -245,7 +245,7 @@ const Footer = () => {
             alignItems: 'center',
             gap: '20px',
           }}>
-            <a href="#" style={{
+            <a href="/privacy-policy" style={{
               color: darkMode ? '#b0b0b0' : '#666',
               textDecoration: 'none',
               fontSize: '14px',
@@ -259,7 +259,7 @@ const Footer = () => {
             }}>
               Privacy Policy
             </a>
-            <a href="#" style={{
+            <a href="/terms-of-service" style={{
               color: darkMode ? '#b0b0b0' : '#666',
               textDecoration: 'none',
               fontSize: '14px',

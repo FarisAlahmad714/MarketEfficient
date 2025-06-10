@@ -324,6 +324,8 @@ const VisualAnalyticsDashboard = () => {
             {[
               { id: 'overview', label: '📊 Overview', icon: '📊' },
               { id: 'visual-data', label: '🖼️ Visual Data', icon: '🖼️' },
+              { id: 'chart-exams', label: '📈 Chart Exams', icon: '📈' },
+              { id: 'bias-tests', label: '🎯 Bias Tests', icon: '🎯' },
               { id: 'psychology', label: '🧠 Psychology', icon: '🧠' },
               { id: 'insights', label: '💡 Insights', icon: '💡' }
             ].map((tab) => (
@@ -362,6 +364,8 @@ const VisualAnalyticsDashboard = () => {
           }}>
             {activeTab === 'overview' && <OverviewTab data={data} darkMode={darkMode} />}
             {activeTab === 'visual-data' && <VisualDataTab data={data} darkMode={darkMode} />}
+            {activeTab === 'chart-exams' && <ChartExamsTab data={data} darkMode={darkMode} />}
+            {activeTab === 'bias-tests' && <BiasTestsTab darkMode={darkMode} />}
             {activeTab === 'psychology' && <PsychologyTab data={data} darkMode={darkMode} />}
             {activeTab === 'insights' && <InsightsTab data={data} darkMode={darkMode} />}
           </div>
@@ -633,9 +637,99 @@ const OverviewTab = ({ data, darkMode }) => {
   );
 };
 
-// 🔥 VISUAL DATA TAB - Enhanced with User-Centric Organization and Timeline
+// 🔥 VISUAL DATA TAB - Enhanced with Calendar View
 const VisualDataTab = ({ data, darkMode }) => {
-  // Group data by user for better organization
+  const [viewMode, setViewMode] = useState('calendar');
+  
+  // Prepare data for calendar view
+  const calendarData = React.useMemo(() => {
+    if (!data.combined_analytics) return [];
+    return data.combined_analytics.filter(item => item.gcs_images && item.gcs_images.length > 0);
+  }, [data.combined_analytics]);
+
+  // Group data by date for calendar
+  const groupedByDate = React.useMemo(() => {
+    const groups = {};
+    calendarData.forEach(item => {
+      const date = new Date(item.mongodb_data.completed_at).toDateString();
+      if (!groups[date]) {
+        groups[date] = [];
+      }
+      groups[date].push(item);
+    });
+    return groups;
+  }, [calendarData]);
+
+  // Find the month with the most recent data
+  const getDataMonth = () => {
+    if (Object.keys(groupedByDate).length === 0) {
+      return new Date(); // Default to current month if no data
+    }
+    
+    // Get the most recent test date
+    const dates = Object.keys(groupedByDate).map(dateStr => new Date(dateStr));
+    const mostRecentDate = new Date(Math.max(...dates));
+    return mostRecentDate;
+  };
+
+  const [selectedMonth, setSelectedMonth] = useState(() => getDataMonth());
+
+  // Generate calendar view data for selected month
+  const generateCalendarData = () => {
+    const currentMonth = selectedMonth.getMonth();
+    const currentYear = selectedMonth.getFullYear();
+    
+    const firstDay = new Date(currentYear, currentMonth, 1);
+    const lastDay = new Date(currentYear, currentMonth + 1, 0);
+    const startDate = new Date(firstDay);
+    startDate.setDate(firstDay.getDate() - firstDay.getDay());
+    
+    const calendar = [];
+    const current = new Date(startDate);
+    
+    while (current <= lastDay || current.getDay() !== 0) {
+      const dateStr = current.toDateString();
+      const dayData = groupedByDate[dateStr] || [];
+      
+      calendar.push({
+        date: new Date(current),
+        dateStr,
+        isCurrentMonth: current.getMonth() === currentMonth,
+        tests: dayData,
+        totalTests: dayData.length,
+        totalImages: dayData.reduce((sum, item) => sum + item.gcs_images.length, 0),
+        avgScore: dayData.length > 0 ? 
+          dayData.reduce((sum, item) => sum + (item.mongodb_data.score / item.mongodb_data.total_points), 0) / dayData.length * 100 : 0
+      });
+      
+      current.setDate(current.getDate() + 1);
+      if (calendar.length > 42) break; // Prevent infinite loop
+    }
+    
+    return calendar;
+  };
+
+  // Get available months with data
+  const getAvailableMonths = () => {
+    const months = new Set();
+    Object.keys(groupedByDate).forEach(dateStr => {
+      const date = new Date(dateStr);
+      const monthKey = `${date.getFullYear()}-${date.getMonth()}`;
+      months.add(monthKey);
+    });
+    
+    return Array.from(months).map(monthKey => {
+      const [year, month] = monthKey.split('-');
+      return new Date(parseInt(year), parseInt(month), 1);
+    }).sort((a, b) => b - a); // Most recent first
+  };
+
+  const calendarGridData = generateCalendarData();
+  const availableMonths = getAvailableMonths();
+  const monthNames = ["January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"];
+
+  // Group data by user for list view (existing functionality)
   const groupedByUser = React.useMemo(() => {
     if (!data.combined_analytics) return {};
     
@@ -683,11 +777,257 @@ const VisualDataTab = ({ data, darkMode }) => {
 
   return (
     <div>
-      <h2 style={{ color: darkMode ? '#e0e0e0' : '#333', marginBottom: '20px' }}>
-        👥 User Journey & Visual Analytics
-      </h2>
-      
-      {Object.keys(groupedByUser).length > 0 ? (
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' }}>
+        <h2 style={{ color: darkMode ? '#e0e0e0' : '#333', margin: 0 }}>
+          👥 Visual Data & Test Results
+        </h2>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button
+            onClick={() => setViewMode('calendar')}
+            style={{
+              padding: '8px 16px',
+              backgroundColor: viewMode === 'calendar' ? '#2196F3' : (darkMode ? '#333' : '#f5f5f5'),
+              color: viewMode === 'calendar' ? 'white' : (darkMode ? '#e0e0e0' : '#333'),
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: '500'
+            }}
+          >
+            📅 Calendar View
+          </button>
+          <button
+            onClick={() => setViewMode('user-journey')}
+            style={{
+              padding: '8px 16px',
+              backgroundColor: viewMode === 'user-journey' ? '#2196F3' : (darkMode ? '#333' : '#f5f5f5'),
+              color: viewMode === 'user-journey' ? 'white' : (darkMode ? '#e0e0e0' : '#333'),
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: '500'
+            }}
+          >
+            📋 User Journey
+          </button>
+        </div>
+      </div>
+
+      {viewMode === 'calendar' ? (
+        <div>
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center', 
+            marginBottom: '20px' 
+          }}>
+            <button
+              onClick={() => {
+                const newMonth = new Date(selectedMonth);
+                newMonth.setMonth(newMonth.getMonth() - 1);
+                setSelectedMonth(newMonth);
+              }}
+              style={{
+                padding: '8px 12px',
+                backgroundColor: darkMode ? '#333' : '#f5f5f5',
+                color: darkMode ? '#e0e0e0' : '#333',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '14px'
+              }}
+            >
+              ← Previous
+            </button>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+              <h3 style={{ 
+                color: darkMode ? '#e0e0e0' : '#333', 
+                margin: 0,
+                fontSize: '18px'
+              }}>
+                {monthNames[selectedMonth.getMonth()]} {selectedMonth.getFullYear()}
+              </h3>
+              
+              {availableMonths.length > 1 && (
+                <select
+                  value={`${selectedMonth.getFullYear()}-${selectedMonth.getMonth()}`}
+                  onChange={(e) => {
+                    const [year, month] = e.target.value.split('-');
+                    setSelectedMonth(new Date(parseInt(year), parseInt(month), 1));
+                  }}
+                  style={{
+                    padding: '4px 8px',
+                    borderRadius: '4px',
+                    border: `1px solid ${darkMode ? '#444' : '#ddd'}`,
+                    backgroundColor: darkMode ? '#333' : '#fff',
+                    color: darkMode ? '#e0e0e0' : '#333',
+                    fontSize: '12px'
+                  }}
+                >
+                  {availableMonths.map(month => (
+                    <option 
+                      key={`${month.getFullYear()}-${month.getMonth()}`}
+                      value={`${month.getFullYear()}-${month.getMonth()}`}
+                    >
+                      {monthNames[month.getMonth()]} {month.getFullYear()}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+            
+            <button
+              onClick={() => {
+                const newMonth = new Date(selectedMonth);
+                newMonth.setMonth(newMonth.getMonth() + 1);
+                setSelectedMonth(newMonth);
+              }}
+              style={{
+                padding: '8px 12px',
+                backgroundColor: darkMode ? '#333' : '#f5f5f5',
+                color: darkMode ? '#e0e0e0' : '#333',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '14px'
+              }}
+            >
+              Next →
+            </button>
+          </div>
+          
+          {/* Calendar Grid */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(7, 1fr)',
+            gap: '2px',
+            backgroundColor: darkMode ? '#444' : '#e0e0e0',
+            padding: '2px',
+            borderRadius: '8px',
+            marginBottom: '20px'
+          }}>
+            {/* Day headers */}
+            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+              <div key={day} style={{
+                padding: '12px 8px',
+                backgroundColor: darkMode ? '#2a2a2a' : '#f8f9fa',
+                color: darkMode ? '#e0e0e0' : '#333',
+                fontSize: '12px',
+                fontWeight: '600',
+                textAlign: 'center'
+              }}>
+                {day}
+              </div>
+            ))}
+            
+            {/* Calendar days */}
+            {calendarGridData.map((day, index) => (
+              <div key={index} style={{
+                minHeight: '100px',
+                backgroundColor: darkMode ? '#1e1e1e' : 'white',
+                padding: '8px',
+                opacity: day.isCurrentMonth ? 1 : 0.5,
+                position: 'relative',
+                cursor: day.totalTests > 0 ? 'pointer' : 'default'
+              }}>
+                <div style={{
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: darkMode ? '#e0e0e0' : '#333',
+                  marginBottom: '4px'
+                }}>
+                  {day.date.getDate()}
+                </div>
+                
+                {day.totalTests > 0 && (
+                  <div style={{ fontSize: '10px', lineHeight: '1.2' }}>
+                    <div style={{
+                      color: '#2196F3',
+                      fontWeight: '600',
+                      marginBottom: '2px'
+                    }}>
+                      {day.totalTests} test{day.totalTests !== 1 ? 's' : ''}
+                    </div>
+                    <div style={{ color: '#4CAF50' }}>
+                      {day.totalImages} image{day.totalImages !== 1 ? 's' : ''}
+                    </div>
+                    <div style={{ color: '#FF9800' }}>
+                      {day.avgScore.toFixed(0)}% avg
+                    </div>
+                  </div>
+                )}
+                
+                {day.totalTests > 0 && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '4px',
+                    right: '4px',
+                    width: '8px',
+                    height: '8px',
+                    backgroundColor: day.avgScore > 70 ? '#4CAF50' : day.avgScore > 50 ? '#FF9800' : '#F44336',
+                    borderRadius: '50%'
+                  }} />
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Summary Stats */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+            gap: '15px',
+            marginTop: '20px'
+          }}>
+            <div style={{
+              backgroundColor: darkMode ? '#2a2a2a' : '#f8f9fa',
+              borderRadius: '8px',
+              padding: '15px',
+              textAlign: 'center',
+              border: `1px solid ${darkMode ? '#444' : '#e0e0e0'}`
+            }}>
+              <div style={{ fontSize: '24px', fontWeight: '700', color: '#2196F3' }}>
+                {calendarData.length}
+              </div>
+              <div style={{ fontSize: '12px', color: darkMode ? '#b0b0b0' : '#666' }}>
+                Total Tests
+              </div>
+            </div>
+            <div style={{
+              backgroundColor: darkMode ? '#2a2a2a' : '#f8f9fa',
+              borderRadius: '8px',
+              padding: '15px',
+              textAlign: 'center',
+              border: `1px solid ${darkMode ? '#444' : '#e0e0e0'}`
+            }}>
+              <div style={{ fontSize: '24px', fontWeight: '700', color: '#4CAF50' }}>
+                {calendarData.reduce((sum, item) => sum + item.gcs_images.length, 0)}
+              </div>
+              <div style={{ fontSize: '12px', color: darkMode ? '#b0b0b0' : '#666' }}>
+                Total Images
+              </div>
+            </div>
+            <div style={{
+              backgroundColor: darkMode ? '#2a2a2a' : '#f8f9fa',
+              borderRadius: '8px',
+              padding: '15px',
+              textAlign: 'center',
+              border: `1px solid ${darkMode ? '#444' : '#e0e0e0'}`
+            }}>
+              <div style={{ fontSize: '24px', fontWeight: '700', color: '#FF9800' }}>
+                {Object.keys(groupedByDate).length}
+              </div>
+              <div style={{ fontSize: '12px', color: darkMode ? '#b0b0b0' : '#666' }}>
+                Active Days
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        Object.keys(groupedByUser).length > 0 ? (
         <div style={{ display: 'grid', gap: '30px' }}>
           {Object.entries(groupedByUser).map(([userId, userGroup], index) => (
             <div key={index} style={{
@@ -996,15 +1336,16 @@ const VisualDataTab = ({ data, darkMode }) => {
             </div>
           ))}
         </div>
-      ) : (
-        <div style={{
-          textAlign: 'center',
-          padding: '40px',
-          color: darkMode ? '#b0b0b0' : '#666'
-        }}>
-          <h3>👥 No User Data Available</h3>
-          <p>Enable "Include Images" filter and ensure users have uploaded chart images to see their individual journeys.</p>
-        </div>
+        ) : (
+          <div style={{
+            textAlign: 'center',
+            padding: '40px',
+            color: darkMode ? '#b0b0b0' : '#666'
+          }}>
+            <h3>👥 No User Data Available</h3>
+            <p>Enable "Include Images" filter and ensure users have uploaded chart images to see their individual journeys.</p>
+          </div>
+        )
       )}
     </div>
   );
@@ -1625,5 +1966,764 @@ const InsightsTab = ({ data, darkMode }) => {
     </div>
   );
 };
+
+// 🔥 CHART EXAMS TAB - Detailed Charting Performance Analytics
+const ChartExamsTab = ({ data, darkMode }) => {
+  const [examFilter, setExamFilter] = useState('all');
+  const [chartAnalytics, setChartAnalytics] = useState([]);
+  const [examStats, setExamStats] = useState(null);
+  const [loadingExams, setLoadingExams] = useState(true);
+
+  // Fetch chart exam data
+  useEffect(() => {
+    fetchChartExamData();
+  }, [examFilter]);
+
+  const fetchChartExamData = async () => {
+    try {
+      setLoadingExams(true);
+      const token = storage.getItem('auth_token');
+      const response = await fetch(`/api/admin/chart-analytics?filter=${examFilter}&range=month&detailed=true`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      if (response.ok) {
+        const examData = await response.json();
+        setChartAnalytics(examData.analytics || []);
+        setExamStats(examData.stats || null);
+      }
+    } catch (error) {
+      console.error('Error fetching chart exam data:', error);
+    } finally {
+      setLoadingExams(false);
+    }
+  };
+
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  if (loadingExams) {
+    return (
+      <div style={{ textAlign: 'center', padding: '40px' }}>
+        <CryptoLoader />
+        <p style={{ color: darkMode ? '#b0b0b0' : '#666', marginTop: '20px' }}>
+          Loading chart exam analytics...
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' }}>
+        <h2 style={{ color: darkMode ? '#e0e0e0' : '#333', margin: 0 }}>
+          📈 Chart Exam Performance Analytics
+        </h2>
+        <select
+          value={examFilter}
+          onChange={(e) => setExamFilter(e.target.value)}
+          style={{
+            padding: '8px 12px',
+            borderRadius: '6px',
+            border: `1px solid ${darkMode ? '#444' : '#ddd'}`,
+            backgroundColor: darkMode ? '#333' : '#fff',
+            color: darkMode ? '#e0e0e0' : '#333',
+            fontSize: '14px'
+          }}
+        >
+          <option value="all">All Exam Types</option>
+          <option value="swing">Swing Analysis</option>
+          <option value="fibonacci">Fibonacci</option>
+          <option value="fvg">Fair Value Gaps</option>
+        </select>
+      </div>
+
+      {/* Chart Exam Stats Overview */}
+      {examStats && (
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+          gap: '20px',
+          marginBottom: '30px'
+        }}>
+          <StatCard
+            title="📈 Total Sessions"
+            value={examStats.totalSessions || 0}
+            subtitle="Exam attempts"
+            darkMode={darkMode}
+          />
+          <StatCard
+            title="👥 Unique Users"
+            value={examStats.uniqueUsers || 0}
+            subtitle="Active learners"
+            darkMode={darkMode}
+          />
+          <StatCard
+            title="🎯 Avg Accuracy"
+            value={`${(examStats.avgAccuracy * 100).toFixed(1)}%`}
+            subtitle="Success rate"
+            darkMode={darkMode}
+          />
+          <StatCard
+            title="⏱️ Avg Time"
+            value={formatTime(examStats.avgTimeSpent || 0)}
+            subtitle="Per chart"
+            darkMode={darkMode}
+          />
+          <StatCard
+            title="🔄 Focus Loss Rate"
+            value={examStats.avgFocusLossCount?.toFixed(1) || '0.0'}
+            subtitle="Tab switches"
+            darkMode={darkMode}
+          />
+          <StatCard
+            title="✅ Completion Rate"
+            value={`${(examStats.completionRate * 100).toFixed(1)}%`}
+            subtitle="Finished exams"
+            darkMode={darkMode}
+          />
+        </div>
+      )}
+
+      {/* Exam Type Breakdown */}
+      <div style={{ marginBottom: '30px' }}>
+        <h3 style={{ color: darkMode ? '#e0e0e0' : '#333', marginBottom: '15px' }}>
+          📊 Performance by Exam Type
+        </h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' }}>
+          {['swing', 'fibonacci', 'fvg'].map(examType => {
+            const typeData = chartAnalytics.filter(session => session.examType === examType);
+            const avgAccuracy = typeData.length > 0 ? 
+              typeData.reduce((sum, session) => sum + session.finalAccuracy, 0) / typeData.length : 0;
+            const avgTimeSpent = typeData.length > 0 ?
+              typeData.reduce((sum, session) => sum + session.totalTimeSpent, 0) / typeData.length : 0;
+            const avgFocusLoss = typeData.length > 0 ?
+              typeData.reduce((sum, session) => sum + (session.focusLossCount || 0), 0) / typeData.length : 0;
+
+            return (
+              <div key={examType} style={{
+                backgroundColor: darkMode ? '#2a2a2a' : '#f8f9fa',
+                borderRadius: '12px',
+                padding: '20px',
+                border: `1px solid ${darkMode ? '#444' : '#e0e0e0'}`
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px' }}>
+                  <span style={{
+                    background: examType === 'swing' ? '#e3f2fd' :
+                               examType === 'fibonacci' ? '#f3e5f5' : '#e8f5e8',
+                    color: examType === 'swing' ? '#1976d2' :
+                           examType === 'fibonacci' ? '#7b1fa2' : '#388e3c',
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    fontSize: '14px',
+                    fontWeight: 'bold'
+                  }}>
+                    {examType.charAt(0).toUpperCase() + examType.slice(1)}
+                  </span>
+                  <span style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '14px' }}>
+                    {typeData.length} sessions
+                  </span>
+                </div>
+                
+                <div style={{ display: 'grid', gap: '10px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: darkMode ? '#e0e0e0' : '#333', fontSize: '13px' }}>Accuracy:</span>
+                    <span style={{ 
+                      color: avgAccuracy >= 0.8 ? '#4caf50' : avgAccuracy >= 0.6 ? '#ff9800' : '#f44336',
+                      fontWeight: 'bold',
+                      fontSize: '13px'
+                    }}>
+                      {(avgAccuracy * 100).toFixed(1)}%
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: darkMode ? '#e0e0e0' : '#333', fontSize: '13px' }}>Avg Time:</span>
+                    <span style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '13px' }}>
+                      {formatTime(avgTimeSpent)}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: darkMode ? '#e0e0e0' : '#333', fontSize: '13px' }}>Focus Loss:</span>
+                    <span style={{
+                      color: avgFocusLoss > 2 ? '#f44336' : avgFocusLoss > 0 ? '#ff9800' : '#4caf50',
+                      fontSize: '13px'
+                    }}>
+                      {avgFocusLoss.toFixed(1)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Recent Sessions Table */}
+      <div>
+        <h3 style={{ color: darkMode ? '#e0e0e0' : '#333', marginBottom: '15px' }}>
+          📋 Recent Chart Exam Sessions
+        </h3>
+        <div style={{
+          backgroundColor: darkMode ? '#2a2a2a' : '#ffffff',
+          borderRadius: '12px',
+          overflow: 'hidden',
+          border: `1px solid ${darkMode ? '#444' : '#e0e0e0'}`
+        }}>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'auto 1fr auto auto auto auto auto auto',
+            gap: '20px',
+            padding: '20px',
+            backgroundColor: darkMode ? '#333' : '#f5f5f5',
+            borderBottom: `1px solid ${darkMode ? '#555' : '#e0e0e0'}`,
+            fontSize: '14px',
+            fontWeight: '600',
+            color: darkMode ? '#e0e0e0' : '#333'
+          }}>
+            <div>User</div>
+            <div>Exam Type</div>
+            <div>Chart</div>
+            <div>Score</div>
+            <div>Time</div>
+            <div>Attempts</div>
+            <div>Focus</div>
+            <div>Date</div>
+          </div>
+          
+          {chartAnalytics.slice(0, 20).map((session, index) => (
+            <div key={index} style={{
+              display: 'grid',
+              gridTemplateColumns: 'auto 1fr auto auto auto auto auto auto',
+              gap: '20px',
+              padding: '15px 20px',
+              borderBottom: index < 19 ? `1px solid ${darkMode ? '#333' : '#f0f0f0'}` : 'none',
+              fontSize: '13px',
+              alignItems: 'center'
+            }}>
+              <div style={{ color: darkMode ? '#b0b0b0' : '#666' }}>
+                {session.userId.substring(0, 8)}...
+              </div>
+              <div>
+                <span style={{
+                  background: session.examType === 'swing' ? '#e3f2fd' :
+                             session.examType === 'fibonacci' ? '#f3e5f5' : '#e8f5e8',
+                  color: session.examType === 'swing' ? '#1976d2' :
+                         session.examType === 'fibonacci' ? '#7b1fa2' : '#388e3c',
+                  padding: '4px 8px',
+                  borderRadius: '4px',
+                  fontSize: '11px',
+                  fontWeight: 'bold'
+                }}>
+                  {session.examType.toUpperCase()}
+                </span>
+              </div>
+              <div style={{ color: darkMode ? '#e0e0e0' : '#333' }}>
+                {session.chartCount}/{session.part || 1}
+              </div>
+              <div>
+                <span style={{
+                  color: session.finalAccuracy >= 0.8 ? '#4caf50' :
+                         session.finalAccuracy >= 0.6 ? '#ff9800' : '#f44336',
+                  fontWeight: 'bold'
+                }}>
+                  {(session.finalAccuracy * 100).toFixed(0)}%
+                </span>
+              </div>
+              <div style={{ color: darkMode ? '#b0b0b0' : '#666' }}>
+                {formatTime(session.totalTimeSpent)}
+              </div>
+              <div style={{ color: darkMode ? '#e0e0e0' : '#333' }}>
+                {session.attempts}
+              </div>
+              <div>
+                <span style={{
+                  color: session.focusLossCount > 2 ? '#f44336' : 
+                         session.focusLossCount > 0 ? '#ff9800' : '#4caf50'
+                }}>
+                  {session.focusLossCount || 0}
+                </span>
+              </div>
+              <div style={{ color: darkMode ? '#888' : '#999', fontSize: '12px' }}>
+                {new Date(session.createdAt).toLocaleDateString()}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Data Export Section */}
+      <div style={{
+        marginTop: '30px',
+        padding: '20px',
+        backgroundColor: darkMode ? '#2a2a2a' : '#f8f9fa',
+        borderRadius: '12px',
+        border: `1px solid ${darkMode ? '#444' : '#e0e0e0'}`
+      }}>
+        <h4 style={{ color: darkMode ? '#e0e0e0' : '#333', marginBottom: '10px' }}>
+          💾 Chart Exam Data Export
+        </h4>
+        <p style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '14px', marginBottom: '15px' }}>
+          Export detailed chart exam analytics including timing data, focus metrics, and performance patterns for research or analysis.
+        </p>
+        <button
+          onClick={() => {
+            // Export functionality will be implemented in the API
+            window.open(`/api/admin/chart-analytics/export?filter=${examFilter}&format=csv`, '_blank');
+          }}
+          style={{
+            padding: '10px 20px',
+            backgroundColor: '#4CAF50',
+            color: 'white',
+            border: 'none',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            fontSize: '14px',
+            fontWeight: '600'
+          }}
+        >
+          📥 Export CSV Data
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// 🎯 BIAS TESTS TAB COMPONENT
+const BiasTestsTab = ({ darkMode }) => {
+  const [biasData, setBiasData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [activeSubTab, setActiveSubTab] = useState('overview');
+  const [filters, setFilters] = useState({
+    timeRange: '30',
+    testType: 'all'
+  });
+
+  useEffect(() => {
+    fetchBiasAnalytics();
+  }, [filters]);
+
+  const fetchBiasAnalytics = async () => {
+    try {
+      setLoading(true);
+      const token = await storage.getItem('auth_token');
+      
+      const queryParams = new URLSearchParams({
+        timeRange: filters.timeRange,
+        testType: filters.testType,
+        metric: activeSubTab
+      });
+
+      const response = await fetch(`/api/admin/bias-analytics?${queryParams}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      setBiasData(result.data);
+    } catch (error) {
+      console.error('Error fetching bias analytics:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const exportCSV = async () => {
+    try {
+      const token = await storage.getItem('auth_token');
+      const queryParams = new URLSearchParams({
+        timeRange: filters.timeRange,
+        testType: filters.testType,
+        format: 'csv'
+      });
+
+      const response = await fetch(`/api/admin/bias-analytics?${queryParams}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to export data');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      a.download = `bias-test-analytics-${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error exporting CSV:', error);
+      alert('Failed to export data');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        minHeight: '400px',
+        flexDirection: 'column',
+        gap: '20px'
+      }}>
+        <CryptoLoader />
+        <p style={{ color: darkMode ? '#e0e0e0' : '#333' }}>
+          Loading bias test analytics...
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {/* Header and Filters */}
+      <div style={{ marginBottom: '30px' }}>
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          marginBottom: '20px' 
+        }}>
+          <h2 style={{ color: darkMode ? '#e0e0e0' : '#333', margin: 0 }}>
+            🎯 Bias Test Analytics
+          </h2>
+          <button onClick={exportCSV} style={{
+            padding: '10px 20px',
+            backgroundColor: '#4CAF50',
+            color: 'white',
+            border: 'none',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            fontSize: '14px',
+            fontWeight: '600'
+          }}>
+            📥 Export CSV
+          </button>
+        </div>
+
+        {/* Filters */}
+        <div style={{ 
+          display: 'flex', 
+          gap: '15px', 
+          marginBottom: '20px',
+          flexWrap: 'wrap'
+        }}>
+          <select
+            value={filters.timeRange}
+            onChange={(e) => setFilters(prev => ({ ...prev, timeRange: e.target.value }))}
+            style={{
+              padding: '8px 12px',
+              backgroundColor: darkMode ? '#2a2a2a' : 'white',
+              color: darkMode ? '#e0e0e0' : '#333',
+              border: `1px solid ${darkMode ? '#444' : '#ddd'}`,
+              borderRadius: '4px',
+              fontSize: '14px'
+            }}
+          >
+            <option value="7">Last 7 days</option>
+            <option value="30">Last 30 days</option>
+            <option value="90">Last 90 days</option>
+            <option value="365">Last year</option>
+          </select>
+
+          <select
+            value={filters.testType}
+            onChange={(e) => setFilters(prev => ({ ...prev, testType: e.target.value }))}
+            style={{
+              padding: '8px 12px',
+              backgroundColor: darkMode ? '#2a2a2a' : 'white',
+              color: darkMode ? '#e0e0e0' : '#333',
+              border: `1px solid ${darkMode ? '#444' : '#ddd'}`,
+              borderRadius: '4px',
+              fontSize: '14px'
+            }}
+          >
+            <option value="all">All Test Types</option>
+            <option value="crypto">Crypto</option>
+            <option value="forex">Forex</option>
+            <option value="stocks">Stocks</option>
+          </select>
+        </div>
+
+        {/* Sub Tabs */}
+        <div style={{ 
+          display: 'flex', 
+          gap: '10px',
+          borderBottom: `2px solid ${darkMode ? '#333' : '#eee'}`,
+          marginBottom: '20px'
+        }}>
+          {[
+            { id: 'overview', label: '📊 Overview' },
+            { id: 'progression', label: '📈 User Progression' },
+            { id: 'market-insights', label: '📉 Market Insights' },
+            { id: 'monetization', label: '💰 Monetization' }
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => {
+                setActiveSubTab(tab.id);
+                setFilters(prev => ({ ...prev })); // Trigger refetch
+              }}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: activeSubTab === tab.id 
+                  ? (darkMode ? '#2196F3' : '#2196F3') 
+                  : 'transparent',
+                color: activeSubTab === tab.id 
+                  ? 'white' 
+                  : (darkMode ? '#e0e0e0' : '#333'),
+                border: 'none',
+                borderRadius: '6px 6px 0 0',
+                cursor: 'pointer',
+                fontSize: '12px',
+                fontWeight: '600',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Content based on active sub-tab */}
+      {biasData && (
+        <div>
+          {activeSubTab === 'overview' && (
+            <BiasOverviewContent data={biasData} darkMode={darkMode} />
+          )}
+          {activeSubTab === 'progression' && (
+            <BiasProgressionContent data={biasData} darkMode={darkMode} />
+          )}
+          {activeSubTab === 'market-insights' && (
+            <BiasMarketInsightsContent data={biasData} darkMode={darkMode} />
+          )}
+          {activeSubTab === 'monetization' && (
+            <BiasMonetizationContent data={biasData} darkMode={darkMode} />
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Bias Overview Content Component
+const BiasOverviewContent = ({ data, darkMode }) => {
+  const overview = data.overview || {};
+  const testTypeStats = data.testTypeStats || {};
+  const assetPerformance = data.assetPerformance || {};
+  const recentSessions = data.recentSessions || [];
+
+  return (
+    <div style={{ display: 'grid', gap: '20px' }}>
+      {/* Key Metrics Grid */}
+      <div style={{ 
+        display: 'grid', 
+        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
+        gap: '15px' 
+      }}>
+        <MetricCard
+          title="Total Sessions"
+          value={overview.totalSessions || 0}
+          darkMode={darkMode}
+          icon="📊"
+        />
+        <MetricCard
+          title="Avg Accuracy"
+          value={`${overview.avgAccuracy || 0}%`}
+          darkMode={darkMode}
+          icon="🎯"
+        />
+        <MetricCard
+          title="Avg Confidence"
+          value={`${overview.avgConfidence || 0}/10`}
+          darkMode={darkMode}
+          icon="💪"
+        />
+        <MetricCard
+          title="Avg Session Time"
+          value={`${Math.round(overview.avgSessionTime || 0)}s`}
+          darkMode={darkMode}
+          icon="⏱️"
+        />
+        <MetricCard
+          title="Premium Candidates"
+          value={`${overview.premiumCandidateRate || 0}%`}
+          darkMode={darkMode}
+          icon="⭐"
+        />
+        <MetricCard
+          title="High Churn Risk"
+          value={`${overview.churnRiskRate || 0}%`}
+          darkMode={darkMode}
+          icon="⚠️"
+        />
+      </div>
+
+      {/* Test Type Performance */}
+      <div>
+        <h3 style={{ color: darkMode ? '#e0e0e0' : '#333', marginBottom: '15px' }}>
+          📈 Performance by Test Type
+        </h3>
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', 
+          gap: '15px' 
+        }}>
+          {Object.entries(testTypeStats).map(([type, stats]) => (
+            <div key={type} style={{
+              backgroundColor: darkMode ? '#2a2a2a' : '#f9f9f9',
+              borderRadius: '8px',
+              padding: '20px',
+              border: `1px solid ${darkMode ? '#444' : '#ddd'}`
+            }}>
+              <h4 style={{ 
+                color: darkMode ? '#e0e0e0' : '#333', 
+                margin: '0 0 15px 0',
+                textTransform: 'capitalize'
+              }}>
+                {type === 'crypto' ? '₿ Crypto' : type === 'forex' ? '💱 Forex' : '📈 Stocks'}
+              </h4>
+              <div style={{ display: 'grid', gap: '8px', fontSize: '14px' }}>
+                <div style={{ color: darkMode ? '#b0b0b0' : '#666' }}>
+                  Sessions: <strong>{stats.totalSessions}</strong>
+                </div>
+                <div style={{ color: darkMode ? '#b0b0b0' : '#666' }}>
+                  Accuracy: <strong>{Math.round(stats.avgAccuracy * 100)}%</strong>
+                </div>
+                <div style={{ color: darkMode ? '#b0b0b0' : '#666' }}>
+                  Avg Time: <strong>{Math.round(stats.avgSessionTime)}s</strong>
+                </div>
+                <div style={{ color: darkMode ? '#b0b0b0' : '#666' }}>
+                  Technical Score: <strong>{Math.round(stats.avgTechnicalScore * 100)}%</strong>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Recent Sessions Table */}
+      <div>
+        <h3 style={{ color: darkMode ? '#e0e0e0' : '#333', marginBottom: '15px' }}>
+          📝 Recent Sessions
+        </h3>
+        <div style={{
+          backgroundColor: darkMode ? '#2a2a2a' : '#f9f9f9',
+          borderRadius: '8px',
+          padding: '20px',
+          border: `1px solid ${darkMode ? '#444' : '#ddd'}`,
+          overflowX: 'auto'
+        }}>
+          {recentSessions.length > 0 ? (
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+              <thead>
+                <tr style={{ borderBottom: `1px solid ${darkMode ? '#444' : '#ddd'}` }}>
+                  <th style={{ padding: '8px', textAlign: 'left', color: darkMode ? '#e0e0e0' : '#333' }}>User</th>
+                  <th style={{ padding: '8px', textAlign: 'left', color: darkMode ? '#e0e0e0' : '#333' }}>Type</th>
+                  <th style={{ padding: '8px', textAlign: 'left', color: darkMode ? '#e0e0e0' : '#333' }}>Asset</th>
+                  <th style={{ padding: '8px', textAlign: 'left', color: darkMode ? '#e0e0e0' : '#333' }}>Accuracy</th>
+                  <th style={{ padding: '8px', textAlign: 'left', color: darkMode ? '#e0e0e0' : '#333' }}>Confidence</th>
+                  <th style={{ padding: '8px', textAlign: 'left', color: darkMode ? '#e0e0e0' : '#333' }}>Time</th>
+                  <th style={{ padding: '8px', textAlign: 'left', color: darkMode ? '#e0e0e0' : '#333' }}>Premium</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentSessions.slice(0, 20).map((session, index) => (
+                  <tr key={index} style={{ borderBottom: `1px solid ${darkMode ? '#333' : '#eee'}` }}>
+                    <td style={{ padding: '8px', color: darkMode ? '#b0b0b0' : '#666' }}>
+                      {session.userId.substring(0, 8)}...
+                    </td>
+                    <td style={{ padding: '8px', color: darkMode ? '#b0b0b0' : '#666' }}>
+                      {session.testType}
+                    </td>
+                    <td style={{ padding: '8px', color: darkMode ? '#b0b0b0' : '#666' }}>
+                      {session.assetSymbol.toUpperCase()}
+                    </td>
+                    <td style={{ padding: '8px', color: darkMode ? '#b0b0b0' : '#666' }}>
+                      {Math.round(session.finalAccuracy * 100)}%
+                    </td>
+                    <td style={{ padding: '8px', color: darkMode ? '#b0b0b0' : '#666' }}>
+                      {Math.round(session.avgConfidence)}/10
+                    </td>
+                    <td style={{ padding: '8px', color: darkMode ? '#b0b0b0' : '#666' }}>
+                      {Math.round(session.totalSessionTime)}s
+                    </td>
+                    <td style={{ padding: '8px', color: darkMode ? '#b0b0b0' : '#666' }}>
+                      {session.premiumCandidate ? '⭐' : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <p style={{ color: darkMode ? '#b0b0b0' : '#666', textAlign: 'center', margin: 0 }}>
+              No sessions found for the selected criteria.
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Placeholder components for other tabs
+const BiasProgressionContent = ({ data, darkMode }) => (
+  <div style={{ color: darkMode ? '#e0e0e0' : '#333' }}>
+    <h3>User Progression Analytics</h3>
+    <p>Detailed user progression metrics will be displayed here.</p>
+  </div>
+);
+
+const BiasMarketInsightsContent = ({ data, darkMode }) => (
+  <div style={{ color: darkMode ? '#e0e0e0' : '#333' }}>
+    <h3>Market Insights</h3>
+    <p>Market condition analysis and bias patterns will be displayed here.</p>
+  </div>
+);
+
+const BiasMonetizationContent = ({ data, darkMode }) => (
+  <div style={{ color: darkMode ? '#e0e0e0' : '#333' }}>
+    <h3>Monetization Metrics</h3>
+    <p>Premium conversion and data value metrics will be displayed here.</p>
+  </div>
+);
+
+// Helper component for metric cards
+const MetricCard = ({ title, value, icon, darkMode }) => (
+  <div style={{
+    backgroundColor: darkMode ? '#2a2a2a' : '#f9f9f9',
+    borderRadius: '8px',
+    padding: '20px',
+    border: `1px solid ${darkMode ? '#444' : '#ddd'}`,
+    textAlign: 'center'
+  }}>
+    <div style={{ fontSize: '24px', marginBottom: '8px' }}>{icon}</div>
+    <div style={{ 
+      fontSize: '24px', 
+      fontWeight: 'bold', 
+      color: darkMode ? '#e0e0e0' : '#333',
+      marginBottom: '4px'
+    }}>
+      {value}
+    </div>
+    <div style={{ 
+      fontSize: '12px', 
+      color: darkMode ? '#b0b0b0' : '#666',
+      fontWeight: '500'
+    }}>
+      {title}
+    </div>
+  </div>
+);
 
 export default VisualAnalyticsDashboard;

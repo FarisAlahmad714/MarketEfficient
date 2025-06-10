@@ -7,12 +7,25 @@ import { composeMiddleware } from '../../../lib/api-handler';
 import { detectSwingPoints } from './utils/swing-detection';
 import { validateSwingPoints } from './utils/validation';
 import TestResults from '../../../models/TestResults';
-import logger from '../../../lib/logger'; // Adjust path to your logger utility
+import logger from '../../../lib/logger';
+import { validateTimeWindow, recordSubmission, endChartSession } from '../../../lib/timeWindow';
 async function validateSwingHandler(req, res) {
   // User is already authenticated via middleware
   const userId = req.user.id;
   
   const { drawings, chartData, chartCount } = req.body;
+  
+  // Validate time window
+  const timeValidation = validateTimeWindow(userId, 'swing', chartCount, 1);
+  if (!timeValidation.valid) {
+    return res.status(400).json({
+      error: timeValidation.error,
+      message: timeValidation.message,
+      code: timeValidation.code,
+      timeSpent: timeValidation.timeSpent,
+      attempts: timeValidation.attempts
+    });
+  }
   
   if (!drawings || !Array.isArray(drawings)) {
     return res.status(400).json({ 
@@ -78,6 +91,17 @@ async function validateSwingHandler(req, res) {
   await testResult.save();
   logger.log(`Test result saved, score: ${validationResult.score}/${validationResult.totalExpectedPoints}`);
   
+  // Record submission for analytics
+  recordSubmission(timeValidation.session.sessionKey || `${userId}_swing_${chartCount}_1`, {
+    score: validationResult.score,
+    totalPoints: validationResult.totalExpectedPoints,
+    drawings: drawings.length,
+    timeSpent: timeValidation.timeSpent
+  });
+  
+  // End session and collect analytics
+  const sessionAnalytics = endChartSession(userId, 'swing', chartCount, 1);
+  
   return res.status(200).json({
     success: true,
     message: validationResult.message,
@@ -86,6 +110,9 @@ async function validateSwingHandler(req, res) {
     feedback: validationResult.feedback,
     expected: expectedSwingPoints,
     chart_count: chartCount,
+    timeRemaining: timeValidation.timeRemaining,
+    timeSpent: timeValidation.timeSpent,
+    attempts: timeValidation.attempts,
     debug: debugInfo
   });
 }

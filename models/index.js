@@ -7,3 +7,4 @@ require('./PromoCode');
 require('./Subscription');
 require('./TestResults');
 require('./User');
+require('./ChartExamAnalytics');
