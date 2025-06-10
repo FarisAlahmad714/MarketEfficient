@@ -293,6 +293,18 @@ export default function AssetTestPage() {
       }
     }
 
+    // Validate confidence levels are properly set
+    if (isValid) {
+      for (const questionId in userAnswers) {
+        const confidence = confidenceLevels[questionId];
+        if (!confidence || confidence < 1 || confidence > 10) {
+          isValid = false;
+          message = "Please set confidence levels for all your predictions.";
+          break;
+        }
+      }
+    }
+
     setValidationError(message);
     return isValid;
   };

@@ -332,7 +332,7 @@ const Results = () => {
                 if (imageInfo) {
                   setSetupImagesCaptured(prev => ({ ...prev, [questionId]: true }));
                 }
-              }, 5000); // Heavily delay capture to allow confetti and UI to be smooth
+              }, 16000); // Wait for confetti to finish (15s duration + 1s buffer)
             }
 
             // Check if outcome image needs to be captured
@@ -343,7 +343,7 @@ const Results = () => {
                 if (imageInfo) {
                   setOutcomeImagesCaptured(prev => ({ ...prev, [questionId]: true }));
                 }
-              }, 5500); // Stagger outcome chart capture
+              }, 16500); // Stagger outcome chart capture after confetti ends
             }
           }
           
@@ -807,6 +807,7 @@ const Results = () => {
     
     ctx.restore();
   };
+
 
   return (
     <TrackedPage pageName="BiasTestResults" eventProperties={{ asset: router.query.assetSymbol, timeframe: results.timeframe }}>
