@@ -1,4 +1,4 @@
-import React, { useState, useEffect, memo, useRef } from 'react'; // Added useRef here
+import React, { useState, useEffect, memo, useRef, useCallback } from 'react'; // Added useRef and useCallback here
 
 import { useRouter } from 'next/router';
 import axios from 'axios';
@@ -17,28 +17,80 @@ import {
   FaChartLine,
   FaArrowRight,
   FaSearch,
+  FaChevronLeft,
+  FaChevronRight,
+  FaPause,
+  FaPlay,
 } from 'react-icons/fa';
 import TimeframeModal from './TimeframeModal';
 
 // Styled Components
 const Container = styled.div`
-  padding: 40px 20px;
-  max-width: 1200px;
+  padding: 60px 20px;
+  max-width: 1400px;
   margin: 0 auto;
   font-family: 'Inter', sans-serif;
+  position: relative;
+  overflow: hidden;
+`;
+
+const FloatingElement = styled.div`
+  position: absolute;
+  width: ${props => props.size || '20px'};
+  height: ${props => props.size || '20px'};
+  background: ${props => props.color || 'rgba(0, 196, 255, 0.1)'};
+  border-radius: 50%;
+  animation: float 6s ease-in-out infinite;
+  animation-delay: ${props => props.delay || '0s'};
+  opacity: 0.6;
+  
+  @keyframes float {
+    0%, 100% { transform: translateY(0px) rotate(0deg); }
+    25% { transform: translateY(-20px) rotate(90deg); }
+    50% { transform: translateY(-10px) rotate(180deg); }
+    75% { transform: translateY(-15px) rotate(270deg); }
+  }
 `;
 
 const Header = styled.div`
   text-align: center;
-  margin-bottom: 50px;
+  margin-bottom: 80px;
+  position: relative;
+  z-index: 2;
 `;
 
 const Title = styled.h1`
-  font-size: 2.8rem;
-  margin-bottom: 15px;
-  background: linear-gradient(90deg, #00c4ff, #00ff88);
+  font-size: 3.5rem;
+  margin-bottom: 25px;
+  background: linear-gradient(135deg, #00c4ff 0%, #00ff88 50%, #ff6b6b 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  position: relative;
+  
+  @media (max-width: 768px) {
+    font-size: 2.5rem;
+  }
+  
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100px;
+    height: 4px;
+    background: linear-gradient(90deg, #00c4ff, #00ff88);
+    border-radius: 2px;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  
+  @keyframes pulse {
+    0%, 100% { opacity: 0.6; transform: translateX(-50%) scaleX(1); }
+    50% { opacity: 1; transform: translateX(-50%) scaleX(1.2); }
+  }
 `;
 
 const Highlight = styled.span`
@@ -52,22 +104,41 @@ const Highlight = styled.span`
 
 const Subtitle = styled.p`
   color: #b0b0b0;
-  font-size: 1.2rem;
-  max-width: 700px;
-  margin: 0 auto;
-  line-height: 1.7;
+  font-size: 1.3rem;
+  max-width: 800px;
+  margin: 0 auto 40px;
+  line-height: 1.8;
+  font-weight: 400;
+  
+  @media (max-width: 768px) {
+    font-size: 1.1rem;
+  }
 `;
 
 const SearchBar = styled.div`
   display: flex;
   align-items: center;
-  max-width: 500px;
-  margin: 20px auto;
-  padding: 12px 20px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 30px;
-  backdrop-filter: blur(10px);
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 16px 24px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 50px;
+  backdrop-filter: blur(20px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  transition: all 0.3s ease;
+  
+  &:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(0, 196, 255, 0.3);
+    box-shadow: 0 8px 25px rgba(0, 196, 255, 0.1);
+  }
+  
+  &:focus-within {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(0, 196, 255, 0.5);
+    box-shadow: 0 8px 25px rgba(0, 196, 255, 0.2);
+  }
 `;
 
 const SearchInput = styled.input`
@@ -82,20 +153,207 @@ const SearchInput = styled.input`
   }
 `;
 
-const Grid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+const CategorySection = styled.div`
+  margin-bottom: 80px;
+`;
+
+const CategoryHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 40px;
+  position: relative;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    top: 50%;
+    z-index: 1;
+  }
+`;
+
+const CategoryTitle = styled.h2`
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+  padding: 0 40px;
+  background: linear-gradient(135deg, #121212 0%, #1a1a1a 100%);
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  letter-spacing: -0.02em;
+  
+  &.crypto {
+    background: linear-gradient(135deg, #F7931A, #FF9900);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  
+  &.equity {
+    background: linear-gradient(135deg, #3366cc, #1a3399);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  
+  @media (max-width: 768px) {
+    font-size: 2rem;
+    padding: 0 20px;
+  }
+`;
+
+const CarouselContainer = styled.div`
+  position: relative;
+  overflow: hidden;
+  margin: 0 -20px;
+  
+  @media (max-width: 768px) {
+    margin: 0 -10px;
+  }
+`;
+
+const CarouselTrack = styled(motion.div)`
+  display: flex;
   gap: 30px;
-  margin-bottom: 60px;
+  padding: 0 20px;
+  will-change: transform;
+  
+  @media (max-width: 768px) {
+    gap: 20px;
+    padding: 0 10px;
+  }
+`;
+
+const CarouselControls = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  margin-top: 30px;
+  
+  @media (max-width: 768px) {
+    gap: 15px;
+  }
+`;
+
+const CarouselButton = styled.button`
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+  
+  &:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.4);
+    transform: scale(1.1);
+  }
+  
+  &:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    transform: scale(1);
+  }
+  
+  @media (max-width: 768px) {
+    width: 40px;
+    height: 40px;
+    font-size: 1rem;
+  }
+`;
+
+const CarouselIndicators = styled.div`
+  display: flex;
+  gap: 8px;
+  align-items: center;
+`;
+
+const CarouselIndicator = styled.div`
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: ${props => props.active ? 'rgba(255, 255, 255, 0.8)' : 'rgba(255, 255, 255, 0.3)'};
+  transition: all 0.3s ease;
+  cursor: pointer;
+  
+  &:hover {
+    background: rgba(255, 255, 255, 0.6);
+    transform: scale(1.2);
+  }
+`;
+
+const AutoPlayIndicator = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.9rem;
+  
+  @media (max-width: 768px) {
+    font-size: 0.8rem;
+  }
 `;
 
 const Card = styled(motion.div)`
-  height: 450px;
-  border-radius: 15px;
+  height: 400px;
+  width: 320px;
+  min-width: 320px;
+  border-radius: 20px;
   overflow: hidden;
   position: relative;
-  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
   cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.02);
+  backdrop-filter: blur(10px);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  
+  &:hover {
+    transform: translateY(-8px) scale(1.03);
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4);
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.1) 50%, transparent 70%);
+    transform: translateX(-100%);
+    transition: transform 0.6s;
+    z-index: 3;
+  }
+  
+  &:hover::before {
+    transform: translateX(100%);
+  }
+  
+  @media (max-width: 768px) {
+    width: 280px;
+    min-width: 280px;
+    height: 360px;
+  }
+  
+  @media (max-width: 480px) {
+    width: 260px;
+    min-width: 260px;
+    height: 340px;
+  }
 `;
 
 const Overlay = styled.div`
@@ -104,12 +362,22 @@ const Overlay = styled.div`
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(rgba(10, 10, 10, 0.7), rgba(10, 10, 10, 0.9));
+  background: linear-gradient(
+    135deg,
+    rgba(0, 0, 0, 0.6) 0%,
+    rgba(0, 0, 0, 0.4) 50%,
+    rgba(0, 0, 0, 0.8) 100%
+  );
   z-index: 1;
-  transition: transform 0.5s ease;
+  transition: all 0.4s ease;
 
   ${Card}:hover & {
-    transform: scale(1.1);
+    background: linear-gradient(
+      135deg,
+      rgba(0, 0, 0, 0.3) 0%,
+      rgba(0, 0, 0, 0.2) 50%,
+      rgba(0, 0, 0, 0.5) 100%
+    );
   }
 `;
 
@@ -124,21 +392,49 @@ const CardContent = styled.div`
 `;
 
 const IconWrapper = styled.div`
-  width: 70px;
-  height: 70px;
+  width: 80px;
+  height: 80px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.8rem;
+  font-size: 2rem;
   color: white;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+  position: relative;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    background: linear-gradient(45deg, rgba(255, 255, 255, 0.2), transparent, rgba(255, 255, 255, 0.2));
+    border-radius: 50%;
+    z-index: -1;
+  }
+  
+  ${Card}:hover & {
+    transform: scale(1.1) rotate(5deg);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+  }
 `;
 
 const AssetName = styled.h3`
-  font-size: 1.6rem;
+  font-size: 1.8rem;
   color: white;
-  margin-bottom: 15px;
+  margin-bottom: 18px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  
+  ${Card}:hover & {
+    color: #fff;
+    text-shadow: 0 4px 15px rgba(255, 255, 255, 0.2);
+  }
 `;
 
 const AssetType = styled.div`
@@ -184,30 +480,56 @@ const TimeframeNote = styled.div`
 const StartButton = styled(motion.button)`
   display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 12px 25px;
+  justify-content: center;
+  gap: 12px;
+  padding: 16px 32px;
   color: white;
   border-radius: 50px;
   text-decoration: none;
-  font-weight: bold;
+  font-weight: 700;
+  font-size: 1.1rem;
   border: none;
   cursor: pointer;
   width: 100%;
   margin-top: auto;
-  transition: all 0.3s ease;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s;
+  }
+
+  &:hover::before {
+    left: 100%;
+  }
 
   &:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+    transform: translateY(-3px) scale(1.02);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
   }
 
-  & i {
-    margin-left: 10px;
-    transition: transform 0.3s ease;
+  &:active {
+    transform: translateY(-1px) scale(0.98);
   }
 
-  &:hover i {
-    transform: translateX(5px);
+  & svg {
+    transition: all 0.3s ease;
+    font-size: 1.2rem;
+  }
+
+  &:hover svg {
+    transform: translateX(3px) scale(1.1);
   }
 `;
 
@@ -280,8 +602,17 @@ const AssetSelector = () => {
   const [error, setError] = useState(null);
   const [showTimeframeModal, setShowTimeframeModal] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState(null);
+  
+  // Carousel state
+  const [cryptoCurrentIndex, setCryptoCurrentIndex] = useState(0);
+  const [equityCurrentIndex, setEquityCurrentIndex] = useState(0);
+  const [cryptoAutoPlay, setCryptoAutoPlay] = useState(true);
+  const [equityAutoPlay, setEquityAutoPlay] = useState(true);
+  
   const router = useRouter();
-  const cryptoLoaderRef = useRef(null); 
+  const cryptoLoaderRef = useRef(null);
+  const cryptoIntervalRef = useRef(null);
+  const equityIntervalRef = useRef(null); 
 
  useEffect(() => {
     const fetchAssets = async () => {
@@ -318,6 +649,88 @@ const AssetSelector = () => {
     );
     setFilteredAssets(filtered);
   }, [searchQuery, assets]);
+
+  // Separate assets by type
+  const cryptoAssets = filteredAssets.filter(asset => asset.type === 'crypto');
+  const equityAssets = filteredAssets.filter(asset => asset.type === 'equity');
+  
+  // Carousel logic
+  const ITEMS_PER_VIEW = {
+    desktop: 3,
+    tablet: 2,
+    mobile: 1
+  };
+  
+  const getItemsPerView = useCallback(() => {
+    if (typeof window !== 'undefined') {
+      if (window.innerWidth <= 480) return ITEMS_PER_VIEW.mobile;
+      if (window.innerWidth <= 768) return ITEMS_PER_VIEW.tablet;
+    }
+    return ITEMS_PER_VIEW.desktop;
+  }, []);
+  
+  const [itemsPerView, setItemsPerView] = useState(getItemsPerView());
+  
+  useEffect(() => {
+    const handleResize = () => {
+      setItemsPerView(getItemsPerView());
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [getItemsPerView]);
+  
+  // Auto-play functionality
+  useEffect(() => {
+    if (cryptoAutoPlay && cryptoAssets.length > itemsPerView) {
+      cryptoIntervalRef.current = setInterval(() => {
+        setCryptoCurrentIndex(prev => 
+          prev >= cryptoAssets.length - itemsPerView ? 0 : prev + 1
+        );
+      }, 3000);
+    }
+    return () => clearInterval(cryptoIntervalRef.current);
+  }, [cryptoAutoPlay, cryptoAssets.length, itemsPerView]);
+  
+  useEffect(() => {
+    if (equityAutoPlay && equityAssets.length > itemsPerView) {
+      equityIntervalRef.current = setInterval(() => {
+        setEquityCurrentIndex(prev => 
+          prev >= equityAssets.length - itemsPerView ? 0 : prev + 1
+        );
+      }, 3500); // Slightly different timing for variety
+    }
+    return () => clearInterval(equityIntervalRef.current);
+  }, [equityAutoPlay, equityAssets.length, itemsPerView]);
+  
+  // Carousel navigation functions
+  const navigateCrypto = useCallback((direction) => {
+    setCryptoCurrentIndex(prev => {
+      if (direction === 'prev') {
+        return prev === 0 ? Math.max(0, cryptoAssets.length - itemsPerView) : prev - 1;
+      } else {
+        return prev >= cryptoAssets.length - itemsPerView ? 0 : prev + 1;
+      }
+    });
+  }, [cryptoAssets.length, itemsPerView]);
+  
+  const navigateEquity = useCallback((direction) => {
+    setEquityCurrentIndex(prev => {
+      if (direction === 'prev') {
+        return prev === 0 ? Math.max(0, equityAssets.length - itemsPerView) : prev - 1;
+      } else {
+        return prev >= equityAssets.length - itemsPerView ? 0 : prev + 1;
+      }
+    });
+  }, [equityAssets.length, itemsPerView]);
+  
+  const goToCryptoSlide = useCallback((index) => {
+    setCryptoCurrentIndex(index);
+  }, []);
+  
+  const goToEquitySlide = useCallback((index) => {
+    setEquityCurrentIndex(index);
+  }, []);
 
   const handleAssetSelect = (asset) => {
     setSelectedAsset(asset);
@@ -479,85 +892,248 @@ const AssetSelector = () => {
     );
   }
 
+  const renderCarousel = (assets, currentIndex, navigate, goToSlide, autoPlay, setAutoPlay, categoryName) => {
+    if (assets.length === 0) return null;
+    
+    const maxIndex = Math.max(0, assets.length - itemsPerView);
+    const canNavigate = assets.length > itemsPerView;
+    
+    return (
+      <CategorySection>
+        <CategoryHeader>
+          <CategoryTitle className={categoryName.toLowerCase()}>
+            {categoryName}
+          </CategoryTitle>
+        </CategoryHeader>
+        
+        <CarouselContainer>
+          <CarouselTrack
+            animate={{
+              x: -(currentIndex * (320 + 30)) // card width + gap
+            }}
+            transition={{
+              type: "spring",
+              stiffness: 300,
+              damping: 30
+            }}
+          >
+            <AnimatePresence>
+              {assets.map((asset, index) => (
+                <Card
+                  key={asset.id}
+                  onClick={() => handleAssetSelect(asset)}
+                  initial={{ opacity: 0, y: 50, rotateX: -10 }}
+                  animate={{ opacity: 1, y: 0, rotateX: 0 }}
+                  exit={{ opacity: 0, y: -50, scale: 0.9 }}
+                  transition={{ 
+                    duration: 0.6, 
+                    delay: index * 0.05,
+                    ease: "easeOut" 
+                  }}
+                  whileHover={{ 
+                    rotateX: 3, 
+                    rotateY: 3,
+                    transition: { duration: 0.3 }
+                  }}
+                  whileTap={{ scale: 0.98 }}
+                  aria-label={`Select ${asset.name} for testing`}
+                >
+                  <Image
+                    src={getImageSrc(asset.type, asset.symbol)}
+                    alt={`${asset.name} background`}
+                    fill
+                    sizes="320px"
+                    style={{ objectFit: 'cover' }}
+                    quality={80}
+                    priority={index < 3}
+                  />
+                  <Overlay />
+                  <CardContent>
+                    <div>
+                      <IconWrapper style={{ background: getGradient(asset.type, asset.symbol) }}>
+                        {getIcon(asset.type, asset.symbol)}
+                      </IconWrapper>
+                      <AssetName>{asset.name}</AssetName>
+                      <AssetType>
+                        <AssetTypeIcon as={() => getIcon(asset.type, asset.symbol)} />
+                        {asset.type}
+                      </AssetType>
+                      <Description>{getDescription(asset)}</Description>
+                    </div>
+                    <div>
+                      <TimeframeNote>
+                        <TimeframeIcon style={{ color: getToolBlogInfoColor(asset.type, asset.symbol) }} />
+                        Available on multiple timeframes
+                      </TimeframeNote>
+                      <StartButton
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleAssetSelect(asset);
+                        }}
+                        style={{ background: getGradient(asset.type, asset.symbol) }}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        aria-label={`Start test for ${asset.name}`}
+                      >
+                        Start Test
+                        <FaArrowRight />
+                      </StartButton>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </AnimatePresence>
+          </CarouselTrack>
+        </CarouselContainer>
+        
+        {canNavigate && (
+          <CarouselControls>
+            <CarouselButton 
+              onClick={() => navigate('prev')}
+              disabled={currentIndex === 0}
+              aria-label="Previous assets"
+            >
+              <FaChevronLeft />
+            </CarouselButton>
+            
+            <CarouselIndicators>
+              {Array.from({ length: maxIndex + 1 }).map((_, index) => (
+                <CarouselIndicator
+                  key={index}
+                  active={index === currentIndex}
+                  onClick={() => goToSlide(index)}
+                  aria-label={`Go to slide ${index + 1}`}
+                />
+              ))}
+            </CarouselIndicators>
+            
+            <CarouselButton 
+              onClick={() => setAutoPlay(!autoPlay)}
+              aria-label={autoPlay ? 'Pause auto-play' : 'Start auto-play'}
+            >
+              {autoPlay ? <FaPause /> : <FaPlay />}
+            </CarouselButton>
+            
+            <CarouselButton 
+              onClick={() => navigate('next')}
+              disabled={currentIndex >= maxIndex}
+              aria-label="Next assets"
+            >
+              <FaChevronRight />
+            </CarouselButton>
+          </CarouselControls>
+        )}
+        
+        {canNavigate && (
+          <AutoPlayIndicator>
+            <motion.div
+              animate={{ scale: autoPlay ? [1, 1.2, 1] : 1 }}
+              transition={{ repeat: autoPlay ? Infinity : 0, duration: 2 }}
+            >
+              🔄
+            </motion.div>
+            Auto-play {autoPlay ? 'enabled' : 'paused'}
+          </AutoPlayIndicator>
+        )}
+      </CategorySection>
+    );
+  };
+
   return (
     <Container>
+      {/* Floating Elements */}
+      <FloatingElement 
+        size="30px" 
+        color="rgba(0, 196, 255, 0.1)" 
+        delay="0s"
+        style={{ top: '10%', left: '5%' }}
+      />
+      <FloatingElement 
+        size="20px" 
+        color="rgba(0, 255, 136, 0.1)" 
+        delay="2s"
+        style={{ top: '20%', right: '10%' }}
+      />
+      <FloatingElement 
+        size="25px" 
+        color="rgba(255, 107, 107, 0.1)" 
+        delay="4s"
+        style={{ bottom: '30%', left: '8%' }}
+      />
+      <FloatingElement 
+        size="35px" 
+        color="rgba(0, 196, 255, 0.08)" 
+        delay="1s"
+        style={{ top: '60%', right: '5%' }}
+      />
+      <FloatingElement 
+        size="18px" 
+        color="rgba(0, 255, 136, 0.12)" 
+        delay="3s"
+        style={{ bottom: '10%', right: '15%' }}
+      />
+
       <Header>
-        <Title>
-          Select Your <Highlight>Asset</Highlight>
-        </Title>
-        <Subtitle>
-          Hone your market prediction skills by analyzing price charts and
-          forecasting trends.
-        </Subtitle>
-        <SearchBar>
-          <FaSearch style={{ color: '#a0a0a0', marginRight: '10px' }} />
-          <SearchInput
-            type="text"
-            placeholder="Search assets..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            aria-label="Search assets"
-          />
-        </SearchBar>
+        <motion.div
+          initial={{ opacity: 0, y: -30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
+        >
+          <Title>
+            Select Your <Highlight>Asset</Highlight>
+          </Title>
+        </motion.div>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
+        >
+          <Subtitle>
+            Challenge your market prediction skills by analyzing real-time price charts and
+            forecasting market trends across multiple asset classes.
+          </Subtitle>
+        </motion.div>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.6, delay: 0.4, ease: "easeOut" }}
+        >
+          <SearchBar>
+            <FaSearch style={{ color: '#a0a0a0', marginRight: '12px', fontSize: '1.1rem' }} />
+            <SearchInput
+              type="text"
+              placeholder="Search assets..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              aria-label="Search assets"
+            />
+          </SearchBar>
+        </motion.div>
       </Header>
 
-      <Grid>
-        <AnimatePresence>
-          {filteredAssets.map((asset) => (
-            <Card
-              key={asset.id}
-              onClick={() => handleAssetSelect(asset)}
-              whileHover={{ scale: 1.05, rotateX: 2, rotateY: 2 }}
-              whileTap={{ scale: 0.98 }}
-              transition={{ type: 'spring', stiffness: 300 }}
-              aria-label={`Select ${asset.name} for testing`}
-            >
-              <Image
-                src={getImageSrc(asset.type, asset.symbol)}
-                alt={`${asset.name} background`}
-                fill
-                sizes="100%"
-                style={{ objectFit: 'cover' }}
-                quality={80}
-                priority={false}
-              />
-              <Overlay />
-              <CardContent>
-                <div>
-                  <IconWrapper style={{ background: getGradient(asset.type, asset.symbol) }}>
-                    {getIcon(asset.type, asset.symbol)}
-                  </IconWrapper>
-                  <AssetName>{asset.name}</AssetName>
-                  <AssetType>
-                    <AssetTypeIcon as={() => getIcon(asset.type, asset.symbol)} />
-                    {asset.type}
-                  </AssetType>
-                  <Description>{getDescription(asset)}</Description>
-                </div>
-                <div>
-                  <TimeframeNote>
-                    <TimeframeIcon style={{ color: getToolBlogInfoColor(asset.type, asset.symbol) }} />
-                    Available on multiple timeframes
-                  </TimeframeNote>
-                  <StartButton
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleAssetSelect(asset);
-                    }}
-                    style={{ background: getGradient(asset.type, asset.symbol) }}
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                    aria-label={`Start test for ${asset.name}`}
-                  >
-                    Start Test
-                    <FaArrowRight />
-                  </StartButton>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </AnimatePresence>
-      </Grid>
+      <div style={{ marginTop: '80px' }}>
+        {/* Crypto Assets Carousel */}
+        {renderCarousel(
+          cryptoAssets, 
+          cryptoCurrentIndex, 
+          navigateCrypto, 
+          goToCryptoSlide, 
+          cryptoAutoPlay, 
+          setCryptoAutoPlay,
+          'Cryptocurrency'
+        )}
+        
+        {/* Equity Assets Carousel */}
+        {renderCarousel(
+          equityAssets, 
+          equityCurrentIndex, 
+          navigateEquity, 
+          goToEquitySlide, 
+          equityAutoPlay, 
+          setEquityAutoPlay,
+          'Equities'
+        )}
+      </div>
 
       {showTimeframeModal && (
         <TimeframeModal
