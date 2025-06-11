@@ -7,7 +7,7 @@ import CryptoLoader from '../../components/CryptoLoader';
 import logger from '../../lib/logger'; // Adjust path to your logger utility
 const ChartExamPage = () => {
   const router = useRouter();
-  const { type } = router.query;
+  const { type, assetType } = router.query;
   const { darkMode } = useContext(ThemeContext);
   const [loading, setLoading] = useState(true);
   
@@ -77,7 +77,7 @@ const ChartExamPage = () => {
     );
   }
   
-  return <ChartExam examType={type} />;
+  return <ChartExam examType={type} assetType={assetType} />;
 };
 
 export default ChartExamPage;

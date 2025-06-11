@@ -99,7 +99,7 @@ const LoadingOverlay = styled.div`
   }
 `;
 
-const ChartExam = ({ examType }) => {
+const ChartExam = ({ examType, assetType }) => {
   // Move all hook calls inside the component function
   const router = useRouter();
   const { darkMode } = React.useContext(ThemeContext);
@@ -185,7 +185,7 @@ const ChartExam = ({ examType }) => {
     setLoading(true);
     setSessionStarted(false);
     try {
-      const response = await fetch(`/api/charting-exam/fetch-chart?examType=${examType}`);
+      const response = await fetch(`/api/charting-exam/fetch-chart?examType=${examType}&assetType=${assetType || ''}`);
       const data = await response.json();
       
       if (data.chart_data && data.chart_data.length > 0) {

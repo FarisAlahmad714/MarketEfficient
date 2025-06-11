@@ -869,50 +869,136 @@ async function handler(req, res) {
     const randomSeed = Date.now();
     logger.log(`Generating new test with seed: ${randomSeed}`);
     
-    // Fetch segmented data for each question
-    const dataSegments = await fetchSegmentedData(asset, timeframe, questionCount);
-    
-    // Create questions from the segments
     const questions = [];
     
-    for (let i = 0; i < Math.min(questionCount, dataSegments.length); i++) {
-      const segment = dataSegments[i];
-      const questionTimeframe = timeframe === 'random' 
-        ? ['4h', 'daily', 'weekly', 'monthly'][Math.floor(Math.random() * 4)]
-        : timeframe;
+    if (assetSymbol === 'random') {
+      // For random mix test, randomize both assets and timeframes
+      const availableAssets = assets.filter(a => a.symbol !== 'random');
+      const availableTimeframes = ['4h', 'daily', 'weekly', 'monthly'];
       
-      // Split the segment into setup and outcome
-      const setupData = segment.slice(0, SETUP_CANDLES);
-      const outcomeData = segment.slice(SETUP_CANDLES, SETUP_CANDLES + OUTCOME_CANDLES);
+      for (let i = 0; i < questionCount; i++) {
+        const questionAsset = availableAssets[Math.floor(Math.random() * availableAssets.length)];
+        const questionTimeframe = availableTimeframes[Math.floor(Math.random() * availableTimeframes.length)];
+        logger.log(`Generating question ${i + 1} with ${questionAsset.name} (${questionAsset.symbol}) at ${questionTimeframe} timeframe`);
+        
+        // Fetch individual data segment for this specific asset and timeframe
+        const questionDataSegments = await fetchSegmentedData(questionAsset, questionTimeframe, 1);
+        
+        if (questionDataSegments && questionDataSegments.length > 0) {
+          const segment = questionDataSegments[0];
+          
+          // Split the segment into setup and outcome
+          const setupData = segment.slice(0, SETUP_CANDLES);
+          const outcomeData = segment.slice(SETUP_CANDLES, SETUP_CANDLES + OUTCOME_CANDLES);
+          
+          // Determine if the outcome was bullish or bearish
+          const lastSetupCandle = setupData[setupData.length - 1];
+          const lastOutcomeCandle = outcomeData[outcomeData.length - 1];
+          const correctAnswer = lastOutcomeCandle.close > lastSetupCandle.close ? 'Bullish' : 'Bearish';
+          
+          questions.push({
+            id: i + 1,
+            timeframe: questionTimeframe,
+            asset_name: questionAsset.name,
+            asset_symbol: questionAsset.symbol,
+            date: lastSetupCandle.date,
+            ohlc: {
+              open: lastSetupCandle.open,
+              high: lastSetupCandle.high,
+              low: lastSetupCandle.low,
+              close: lastSetupCandle.close,
+              volume: lastSetupCandle.volume || 0
+            },
+            ohlc_data: setupData,
+            correct_answer: correctAnswer,
+            outcome_data: outcomeData
+          });
+        }
+      }
+    } else if (timeframe === 'random') {
+      // For random timeframes, generate each question individually with different timeframes
+      const availableTimeframes = ['4h', 'daily', 'weekly', 'monthly'];
       
-      // Determine if the outcome was bullish or bearish
-      const lastSetupCandle = setupData[setupData.length - 1];
-      const lastOutcomeCandle = outcomeData[outcomeData.length - 1];
-      const correctAnswer = lastOutcomeCandle.close > lastSetupCandle.close ? 'Bullish' : 'Bearish';
+      for (let i = 0; i < questionCount; i++) {
+        const questionTimeframe = availableTimeframes[Math.floor(Math.random() * availableTimeframes.length)];
+        logger.log(`Generating question ${i + 1} with ${questionTimeframe} timeframe`);
+        
+        // Fetch individual data segment for this specific timeframe
+        const questionDataSegments = await fetchSegmentedData(asset, questionTimeframe, 1);
+        
+        if (questionDataSegments && questionDataSegments.length > 0) {
+          const segment = questionDataSegments[0];
+          
+          // Split the segment into setup and outcome
+          const setupData = segment.slice(0, SETUP_CANDLES);
+          const outcomeData = segment.slice(SETUP_CANDLES, SETUP_CANDLES + OUTCOME_CANDLES);
+          
+          // Determine if the outcome was bullish or bearish
+          const lastSetupCandle = setupData[setupData.length - 1];
+          const lastOutcomeCandle = outcomeData[outcomeData.length - 1];
+          const correctAnswer = lastOutcomeCandle.close > lastSetupCandle.close ? 'Bullish' : 'Bearish';
+          
+          questions.push({
+            id: i + 1,
+            timeframe: questionTimeframe,
+            asset_name: asset.name,
+            asset_symbol: asset.symbol,
+            date: lastSetupCandle.date,
+            ohlc: {
+              open: lastSetupCandle.open,
+              high: lastSetupCandle.high,
+              low: lastSetupCandle.low,
+              close: lastSetupCandle.close,
+              volume: lastSetupCandle.volume || 0
+            },
+            ohlc_data: setupData,
+            correct_answer: correctAnswer,
+            outcome_data: outcomeData
+          });
+        }
+      }
+    } else {
+      // For fixed timeframes, use the original logic
+      const dataSegments = await fetchSegmentedData(asset, timeframe, questionCount);
       
-      questions.push({
-        id: i + 1,
-        timeframe: questionTimeframe,
-        date: lastSetupCandle.date,
-        ohlc: {
-          open: lastSetupCandle.open,
-          high: lastSetupCandle.high,
-          low: lastSetupCandle.low,
-          close: lastSetupCandle.close,
-          volume: lastSetupCandle.volume || 0
-        },
-        ohlc_data: setupData,
-        correct_answer: correctAnswer,
-        outcome_data: outcomeData
-      });
+      for (let i = 0; i < Math.min(questionCount, dataSegments.length); i++) {
+        const segment = dataSegments[i];
+        
+        // Split the segment into setup and outcome
+        const setupData = segment.slice(0, SETUP_CANDLES);
+        const outcomeData = segment.slice(SETUP_CANDLES, SETUP_CANDLES + OUTCOME_CANDLES);
+        
+        // Determine if the outcome was bullish or bearish
+        const lastSetupCandle = setupData[setupData.length - 1];
+        const lastOutcomeCandle = outcomeData[outcomeData.length - 1];
+        const correctAnswer = lastOutcomeCandle.close > lastSetupCandle.close ? 'Bullish' : 'Bearish';
+        
+        questions.push({
+          id: i + 1,
+          timeframe: timeframe,
+          asset_name: asset.name,
+          asset_symbol: asset.symbol,
+          date: lastSetupCandle.date,
+          ohlc: {
+            open: lastSetupCandle.open,
+            high: lastSetupCandle.high,
+            low: lastSetupCandle.low,
+            close: lastSetupCandle.close,
+            volume: lastSetupCandle.volume || 0
+          },
+          ohlc_data: setupData,
+          correct_answer: correctAnswer,
+          outcome_data: outcomeData
+        });
+      }
     }
     
     // Create test session
     const testData = {
-      asset_name: asset.name,
+      asset_name: assetSymbol === 'random' ? 'Random Mix' : asset.name,
       asset_symbol: asset.symbol,
       session_id: sessionId,
-      selected_timeframe: timeframe,
+      selected_timeframe: assetSymbol === 'random' ? 'mixed' : timeframe,
       questions: questions,
       timestamp: Date.now() // Add timestamp for session cleanup
     };
@@ -927,13 +1013,15 @@ async function handler(req, res) {
     
     // Send only necessary data to client (remove correct answers and outcome data)
     const clientTestData = {
-      asset_name: asset.name,
+      asset_name: assetSymbol === 'random' ? 'Random Mix' : asset.name,
       asset_symbol: asset.symbol,
       session_id: sessionId,
-      selected_timeframe: timeframe,
+      selected_timeframe: assetSymbol === 'random' ? 'mixed' : timeframe,
       questions: questions.map(q => ({
         id: q.id,
         timeframe: q.timeframe,
+        asset_name: q.asset_name,
+        asset_symbol: q.asset_symbol,
         date: q.date,
         ohlc: q.ohlc,
         ohlc_data: q.ohlc_data

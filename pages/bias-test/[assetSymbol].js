@@ -575,7 +575,28 @@ export default function AssetTestPage() {
               justifyContent: 'space-between',
               alignItems: 'center'
             }}>
-              <span>Chart {index + 1}</span>
+              <span>
+                Chart {index + 1}
+                {question.asset_name && (
+                  <span style={{ 
+                    color: darkMode ? '#4CAF50' : '#2E7D32',
+                    fontWeight: '600',
+                    marginLeft: '8px'
+                  }}>
+                    - {question.asset_name}
+                  </span>
+                )}
+                {question.timeframe && (
+                  <span style={{ 
+                    color: darkMode ? '#b0b0b0' : '#666',
+                    fontWeight: 'normal',
+                    marginLeft: '8px',
+                    fontSize: '16px'
+                  }}>
+                    ({question.timeframe})
+                  </span>
+                )}
+              </span>
               {hasVolumeData && (
                 <span style={{ 
                   fontSize: '14px', 

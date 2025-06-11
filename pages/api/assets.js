@@ -101,7 +101,7 @@ async function assetsHandler(req, res) {
       apiId: 'random', 
       type: 'mixed', 
       isActive: true,
-      description: 'A diverse blend of assets for testing your prediction skills across different markets.',
+      description: 'Ultimate challenge - random assets with random timeframes for maximum difficulty.',
       marketCap: 'Various',
       yearFounded: 'N/A'
     },

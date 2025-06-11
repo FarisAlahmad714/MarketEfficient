@@ -8,6 +8,7 @@ const ChartExamIntro = () => {
   const { darkMode } = useContext(ThemeContext);
   const router = useRouter();
   const [selectedExam, setSelectedExam] = useState(null);
+  
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
   const [isPlaying, setIsPlaying] = useState(true);
@@ -197,7 +198,7 @@ const ChartExamIntro = () => {
   };
 
   const handleExamStart = (examId) => {
-    router.push(`/chart-exam/${examId}`);
+    setSelectedExam(examId);
   };
 
   const nextSlide = () => {
@@ -272,12 +273,7 @@ const ChartExamIntro = () => {
     setTimeout(() => setIsPlaying(true), 2000); // Resume auto-play
   };
 
-  // If the selected exam isn't currently visible, select the currently visible one
-  useEffect(() => {
-    if (selectedExam !== examTypes[currentIndex].id) {
-      setSelectedExam(examTypes[currentIndex].id);
-    }
-  }, [currentIndex, examTypes]);
+  // Removed auto-selection logic - selectedExam should only be set when user clicks Start
 
   // Mobile carousel styles
   const mobileCarouselStyle = {
@@ -971,6 +967,218 @@ const ChartExamIntro = () => {
           />
         ))}
       </div>
+
+      {/* Asset Selection Modal */}
+      {selectedExam && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.7)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '20px'
+        }} onClick={() => setSelectedExam(null)}>
+          <div style={{
+            backgroundColor: darkMode ? '#2a2a2a' : '#ffffff',
+            borderRadius: '12px',
+            padding: '30px',
+            maxWidth: '500px',
+            width: '100%',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
+            position: 'relative'
+          }} onClick={(e) => e.stopPropagation()}>
+            
+            {/* Close button */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedExam(null);
+              }}
+              style={{
+                position: 'absolute',
+                top: '15px',
+                right: '15px',
+                background: 'none',
+                border: 'none',
+                fontSize: '24px',
+                color: darkMode ? '#e0e0e0' : '#666',
+                cursor: 'pointer',
+                width: '30px',
+                height: '30px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              ×
+            </button>
+
+            {/* Modal Header */}
+            <h3 style={{
+              margin: '0 0 10px 0',
+              color: darkMode ? '#e0e0e0' : '#333',
+              fontSize: '1.5rem'
+            }}>
+              {examTypes.find(exam => exam.id === selectedExam)?.title}
+            </h3>
+
+            <p style={{
+              margin: '0 0 25px 0',
+              color: darkMode ? '#b0b0b0' : '#666',
+              fontSize: '0.95rem'
+            }}>
+              Choose your preferred asset type for this exam
+            </p>
+
+            {/* Asset Type Selection */}
+            <div style={{ marginBottom: '25px' }}>
+              <div
+                onClick={() => router.push(`/chart-exam/${selectedExam}?assetType=crypto`)}
+                style={{
+                  padding: '20px',
+                  border: `2px solid ${darkMode ? '#404040' : '#e0e0e0'}`,
+                  borderRadius: '8px',
+                  marginBottom: '15px',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                  backgroundColor: darkMode ? '#333' : '#f8f9fa'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.borderColor = '#2196F3';
+                  e.currentTarget.style.backgroundColor = darkMode ? '#3a3a3a' : '#f0f8ff';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.borderColor = darkMode ? '#404040' : '#e0e0e0';
+                  e.currentTarget.style.backgroundColor = darkMode ? '#333' : '#f8f9fa';
+                }}
+              >
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  marginBottom: '8px'
+                }}>
+                  <span style={{ fontSize: '24px', marginRight: '12px' }}>₿</span>
+                  <h4 style={{
+                    margin: 0,
+                    color: darkMode ? '#e0e0e0' : '#333',
+                    fontSize: '1.1rem'
+                  }}>
+                    Cryptocurrency
+                  </h4>
+                </div>
+                <p style={{
+                  margin: 0,
+                  color: darkMode ? '#b0b0b0' : '#666',
+                  fontSize: '0.9rem'
+                }}>
+                  BTC, ETH, SOL, and other digital assets • Higher volatility • 24/7 markets
+                </p>
+              </div>
+
+              <div
+                onClick={() => router.push(`/chart-exam/${selectedExam}?assetType=stocks`)}
+                style={{
+                  padding: '20px',
+                  border: `2px solid ${darkMode ? '#404040' : '#e0e0e0'}`,
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                  backgroundColor: darkMode ? '#333' : '#f8f9fa'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.borderColor = '#2196F3';
+                  e.currentTarget.style.backgroundColor = darkMode ? '#3a3a3a' : '#f0f8ff';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.borderColor = darkMode ? '#404040' : '#e0e0e0';
+                  e.currentTarget.style.backgroundColor = darkMode ? '#333' : '#f8f9fa';
+                }}
+              >
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  marginBottom: '8px'
+                }}>
+                  <span style={{ fontSize: '24px', marginRight: '12px' }}>📈</span>
+                  <h4 style={{
+                    margin: 0,
+                    color: darkMode ? '#e0e0e0' : '#333',
+                    fontSize: '1.1rem'
+                  }}>
+                    Stocks
+                  </h4>
+                </div>
+                <p style={{
+                  margin: 0,
+                  color: darkMode ? '#b0b0b0' : '#666',
+                  fontSize: '0.9rem'
+                }}>
+                  AAPL, NVDA, TSLA, and other equities • Traditional patterns • Market hours
+                </p>
+              </div>
+            </div>
+
+            {/* Randomization Info */}
+            <div style={{
+              backgroundColor: darkMode ? '#1a1a1a' : '#f0f8ff',
+              border: `1px solid ${darkMode ? '#404040' : '#e3f2fd'}`,
+              borderRadius: '8px',
+              padding: '15px',
+              marginBottom: '20px'
+            }}>
+              <h5 style={{
+                margin: '0 0 8px 0',
+                color: darkMode ? '#e0e0e0' : '#333',
+                fontSize: '0.95rem',
+                display: 'flex',
+                alignItems: 'center'
+              }}>
+                <span style={{ marginRight: '8px' }}>🎲</span>
+                Exam Randomization
+              </h5>
+              <p style={{
+                margin: 0,
+                color: darkMode ? '#b0b0b0' : '#666',
+                fontSize: '0.85rem',
+                lineHeight: '1.4'
+              }}>
+                Each exam randomly selects different assets and timeframes:
+                <br />
+                <strong>• Swing Analysis & Fibonacci:</strong> 1h, 4h, 1d, 1w timeframes
+                <br />
+                <strong>• Fair Value Gaps:</strong> 1h, 4h, 1d timeframes (no weekly)
+                <br />
+                Historical data spans 1-2 years for variety in market conditions.
+              </p>
+            </div>
+
+            <div style={{
+              display: 'flex',
+              justifyContent: 'center'
+            }}>
+              <button
+                onClick={() => setSelectedExam(null)}
+                style={{
+                  padding: '10px 20px',
+                  backgroundColor: 'transparent',
+                  border: `2px solid ${darkMode ? '#666' : '#ccc'}`,
+                  borderRadius: '6px',
+                  color: darkMode ? '#e0e0e0' : '#666',
+                  cursor: 'pointer',
+                  fontSize: '0.9rem'
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
     </TrackedPage>
   );

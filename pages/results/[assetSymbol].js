@@ -405,9 +405,11 @@ const Results = () => {
     setHasLoadedResults(false);
     
     const { assetSymbol } = router.query;
+    // Get the original timeframe from the current results
+    const originalTimeframe = results?.answers?.[0]?.timeframe || 'daily';
     // Force a new test by using a random query parameter
-    // Include timeframe parameter to ensure proper test generation
-    router.push(`/bias-test/${assetSymbol}?timeframe=daily&random=${Math.random()}`);
+    // Include original timeframe parameter to preserve user's selection
+    router.push(`/bias-test/${assetSymbol}?timeframe=${originalTimeframe}&random=${Math.random()}`);
   };
 
   // Show fancy crypto loader while loading
@@ -940,6 +942,14 @@ const Results = () => {
                     color: darkMode ? '#e0e0e0' : 'inherit'
                   }}>
                     Question {index + 1}
+                    {answer.asset_name && (
+                      <span className={styles.questionAsset} style={{ 
+                        color: darkMode ? '#4CAF50' : '#2E7D32',
+                        fontWeight: '600'
+                      }}>
+                        - {answer.asset_name}
+                      </span>
+                    )}
                     <span className={styles.questionTimeframe} style={{ 
                       color: darkMode ? '#b0b0b0' : '#666'
                     }}>

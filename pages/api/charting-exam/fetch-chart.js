@@ -4,7 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import logger from '../../../lib/logger'; // Adjust path to your logger utility
 // Define assets and timeframes to match Flask app
-const ASSETS = [
+const CRYPTO_ASSETS = [
   { type: 'crypto', symbol: 'btc', apiId: 'bitcoin' },
   { type: 'crypto', symbol: 'eth', apiId: 'ethereum' },
   { type: 'crypto', symbol: 'bnb', apiId: 'binancecoin' },
@@ -14,6 +14,19 @@ const ASSETS = [
   { type: 'crypto', symbol: 'ltc', apiId: 'litecoin' },
   { type: 'crypto', symbol: 'link', apiId: 'chainlink' }
 ];
+
+const STOCK_ASSETS = [
+  { type: 'equity', symbol: 'aapl', apiId: 'AAPL' },
+  { type: 'equity', symbol: 'nvda', apiId: 'NVDA' },
+  { type: 'equity', symbol: 'tsla', apiId: 'TSLA' },
+  { type: 'equity', symbol: 'msft', apiId: 'MSFT' },
+  { type: 'equity', symbol: 'googl', apiId: 'GOOGL' },
+  { type: 'equity', symbol: 'amzn', apiId: 'AMZN' },
+  { type: 'equity', symbol: 'meta', apiId: 'META' },
+  { type: 'equity', symbol: 'nflx', apiId: 'NFLX' }
+];
+
+const ASSETS = [...CRYPTO_ASSETS, ...STOCK_ASSETS];
 
 const TIMEFRAMES_ALL = ['1h', '4h', '1d', '1w'];
 const TIMEFRAMES_FVG = ['1h', '4h', '1d'];
@@ -33,16 +46,25 @@ const getSampleChartData = () => {
 async function fetchChartHandler(req, res) {
   const chartCount = req.session?.chartCount || 1;
   
-  // Get examType from query parameters
+  // Get examType and assetType from query parameters
   const examType = req.query.examType || req.body?.examType;
+  const assetType = req.query.assetType || req.body?.assetType;
   
   // Select appropriate timeframes based on exam type
   const timeframes = examType === 'fair-value-gaps' ? TIMEFRAMES_FVG : TIMEFRAMES_ALL;
   
-  logger.log(`Fetching chart for exam type: ${examType}, available timeframes:`, timeframes);
+  // Select asset pool based on user preference
+  let assetPool = ASSETS;
+  if (assetType === 'crypto') {
+    assetPool = CRYPTO_ASSETS;
+  } else if (assetType === 'stocks') {
+    assetPool = STOCK_ASSETS;
+  }
+  
+  logger.log(`Fetching chart for exam type: ${examType}, asset type: ${assetType}, available timeframes:`, timeframes);
 
   // Randomly select asset and timeframe
-  const asset = ASSETS[Math.floor(Math.random() * ASSETS.length)];
+  const asset = assetPool[Math.floor(Math.random() * assetPool.length)];
   const timeframe = timeframes[Math.floor(Math.random() * timeframes.length)];
 
   // Map timeframe to API parameters
