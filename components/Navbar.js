@@ -739,7 +739,7 @@ const Navbar = () => {
           height: 16px;
           display: flex;
           gap: 25px;
-          font-size: 11px;
+          font-size: 14px;
           font-weight: 600;
           overflow: hidden;
           white-space: nowrap;
@@ -780,21 +780,21 @@ const Navbar = () => {
         .ticker-symbol {
           font-weight: 700;
           letter-spacing: 0.5px;
-          font-size: 11px;
+          font-size: 14px;
           min-width: 35px;
         }
         
         .ticker-price {
           font-weight: 600;
           font-family: 'SF Mono', Monaco, monospace;
-          font-size: 10px;
+          font-size: 13px;
           min-width: 45px;
         }
         
         .ticker-change {
           font-weight: 600;
           font-family: 'SF Mono', Monaco, monospace;
-          font-size: 9px;
+          font-size: 12px;
           min-width: 35px;
         }
         
@@ -808,7 +808,7 @@ const Navbar = () => {
         
         .loading {
           color: #6b7280;
-          font-size: 9px;
+          font-size: 12px;
           animation: pulse 1.5s infinite;
         }
         
