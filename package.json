@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "generate:images": "node scripts/generatePlaceholderImages.js"
   },
   "dependencies": {
     "@google-cloud/storage": "^7.16.0",

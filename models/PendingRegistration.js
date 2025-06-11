@@ -52,10 +52,8 @@ const PendingRegistrationSchema = new mongoose.Schema({
   }
 });
 
-PendingRegistrationSchema.index({ email: 1 });
-PendingRegistrationSchema.index({ stripeSessionId: 1 });
+// Index only on status for querying; email and stripeSessionId already covered by unique/sparse definitions, and createdAt gets a TTL index automatically.
 PendingRegistrationSchema.index({ status: 1 });
-PendingRegistrationSchema.index({ createdAt: 1 });
 
 PendingRegistrationSchema.methods.canRetry = function() {
   const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);

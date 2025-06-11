@@ -4,7 +4,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/router';
 import { BiHomeAlt } from 'react-icons/bi';
 import { TbScale, TbChartLine } from 'react-icons/tb';
-import { FaTachometerAlt, FaSun, FaMoon, FaChevronDown, FaUserCog, FaUserShield, FaSignOutAlt, FaCommentDots } from 'react-icons/fa';
+import { FaTachometerAlt, FaSun, FaMoon, FaChevronDown, FaUserCog, FaUserShield, FaSignOutAlt, FaCommentDots, FaGraduationCap } from 'react-icons/fa';
 import { HiMenuAlt3, HiX } from 'react-icons/hi';
 import { AuthContext } from '../contexts/AuthContext';
 import { ThemeContext } from '../contexts/ThemeContext';
@@ -26,28 +26,103 @@ const Navbar = () => {
   // Fetch profile image for authenticated user
   const { profileImageUrl, loading: imageLoading } = useProfileImage(user?.id, isAuthenticated);
 
-  // Sample crypto data (replace with real API data)
-  const [cryptoPrices, setCryptoPrices] = useState([]);
-  const cryptoAssets = [
-    { symbol: 'BTC', price: 50000, change24h: 2.5 },
-    { symbol: 'ETH', price: 3000, change24h: -1.3 },
-    { symbol: 'SOL', price: 100, change24h: 0.8 },
-    { symbol: 'ADA', price: 0.5, change24h: 1.2 },
-    { symbol: 'XRP', price: 0.8, change24h: -0.5 },
-  ];
+  // Real-time asset prices using the API
+  const [assetPrices, setAssetPrices] = useState([]);
+  const [pricesLoading, setPricesLoading] = useState(true);
+  const [lastFetchTime, setLastFetchTime] = useState(0);
+  const fetchIntervalRef = useRef(null);
 
-  // Simulate API fetch for crypto prices
+  // Fetch REAL-TIME prices from API 
+  const fetchPrices = async () => {
+    try {
+      console.log('Navbar: Fetching REAL-TIME ticker prices...');
+      const response = await fetch('/api/crypto-prices', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      console.log('Navbar: REAL-TIME API response:', data);
+      
+      if (data.success && data.data && Array.isArray(data.data)) {
+        // Filter out any assets that failed to get real prices (price = 0)
+        const validPrices = data.data.filter(asset => asset.price > 0);
+        
+        if (validPrices.length > 0) {
+          setAssetPrices(validPrices);
+          setPricesLoading(false);
+          setLastFetchTime(Date.now());
+          console.log(`Navbar: Successfully updated ticker with REAL-TIME data for ${validPrices.length}/${data.data.length} assets`);
+        } else {
+          console.warn('Navbar: No valid real-time prices received');
+        }
+      } else {
+        throw new Error('Invalid API response format');
+      }
+    } catch (error) {
+      console.error('Navbar: Error fetching REAL-TIME prices:', error);
+      
+      // Only set fallback data if we don't have any existing data
+      if (assetPrices.length === 0) {
+        console.log('Navbar: No existing data, keeping ticker empty until real data is available');
+        setPricesLoading(false);
+      } else {
+        console.log('Navbar: Keeping existing real-time data during temporary failure');
+      }
+    }
+  };
+
+  // Manage price fetching with visibility API
   useEffect(() => {
-    const fetchPrices = () => {
-      setCryptoPrices(cryptoAssets.map(asset => ({
-        ...asset,
-        price: asset.price + (Math.random() - 0.5) * 10,
-      })));
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        // Stop fetching when tab is not visible
+        if (fetchIntervalRef.current) {
+          clearInterval(fetchIntervalRef.current);
+          fetchIntervalRef.current = null;
+        }
+        console.log('Navbar: Paused ticker updates (tab hidden)');
+      } else {
+        // Resume fetching when tab becomes visible
+        fetchPrices(); // Fetch immediately
+        if (fetchIntervalRef.current) {
+          clearInterval(fetchIntervalRef.current);
+        }
+        fetchIntervalRef.current = setInterval(fetchPrices, 300000); // Update every 5 MINUTES for simple display
+        console.log('Navbar: Resumed ticker updates (tab visible)');
+      }
     };
-    fetchPrices();
-    const interval = setInterval(fetchPrices, 10000);
-    return () => clearInterval(interval);
-  }, []);
+
+    // Initial fetch when component mounts
+    if (!document.hidden) {
+      fetchPrices();
+      fetchIntervalRef.current = setInterval(fetchPrices, 300000); // Update every 5 MINUTES for simple display
+    }
+
+    // Listen for visibility changes
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Cleanup
+    return () => {
+      if (fetchIntervalRef.current) {
+        clearInterval(fetchIntervalRef.current);
+      }
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []); // Empty dependency array to run only once on mount
+
+  // Debug: Log current asset prices (only in development)
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Navbar: Current ticker prices:', assetPrices.map(p => `${p.symbol}: $${p.price.toFixed(2)} (${p.change24h.toFixed(2)}%)`));
+    }
+  }, [assetPrices]);
 
   // Handle window resize for canvas (if used for background effects)
   useEffect(() => {
@@ -93,22 +168,38 @@ const Navbar = () => {
       <canvas ref={canvasRef} className="navbar-background"></canvas>
       
       <div className="asset-ticker">
-        {cryptoPrices.length > 0 ? (
-          cryptoPrices.map((asset, index) => (
-            <div key={index} className="ticker-item">
+        {assetPrices.length > 0 ? (
+          assetPrices.map((asset, index) => (
+            <div key={`${asset.symbol}-${index}`} className="ticker-item">
               <span className="ticker-symbol">{asset.symbol}</span>
               <span className="ticker-price">
-                ${asset.price < 1 ? asset.price.toFixed(4) : asset.price.toFixed(2)}
+                ${typeof asset.price === 'number' ? 
+                  (asset.price < 1 ? asset.price.toFixed(4) : asset.price.toFixed(2)) : 
+                  'N/A'
+                }
+              </span>
+              <span className={`ticker-change ${asset.change24h >= 0 ? 'positive' : 'negative'}`}>
+                {typeof asset.change24h === 'number' ? 
+                  `${asset.change24h >= 0 ? '+' : ''}${asset.change24h.toFixed(2)}%` : 
+                  'N/A'
+                }
               </span>
             </div>
           ))
-        ) : (
-          cryptoAssets.slice(0, 5).map((asset, index) => (
-            <div key={index} className="ticker-item">
-              <span className="ticker-symbol">{asset.symbol}</span>
+        ) : pricesLoading ? (
+          // Loading state
+          Array.from({ length: 8 }, (_, index) => (
+            <div key={`loading-${index}`} className="ticker-item">
+              <span className="ticker-symbol">---</span>
               <span className="loading">Loading...</span>
             </div>
           ))
+        ) : (
+          // Error state
+          <div className="ticker-item ticker-error">
+            <span className="ticker-symbol">ERROR</span>
+            <span className="loading">Unable to load prices</span>
+          </div>
         )}
       </div>
       
@@ -140,6 +231,15 @@ const Navbar = () => {
             </div>
             <span className="nav-text">Home</span>
             {router.pathname === '/' && <div className="nav-active-dot"></div>}
+          </Link>
+          
+          <Link href="/study" className={`nav-link ${router.pathname.includes('/study') ? 'active' : ''}`}>
+            <div className="nav-icon-wrapper">
+              <FaGraduationCap className="nav-icon" />
+              <span className="nav-glow"></span>
+            </div>
+            <span className="nav-text">Study</span>
+            {router.pathname.includes('/study') && <div className="nav-active-dot"></div>}
           </Link>
           
           <Link href="/bias-test" className={`nav-link ${router.pathname.includes('/bias-test') ? 'active' : ''}`}>
@@ -347,17 +447,22 @@ const Navbar = () => {
                 <span>Home</span>
               </Link>
               
-              <Link href="/bias-test" className={`mobile-link mobile-link-2 ${router.pathname.includes('/bias-test') ? 'active' : ''}`} onClick={() => setMobileMenuOpen(false)}>
+              <Link href="/study" className={`mobile-link mobile-link-2 ${router.pathname.includes('/study') ? 'active' : ''}`} onClick={() => setMobileMenuOpen(false)}>
+                <FaGraduationCap className="mobile-icon" />
+                <span>Study</span>
+              </Link>
+              
+              <Link href="/bias-test" className={`mobile-link mobile-link-3 ${router.pathname.includes('/bias-test') ? 'active' : ''}`} onClick={() => setMobileMenuOpen(false)}>
                 <TbScale className="mobile-icon" />
                 <span>Bias Test</span>
               </Link>
               
-              <Link href="/chart-exam" className={`mobile-link mobile-link-3 ${router.pathname.includes('/chart-exam') ? 'active' : ''}`} onClick={() => setMobileMenuOpen(false)}>
+              <Link href="/chart-exam" className={`mobile-link mobile-link-4 ${router.pathname.includes('/chart-exam') ? 'active' : ''}`} onClick={() => setMobileMenuOpen(false)}>
                 <TbChartLine className="mobile-icon" />
                 <span>Chart Exam</span>
               </Link>
               
-              <Link href="/dashboard" className={`mobile-link mobile-link-4 ${router.pathname.includes('/dashboard') ? 'active' : ''}`} onClick={() => setMobileMenuOpen(false)}>
+              <Link href="/dashboard" className={`mobile-link mobile-link-5 ${router.pathname.includes('/dashboard') ? 'active' : ''}`} onClick={() => setMobileMenuOpen(false)}>
                 <FaTachometerAlt className="mobile-icon" />
                 <span>Dashboard</span>
               </Link>
@@ -628,22 +733,24 @@ const Navbar = () => {
           position: absolute;
           bottom: 0;
           left: 0;
+          right: 0;
           width: 100%;
+          max-width: 100vw;
           height: 16px;
           display: flex;
-          gap: 35px;
-          font-size: 12px;
+          gap: 25px;
+          font-size: 11px;
           font-weight: 600;
           overflow: hidden;
           white-space: nowrap;
           opacity: 0.8;
-          animation: ticker 120s linear infinite;
+          animation: ticker 180s linear infinite;
           background: linear-gradient(90deg, 
             transparent 0%, 
             rgba(33, 150, 243, 0.05) 50%, 
             transparent 100%);
-          max-width: 100vw;
           box-sizing: border-box;
+          contain: layout style paint;
         }
         
         .dark .asset-ticker {
@@ -662,9 +769,9 @@ const Navbar = () => {
         .ticker-item {
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 6px;
           min-width: max-content;
-          padding: 2px 8px;
+          padding: 2px 6px;
           border-radius: 4px;
           transition: all 0.3s ease;
           flex-shrink: 0;
@@ -673,19 +780,44 @@ const Navbar = () => {
         .ticker-symbol {
           font-weight: 700;
           letter-spacing: 0.5px;
-          font-size: 12px;
+          font-size: 11px;
+          min-width: 35px;
         }
         
         .ticker-price {
           font-weight: 600;
           font-family: 'SF Mono', Monaco, monospace;
-          font-size: 12px;
+          font-size: 10px;
+          min-width: 45px;
+        }
+        
+        .ticker-change {
+          font-weight: 600;
+          font-family: 'SF Mono', Monaco, monospace;
+          font-size: 9px;
+          min-width: 35px;
+        }
+        
+        .ticker-change.positive {
+          color: #4CAF50;
+        }
+        
+        .ticker-change.negative {
+          color: #f44336;
         }
         
         .loading {
           color: #6b7280;
           font-size: 9px;
           animation: pulse 1.5s infinite;
+        }
+        
+        .ticker-error {
+          color: #ef4444;
+        }
+        
+        .ticker-error .loading {
+          color: #ef4444;
         }
         
         @keyframes pulse {

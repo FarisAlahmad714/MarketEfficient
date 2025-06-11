@@ -606,8 +606,8 @@ const AssetSelector = () => {
   // Carousel state
   const [cryptoCurrentIndex, setCryptoCurrentIndex] = useState(0);
   const [equityCurrentIndex, setEquityCurrentIndex] = useState(0);
-  const [cryptoAutoPlay, setCryptoAutoPlay] = useState(true);
-  const [equityAutoPlay, setEquityAutoPlay] = useState(true);
+  const [cryptoAutoPlay, setCryptoAutoPlay] = useState(false);
+  const [equityAutoPlay, setEquityAutoPlay] = useState(false);
   
   const router = useRouter();
   const cryptoLoaderRef = useRef(null);

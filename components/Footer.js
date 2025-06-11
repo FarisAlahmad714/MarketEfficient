@@ -92,6 +92,7 @@ const Footer = () => {
                   src="/images/logo.webp" 
                   alt="ChartSense Logo" 
                   fill
+                  sizes="45px"
                   style={{
                     borderRadius: '10px',
                     objectFit: 'cover',

@@ -84,11 +84,27 @@ const nextConfig = {
   },
 
   images: {
-    domains: [
-      'images.unsplash.com',
-      'imageio.forbes.com',
-      'www.chainalysis.com',
-      'storage.googleapis.com',
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'imageio.forbes.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'www.chainalysis.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'storage.googleapis.com',
+        pathname: '/**',
+      },
     ],
     // Add security for images
     dangerouslyAllowSVG: false,
