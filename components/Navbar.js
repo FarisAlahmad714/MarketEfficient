@@ -4,7 +4,8 @@ import Image from 'next/image';
 import { useRouter } from 'next/router';
 import { BiHomeAlt } from 'react-icons/bi';
 import { TbScale, TbChartLine } from 'react-icons/tb';
-import { FaTachometerAlt, FaSun, FaMoon, FaChevronDown, FaUserCog, FaUserShield, FaSignOutAlt, FaCommentDots, FaGraduationCap } from 'react-icons/fa';
+import { FaTachometerAlt, FaSun, FaMoon, FaChevronDown, FaUserCog, FaUserShield, FaSignOutAlt, FaCommentDots, FaGraduationCap, FaLock, FaChartLine as FaChartTradingLine } from 'react-icons/fa';
+import { RiExchangeLine } from 'react-icons/ri';
 import { HiMenuAlt3, HiX } from 'react-icons/hi';
 import { AuthContext } from '../contexts/AuthContext';
 import { ThemeContext } from '../contexts/ThemeContext';
@@ -25,6 +26,10 @@ const Navbar = () => {
 
   // Fetch profile image for authenticated user
   const { profileImageUrl, loading: imageLoading } = useProfileImage(user?.id, isAuthenticated);
+
+  // Sandbox unlock status
+  const [sandboxUnlocked, setSandboxUnlocked] = useState(false);
+  const [sandboxProgress, setSandboxProgress] = useState(0);
 
   // Real-time asset prices using the API
   const [assetPrices, setAssetPrices] = useState([]);
@@ -78,6 +83,30 @@ const Navbar = () => {
     }
   };
 
+  // Check sandbox unlock status
+  const checkSandboxUnlock = async () => {
+    if (!isAuthenticated || !user) return;
+    
+    try {
+      const token = localStorage.getItem('auth_token');
+      if (!token) return;
+      
+      const response = await fetch('/api/sandbox/unlock-check', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setSandboxUnlocked(data.unlocked);
+        setSandboxProgress(data.progressPercentage || 0);
+      }
+    } catch (error) {
+      console.error('Error checking sandbox unlock status:', error);
+    }
+  };
+
   // Manage price fetching with visibility API
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -123,6 +152,16 @@ const Navbar = () => {
       console.log('Navbar: Current ticker prices:', assetPrices.map(p => `${p.symbol}: $${p.price.toFixed(2)} (${p.change24h.toFixed(2)}%)`));
     }
   }, [assetPrices]);
+
+  // Check sandbox unlock status when user changes
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      checkSandboxUnlock();
+    } else {
+      setSandboxUnlocked(false);
+      setSandboxProgress(0);
+    }
+  }, [isAuthenticated, user]);
 
   // Handle window resize for canvas (if used for background effects)
   useEffect(() => {
@@ -268,6 +307,56 @@ const Navbar = () => {
             <span className="nav-text">Dashboard</span>
             {router.pathname.includes('/dashboard') && <div className="nav-active-dot"></div>}
           </Link>
+          
+          {isAuthenticated && (
+            <Link 
+              href={sandboxUnlocked || user?.isAdmin ? "/sandbox" : "#"} 
+              className={`nav-link ${router.pathname.includes('/sandbox') ? 'active' : ''} ${!sandboxUnlocked && !user?.isAdmin ? 'locked' : ''}`}
+              onClick={!sandboxUnlocked && !user?.isAdmin ? (e) => {
+                e.preventDefault();
+                // Could show a modal with unlock requirements
+              } : undefined}
+              title={user?.isAdmin ? 'Sandbox Trading (Admin Access)' : sandboxUnlocked ? 'Sandbox Trading' : `Sandbox Trading (${sandboxProgress.toFixed(0)}% complete)`}
+            >
+              <div className="nav-icon-wrapper">
+                {sandboxUnlocked || user?.isAdmin ? (
+                  <RiExchangeLine className="nav-icon" />
+                ) : (
+                  <FaLock className="nav-icon" />
+                )}
+                <span className="nav-glow"></span>
+                {!sandboxUnlocked && !user?.isAdmin && sandboxProgress > 0 && (
+                  <div className="progress-ring">
+                    <svg width="40" height="40" className="progress-circle">
+                      <circle 
+                        cx="20" 
+                        cy="20" 
+                        r="18" 
+                        stroke="rgba(59, 130, 246, 0.3)" 
+                        strokeWidth="2" 
+                        fill="none"
+                      />
+                      <circle 
+                        cx="20" 
+                        cy="20" 
+                        r="18" 
+                        stroke="#3b82f6" 
+                        strokeWidth="2" 
+                        fill="none"
+                        strokeDasharray={`${2 * Math.PI * 18}`}
+                        strokeDashoffset={`${2 * Math.PI * 18 * (1 - sandboxProgress / 100)}`}
+                        className="progress-circle-fill"
+                      />
+                    </svg>
+                  </div>
+                )}
+              </div>
+              <span className="nav-text">
+                {user?.isAdmin ? 'Sandbox' : sandboxUnlocked ? 'Sandbox' : `Sandbox ${sandboxProgress.toFixed(0)}%`}
+              </span>
+              {router.pathname.includes('/sandbox') && <div className="nav-active-dot"></div>}
+            </Link>
+          )}
         </nav>
 
         <div className="navbar-actions">
@@ -466,6 +555,26 @@ const Navbar = () => {
                 <FaTachometerAlt className="mobile-icon" />
                 <span>Dashboard</span>
               </Link>
+              
+              {isAuthenticated && (
+                <Link 
+                  href={sandboxUnlocked || user?.isAdmin ? "/sandbox" : "#"} 
+                  className={`mobile-link mobile-link-6 ${router.pathname.includes('/sandbox') ? 'active' : ''} ${!sandboxUnlocked && !user?.isAdmin ? 'locked' : ''}`}
+                  onClick={(sandboxUnlocked || user?.isAdmin) ? () => setMobileMenuOpen(false) : (e) => {
+                    e.preventDefault();
+                    // Could show unlock requirements modal
+                  }}
+                >
+                  {sandboxUnlocked || user?.isAdmin ? (
+                    <RiExchangeLine className="mobile-icon" />
+                  ) : (
+                    <FaLock className="mobile-icon" />
+                  )}
+                  <span>
+                    {user?.isAdmin ? 'Sandbox Trading' : sandboxUnlocked ? 'Sandbox Trading' : `Sandbox ${sandboxProgress.toFixed(0)}%`}
+                  </span>
+                </Link>
+              )}
             </div>
             
             {isAuthenticated && (
@@ -2048,6 +2157,102 @@ const Navbar = () => {
           transform: translateY(-3px) scale(1.02);
           box-shadow: 0 15px 40px rgba(59, 130, 246, 0.4);
           background: linear-gradient(135deg, #2563eb 0%, #5b21b6 100%);
+        }
+        
+        /* Sandbox Trading Styles */
+        .nav-link.locked {
+          opacity: 0.6;
+          cursor: not-allowed;
+          position: relative;
+        }
+        
+        .dark .nav-link.locked {
+          color: rgba(255, 255, 255, 0.5);
+        }
+        
+        .light .nav-link.locked {
+          color: rgba(0, 0, 0, 0.5);
+        }
+        
+        .nav-link.locked:hover {
+          transform: none;
+          background: none;
+        }
+        
+        .progress-ring {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 40px;
+          height: 40px;
+          pointer-events: none;
+        }
+        
+        .progress-circle {
+          transform: rotate(-90deg);
+          transition: all 0.3s ease;
+        }
+        
+        .progress-circle-fill {
+          transition: stroke-dashoffset 0.5s ease;
+          animation: progressPulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes progressPulse {
+          0%, 100% { 
+            stroke-width: 2; 
+            opacity: 1;
+          }
+          50% { 
+            stroke-width: 3; 
+            opacity: 0.8;
+          }
+        }
+        
+        .mobile-link.locked {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+        
+        .dark .mobile-link.locked {
+          color: rgba(255, 255, 255, 0.5);
+          background: rgba(255, 255, 255, 0.02);
+        }
+        
+        .light .mobile-link.locked {
+          color: rgba(0, 0, 0, 0.5);
+          background: rgba(0, 0, 0, 0.01);
+        }
+        
+        .mobile-link.locked:hover {
+          transform: none;
+          background: rgba(255, 255, 255, 0.02);
+        }
+        
+        /* Sandbox unlock notification styles */
+        .sandbox-unlock-notification {
+          position: fixed;
+          top: 80px;
+          right: 20px;
+          background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+          color: white;
+          padding: 16px 20px;
+          border-radius: 12px;
+          box-shadow: 0 8px 25px rgba(16, 185, 129, 0.3);
+          z-index: 10000;
+          animation: slideInRight 0.5s ease-out;
+          font-weight: 600;
+        }
+        
+        @keyframes slideInRight {
+          from {
+            transform: translateX(100%);
+            opacity: 0;
+          }
+          to {
+            transform: translateX(0);
+            opacity: 1;
+          }
         }
         
         @media (max-width: 768px) {

@@ -15,7 +15,8 @@ const protectedRoutes = [
   '/chart-exam/results', 
   '/results/[assetSymbol]',
   '/profile',
-  '/dashboard'
+  '/dashboard',
+  '/sandbox'
 ];
 
 // Add separate list for admin routes

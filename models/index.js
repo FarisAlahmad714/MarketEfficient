@@ -8,3 +8,5 @@ require('./Subscription');
 require('./TestResults');
 require('./User');
 require('./ChartExamAnalytics');
+require('./SandboxPortfolio');
+require('./SandboxTrade');
