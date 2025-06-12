@@ -6,11 +6,13 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import CryptoLoader from '../components/CryptoLoader'; 
 import { Info, Calendar, Clock, CheckCircle } from 'lucide-react';
-import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-  BarChart, Bar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
-  Cell, Pie, PieChart
-} from 'recharts';
+import dynamic from 'next/dynamic';
+
+// Create a dynamic dashboard charts component to reduce initial bundle
+const DashboardCharts = dynamic(() => import('../components/dashboard/DashboardCharts'), { 
+  ssr: false,
+  loading: () => <CryptoLoader height="400px" message="Loading dashboard charts..." />
+});
 import TrackedPage from '../components/TrackedPage';
 import logging from '../lib/logger'; // Import your logging utility
 import storage from '../lib/storage';
@@ -662,7 +664,7 @@ if (data && data.summary && data.summary.testsByType) {
             )}
           </div>
           
-          {/* Performance Trends Chart */}
+          {/* Charts Section */}
           <div style={{
             backgroundColor: darkMode ? '#1e1e1e' : 'white',
             borderRadius: '8px',
@@ -670,210 +672,12 @@ if (data && data.summary && data.summary.testsByType) {
             marginBottom: '30px',
             boxShadow: darkMode ? '0 4px 12px rgba(0,0,0,0.3)' : '0 4px 12px rgba(0,0,0,0.1)'
           }}>
-            <h2 style={{ 
-              color: darkMode ? '#e0e0e0' : '#333',
-              marginTop: 0,
-              marginBottom: '20px',
-              fontSize: '1.5rem',
-              display: 'flex',
-              alignItems: 'center'
-            }}>
-              Performance Trends
-              <InfoTooltip 
-                text="Visualizes how your test scores have changed over time, helping you track your progress and identify patterns in your trading analysis abilities." 
-                darkMode={darkMode}
-              />
-            </h2>
-            
-            {metrics.trends && metrics.trends.daily && metrics.trends.daily.length === 0 ? (
-              <p style={{ color: darkMode ? '#b0b0b0' : '#666' }}>
-                Not enough data to display performance trends.
-              </p>
-            ) : (
-              <div style={{ width: '100%', height: 300 }}>
-                <ResponsiveContainer>
-                  <LineChart
-                    data={period === 'week' ? metrics.trends.daily : metrics.trends.weekly}
-                    margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#333' : '#eee'} />
-                    <XAxis 
-                      dataKey={period === 'week' ? 'date' : 'week'} 
-                      tick={{ fill: darkMode ? '#b0b0b0' : '#666' }}
-                    />
-                    <YAxis 
-                      tick={{ fill: darkMode ? '#b0b0b0' : '#666' }}
-                      domain={[0, 100]}
-                      label={{ 
-                        value: 'Score (%)', 
-                        angle: -90, 
-                        position: 'insideLeft',
-                        style: { fill: darkMode ? '#b0b0b0' : '#666', textAnchor: 'middle' } 
-                      }}
-                    />
-                    <Tooltip
-                      contentStyle={{ 
-                        backgroundColor: darkMode ? '#262626' : 'white',
-                        borderColor: darkMode ? '#333' : '#eee',
-                        color: darkMode ? '#e0e0e0' : '#333'
-                      }}
-                      labelStyle={{ color: darkMode ? '#e0e0e0' : '#333' }}
-                    />
-                    <Legend wrapperStyle={{ color: darkMode ? '#e0e0e0' : '#333' }} />
-                    <Line 
-                      type="monotone" 
-                      dataKey="averageScore" 
-                      name="Average Score" 
-                      stroke="#2196F3" 
-                      strokeWidth={2}
-                      activeDot={{ r: 8 }}
-                    />
-                    <Line 
-                      type="monotone" 
-                      dataKey="count" 
-                      name="Number of Tests" 
-                      stroke="#4CAF50" 
-                      strokeWidth={2}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-          </div>
-          
-          {/* Test Distribution Charts */}
-          <div style={{
-            backgroundColor: darkMode ? '#1e1e1e' : 'white',
-            borderRadius: '8px',
-            padding: '25px',
-            marginBottom: '30px',
-            boxShadow: darkMode ? '0 4px 12px rgba(0,0,0,0.3)' : '0 4px 12px rgba(0,0,0,0.1)',
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-            gap: '20px'
-          }}>
-            <div>
-              <h2 style={{ 
-                color: darkMode ? '#e0e0e0' : '#333',
-                marginTop: 0,
-                marginBottom: '20px',
-                fontSize: '1.5rem',
-                display: 'flex',
-                alignItems: 'center'
-              }}>
-                Test Type Distribution
-                <InfoTooltip 
-                  text="Shows how your tests are distributed across different types, helping you understand where you focus your practice." 
-                  darkMode={darkMode}
-                />
-              </h2>
-              
-              {Object.keys(metrics.summary.testsByType).length === 0 ? (
-                <p style={{ color: darkMode ? '#b0b0b0' : '#666' }}>
-                  No test data available.
-                </p>
-              ) : (
-                <div style={{ width: '100%', height: 300 }}>
-                  <ResponsiveContainer>
-                    <PieChart>
-                      <Pie
-                        data={Object.entries(metrics.summary.testsByType).map(([type, data]) => ({
-                          name: formatTestType(type),
-                          value: data.count
-                        }))}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        outerRadius={80}
-                        fill="#8884d8"
-                        dataKey="value"
-                        nameKey="name"
-                        label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                      >
-                        {Object.entries(metrics.summary.testsByType).map(([type, data], index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        contentStyle={{ 
-                          backgroundColor: darkMode ? '#262626' : 'white',
-                          borderColor: darkMode ? '#333' : '#eee',
-                          color: darkMode ? '#e0e0e0' : '#333'
-                        }}
-                        formatter={(value, name) => [value, name]}
-                        labelStyle={{ color: darkMode ? '#e0e0e0' : '#333' }}
-                      />
-                      <Legend wrapperStyle={{ color: darkMode ? '#e0e0e0' : '#333' }} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-              )}
-            </div>
-            
-            <div>
-              <h2 style={{ 
-                color: darkMode ? '#e0e0e0' : '#333',
-                marginTop: 0,
-                marginBottom: '20px',
-                fontSize: '1.5rem',
-                display: 'flex',
-                alignItems: 'center'
-              }}>
-                Performance by Score Range
-                <InfoTooltip 
-                  text="Shows how your test scores are distributed across different performance ranges, helping you understand your typical performance levels." 
-                  darkMode={darkMode}
-                />
-              </h2>
-              
-              {metrics.summary.totalTests === 0 ? (
-                <p style={{ color: darkMode ? '#b0b0b0' : '#666' }}>
-                  No test data available.
-                </p>
-              ) : (
-                <div style={{ width: '100%', height: 300 }}>
-                  <ResponsiveContainer>
-                    <BarChart
-                      data={generateScoreRanges(metrics.recentActivity)}
-                      margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#333' : '#eee'} />
-                      <XAxis 
-                        dataKey="range" 
-                        tick={{ fill: darkMode ? '#b0b0b0' : '#666' }}
-                      />
-                      <YAxis 
-                        tick={{ fill: darkMode ? '#b0b0b0' : '#666' }}
-                        label={{ 
-                          value: 'Number of Tests', 
-                          angle: -90, 
-                          position: 'insideLeft',
-                          style: { fill: darkMode ? '#b0b0b0' : '#666', textAnchor: 'middle' } 
-                        }}
-                      />
-                      <Tooltip
-                        contentStyle={{ 
-                          backgroundColor: darkMode ? '#262626' : 'white',
-                          borderColor: darkMode ? '#333' : '#eee',
-                          color: darkMode ? '#e0e0e0' : '#333'
-                        }}
-                        labelStyle={{ color: darkMode ? '#e0e0e0' : '#333' }}
-                      />
-                      <Legend wrapperStyle={{ color: darkMode ? '#e0e0e0' : '#333' }} />
-                      <Bar 
-                        dataKey="count" 
-                        name="Number of Tests" 
-                        fill="#2196F3" 
-                      >
-                        {generateScoreRanges(metrics.recentActivity).map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={getScoreRangeColor(entry.range)} />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              )}
-            </div>
+            <DashboardCharts 
+              metrics={metrics}
+              darkMode={darkMode}
+              period={period}
+              goalTimeframe={goalTimeframe}
+            />
           </div>
           
           {/* Dynamic Time-Based Goals Section */}
@@ -1065,33 +869,7 @@ if (data && data.summary && data.summary.testsByType) {
                     </span>
                   </p>
                   
-                  {/* Mini bar chart showing daily progress */}
-                  {goal.id === 'tests-goal' && (
-                    <div style={{ marginTop: '15px', height: '40px' }}>
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart
-                          data={generateDailyProgressData(goalTimeframe)}
-                          margin={{ top: 0, right: 0, bottom: 0, left: 0 }}
-                        >
-                          <XAxis 
-                            dataKey="name" 
-                            axisLine={false} 
-                            tickLine={false} 
-                            tick={{ fontSize: 0 }} 
-                          />
-                          <Bar dataKey="value" barSize={goalTimeframe === 'week' ? 8 : 4}>
-                            {generateDailyProgressData(goalTimeframe).map((entry, index) => (
-                              <Cell 
-                                key={`cell-${index}`} 
-                                fill={entry.value > 0 ? goal.color : darkMode ? '#333' : '#f0f0f0'} 
-                                opacity={entry.value > 0 ? 1 : 0.5}
-                              />
-                            ))}
-                          </Bar>
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  )}
+                  {/* Mini bar chart showing daily progress - handled by DashboardCharts component */}
                 </div>
               ))}
             </div>
@@ -1221,45 +999,6 @@ const getBestPerformingScore = (testsByType) => {
   return highestScore;
 };
 
-// Colors for pie chart
-const COLORS = [
-  '#8884d8', '#83a6ed', '#8dd1e1', '#82ca9d', '#a4de6c', 
-  '#d0ed57', '#ffc658', '#ff8042', '#ff6b6b', '#f67280'
-];
-
-// Generate score ranges for bar chart
-const generateScoreRanges = (results) => {
-  const ranges = [
-    { range: '0-20%', count: 0, color: '#F44336' },
-    { range: '21-40%', count: 0, color: '#FF9800' },
-    { range: '41-60%', count: 0, color: '#FFC107' },
-    { range: '61-80%', count: 0, color: '#8BC34A' },
-    { range: '81-100%', count: 0, color: '#4CAF50' }
-  ];
-  
-  results.forEach(result => {
-    const score = result.percentageScore;
-    if (score <= 20) ranges[0].count++;
-    else if (score <= 40) ranges[1].count++;
-    else if (score <= 60) ranges[2].count++;
-    else if (score <= 80) ranges[3].count++;
-    else ranges[4].count++;
-  });
-  
-  return ranges;
-};
-
-// Get color for score range bar
-const getScoreRangeColor = (range) => {
-  switch(range) {
-    case '0-20%': return '#F44336';
-    case '21-40%': return '#FF9800';
-    case '41-60%': return '#FFC107';
-    case '61-80%': return '#8BC34A';
-    case '81-100%': return '#4CAF50';
-    default: return '#2196F3';
-  }
-};
 
 /**
  * Calculates the current week number, days remaining in week, 
@@ -1542,24 +1281,6 @@ const getGoalsByPeriod = (period, metrics, darkMode) => {
   return goals;
 };
 
-// Generate mini chart data for goal cards
-const generateDailyProgressData = (period) => {
-  // Create simulated data for visualization
-  const seed = period === 'week' ? 42 : period === 'month' ? 123 : 456;
-  
-  let daysInPeriod;
-  if (period === 'week') daysInPeriod = 7;
-  else if (period === 'month') daysInPeriod = 30;
-  else daysInPeriod = 12;
-  
-  return Array.from({ length: daysInPeriod }, (_, i) => {
-    const rand = seededRandom(seed + i);
-    return {
-      name: period === 'year' ? `Month ${i+1}` : `Day ${i+1}`,
-      value: Math.ceil(rand * 3)
-    };
-  });
-};
 
 // Get remaining time text based on active timeframe
 const getRemainingTimeText = (timeInfo, activeTimeframe) => {

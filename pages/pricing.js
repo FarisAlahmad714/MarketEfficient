@@ -1,10 +1,17 @@
 // pages/pricing.js
 import { useState, useEffect, useContext } from 'react';
 import { useRouter } from 'next/router';
+import dynamic from 'next/dynamic';
 import { AuthContext } from '../contexts/AuthContext';
-import PricingPage from '../components/PricingPage';
 import logger from '../lib/logger';
 import storage from '../lib/storage';
+import CryptoLoader from '../components/CryptoLoader';
+
+// Dynamically import PricingPage to reduce initial bundle size
+const PricingPage = dynamic(() => import('../components/PricingPage'), {
+  ssr: false,
+  loading: () => <CryptoLoader height="400px" message="Loading pricing options..." />
+});
 
 export default function Pricing() {
   const router = useRouter();

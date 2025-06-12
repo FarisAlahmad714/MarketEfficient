@@ -6,10 +6,19 @@ import { optionalAuth } from '../../middleware/auth';
 import { composeMiddleware } from '../../lib/api-handler';
 import TestResults from '../../models/TestResults';
 import User from '../../models/User';
+import { cache } from '../../lib/cache';
 
 async function leaderboardHandler(req, res) {
   // Extract query parameters
   const { testType, period = 'all', limit = 5 } = req.query;
+  
+  // Check cache first
+  const cacheKey = `${testType || 'all'}_${period}_${limit}`;
+  const cachedData = cache.leaderboard.get(testType || 'all', period, limit);
+  
+  if (cachedData) {
+    return res.status(200).json(cachedData);
+  }
   
   // Calculate time frame based on period
   let startDate = null;
@@ -167,7 +176,7 @@ async function leaderboardHandler(req, res) {
     }
   }
   
-  return res.status(200).json({
+  const responseData = {
     leaderboard: leaderboardData,
     currentUserRank,
     totalParticipants: await TestResults.aggregate([
@@ -186,7 +195,12 @@ async function leaderboardHandler(req, res) {
     ]).then(result => result.length > 0 ? result[0].count : 0),
     testType: testType || 'all',
     period
-  });
+  };
+
+  // Cache the response (5 minutes)
+  cache.leaderboard.set(testType || 'all', period, limit, responseData);
+
+  return res.status(200).json(responseData);
 }
 
 // Export with optional auth (allows both authenticated and public access)

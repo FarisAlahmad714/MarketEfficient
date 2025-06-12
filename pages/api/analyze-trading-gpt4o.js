@@ -346,7 +346,18 @@ Then provide SPECIFIC analysis:
 - Exact price action: "The session opened at $${lastSetupCandle.open} and ${lastSetupCandle.high > lastSetupCandle.open ? `rallied to $${lastSetupCandle.high}` : `immediately sold off`}..."
 - Key technical levels: "Price was ${lastSetupCandle.close > technicalContext.keyResistance ? 'above' : 'below'} the key resistance at $${technicalContext.keyResistance}..."
 - Specific patterns: ${patterns.length > 0 ? `"The ${patterns[patterns.length-1].type} pattern formed at...` : '"No classic reversal patterns were present, however...'}
-- What actually happened: "The ${correctAnswer} outcome materialized when price ${firstOutcomeCandle ? `opened at $${firstOutcomeCandle.open}` : 'moved'}..."
+</p>
+
+<h3>📈 What Actually Happened</h3>
+<p>Provide a detailed narrative of the market's actual response following the setup:
+
+"After the setup candle closed at $${lastSetupCandle.close} on ${setupDate}, the market ${correctAnswer === 'bullish' ? 'responded bullishly' : 'declined bearishly'}. ${firstOutcomeCandle ? `The next session opened at $${firstOutcomeCandle.open} (${((firstOutcomeCandle.open - lastSetupCandle.close) / lastSetupCandle.close * 100).toFixed(2)}% ${firstOutcomeCandle.open > lastSetupCandle.close ? 'gap up' : firstOutcomeCandle.open < lastSetupCandle.close ? 'gap down' : 'flat'}) and ${firstOutcomeCandle.close > firstOutcomeCandle.open ? `rallied to close at $${firstOutcomeCandle.close}` : `declined to close at $${firstOutcomeCandle.close}`}, creating a ${outcomeCandleChange}% ${correctAnswer} move.` : `moved ${correctAnswer} as anticipated.`}"
+
+Then analyze the WHY behind what happened:
+- Market dynamics: "This ${correctAnswer} move was driven by..."
+- Technical validation: "${setupStats.trendStrength > 0 ? 'The existing bullish momentum' : 'The bearish pressure'} was ${wasCorrect ? 'confirmed' : 'challenged'} by..."
+- Pattern completion: ${patterns.length > 0 ? `"The ${patterns[patterns.length-1].type} pattern ${correctAnswer === 'bullish' ? 'played out as expected' : 'failed to deliver'} because..."` : '"Without clear pattern signals, the move was primarily driven by..."'}
+- Support/Resistance interaction: "Price ${firstOutcomeCandle ? (firstOutcomeCandle.close > technicalContext.keyResistance ? 'broke above resistance' : firstOutcomeCandle.close < technicalContext.keySupport ? 'broke below support' : 'respected key levels') : 'interacted with key levels'} at..."
 </p>
 
 <h3>🎯 Reasoning Deep Dive</h3>

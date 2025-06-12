@@ -1,7 +1,14 @@
 import { useContext } from 'react';
-import AssetSelector from '../components/AssetSelector';
+import dynamic from 'next/dynamic';
 import { ThemeContext } from '../contexts/ThemeContext';
 import TrackedPage from '../components/TrackedPage';
+import CryptoLoader from '../components/CryptoLoader';
+
+// Dynamically import AssetSelector to reduce initial bundle size
+const AssetSelector = dynamic(() => import('../components/AssetSelector'), {
+  ssr: false,
+  loading: () => <CryptoLoader height="400px" message="Loading asset selector..." />
+});
 
 export default function BiasTestPage() {
   const { darkMode } = useContext(ThemeContext);

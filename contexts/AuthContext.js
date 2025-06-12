@@ -1,5 +1,5 @@
 // contexts/AuthContext.js
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import React, { createContext, useState, useEffect, useContext, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import storage from '../lib/storage';
 
@@ -24,6 +24,9 @@ export const AuthProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [csrfTokenValue, setCsrfTokenValue] = useState(null); // New state for CSRF token
   const router = useRouter();
+  
+  // Get current pathname and avoid router dependency in auth initialization
+  const currentPath = router?.asPath;
 
   if (process.env.NODE_ENV === 'development') {
     console.log('[AuthContext] Component rendering/re-rendering. Initial isLoading:', isLoading);
@@ -36,7 +39,8 @@ export const AuthProvider = ({ children }) => {
     setIsLoading(value);
   };
 
-  const secureApiCall = async (url, options = {}) => {
+  // Memoize secureApiCall to prevent recreation on every render
+  const secureApiCall = useCallback(async (url, options = {}) => {
     const headers = {
       'Content-Type': 'application/json',
       ...options.headers,
@@ -51,9 +55,6 @@ export const AuthProvider = ({ children }) => {
         if (process.env.NODE_ENV === 'development') {
           console.warn('[AuthContext] CSRF token not available in state for secureApiCall. Check initialization.');
         }
-        // Optionally, try to get it from cookie as a last resort, but this might re-introduce the race condition
-        // const cookieToken = getCsrfTokenFromCookie();
-        // if (cookieToken) headers['X-CSRF-Token'] = cookieToken;
       }
     }
 
@@ -68,7 +69,7 @@ export const AuthProvider = ({ children }) => {
       headers,
       credentials: 'include', // Always include cookies
     });
-  };
+  }, [csrfTokenValue]); // Only recreate when CSRF token changes
   
   useEffect(() => {
     const initializeApp = async () => {
@@ -159,7 +160,8 @@ export const AuthProvider = ({ children }) => {
     initializeApp();
   }, []); // Empty dependency array ensures this runs once on mount
   
-  const register = async (name, email, password, promoCode) => {
+  // Memoize register function
+  const register = useCallback(async (name, email, password, promoCode) => {
     try {
       const response = await secureApiCall('/api/auth/register', {
         method: 'POST',
@@ -192,9 +194,10 @@ export const AuthProvider = ({ children }) => {
       }
       throw error;
     }
-  };
+  }, [secureApiCall]);
   
-  const login = async (email, password) => {
+  // Memoize login function
+  const login = useCallback(async (email, password) => {
     try {
       const csrfToken = getCookie('csrf_token'); // Get CSRF token
 
@@ -248,9 +251,10 @@ export const AuthProvider = ({ children }) => {
         message: 'An error occurred during login'
       };
     }
-  };
+  }, [router]);
   
-  const logout = async () => {
+  // Memoize logout function
+  const logout = useCallback(async () => {
     try {
       await secureApiCall('/api/auth/logout', {
         method: 'POST'
@@ -269,10 +273,10 @@ export const AuthProvider = ({ children }) => {
       setIsAuthenticated(false);
       router.push('/');
     }
-  };
+  }, [secureApiCall, router]);
   
-  // Additional helper methods for storage migration
-  const refreshToken = async () => {
+  // Memoize additional helper methods
+  const refreshToken = useCallback(async () => {
     try {
       const response = await secureApiCall('/api/auth/me', {
         method: 'GET'
@@ -285,36 +289,49 @@ export const AuthProvider = ({ children }) => {
       }
       return false;
     }
-  };
+  }, [secureApiCall]);
   
   // Method to check if user has valid session
-  const hasValidSession = async () => {
+  const hasValidSession = useCallback(async () => {
     const token = await storage.getItem('auth_token');
     return !!token && isAuthenticated;
-  };
+  }, [isAuthenticated]);
   
   // Method to get current auth token (useful for API calls)
-  const getAuthToken = async () => {
+  const getAuthToken = useCallback(async () => {
     return await storage.getItem('auth_token');
-  };
+  }, []);
   
   // Export the secure API call function for use in other components
   // const makeSecureRequest = secureApiCall; // This was exporting the old one, now it's part of the context value
 
+  // Memoize the context value to prevent unnecessary re-renders
+  const contextValue = useMemo(() => ({
+    user,
+    isAuthenticated,
+    isLoading,
+    register,
+    login,
+    logout,
+    refreshToken,
+    hasValidSession,
+    getAuthToken,
+    makeSecureRequest: secureApiCall // Expose the new secureApiCall bound to the provider's instance and state
+  }), [
+    user,
+    isAuthenticated,
+    isLoading,
+    register,
+    login,
+    logout,
+    refreshToken,
+    hasValidSession,
+    getAuthToken,
+    secureApiCall
+  ]);
+
   return (
-    <AuthContext.Provider value={{
-      user,
-      isAuthenticated,
-      isLoading,
-      // csrfTokenValue, // No need to expose csrfTokenValue directly, it's used by makeSecureRequest
-      register,
-      login,
-      logout,
-      refreshToken,
-      hasValidSession,
-      getAuthToken,
-      makeSecureRequest: secureApiCall // Expose the new secureApiCall bound to the provider's instance and state
-    }}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );

@@ -54,14 +54,19 @@ async function getAIAnalysis(chartData, outcomeData, prediction, reasoning, corr
 
     // Get the most recent candle data for explicit reference
     const lastCandle = chartData[chartData.length - 1];
-    const isBullish = lastCandle.close > lastCandle.open;
-    const candleType = isBullish ? "BULLISH" : "BEARISH";
+    const firstOutcomeCandle = outcomeData && outcomeData.length > 0 ? outcomeData[0] : null;
     
-    // Get the outcome candle data if available
-    const nextCandle = outcomeData && outcomeData.length > 0 ? outcomeData[0] : null;
-    const nextCandleType = nextCandle ? (nextCandle.close > nextCandle.open ? "BULLISH" : "BEARISH") : correctAnswer.toUpperCase();
+    // Calculate what actually happened
+    const setupClose = lastCandle?.close;
+    const outcomeOpen = firstOutcomeCandle?.open;
+    const outcomeClose = firstOutcomeCandle?.close;
+    
+    const gapPercentage = setupClose && outcomeOpen ? 
+      (((outcomeOpen - setupClose) / setupClose) * 100).toFixed(2) : 0;
+    const outcomeMovePercentage = firstOutcomeCandle ? 
+      (((outcomeClose - outcomeOpen) / outcomeOpen) * 100).toFixed(2) : 0;
 
-    // Create a simplified analysis prompt
+    // Create enhanced analysis prompt with "What Actually Happened" section
     const prompt = `You are a professional trading analyst providing expert feedback on a trader's market prediction.
 
 TRADING SCENARIO:
@@ -70,10 +75,27 @@ TRADING SCENARIO:
 - Prediction Was: ${wasCorrect ? "CORRECT" : "INCORRECT"}
 - Trader's Reasoning: "${reasoning}"
 
+PRICE DATA:
+- Setup Close: $${setupClose}
+- Outcome Open: $${outcomeOpen} (${gapPercentage}% ${outcomeOpen > setupClose ? 'gap up' : outcomeOpen < setupClose ? 'gap down' : 'flat'})
+- Outcome Close: $${outcomeClose}
+- Outcome Move: ${outcomeMovePercentage}% ${correctAnswer.toLowerCase()}
+
 Please provide a comprehensive analysis in HTML format with the following sections:
 
 <h3>📊 Market Scenario Analysis</h3>
 <p>Analyze what happened in this specific trading scenario and why the outcome was ${correctAnswer.toUpperCase()}.</p>
+
+<h3>📈 What Actually Happened</h3>
+<p>Provide a detailed narrative of exactly what occurred in the market following the setup:
+
+"After the setup closed at $${setupClose}, the market ${correctAnswer === 'Bullish' ? 'responded bullishly' : 'declined bearishly'}. ${firstOutcomeCandle ? `The next session opened at $${outcomeOpen} (${Math.abs(gapPercentage)}% ${outcomeOpen > setupClose ? 'gap up' : outcomeOpen < setupClose ? 'gap down' : 'unchanged'}) and ${outcomeClose > outcomeOpen ? `rallied to close at $${outcomeClose}` : `declined to close at $${outcomeClose}`}, creating a ${Math.abs(outcomeMovePercentage)}% ${correctAnswer.toLowerCase()} move.` : `moved ${correctAnswer.toLowerCase()} as expected.`}"
+
+Explain WHY this happened:
+- What market forces drove this move
+- How technical factors played out
+- Whether patterns completed as expected
+- How price interacted with key levels</p>
 
 <h3>🎯 Analysis of Your Reasoning</h3>
 <p>Examine the trader's reasoning: "${reasoning}" and explain how it related to the actual outcome.</p>
