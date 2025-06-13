@@ -4,6 +4,7 @@ import { createApiHandler, composeMiddleware } from '../../../lib/api-handler';
 import connectDB from '../../../lib/database';
 import SandboxPortfolio from '../../../models/SandboxPortfolio';
 import SandboxTrade from '../../../models/SandboxTrade';
+import { getPriceSimulator } from '../../../lib/priceSimulation';
 
 async function placeTradeHandler(req, res) {
   await connectDB();
@@ -220,32 +221,34 @@ async function placeTradeHandler(req, res) {
 function validatePreTradeAnalysis(analysis) {
   const errors = [];
   
+  // Only require entry reason for simplified trading experience
   if (!analysis.entryReason || analysis.entryReason.length < 10) {
     errors.push('Entry reason must be at least 10 characters');
   }
   
-  if (!analysis.technicalAnalysis || analysis.technicalAnalysis.length < 10) {
+  // Optional fields - validate only if provided
+  if (analysis.technicalAnalysis && analysis.technicalAnalysis.length < 10) {
     errors.push('Technical analysis must be at least 10 characters');
   }
   
-  if (!analysis.riskManagement || analysis.riskManagement.length < 10) {
+  if (analysis.riskManagement && analysis.riskManagement.length < 10) {
     errors.push('Risk management plan must be at least 10 characters');
   }
   
-  if (!analysis.biasCheck || analysis.biasCheck.length < 10) {
+  if (analysis.biasCheck && analysis.biasCheck.length < 10) {
     errors.push('Bias check must be at least 10 characters');
   }
   
-  if (!analysis.confidenceLevel || analysis.confidenceLevel < 1 || analysis.confidenceLevel > 10) {
+  if (analysis.confidenceLevel && (analysis.confidenceLevel < 1 || analysis.confidenceLevel > 10)) {
     errors.push('Confidence level must be between 1 and 10');
   }
   
-  if (!analysis.expectedHoldTime || !['minutes', 'hours', 'days', 'weeks'].includes(analysis.expectedHoldTime)) {
-    errors.push('Expected hold time must be specified');
+  if (analysis.expectedHoldTime && !['minutes', 'hours', 'days', 'weeks'].includes(analysis.expectedHoldTime)) {
+    errors.push('Expected hold time must be valid');
   }
   
-  if (!analysis.emotionalState || !['calm', 'excited', 'fearful', 'confident', 'uncertain'].includes(analysis.emotionalState)) {
-    errors.push('Emotional state must be specified');
+  if (analysis.emotionalState && !['calm', 'excited', 'fearful', 'confident', 'uncertain'].includes(analysis.emotionalState)) {
+    errors.push('Emotional state must be valid');
   }
   
   return errors;
@@ -253,10 +256,12 @@ function validatePreTradeAnalysis(analysis) {
 
 async function getCurrentMarketPrice(symbol) {
   try {
-    const TWELVEDATA_API_KEY = process.env.TWELVEDATA_API_KEY;
+    const TWELVEDATA_API_KEY = process.env.TWELVE_DATA_API_KEY || process.env.TWELVEDATA_API_KEY || '08f0aa1220414f6ba782aaae2cd515e3';
     
     if (!TWELVEDATA_API_KEY) {
-      throw new Error('Twelvedata API key not configured');
+      console.log(`Using simulated price for trade: ${symbol}`);
+      const priceSimulator = getPriceSimulator();
+      return priceSimulator.getPrice(symbol);
     }
     
     const url = `https://api.twelvedata.com/price?symbol=${symbol}&apikey=${TWELVEDATA_API_KEY}`;
@@ -264,7 +269,9 @@ async function getCurrentMarketPrice(symbol) {
     const response = await fetch(url);
     
     if (!response.ok) {
-      throw new Error(`API request failed: ${response.status}`);
+      console.log(`API failed, using simulated price for trade: ${symbol}`);
+      const priceSimulator = getPriceSimulator();
+      return priceSimulator.getPrice(symbol);
     }
     
     const data = await response.json();
@@ -276,10 +283,13 @@ async function getCurrentMarketPrice(symbol) {
     return null;
     
   } catch (error) {
-    console.error(`Error fetching price for ${symbol}:`, error);
-    return null;
+    console.log(`Error fetching price for ${symbol}, using simulated data:`, error.message);
+    const priceSimulator = getPriceSimulator();
+    return priceSimulator.getPrice(symbol);
   }
 }
+
+// getMockPrice function removed - now using price simulator
 
 function getAssetType(symbol) {
   const cryptoSymbols = ['BTCUSD', 'ETHUSD', 'ADAUSD', 'SOLUSD', 'LINKUSD'];

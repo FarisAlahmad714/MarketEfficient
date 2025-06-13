@@ -141,28 +141,28 @@ const SandboxTradeSchema = new mongoose.Schema({
     
     technicalAnalysis: {
       type: String,
-      required: true,
+      required: false,
       minlength: 10,
       maxlength: 500
     },
     
     riskManagement: {
       type: String,
-      required: true,
+      required: false,
       minlength: 10,
       maxlength: 500
     },
     
     biasCheck: {
       type: String,
-      required: true,
+      required: false,
       minlength: 10,
       maxlength: 500
     },
     
     confidenceLevel: {
       type: Number,
-      required: true,
+      required: false,
       min: 1,
       max: 10
     },
@@ -170,13 +170,13 @@ const SandboxTradeSchema = new mongoose.Schema({
     expectedHoldTime: {
       type: String,
       enum: ['minutes', 'hours', 'days', 'weeks'],
-      required: true
+      required: false
     },
     
     emotionalState: {
       type: String,
       enum: ['calm', 'excited', 'fearful', 'confident', 'uncertain'],
-      required: true
+      required: false
     }
   },
   

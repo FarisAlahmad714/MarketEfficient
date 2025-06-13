@@ -5,26 +5,37 @@ import TradingPanel from './TradingPanel';
 import PortfolioOverview from './PortfolioOverview';
 import PositionsPanel from './PositionsPanel';
 import storage from '../../lib/storage';
+import useWebSocketMarketData from '../../lib/useWebSocketMarketData';
 
 const SandboxTradingInterface = ({ sandboxStatus, onPortfolioUpdate }) => {
   const { darkMode } = useContext(ThemeContext);
   
-  const [selectedAsset, setSelectedAsset] = useState('BTCUSD');
+  const [selectedAsset, setSelectedAsset] = useState('BTC');
   const [portfolioData, setPortfolioData] = useState(null);
-  const [marketData, setMarketData] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   
   const refreshIntervalRef = useRef(null);
+  
+  // Get all available symbols for WebSocket subscription
+  const allSymbols = ['BTC', 'ETH', 'ADA', 'SOL', 'LINK', 'AAPL', 'GOOGL', 'TSLA', 'AMZN', 'MSFT', 'SPY', 'QQQ'];
+  
+  // Use WebSocket for real-time market data
+  const { 
+    marketData, 
+    connectionStatus, 
+    error: wsError, 
+    reconnect: wsReconnect 
+  } = useWebSocketMarketData(allSymbols);
 
   useEffect(() => {
     initializeInterface();
     
-    // Set up refresh interval
+    // Set up portfolio refresh interval (still needed for P&L updates)
+    // Market data now comes from WebSocket, so only refresh portfolio
     refreshIntervalRef.current = setInterval(() => {
-      refreshMarketData();
       refreshPortfolio();
-    }, 60000); // Refresh every minute
+    }, 60000); // Refresh portfolio every minute
     
     return () => {
       if (refreshIntervalRef.current) {
@@ -36,10 +47,8 @@ const SandboxTradingInterface = ({ sandboxStatus, onPortfolioUpdate }) => {
   const initializeInterface = async () => {
     try {
       setLoading(true);
-      await Promise.all([
-        fetchPortfolioData(),
-        fetchMarketData()
-      ]);
+      // Only fetch portfolio data, market data comes from WebSocket
+      await fetchPortfolioData();
     } catch (error) {
       console.error('Error initializing sandbox interface:', error);
       setError('Failed to load trading interface');
@@ -70,43 +79,7 @@ const SandboxTradingInterface = ({ sandboxStatus, onPortfolioUpdate }) => {
     }
   };
 
-  const fetchMarketData = async () => {
-    try {
-      const token = storage.getItem('auth_token');
-      const response = await fetch('/api/sandbox/market-data', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch market data');
-      }
-
-      const data = await response.json();
-      
-      if (data.success && data.assets) {
-        // Convert assets array to lookup object
-        const marketLookup = {};
-        data.assets.forEach(asset => {
-          marketLookup[asset.symbol] = asset;
-        });
-        setMarketData(marketLookup);
-      }
-      
-    } catch (error) {
-      console.error('Error fetching market data:', error);
-      throw error;
-    }
-  };
-
-  const refreshMarketData = async () => {
-    try {
-      await fetchMarketData();
-    } catch (error) {
-      console.error('Error refreshing market data:', error);
-    }
-  };
+  // Market data now comes from WebSocket - no need for polling functions
 
   const refreshPortfolio = async () => {
     try {
@@ -134,6 +107,9 @@ const SandboxTradingInterface = ({ sandboxStatus, onPortfolioUpdate }) => {
         <div className="loading-container">
           <div className="spinner"></div>
           <p>Loading trading interface...</p>
+          <p className="connection-status">
+            WebSocket: {connectionStatus === 'connected' ? '🟢 Connected' : connectionStatus === 'error' ? '🔴 Error' : '🟡 Connecting...'}
+          </p>
         </div>
         
         <style jsx>{`
@@ -256,6 +232,21 @@ const SandboxTradingInterface = ({ sandboxStatus, onPortfolioUpdate }) => {
             portfolioData={portfolioData}
             onRefresh={refreshPortfolio}
           />
+          
+          {/* WebSocket Status Indicator */}
+          <div className="websocket-status">
+            <span className={`status-indicator ${connectionStatus}`}>
+              {connectionStatus === 'connected' ? '🟢' : connectionStatus === 'error' ? '🔴' : '🟡'}
+            </span>
+            <span className="status-text">
+              Real-time data: {connectionStatus === 'connected' ? 'Live' : connectionStatus === 'error' ? 'Error' : 'Connecting...'}
+            </span>
+            {(connectionStatus === 'error' || wsError) && (
+              <button onClick={wsReconnect} className="reconnect-btn">
+                Reconnect
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Main Section - Chart and Trading */}
@@ -305,6 +296,50 @@ const SandboxTradingInterface = ({ sandboxStatus, onPortfolioUpdate }) => {
         
         .top-section {
           flex-shrink: 0;
+        }
+        
+        .websocket-status {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin-top: 12px;
+          padding: 8px 12px;
+          border-radius: 8px;
+          font-size: 0.875rem;
+          font-weight: 500;
+        }
+        
+        .dark .websocket-status {
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          color: rgba(255, 255, 255, 0.8);
+        }
+        
+        .light .websocket-status {
+          background: rgba(0, 0, 0, 0.02);
+          border: 1px solid rgba(0, 0, 0, 0.1);
+          color: rgba(0, 0, 0, 0.8);
+        }
+        
+        .status-indicator {
+          font-size: 0.75rem;
+        }
+        
+        .reconnect-btn {
+          padding: 4px 8px;
+          border: none;
+          border-radius: 4px;
+          font-size: 0.75rem;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          background: #3b82f6;
+          color: white;
+          font-weight: 500;
+        }
+        
+        .reconnect-btn:hover {
+          background: #2563eb;
+          transform: translateY(-1px);
         }
         
         .main-section {

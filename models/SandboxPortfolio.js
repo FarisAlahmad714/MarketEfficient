@@ -11,7 +11,7 @@ const SandboxPortfolioSchema = new mongoose.Schema({
   // Core Portfolio Data
   balance: {
     type: Number,
-    default: 10000, // Starting with 10,000 SENSE$
+    default: 10000, // Starting with 10,000 SENSES
     min: 0
   },
   

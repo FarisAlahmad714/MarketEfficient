@@ -3,12 +3,13 @@ import dynamic from 'next/dynamic';
 import { ThemeContext } from '../../contexts/ThemeContext';
 import { FaChevronDown, FaClock, FaExpand } from 'react-icons/fa';
 import { SANDBOX_ASSETS } from '../../lib/sandbox-constants';
-import SimpleChart from './SimpleChart';
+// import SimpleChart from './SimpleChart'; // Not needed anymore
 import storage from '../../lib/storage';
 
 const SandboxChart = ({ selectedAsset, marketData, onAssetChange, portfolioData }) => {
   const chartContainerRef = useRef(null);
   const chartInstanceRef = useRef(null);
+  const dropdownRef = useRef(null);
   const { darkMode } = useContext(ThemeContext);
   
   const [chartData, setChartData] = useState([]);
@@ -16,6 +17,7 @@ const SandboxChart = ({ selectedAsset, marketData, onAssetChange, portfolioData 
   const [timeframe, setTimeframe] = useState('1h');
   const [showAssetSelector, setShowAssetSelector] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
   
   const timeframes = [
     { label: '1M', value: '1min' },
@@ -32,7 +34,40 @@ const SandboxChart = ({ selectedAsset, marketData, onAssetChange, portfolioData 
     if (selectedAsset) {
       loadChartData();
     }
-  }, [selectedAsset, timeframe, darkMode]);
+  }, [selectedAsset, timeframe]); // Removed darkMode to prevent auto-refresh
+
+  useEffect(() => {
+    if (chartData.length > 0) {
+      initializeChart(chartData);
+    }
+    
+    return () => {
+      if (chartInstanceRef.current) {
+        chartInstanceRef.current.remove();
+        chartInstanceRef.current = null;
+      }
+      if (chartContainerRef.current?._cleanup) {
+        chartContainerRef.current._cleanup();
+      }
+    };
+  }, [chartData, darkMode, fullscreen]);
+
+  // Handle click outside dropdown
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowAssetSelector(false);
+      }
+    };
+
+    if (showAssetSelector) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showAssetSelector]);
 
   const loadChartData = async () => {
     try {
@@ -64,7 +99,9 @@ const SandboxChart = ({ selectedAsset, marketData, onAssetChange, portfolioData 
 
   const initializeChart = async (data) => {
     try {
-      if (!chartContainerRef.current || !data.length) return;
+      if (!chartContainerRef.current || !data.length) {
+        return;
+      }
 
       // Clear existing chart
       if (chartInstanceRef.current) {
@@ -158,13 +195,14 @@ const SandboxChart = ({ selectedAsset, marketData, onAssetChange, portfolioData 
 
       window.addEventListener('resize', handleResize);
       
-      return () => {
+      // Store cleanup function but don't return it here
+      // (cleanup is handled by the useEffect)
+      const cleanup = () => {
         window.removeEventListener('resize', handleResize);
-        if (chartInstanceRef.current) {
-          chartInstanceRef.current.remove();
-          chartInstanceRef.current = null;
-        }
       };
+      
+      // Just store the cleanup for later
+      chartContainerRef.current._cleanup = cleanup;
       
     } catch (error) {
       console.error('Error initializing chart:', error);
@@ -183,7 +221,7 @@ const SandboxChart = ({ selectedAsset, marketData, onAssetChange, portfolioData 
           lineWidth: 2,
           lineStyle: 0, // solid
           axisLabelVisible: true,
-          title: `${position.side.toUpperCase()} Entry: $${position.entryPrice}`,
+          title: `${position.side.toUpperCase()} Entry: ${position.entryPrice} SENSES`,
         });
 
         // Add stop loss marker if exists
@@ -194,7 +232,7 @@ const SandboxChart = ({ selectedAsset, marketData, onAssetChange, portfolioData 
             lineWidth: 1,
             lineStyle: 1, // dashed
             axisLabelVisible: true,
-            title: `Stop Loss: $${position.stopLoss.price}`,
+            title: `Stop Loss: ${position.stopLoss.price} SENSES`,
           });
         }
 
@@ -206,7 +244,7 @@ const SandboxChart = ({ selectedAsset, marketData, onAssetChange, portfolioData 
             lineWidth: 1,
             lineStyle: 1, // dashed
             axisLabelVisible: true,
-            title: `Take Profit: $${position.takeProfit.price}`,
+            title: `Take Profit: ${position.takeProfit.price} SENSES`,
           });
         }
       }
@@ -237,15 +275,36 @@ const SandboxChart = ({ selectedAsset, marketData, onAssetChange, portfolioData 
       {/* Chart Header */}
       <div className="chart-header">
         <div className="asset-info">
-          <div className="asset-selector" onClick={() => setShowAssetSelector(!showAssetSelector)}>
+          <div 
+            ref={dropdownRef}
+            className="asset-selector" 
+            onClick={(e) => {
+              if (!showAssetSelector) {
+                const rect = e.currentTarget.getBoundingClientRect();
+                setDropdownPosition({
+                  bottom: window.innerHeight - rect.top + window.scrollY + 8,
+                  left: rect.left + window.scrollX
+                });
+              }
+              setShowAssetSelector(!showAssetSelector);
+            }}
+          >
             <span className="asset-name">
               {allAssets.find(a => a.symbol === selectedAsset)?.name || selectedAsset}
             </span>
-            <span className="asset-symbol">({selectedAsset})</span>
+            <span className="asset-symbol">({selectedAsset}/SENSES)</span>
             <FaChevronDown className={`dropdown-icon ${showAssetSelector ? 'open' : ''}`} />
             
             {showAssetSelector && (
-              <div className="asset-dropdown">
+              <>
+                <div className="dropdown-overlay" onClick={() => setShowAssetSelector(false)} />
+                <div 
+                  className="asset-dropdown"
+                  style={{
+                    bottom: `${dropdownPosition.bottom}px`,
+                    left: `${dropdownPosition.left}px`
+                  }}
+                >
                 <div className="asset-category">
                   <h4>Cryptocurrencies</h4>
                   {SANDBOX_ASSETS.crypto.map(asset => (
@@ -282,11 +341,12 @@ const SandboxChart = ({ selectedAsset, marketData, onAssetChange, portfolioData 
                   ))}
                 </div>
               </div>
+              </>
             )}
           </div>
           
           <div className="price-info">
-            <span className="current-price">${currentPrice.toFixed(2)}</span>
+            <span className="current-price">{currentPrice.toFixed(2)} SENSES</span>
             <span className={`price-change ${priceChange.percentage >= 0 ? 'positive' : 'negative'}`}>
               {priceChange.percentage >= 0 ? '+' : ''}{priceChange.percentage.toFixed(2)}%
             </span>
@@ -324,10 +384,14 @@ const SandboxChart = ({ selectedAsset, marketData, onAssetChange, portfolioData 
           </div>
         )}
         
-        <SimpleChart 
-          data={chartData}
-          selectedAsset={selectedAsset}
-          darkMode={darkMode}
+        <div 
+          ref={chartContainerRef}
+          className="chart-canvas"
+          style={{ 
+            width: '100%', 
+            height: fullscreen ? 'calc(100vh - 200px)' : '500px',
+            opacity: loading ? 0.3 : 1 
+          }}
         />
       </div>
 
@@ -454,17 +518,20 @@ const SandboxChart = ({ selectedAsset, marketData, onAssetChange, portfolioData 
         }
         
         .asset-dropdown {
-          position: absolute;
-          top: 100%;
-          left: 0;
-          right: 0;
-          margin-top: 8px;
+          position: fixed !important;
+          bottom: auto !important;
+          left: auto !important;
+          right: auto !important;
+          top: auto !important;
           border-radius: 12px;
           padding: 16px;
-          z-index: 1000;
+          z-index: 99999 !important;
           max-height: 400px;
           overflow-y: auto;
-          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+          backdrop-filter: blur(10px);
+          width: 300px;
+          pointer-events: auto !important;
         }
         
         .dark .asset-dropdown {
@@ -720,6 +787,17 @@ const SandboxChart = ({ selectedAsset, marketData, onAssetChange, portfolioData 
         
         .chart-canvas {
           transition: opacity 0.3s ease;
+        }
+        
+        .dropdown-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          z-index: 99998;
+          background: transparent;
+          pointer-events: auto;
         }
         
         @media (max-width: 768px) {

@@ -6,12 +6,17 @@ const { parse } = require('url');
 const next = require('next');
 const cron = require('node-cron');
 
+// Simple logger
+const logger = {
+  log: (...args) => console.log(new Date().toISOString(), ...args)
+};
+
 const dev = process.env.NODE_ENV !== 'production';
 const app = next({ dev });
 const handle = app.getRequestHandler();
 
 // Import functions dynamically to handle ES6 modules
-let connectDB, User, sendMetricsEmail, sendInactiveUserReminder, getUserMetrics, getInactiveUsers;
+let connectDB, User, sendMetricsEmail, sendInactiveUserReminder, getUserMetrics, getInactiveUsers, marketDataWS;
 
 async function initializeModules() {
   try {
@@ -23,6 +28,10 @@ async function initializeModules() {
     const userService = await import('./lib/user-service.js');
     getUserMetrics = userService.getUserMetrics;
     getInactiveUsers = userService.getInactiveUsers;
+    
+    // Import WebSocket server using CommonJS require
+    const wsModule = require('./lib/websocket-server.js');
+    marketDataWS = wsModule.marketDataWS;
     
     logger.log('✅ All modules loaded successfully');
   } catch (error) {
@@ -62,6 +71,14 @@ app.prepare().then(async () => {
       // Connect to database
       await connectDB();
       logger.log('📊 Database connected successfully');
+
+      // Initialize WebSocket server for real-time market data
+      try {
+        await marketDataWS.initialize(server);
+        logger.log('🔗 WebSocket server initialized for real-time market data');
+      } catch (wsError) {
+        console.error('❌ Failed to initialize WebSocket server:', wsError);
+      }
 
       // 📅 WEEKLY METRICS - Every Sunday at 9:00 AM
       cron.schedule('0 9 * * 0', async () => {

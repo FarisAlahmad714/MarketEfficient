@@ -4,6 +4,7 @@ import { createApiHandler, composeMiddleware } from '../../../lib/api-handler';
 import connectDB from '../../../lib/database';
 import SandboxPortfolio from '../../../models/SandboxPortfolio';
 import SandboxTrade from '../../../models/SandboxTrade';
+import { getPriceSimulator } from '../../../lib/priceSimulation';
 
 async function portfolioHandler(req, res) {
   await connectDB();
@@ -84,11 +85,36 @@ async function portfolioHandler(req, res) {
     .limit(10)
     .select('symbol side entryPrice exitPrice realizedPnL leverage entryTime exitTime duration pnlPercentage');
     
-    // Calculate total unrealized P&L from open positions
+    // Calculate total unrealized P&L from open positions with real-time prices
+    const priceSimulator = getPriceSimulator();
     let totalUnrealizedPnL = 0;
-    openTrades.forEach(trade => {
-      totalUnrealizedPnL += trade.unrealizedPnL || 0;
-    });
+    
+    // Update each open trade with current market price
+    for (const trade of openTrades) {
+      const currentPrice = priceSimulator.getPrice(trade.symbol);
+      
+      // Calculate P&L based on position side
+      let pnl = 0;
+      if (trade.side === 'long') {
+        pnl = (currentPrice - trade.entryPrice) * trade.quantity;
+      } else { // short
+        pnl = (trade.entryPrice - currentPrice) * trade.quantity;
+      }
+      
+      // Update trade object with current data
+      trade.currentPrice = currentPrice;
+      trade.unrealizedPnL = pnl;
+      trade.pnlPercentage = (pnl / (trade.entryPrice * trade.quantity)) * 100;
+      
+      totalUnrealizedPnL += pnl;
+      
+      // Save updated trade data
+      await SandboxTrade.findByIdAndUpdate(trade._id, {
+        currentPrice: currentPrice,
+        unrealizedPnL: pnl,
+        pnlPercentage: trade.pnlPercentage
+      });
+    }
     
     // Calculate current portfolio value
     const currentValue = portfolio.balance + totalUnrealizedPnL;

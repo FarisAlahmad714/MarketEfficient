@@ -18,12 +18,12 @@ const TradingPanel = ({ selectedAsset, marketData, portfolioData, onTradeSuccess
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [analysis, setAnalysis] = useState({
     entryReason: '',
-    technicalAnalysis: '',
-    riskManagement: '',
-    biasCheck: '',
-    confidenceLevel: 5,
-    expectedHoldTime: 'hours',
-    emotionalState: 'calm'
+    // technicalAnalysis: '', // Commented out for future use
+    // riskManagement: '', // Commented out for future use
+    // biasCheck: '', // Commented out for future use
+    // confidenceLevel: 5, // Commented out for future use
+    // expectedHoldTime: 'hours', // Commented out for future use
+    // emotionalState: 'calm' // Commented out for future use
   });
   
   const [submitting, setSubmitting] = useState(false);
@@ -31,15 +31,9 @@ const TradingPanel = ({ selectedAsset, marketData, portfolioData, onTradeSuccess
 
   const currentPrice = marketData[selectedAsset]?.price || 0;
   const availableBalance = portfolioData?.balance || 0;
-  const availableMargin = portfolioData?.riskLimits?.availableMargin || availableBalance;
+  const availableMargin = portfolioData?.riskLimits?.availableMargin ?? availableBalance;
   
-  useEffect(() => {
-    // Auto-fill limit price with current price
-    if (orderType === 'limit' && currentPrice > 0) {
-      setLimitPrice(currentPrice.toFixed(2));
-    }
-  }, [orderType, currentPrice]);
-
+  // Define calculation functions first to avoid hoisting issues
   const calculatePositionValue = () => {
     const price = orderType === 'limit' ? parseFloat(limitPrice) || currentPrice : currentPrice;
     const qty = parseFloat(quantity) || 0;
@@ -53,8 +47,25 @@ const TradingPanel = ({ selectedAsset, marketData, portfolioData, onTradeSuccess
   const calculateMaxQuantity = () => {
     const price = orderType === 'limit' ? parseFloat(limitPrice) || currentPrice : currentPrice;
     if (price <= 0) return 0;
-    return (availableMargin * leverage) / price;
+    
+    // Calculate max based on available margin
+    const maxByMargin = (availableMargin * leverage) / price;
+    
+    // Calculate max based on position size limit (25% of portfolio)
+    // Position size limit is the TOTAL position value, not margin
+    const maxPositionSize = availableBalance * (portfolioData?.riskLimits?.maxPositionSize || 0.25);
+    const maxByPositionLimit = maxPositionSize / price;
+    
+    // Return the smaller of the two limits
+    return Math.min(maxByMargin, maxByPositionLimit);
   };
+  
+  useEffect(() => {
+    // Auto-fill limit price with current price
+    if (orderType === 'limit' && currentPrice > 0) {
+      setLimitPrice(currentPrice.toFixed(2));
+    }
+  }, [orderType, currentPrice]);
 
   const validateTrade = () => {
     const errors = [];
@@ -91,17 +102,18 @@ const TradingPanel = ({ selectedAsset, marketData, portfolioData, onTradeSuccess
       errors.push('Entry reason must be at least 10 characters');
     }
     
-    if (analysis.technicalAnalysis.length < 10) {
-      errors.push('Technical analysis must be at least 10 characters');
-    }
-    
-    if (analysis.riskManagement.length < 10) {
-      errors.push('Risk management plan must be at least 10 characters');
-    }
-    
-    if (analysis.biasCheck.length < 10) {
-      errors.push('Bias check must be at least 10 characters');
-    }
+    // Commented out for future use
+    // if (analysis.technicalAnalysis.length < 10) {
+    //   errors.push('Technical analysis must be at least 10 characters');
+    // }
+    // 
+    // if (analysis.riskManagement.length < 10) {
+    //   errors.push('Risk management plan must be at least 10 characters');
+    // }
+    // 
+    // if (analysis.biasCheck.length < 10) {
+    //   errors.push('Bias check must be at least 10 characters');
+    // }
     
     return errors;
   };
@@ -161,12 +173,12 @@ const TradingPanel = ({ selectedAsset, marketData, portfolioData, onTradeSuccess
       setTakeProfit('');
       setAnalysis({
         entryReason: '',
-        technicalAnalysis: '',
-        riskManagement: '',
-        biasCheck: '',
-        confidenceLevel: 5,
-        expectedHoldTime: 'hours',
-        emotionalState: 'calm'
+        // technicalAnalysis: '', // Commented out for future use
+        // riskManagement: '', // Commented out for future use
+        // biasCheck: '', // Commented out for future use
+        // confidenceLevel: 5, // Commented out for future use
+        // expectedHoldTime: 'hours', // Commented out for future use
+        // emotionalState: 'calm' // Commented out for future use
       });
       setShowAnalysis(false);
       
@@ -351,12 +363,14 @@ const TradingPanel = ({ selectedAsset, marketData, portfolioData, onTradeSuccess
                 <textarea
                   value={analysis.entryReason}
                   onChange={(e) => setAnalysis({...analysis, entryReason: e.target.value})}
-                  placeholder="Explain your reasoning for entering this position..."
+                  placeholder="Explain your reasoning for entering this position... (minimum 10 characters)"
                   className="analysis-textarea"
-                  rows="3"
+                  rows="4"
                 />
               </div>
 
+              {/* Commented out for future use */}
+              {/* 
               <div className="analysis-field">
                 <label>
                   📊 Technical Analysis
@@ -439,6 +453,7 @@ const TradingPanel = ({ selectedAsset, marketData, portfolioData, onTradeSuccess
                   <option value="uncertain">Uncertain</option>
                 </select>
               </div>
+              */}
             </div>
           )}
         </div>

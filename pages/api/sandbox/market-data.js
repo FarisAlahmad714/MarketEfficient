@@ -3,7 +3,8 @@ import { requireAuth } from '../../../middleware/auth';
 import { createApiHandler, composeMiddleware } from '../../../lib/api-handler';
 import connectDB from '../../../lib/database';
 import SandboxPortfolio from '../../../models/SandboxPortfolio';
-import { SANDBOX_ASSETS } from '../../../lib/sandbox-constants';
+import { SANDBOX_ASSETS, getAPISymbol, convertUSDToSENSES } from '../../../lib/sandbox-constants';
+import { getPriceSimulator } from '../../../lib/priceSimulation';
 
 async function marketDataHandler(req, res) {
   await connectDB();
@@ -45,16 +46,45 @@ async function marketDataHandler(req, res) {
       
       // Check if this is a single symbol request for chart data
       if (symbols && !symbols.includes(',') && type === 'chart') {
-        // Get historical chart data for charting - use mock data for sandbox
-        const chartData = generateMockChartData(symbols.toUpperCase(), interval, parseInt(outputsize));
+        const requestedSymbol = symbols.toUpperCase();
+        const apiSymbol = getAPISymbol(requestedSymbol);
         
-        return res.status(200).json({
-          success: true,
-          chartData: chartData,
-          symbol: symbols.toUpperCase(),
-          interval: interval,
-          timestamp: new Date().toISOString()
-        });
+        // Get real historical chart data for charting
+        try {
+          const chartData = await getHistoricalData(apiSymbol, interval, parseInt(outputsize));
+          
+          // Convert USD prices to SENSES prices (1:1 for now)
+          const sensesChartData = chartData.map(candle => ({
+            ...candle,
+            open: convertUSDToSENSES(candle.open),
+            high: convertUSDToSENSES(candle.high), 
+            low: convertUSDToSENSES(candle.low),
+            close: convertUSDToSENSES(candle.close)
+          }));
+          
+          return res.status(200).json({
+            success: true,
+            chartData: sensesChartData,
+            symbol: requestedSymbol,
+            pair: `${requestedSymbol}/SENSES`,
+            interval: interval,
+            timestamp: new Date().toISOString()
+          });
+        } catch (error) {
+          console.log('Falling back to simulated data for chart:', error.message);
+          // Fallback to simulated data if real data fails
+          const chartData = generateSimulatedChartData(requestedSymbol, interval, parseInt(outputsize));
+          
+          return res.status(200).json({
+            success: true,
+            chartData: chartData,
+            symbol: requestedSymbol,
+            pair: `${requestedSymbol}/SENSES`,
+            interval: interval,
+            timestamp: new Date().toISOString(),
+            isSimulated: true // Flag to indicate this is simulated data
+          });
+        }
       }
       
       // Get real-time price data for specific symbols
@@ -71,19 +101,40 @@ async function marketDataHandler(req, res) {
         });
       }
       
+      // Convert to API symbols for price fetching
+      const apiSymbols = validSymbols.map(getAPISymbol);
+      
       // Fetch real-time data from Twelvedata with fallback to mock data
       let priceData;
       try {
-        priceData = await fetchTwelvedataRealTime(validSymbols);
+        priceData = await fetchTwelvedataRealTime(apiSymbols);
+        
+        if (priceData.length === 0) {
+          throw new Error('No real price data received from Twelvedata');
+        }
+        
+        // Convert back to SENSES pairs
+        priceData = priceData.map((item, index) => ({
+          ...item,
+          symbol: validSymbols[index], // Use the original symbol (BTC not BTCUSD)
+          pair: `${validSymbols[index]}/SENSES`,
+          price: convertUSDToSENSES(item.price),
+          name: [...SANDBOX_ASSETS.crypto, ...SANDBOX_ASSETS.stocks]
+            .find(asset => asset.symbol === validSymbols[index])?.name || item.name,
+          source: 'twelvedata'
+        }));
+        
+        console.log(`Successfully fetched ${priceData.length} real prices from Twelvedata`);
       } catch (error) {
-        console.log('Using mock price data for sandbox:', error.message);
-        priceData = generateMockPriceData(validSymbols);
+        console.error('Twelvedata API failed, using simulated prices:', error.message);
+        priceData = generateSimulatedPriceData(validSymbols);
       }
       
       res.status(200).json({
         success: true,
         data: priceData,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        dataSource: priceData[0]?.source === 'real' ? 'twelvedata' : 'mock'
       });
       
     } else {
@@ -100,7 +151,7 @@ async function marketDataHandler(req, res) {
 }
 
 async function fetchTwelvedataRealTime(symbols) {
-  const TWELVEDATA_API_KEY = process.env.TWELVEDATA_API_KEY;
+  const TWELVEDATA_API_KEY = process.env.TWELVE_DATA_API_KEY || process.env.TWELVEDATA_API_KEY || '08f0aa1220414f6ba782aaae2cd515e3';
   
   if (!TWELVEDATA_API_KEY) {
     throw new Error('Twelvedata API key not configured');
@@ -170,7 +221,7 @@ async function fetchTwelvedataRealTime(symbols) {
       
       // Rate limiting - wait between batches
       if (i + batchSize < symbols.length) {
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise(resolve => setTimeout(resolve, 500)); // Increased delay to reduce API load
       }
       
     } catch (error) {
@@ -184,7 +235,7 @@ async function fetchTwelvedataRealTime(symbols) {
 
 // Get historical data for charts (separate endpoint functionality)
 async function getHistoricalData(symbol, interval = '1h', outputsize = 100) {
-  const TWELVEDATA_API_KEY = process.env.TWELVEDATA_API_KEY;
+  const TWELVEDATA_API_KEY = process.env.TWELVE_DATA_API_KEY || process.env.TWELVEDATA_API_KEY || '08f0aa1220414f6ba782aaae2cd515e3';
   
   if (!TWELVEDATA_API_KEY) {
     throw new Error('Twelvedata API key not configured');
@@ -227,47 +278,39 @@ async function getHistoricalData(symbol, interval = '1h', outputsize = 100) {
   }
 }
 
-// Generate mock chart data for sandbox trading
-function generateMockChartData(symbol, interval, outputsize) {
+// Generate simulated chart data for sandbox trading  
+function generateSimulatedChartData(symbol, interval, outputsize) {
+  const priceSimulator = getPriceSimulator();
+  const currentPrice = priceSimulator.getPrice(symbol);
+  
+  // Generate historical data leading up to current price
   const data = [];
   const now = new Date();
   const intervalMinutes = getIntervalMinutes(interval);
   
-  // Base price varies by symbol
-  const basePrices = {
-    'BTCUSD': 45000,
-    'ETHUSD': 3000,
-    'ADAUSD': 0.5,
-    'SOLUSD': 100,
-    'LINKUSD': 15,
-    'AAPL': 180,
-    'GOOGL': 140,
-    'TSLA': 250,
-    'AMZN': 150,
-    'MSFT': 380,
-    'SPY': 450,
-    'QQQ': 350
-  };
-  
-  let basePrice = basePrices[symbol] || 100;
-  let currentPrice = basePrice;
+  // Start from current simulated price and work backwards
+  let workingPrice = currentPrice;
   
   // Generate data points going backwards in time
   for (let i = outputsize - 1; i >= 0; i--) {
     const timestamp = new Date(now.getTime() - (i * intervalMinutes * 60 * 1000));
     
-    // Generate realistic price movement
-    const volatility = 0.02; // 2% volatility
-    const change = (Math.random() - 0.5) * volatility * currentPrice;
-    currentPrice = Math.max(currentPrice + change, basePrice * 0.8); // Don't go below 80% of base
-    currentPrice = Math.min(currentPrice, basePrice * 1.2); // Don't go above 120% of base
+    // For current candle (i=0), use exact current price
+    if (i === 0) {
+      workingPrice = currentPrice;
+    } else {
+      // Generate realistic price movement for historical data
+      const volatility = 0.005; // Reduced volatility for smoother historical data
+      const change = (Math.random() - 0.5) * volatility;
+      workingPrice = workingPrice * (1 + change);
+    }
     
-    // Generate OHLC data
-    const variance = currentPrice * 0.01; // 1% variance for high/low
-    const open = currentPrice + (Math.random() - 0.5) * variance;
-    const close = currentPrice + (Math.random() - 0.5) * variance;
-    const high = Math.max(open, close) + Math.random() * variance;
-    const low = Math.min(open, close) - Math.random() * variance;
+    // Generate OHLC data around working price
+    const variance = workingPrice * 0.008; // Smaller variance for more realistic candles
+    const open = workingPrice + (Math.random() - 0.5) * variance;
+    const close = (i === 0) ? currentPrice : workingPrice + (Math.random() - 0.5) * variance;
+    const high = Math.max(open, close) + Math.random() * variance * 0.5;
+    const low = Math.min(open, close) - Math.random() * variance * 0.5;
     
     data.push({
       time: Math.floor(timestamp.getTime() / 1000), // Unix timestamp
@@ -294,36 +337,25 @@ function getIntervalMinutes(interval) {
   return intervals[interval] || 60;
 }
 
-// Generate mock real-time price data for sandbox
-function generateMockPriceData(symbols) {
-  const basePrices = {
-    'BTCUSD': 45000,
-    'ETHUSD': 3000,
-    'ADAUSD': 0.5,
-    'SOLUSD': 100,
-    'LINKUSD': 15,
-    'AAPL': 180,
-    'GOOGL': 140,
-    'TSLA': 250,
-    'AMZN': 150,
-    'MSFT': 380,
-    'SPY': 450,
-    'QQQ': 350
-  };
-
+// Generate simulated real-time price data for sandbox
+function generateSimulatedPriceData(symbols) {
+  const priceSimulator = getPriceSimulator();
+  
   return symbols.map(symbol => {
-    const basePrice = basePrices[symbol] || 100;
-    const volatility = 0.02; // 2% daily volatility
-    const change = (Math.random() - 0.5) * volatility;
-    const currentPrice = basePrice * (1 + change);
-    const change24h = (Math.random() - 0.5) * 5; // ±5% daily change
+    const currentPrice = priceSimulator.getPrice(symbol);
+    const change24hData = priceSimulator.get24hChange(symbol);
+    const assetInfo = [...SANDBOX_ASSETS.crypto, ...SANDBOX_ASSETS.stocks]
+      .find(asset => asset.symbol === symbol);
 
     return {
       symbol: symbol,
-      price: parseFloat(currentPrice.toFixed(2)),
-      change24h: parseFloat(change24h.toFixed(2)),
-      volume: Math.floor(Math.random() * 10000000) + 1000000,
-      timestamp: new Date().toISOString()
+      pair: `${symbol}/SENSES`,
+      name: assetInfo?.name || symbol,
+      price: currentPrice,
+      change24h: change24hData.changePercent,
+      volume: Math.floor(Math.random() * 10000000) + 1000000, // Simulated volume
+      timestamp: new Date().toISOString(),
+      source: 'simulated'
     };
   });
 }
