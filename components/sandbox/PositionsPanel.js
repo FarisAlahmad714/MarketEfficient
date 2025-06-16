@@ -8,6 +8,8 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
   const [activeTab, setActiveTab] = useState('open');
   const [editingPosition, setEditingPosition] = useState(null);
   const [closingPosition, setClosingPosition] = useState(null);
+  const [partialCloseData, setPartialCloseData] = useState({ positionId: null, percentage: 50 });
+  const [showPartialClose, setShowPartialClose] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const formatCurrency = (amount) => {
@@ -41,7 +43,7 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
     return `${minutes}m`;
   };
 
-  const handleClosePosition = async (positionId, closeType = 'manual') => {
+  const handleClosePosition = async (positionId, closeType = 'manual', partialPercentage = null) => {
     try {
       setLoading(true);
       setClosingPosition(positionId);
@@ -55,7 +57,8 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
         },
         body: JSON.stringify({
           tradeId: positionId,
-          closeType
+          closeType,
+          partialPercentage
         })
       });
       
@@ -63,6 +66,10 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
         const errorData = await response.json();
         throw new Error(errorData.message || 'Failed to close position');
       }
+      
+      // Close partial close modal
+      setShowPartialClose(false);
+      setPartialCloseData({ positionId: null, percentage: 50 });
       
       // Refresh positions
       if (onPositionUpdate) {
@@ -75,6 +82,49 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
     } finally {
       setLoading(false);
       setClosingPosition(null);
+    }
+  };
+
+  const openPartialCloseModal = (positionId) => {
+    setPartialCloseData({ positionId, percentage: 50 });
+    setShowPartialClose(true);
+  };
+
+  const handlePartialClose = () => {
+    handleClosePosition(partialCloseData.positionId, 'partial', partialCloseData.percentage);
+  };
+
+  const handleCancelOrder = async (orderId) => {
+    try {
+      setLoading(true);
+      
+      const token = storage.getItem('auth_token');
+      const response = await fetch('/api/sandbox/cancel-order', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          orderId
+        })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to cancel order');
+      }
+      
+      // Refresh positions
+      if (onPositionUpdate) {
+        onPositionUpdate();
+      }
+      
+    } catch (error) {
+      console.error('Error cancelling order:', error);
+      alert('Failed to cancel order: ' + error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -116,6 +166,7 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
   };
 
   const openPositions = portfolioData?.openPositions || [];
+  const pendingOrders = portfolioData?.pendingOrders || [];
   const recentTrades = portfolioData?.recentTrades || [];
 
   return (
@@ -127,6 +178,12 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
             onClick={() => setActiveTab('open')}
           >
             🎯 Open Positions ({openPositions.length})
+          </button>
+          <button 
+            className={`tab-button ${activeTab === 'pending' ? 'active' : ''}`}
+            onClick={() => setActiveTab('pending')}
+          >
+            ⏳ Pending Orders ({pendingOrders.length})
           </button>
           <button 
             className={`tab-button ${activeTab === 'history' ? 'active' : ''}`}
@@ -170,6 +227,14 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
                           title="Edit Stop Loss"
                         >
                           <FaEdit />
+                        </button>
+                        <button 
+                          className="action-button partial"
+                          onClick={() => openPartialCloseModal(position.id)}
+                          disabled={loading}
+                          title="Partial Close"
+                        >
+                          50%
                         </button>
                         <button 
                           className="action-button close"
@@ -301,6 +366,173 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
                         </div>
                       </div>
                     )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Partial Close Modal */}
+        {showPartialClose && (
+          <div className="modal-overlay">
+            <div className="modal-content partial-close-modal">
+              <h4>Partial Close Position</h4>
+              <p>Select the percentage of your position to close:</p>
+              
+              <div className="percentage-selector">
+                <label>Close Percentage: {partialCloseData.percentage}%</label>
+                <input
+                  type="range"
+                  min="10"
+                  max="90"
+                  step="10"
+                  value={partialCloseData.percentage}
+                  onChange={(e) => setPartialCloseData({
+                    ...partialCloseData,
+                    percentage: parseInt(e.target.value)
+                  })}
+                  className="percentage-slider"
+                />
+                <div className="percentage-labels">
+                  <span>10%</span>
+                  <span>25%</span>
+                  <span>50%</span>
+                  <span>75%</span>
+                  <span>90%</span>
+                </div>
+              </div>
+
+              <div className="percentage-presets">
+                {[25, 50, 75].map(percent => (
+                  <button
+                    key={percent}
+                    className={`preset-button ${partialCloseData.percentage === percent ? 'active' : ''}`}
+                    onClick={() => setPartialCloseData({
+                      ...partialCloseData,
+                      percentage: percent
+                    })}
+                  >
+                    {percent}%
+                  </button>
+                ))}
+              </div>
+
+              <div className="modal-actions">
+                <button 
+                  className="modal-button cancel"
+                  onClick={() => setShowPartialClose(false)}
+                >
+                  Cancel
+                </button>
+                <button 
+                  className="modal-button save"
+                  onClick={handlePartialClose}
+                  disabled={loading}
+                >
+                  {loading ? 'Closing...' : `Close ${partialCloseData.percentage}%`}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'pending' && (
+          <div className="pending-content">
+            {pendingOrders.length === 0 ? (
+              <div className="empty-state">
+                <div className="empty-icon">⏳</div>
+                <h3>No Pending Orders</h3>
+                <p>Place limit orders to see them here</p>
+              </div>
+            ) : (
+              <div className="pending-list">
+                {pendingOrders.map((order) => (
+                  <div key={order.id} className="order-card">
+                    <div className="order-header">
+                      <div className="order-title">
+                        <span className="symbol">{order.symbol}</span>
+                        <span className={`side ${order.side}`}>
+                          {order.side === 'long' ? <FaArrowUp /> : <FaArrowDown />}
+                          {order.side.toUpperCase()} LIMIT
+                          {order.leverage > 1 && ` ${order.leverage}x`}
+                        </span>
+                        <span className="quantity">
+                          {order.quantity} units
+                        </span>
+                      </div>
+                      
+                      <div className="order-actions">
+                        <button 
+                          className="action-button cancel"
+                          onClick={() => handleCancelOrder(order.id)}
+                          disabled={loading}
+                          title="Cancel Order"
+                        >
+                          {loading ? (
+                            <div className="button-spinner"></div>
+                          ) : (
+                            <FaTimesCircle />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="order-details">
+                      <div className="detail-row">
+                        <span className="detail-label">Limit Price:</span>
+                        <span className="detail-value">${order.limitPrice?.toFixed(2)}</span>
+                      </div>
+                      
+                      <div className="detail-row">
+                        <span className="detail-label">Current Price:</span>
+                        <span className="detail-value">
+                          ${marketData[order.symbol]?.price?.toFixed(2) || 'Loading...'}
+                        </span>
+                      </div>
+                      
+                      <div className="detail-row">
+                        <span className="detail-label">Margin Reserved:</span>
+                        <span className="detail-value">${formatCurrency(order.marginReserved)}</span>
+                      </div>
+                      
+                      {order.stopLoss?.price && (
+                        <div className="detail-row">
+                          <span className="detail-label">Stop Loss:</span>
+                          <span className="detail-value stop-loss">
+                            ${order.stopLoss.price.toFixed(2)}
+                          </span>
+                        </div>
+                      )}
+                      
+                      {order.takeProfit?.price && (
+                        <div className="detail-row">
+                          <span className="detail-label">Take Profit:</span>
+                          <span className="detail-value take-profit">
+                            ${order.takeProfit.price.toFixed(2)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="order-meta">
+                      <div className="meta-item">
+                        <FaClock />
+                        <span>Placed {formatDuration(order.orderTime)} ago</span>
+                      </div>
+                      <div className="meta-item">
+                        <span className="confidence">
+                          Confidence: {order.confidenceLevel}/10
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Order Reason Preview */}
+                    <div className="order-analysis-preview">
+                      <div className="analysis-item">
+                        <strong>Entry Reason:</strong> {order.entryReason}
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -494,44 +726,44 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
           color: rgba(0, 0, 0, 0.6);
         }
         
-        .positions-list, .history-list {
+        .positions-list, .pending-list, .history-list {
           display: flex;
           flex-direction: column;
           gap: 16px;
         }
         
-        .position-card, .history-card {
+        .position-card, .order-card, .history-card {
           border-radius: 12px;
           padding: 20px;
           transition: all 0.3s ease;
           position: relative;
         }
         
-        .dark .position-card, .dark .history-card {
+        .dark .position-card, .dark .order-card, .dark .history-card {
           background: rgba(255, 255, 255, 0.03);
           border: 1px solid rgba(255, 255, 255, 0.08);
         }
         
-        .light .position-card, .light .history-card {
+        .light .position-card, .light .order-card, .light .history-card {
           background: rgba(0, 0, 0, 0.02);
           border: 1px solid rgba(0, 0, 0, 0.08);
         }
         
-        .position-card:hover, .history-card:hover {
+        .position-card:hover, .order-card:hover, .history-card:hover {
           transform: translateY(-2px);
         }
         
-        .dark .position-card:hover, .dark .history-card:hover {
+        .dark .position-card:hover, .dark .order-card:hover, .dark .history-card:hover {
           background: rgba(255, 255, 255, 0.05);
           border-color: rgba(59, 130, 246, 0.3);
         }
         
-        .light .position-card:hover, .light .history-card:hover {
+        .light .position-card:hover, .light .order-card:hover, .light .history-card:hover {
           background: rgba(0, 0, 0, 0.03);
           border-color: rgba(59, 130, 246, 0.2);
         }
         
-        .position-header, .history-header {
+        .position-header, .order-header, .history-header {
           display: flex;
           justify-content: space-between;
           align-items: center;
@@ -623,6 +855,28 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
         }
         
         .action-button.close:hover {
+          background: rgba(239, 68, 68, 0.2);
+          transform: scale(1.1);
+        }
+        
+        .action-button.partial {
+          background: rgba(245, 158, 11, 0.1);
+          color: #f59e0b;
+          font-size: 0.75rem;
+          font-weight: 700;
+        }
+        
+        .action-button.partial:hover {
+          background: rgba(245, 158, 11, 0.2);
+          transform: scale(1.1);
+        }
+        
+        .action-button.cancel {
+          background: rgba(239, 68, 68, 0.1);
+          color: #ef4444;
+        }
+        
+        .action-button.cancel:hover {
           background: rgba(239, 68, 68, 0.2);
           transform: scale(1.1);
         }
@@ -900,6 +1154,139 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
           display: block;
           font-size: 0.75rem;
           margin-top: 2px;
+        }
+        
+        .modal-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.7);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 1000;
+        }
+        
+        .partial-close-modal {
+          min-width: 400px;
+          max-width: 90vw;
+        }
+        
+        .partial-close-modal h4 {
+          margin: 0 0 8px 0;
+          font-size: 1.25rem;
+          font-weight: 700;
+        }
+        
+        .dark .partial-close-modal h4 {
+          color: rgba(255, 255, 255, 0.9);
+        }
+        
+        .light .partial-close-modal h4 {
+          color: rgba(0, 0, 0, 0.9);
+        }
+        
+        .partial-close-modal p {
+          margin: 0 0 24px 0;
+          font-size: 0.875rem;
+        }
+        
+        .dark .partial-close-modal p {
+          color: rgba(255, 255, 255, 0.7);
+        }
+        
+        .light .partial-close-modal p {
+          color: rgba(0, 0, 0, 0.7);
+        }
+        
+        .percentage-selector {
+          margin-bottom: 20px;
+        }
+        
+        .percentage-selector label {
+          display: block;
+          margin-bottom: 12px;
+          font-weight: 600;
+          font-size: 1rem;
+        }
+        
+        .dark .percentage-selector label {
+          color: rgba(255, 255, 255, 0.9);
+        }
+        
+        .light .percentage-selector label {
+          color: rgba(0, 0, 0, 0.9);
+        }
+        
+        .percentage-slider {
+          width: 100%;
+          margin: 8px 0;
+          cursor: pointer;
+        }
+        
+        .percentage-labels {
+          display: flex;
+          justify-content: space-between;
+          font-size: 0.75rem;
+          font-weight: 500;
+          margin-top: 8px;
+        }
+        
+        .dark .percentage-labels {
+          color: rgba(255, 255, 255, 0.6);
+        }
+        
+        .light .percentage-labels {
+          color: rgba(0, 0, 0, 0.6);
+        }
+        
+        .percentage-presets {
+          display: flex;
+          gap: 8px;
+          margin-bottom: 24px;
+        }
+        
+        .preset-button {
+          flex: 1;
+          padding: 8px 16px;
+          border: 1px solid;
+          border-radius: 6px;
+          background: transparent;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          font-weight: 600;
+        }
+        
+        .dark .preset-button {
+          border-color: rgba(255, 255, 255, 0.2);
+          color: rgba(255, 255, 255, 0.7);
+        }
+        
+        .light .preset-button {
+          border-color: rgba(0, 0, 0, 0.2);
+          color: rgba(0, 0, 0, 0.7);
+        }
+        
+        .preset-button:hover {
+          transform: translateY(-1px);
+        }
+        
+        .dark .preset-button:hover {
+          background: rgba(255, 255, 255, 0.05);
+          color: rgba(255, 255, 255, 0.9);
+        }
+        
+        .light .preset-button:hover {
+          background: rgba(0, 0, 0, 0.02);
+          color: rgba(0, 0, 0, 0.9);
+        }
+        
+        .preset-button.active {
+          background: #f59e0b;
+          border-color: #f59e0b;
+          color: white;
         }
         
         @media (max-width: 768px) {

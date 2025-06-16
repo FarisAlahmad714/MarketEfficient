@@ -1,8 +1,97 @@
-import React, { useContext } from 'react';
+import React, { useContext, useState } from 'react';
 import { ThemeContext } from '../../contexts/ThemeContext';
+import storage from '../../lib/storage';
 
 const PortfolioOverview = ({ portfolioData, onRefresh }) => {
   const { darkMode } = useContext(ThemeContext);
+  const [resetting, setResetting] = useState(false);
+  const [reloadingAssets, setReloadingAssets] = useState(false);
+  const [grantingAdmin, setGrantingAdmin] = useState(false);
+
+  const handleAdminReset = async () => {
+    if (!window.confirm('Are you sure you want to reset your portfolio to 10,000 SENSES? This will close all open trades.')) {
+      return;
+    }
+
+    try {
+      setResetting(true);
+      const token = storage.getItem('auth_token');
+      
+      const response = await fetch('/api/sandbox/admin-reset', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to reset portfolio');
+      }
+
+      const result = await response.json();
+      alert('Portfolio reset successfully to 10,000 SENSES!');
+      
+      // Refresh the portfolio data without page reload
+      if (onRefresh) {
+        await onRefresh();
+      }
+      
+    } catch (error) {
+      console.error('Error resetting portfolio:', error);
+      alert(`Failed to reset portfolio: ${error.message}`);
+    } finally {
+      setResetting(false);
+    }
+  };
+
+  const handleReloadAssets = async () => {
+    try {
+      setReloadingAssets(true);
+      
+      // Just refresh the portfolio data without reloading the page
+      if (onRefresh) {
+        await onRefresh();
+      }
+      
+    } catch (error) {
+      console.error('Error reloading assets:', error);
+      alert(`Failed to reload assets: ${error.message}`);
+    } finally {
+      setReloadingAssets(false);
+    }
+  };
+
+  const handleGrantAdmin = async () => {
+    try {
+      setGrantingAdmin(true);
+      const token = storage.getItem('auth_token');
+      
+      const response = await fetch('/api/debug/admin-status', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to grant admin');
+      }
+
+      const result = await response.json();
+      alert('Admin status granted! Refresh the page.');
+      window.location.reload();
+      
+    } catch (error) {
+      console.error('Error granting admin:', error);
+      alert(`Failed to grant admin: ${error.message}`);
+    } finally {
+      setGrantingAdmin(false);
+    }
+  };
 
   if (!portfolioData) {
     return (
@@ -91,11 +180,36 @@ const PortfolioOverview = ({ portfolioData, onRefresh }) => {
     <div className={`portfolio-overview ${darkMode ? 'dark' : 'light'}`}>
       <div className="overview-header">
         <h2>Portfolio Overview</h2>
-        <button className="refresh-button" onClick={onRefresh}>
-          🔄 Refresh
-        </button>
+        <div className="header-actions">
+          <button 
+            className="refresh-button" 
+            onClick={handleReloadAssets}
+            disabled={reloadingAssets}
+          >
+            {reloadingAssets ? '⏳ Loading...' : '🔄 Refresh'}
+          </button>
+          {!portfolioData.isAdmin && (
+            <button 
+              className="grant-admin-button" 
+              onClick={handleGrantAdmin}
+              disabled={grantingAdmin}
+            >
+              {grantingAdmin ? '⏳ Granting...' : '🔑 Grant Admin'}
+            </button>
+          )}
+          {portfolioData.isAdmin && (
+            <button 
+              className="admin-reset-button" 
+              onClick={handleAdminReset}
+              disabled={resetting}
+            >
+              {resetting ? '⏳ Resetting...' : '💰 Reset to 10k'}
+            </button>
+          )}
+        </div>
         <div className="reset-info">
           📅 Next Reset: {new Date(portfolioData.reset?.nextResetDate).toLocaleDateString()}
+          {portfolioData.isAdmin && <span className="admin-badge">ADMIN</span>}
         </div>
       </div>
 
@@ -209,6 +323,12 @@ const PortfolioOverview = ({ portfolioData, onRefresh }) => {
           gap: 16px;
         }
         
+        .header-actions {
+          display: flex;
+          gap: 12px;
+          align-items: center;
+        }
+        
         .overview-header h2 {
           margin: 0;
           font-size: 1.5rem;
@@ -242,12 +362,72 @@ const PortfolioOverview = ({ portfolioData, onRefresh }) => {
           transform: translateY(-1px);
         }
         
-        .reset-info {
+        .admin-reset-button {
           display: flex;
           align-items: center;
           gap: 8px;
+          padding: 8px 16px;
+          border: none;
+          border-radius: 8px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          background: #f59e0b;
+          color: white;
+        }
+        
+        .admin-reset-button:hover:not(:disabled) {
+          background: #d97706;
+          transform: translateY(-1px);
+        }
+        
+        .admin-reset-button:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+          transform: none;
+        }
+        
+        .grant-admin-button {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 8px 16px;
+          border: none;
+          border-radius: 8px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          background: #10b981;
+          color: white;
+        }
+        
+        .grant-admin-button:hover:not(:disabled) {
+          background: #059669;
+          transform: translateY(-1px);
+        }
+        
+        .grant-admin-button:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+          transform: none;
+        }
+        
+        .reset-info {
+          display: flex;
+          align-items: center;
+          gap: 12px;
           font-size: 0.875rem;
           font-weight: 500;
+        }
+        
+        .admin-badge {
+          background: #ef4444;
+          color: white;
+          padding: 4px 8px;
+          border-radius: 4px;
+          font-size: 0.75rem;
+          font-weight: 600;
+          text-transform: uppercase;
         }
         
         .dark .reset-info {

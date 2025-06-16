@@ -120,7 +120,7 @@ const SandboxTradeSchema = new mongoose.Schema({
   // Trade Status
   status: {
     type: String,
-    enum: ['open', 'closed', 'cancelled'],
+    enum: ['pending', 'open', 'closed', 'cancelled'],
     default: 'open'
   },
   
@@ -256,13 +256,15 @@ SandboxTradeSchema.virtual('pnlPercentage').get(function() {
     const priceDiff = this.side === 'long' 
       ? this.currentPrice - this.entryPrice
       : this.entryPrice - this.currentPrice;
-    return ((priceDiff / this.entryPrice) * 100 * this.leverage);
+    // Percentage based on margin used (leverage effect)
+    return ((priceDiff * this.quantity - this.fees.total) / this.marginUsed) * 100;
   } else {
     if (!this.exitPrice) return 0;
     const priceDiff = this.side === 'long'
       ? this.exitPrice - this.entryPrice
       : this.entryPrice - this.exitPrice;
-    return ((priceDiff / this.entryPrice) * 100 * this.leverage);
+    // Percentage based on margin used (leverage effect)
+    return ((priceDiff * this.quantity - this.fees.total) / this.marginUsed) * 100;
   }
 });
 
@@ -286,7 +288,9 @@ SandboxTradeSchema.methods.updateUnrealizedPnL = function(currentPrice) {
     ? currentPrice - this.entryPrice
     : this.entryPrice - currentPrice;
   
-  this.unrealizedPnL = (priceDiff * this.quantity * this.leverage) - this.fees.total;
+  // P&L = price difference * quantity (leverage already factored into quantity via margin)
+  // Don't multiply by leverage again as it's already in the position size
+  this.unrealizedPnL = (priceDiff * this.quantity) - this.fees.total;
 };
 
 // Method to close trade
@@ -302,7 +306,8 @@ SandboxTradeSchema.methods.closeTrade = function(exitPrice, reason = 'manual') {
     ? exitPrice - this.entryPrice
     : this.entryPrice - exitPrice;
   
-  this.realizedPnL = (priceDiff * this.quantity * this.leverage) - this.fees.total;
+  // P&L = price difference * quantity (leverage already factored in via position size)
+  this.realizedPnL = (priceDiff * this.quantity) - this.fees.total;
   this.unrealizedPnL = 0; // Clear unrealized P&L
 };
 

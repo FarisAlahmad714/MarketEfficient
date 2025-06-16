@@ -151,7 +151,7 @@ async function marketDataHandler(req, res) {
 }
 
 async function fetchTwelvedataRealTime(symbols) {
-  const TWELVEDATA_API_KEY = process.env.TWELVE_DATA_API_KEY || process.env.TWELVEDATA_API_KEY || '08f0aa1220414f6ba782aaae2cd515e3';
+  const TWELVEDATA_API_KEY = process.env.TWELVE_DATA_API_KEY || '08f0aa1220414f6ba782aaae2cd515e3';
   
   if (!TWELVEDATA_API_KEY) {
     throw new Error('Twelvedata API key not configured');
@@ -235,7 +235,7 @@ async function fetchTwelvedataRealTime(symbols) {
 
 // Get historical data for charts (separate endpoint functionality)
 async function getHistoricalData(symbol, interval = '1h', outputsize = 100) {
-  const TWELVEDATA_API_KEY = process.env.TWELVE_DATA_API_KEY || process.env.TWELVEDATA_API_KEY || '08f0aa1220414f6ba782aaae2cd515e3';
+  const TWELVEDATA_API_KEY = process.env.TWELVE_DATA_API_KEY || '08f0aa1220414f6ba782aaae2cd515e3';
   
   if (!TWELVEDATA_API_KEY) {
     throw new Error('Twelvedata API key not configured');

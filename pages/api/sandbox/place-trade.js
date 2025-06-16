@@ -83,13 +83,20 @@ async function placeTradeHandler(req, res) {
     const positionValue = executionPrice * quantity;
     const marginRequired = positionValue / leverage;
 
-    // Validate position size limits
-    const maxPositionSize = portfolio.balance * portfolio.maxPositionSize;
-    if (positionValue > maxPositionSize) {
-      return res.status(400).json({ 
-        error: 'Position size too large',
-        message: `Position size exceeds limit (${(portfolio.maxPositionSize * 100).toFixed(0)}% of portfolio)` 
-      });
+    // Check if user is admin
+    const User = require('../../../models/User');
+    const user = await User.findById(userId);
+    const isAdmin = user?.isAdmin || false;
+    
+    // Position size limits (25% of portfolio) - except for admins
+    if (!isAdmin) {
+      const maxPositionSize = portfolio.balance * (portfolio.maxPositionSize || 0.25);
+      if (positionValue > maxPositionSize) {
+        return res.status(400).json({ 
+          error: 'Position size too large',
+          message: `Position size exceeds limit (${((portfolio.maxPositionSize || 0.25) * 100).toFixed(0)}% of portfolio)` 
+        });
+      }
     }
 
     // Validate leverage
@@ -156,6 +163,7 @@ async function placeTradeHandler(req, res) {
       tradeData.entryPrice = currentPrice * slippage;
       tradeData.positionValue = tradeData.entryPrice * quantity;
       tradeData.marginUsed = tradeData.positionValue / leverage;
+      tradeData.status = 'open';
       
       // Recalculate fees with actual execution price
       tradeData.fees.entry = tradeData.positionValue * feeRate;
@@ -165,7 +173,15 @@ async function placeTradeHandler(req, res) {
       const priceDiff = side === 'long' 
         ? currentPrice - tradeData.entryPrice
         : tradeData.entryPrice - currentPrice;
-      tradeData.unrealizedPnL = (priceDiff * quantity * leverage) - tradeData.fees.total;
+      // P&L = price difference * quantity (leverage already in position size)
+      tradeData.unrealizedPnL = (priceDiff * quantity) - tradeData.fees.total;
+    } else if (type === 'limit') {
+      // For limit orders, create as pending
+      tradeData.status = 'pending';
+      tradeData.entryPrice = limitPrice;
+      tradeData.positionValue = tradeData.entryPrice * quantity;
+      tradeData.marginUsed = tradeData.positionValue / leverage;
+      tradeData.unrealizedPnL = 0; // No P&L until filled
     }
 
     // Create the trade
@@ -256,7 +272,7 @@ function validatePreTradeAnalysis(analysis) {
 
 async function getCurrentMarketPrice(symbol) {
   try {
-    const TWELVEDATA_API_KEY = process.env.TWELVE_DATA_API_KEY || process.env.TWELVEDATA_API_KEY || '08f0aa1220414f6ba782aaae2cd515e3';
+    const TWELVEDATA_API_KEY = process.env.TWELVE_DATA_API_KEY || '08f0aa1220414f6ba782aaae2cd515e3';
     
     if (!TWELVEDATA_API_KEY) {
       console.log(`Using simulated price for trade: ${symbol}`);
@@ -264,7 +280,10 @@ async function getCurrentMarketPrice(symbol) {
       return priceSimulator.getPrice(symbol);
     }
     
-    const url = `https://api.twelvedata.com/price?symbol=${symbol}&apikey=${TWELVEDATA_API_KEY}`;
+    // Convert symbol to API format (BTC -> BTC/USD)
+    const { getAPISymbol } = require('../../../lib/sandbox-constants');
+    const apiSymbol = getAPISymbol(symbol);
+    const url = `https://api.twelvedata.com/price?symbol=${apiSymbol}&apikey=${TWELVEDATA_API_KEY}`;
     
     const response = await fetch(url);
     

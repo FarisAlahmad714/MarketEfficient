@@ -9,7 +9,7 @@ async function closeTradeHandler(req, res) {
   await connectDB();
   
   const userId = req.user.id;
-  const { tradeId, closeType = 'manual' } = req.body;
+  const { tradeId, closeType = 'manual', partialPercentage = null } = req.body;
 
   try {
     // Validate required fields
@@ -68,30 +68,71 @@ async function closeTradeHandler(req, res) {
       exitPrice = trade.takeProfit.price;
     }
 
+    // Handle partial close
+    const isPartialClose = partialPercentage && partialPercentage > 0 && partialPercentage < 100;
+    const closeQuantity = isPartialClose ? trade.quantity * (partialPercentage / 100) : trade.quantity;
+    
     // Calculate exit fee (0.1% for market orders, 0.05% for limit orders)
     const exitFeeRate = 0.001; // 0.1% for closing
-    const positionValue = exitPrice * trade.quantity;
+    const positionValue = exitPrice * closeQuantity;
     const exitFee = positionValue * exitFeeRate;
 
-    // Calculate realized P&L
+    // Calculate realized P&L for the closed portion
     const priceDiff = trade.side === 'long'
       ? exitPrice - trade.entryPrice
       : trade.entryPrice - exitPrice;
     
-    const grossPnL = priceDiff * trade.quantity * trade.leverage;
-    const realizedPnL = grossPnL - trade.fees.total - exitFee;
+    // P&L calculation: price difference * closed quantity (leverage already in position)
+    const grossPnL = priceDiff * closeQuantity;
+    const realizedPnL = grossPnL - (trade.fees.total * (closeQuantity / trade.quantity)) - exitFee;
 
-    // Close the trade
-    trade.closeTrade(exitPrice, closeType);
-    trade.fees.exit = exitFee;
-    trade.fees.total += exitFee;
-    trade.realizedPnL = realizedPnL;
-
-    await trade.save();
+    if (isPartialClose) {
+      // Create a new trade record for the closed portion
+      const SandboxTrade = require('../../../models/SandboxTrade');
+      const closedPortion = new SandboxTrade({
+        ...trade.toObject(),
+        _id: undefined,
+        quantity: closeQuantity,
+        exitPrice: exitPrice,
+        exitTime: new Date(),
+        status: 'closed',
+        closeReason: closeType,
+        realizedPnL: realizedPnL,
+        fees: {
+          entry: trade.fees.entry * (closeQuantity / trade.quantity),
+          exit: exitFee,
+          total: (trade.fees.total * (closeQuantity / trade.quantity)) + exitFee
+        }
+      });
+      
+      await closedPortion.save();
+      
+      // Update the original trade to reduce quantity and fees
+      trade.quantity = trade.quantity - closeQuantity;
+      trade.fees.total = trade.fees.total * (trade.quantity / (trade.quantity + closeQuantity));
+      trade.marginUsed = trade.marginUsed * (trade.quantity / (trade.quantity + closeQuantity));
+      
+      await trade.save();
+      
+    } else {
+      // Full close
+      trade.closeTrade(exitPrice, closeType);
+      trade.fees.exit = exitFee;
+      trade.fees.total += exitFee;
+      trade.realizedPnL = realizedPnL;
+      
+      await trade.save();
+    }
 
     // Update portfolio
-    // Add back the margin that was used
-    portfolio.balance += trade.marginUsed;
+    if (isPartialClose) {
+      // Add back the margin that was used for closed portion
+      const closedMargin = trade.marginUsed * (closeQuantity / (trade.quantity + closeQuantity));
+      portfolio.balance += closedMargin;
+    } else {
+      // Add back the margin that was used for full close
+      portfolio.balance += trade.marginUsed;
+    }
     
     // Add/subtract the realized P&L
     portfolio.balance += realizedPnL;
@@ -122,6 +163,8 @@ async function closeTradeHandler(req, res) {
     // Prepare response
     const response = {
       success: true,
+      isPartialClose,
+      closeQuantity,
       trade: {
         id: trade._id,
         symbol: trade.symbol,
@@ -129,14 +172,14 @@ async function closeTradeHandler(req, res) {
         quantity: trade.quantity,
         leverage: trade.leverage,
         entryPrice: trade.entryPrice,
-        exitPrice: trade.exitPrice,
-        realizedPnL: trade.realizedPnL,
+        exitPrice: isPartialClose ? null : trade.exitPrice,
+        realizedPnL: isPartialClose ? null : trade.realizedPnL,
         fees: trade.fees,
         status: trade.status,
-        closeReason: trade.closeReason,
-        duration: trade.duration,
+        closeReason: isPartialClose ? null : trade.closeReason,
+        duration: isPartialClose ? null : trade.duration,
         entryTime: trade.entryTime,
-        exitTime: trade.exitTime
+        exitTime: isPartialClose ? null : trade.exitTime
       },
       portfolio: {
         balance: portfolio.balance,
@@ -162,13 +205,16 @@ async function closeTradeHandler(req, res) {
 
 async function getCurrentMarketPrice(symbol) {
   try {
-    const TWELVEDATA_API_KEY = process.env.TWELVEDATA_API_KEY;
+    const TWELVEDATA_API_KEY = process.env.TWELVE_DATA_API_KEY;
     
     if (!TWELVEDATA_API_KEY) {
       throw new Error('Twelvedata API key not configured');
     }
     
-    const url = `https://api.twelvedata.com/price?symbol=${symbol}&apikey=${TWELVEDATA_API_KEY}`;
+    // Convert symbol to API format (BTC -> BTC/USD)
+    const { getAPISymbol } = require('../../../lib/sandbox-constants');
+    const apiSymbol = getAPISymbol(symbol);
+    const url = `https://api.twelvedata.com/price?symbol=${apiSymbol}&apikey=${TWELVEDATA_API_KEY}`;
     
     const response = await fetch(url);
     

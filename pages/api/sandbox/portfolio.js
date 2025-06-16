@@ -76,6 +76,12 @@ async function portfolioHandler(req, res) {
       status: 'open' 
     }).sort({ entryTime: -1 });
     
+    // Get pending orders
+    const pendingOrders = await SandboxTrade.find({ 
+      userId, 
+      status: 'pending' 
+    }).sort({ entryTime: -1 });
+    
     // Get recent closed trades
     const recentTrades = await SandboxTrade.find({ 
       userId, 
@@ -172,6 +178,23 @@ async function portfolioHandler(req, res) {
         entryReason: trade.preTradeAnalysis.entryReason.substring(0, 100) + '...'
       })),
       
+      // Pending Orders
+      pendingOrders: pendingOrders.map(order => ({
+        id: order._id,
+        symbol: order.symbol,
+        side: order.side,
+        type: order.type,
+        quantity: order.quantity,
+        leverage: order.leverage,
+        limitPrice: order.limitPrice,
+        stopLoss: order.stopLoss,
+        takeProfit: order.takeProfit,
+        orderTime: order.entryTime,
+        marginReserved: order.marginUsed,
+        confidenceLevel: order.preTradeAnalysis.confidenceLevel,
+        entryReason: order.preTradeAnalysis.entryReason.substring(0, 100) + '...'
+      })),
+      
       // Recent Trades
       recentTrades: recentTrades.map(trade => ({
         id: trade._id,
@@ -206,7 +229,10 @@ async function portfolioHandler(req, res) {
       unlockProgress: {
         biasTests: portfolio.unlockProgress.biasTests,
         chartExams: portfolio.unlockProgress.chartExams
-      }
+      },
+      
+      // Admin Status
+      isAdmin: isAdmin
     };
     
     res.status(200).json(response);

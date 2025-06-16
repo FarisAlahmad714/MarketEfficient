@@ -33,30 +33,41 @@ const TradingPanel = ({ selectedAsset, marketData, portfolioData, onTradeSuccess
   const availableBalance = portfolioData?.balance || 0;
   const availableMargin = portfolioData?.riskLimits?.availableMargin ?? availableBalance;
   
+  
   // Define calculation functions first to avoid hoisting issues
-  const calculatePositionValue = () => {
+  const calculateBasePositionValue = () => {
     const price = orderType === 'limit' ? parseFloat(limitPrice) || currentPrice : currentPrice;
     const qty = parseFloat(quantity) || 0;
-    return price * qty;
+    return price * qty; // Base position value (without leverage)
+  };
+
+  const calculatePositionValue = () => {
+    return calculateBasePositionValue() * leverage; // LEVERAGED position value
   };
 
   const calculateMarginRequired = () => {
-    return calculatePositionValue() / leverage;
+    return calculateBasePositionValue(); // Margin = base position value
   };
 
   const calculateMaxQuantity = () => {
     const price = orderType === 'limit' ? parseFloat(limitPrice) || currentPrice : currentPrice;
     if (price <= 0) return 0;
     
-    // Calculate max based on available margin
-    const maxByMargin = (availableMargin * leverage) / price;
+    const isAdmin = portfolioData?.isAdmin || false;
+    
+    // Calculate max based on available margin AT 1X LEVERAGE (baseline)
+    const maxByMargin = availableMargin / price;
+    
+    if (isAdmin) {
+      // Admins have no position size limits
+      return maxByMargin;
+    }
     
     // Calculate max based on position size limit (25% of portfolio)
-    // Position size limit is the TOTAL position value, not margin
     const maxPositionSize = availableBalance * (portfolioData?.riskLimits?.maxPositionSize || 0.25);
     const maxByPositionLimit = maxPositionSize / price;
     
-    // Return the smaller of the two limits
+    // Return the smaller of the two limits (at 1x leverage baseline)
     return Math.min(maxByMargin, maxByPositionLimit);
   };
   
@@ -66,6 +77,8 @@ const TradingPanel = ({ selectedAsset, marketData, portfolioData, onTradeSuccess
       setLimitPrice(currentPrice.toFixed(2));
     }
   }, [orderType, currentPrice]);
+
+  // Only auto-fill limit price, don't mess with quantity
 
   const validateTrade = () => {
     const errors = [];
@@ -86,9 +99,12 @@ const TradingPanel = ({ selectedAsset, marketData, portfolioData, onTradeSuccess
       errors.push(`Maximum leverage is ${portfolioData?.riskLimits?.maxLeverage || 3}x`);
     }
     
+    // Position size limit (25% of portfolio) - except for admins
     const positionValue = calculatePositionValue();
     const maxPositionSize = availableBalance * (portfolioData?.riskLimits?.maxPositionSize || 0.25);
-    if (positionValue > maxPositionSize) {
+    const isAdmin = portfolioData?.isAdmin || false;
+    
+    if (!isAdmin && positionValue > maxPositionSize) {
       errors.push(`Position size exceeds limit (${(portfolioData?.riskLimits?.maxPositionSize || 0.25) * 100}% of portfolio)`);
     }
     
@@ -270,19 +286,50 @@ const TradingPanel = ({ selectedAsset, marketData, portfolioData, onTradeSuccess
         {/* Quantity */}
         <div className="form-section">
           <label>
-            Quantity
+            Quantity: {parseFloat(quantity || 0).toFixed(6)}
             <span className="max-link" onClick={setMaxQuantity}>
               Max: {calculateMaxQuantity().toFixed(6)}
             </span>
           </label>
+          
+          {/* Quantity Slider */}
+          <div className="quantity-slider-container">
+            <input
+              type="range"
+              min="0"
+              max={calculateMaxQuantity()}
+              value={quantity || 0}
+              onChange={(e) => setQuantity(e.target.value)}
+              step={calculateMaxQuantity() > 1 ? "0.000001" : "0.0000001"}
+              className="quantity-slider"
+            />
+            <div className="slider-labels">
+              <span>0</span>
+              <span>{calculateMaxQuantity().toFixed(6)}</span>
+            </div>
+          </div>
+          
+          {/* Manual Input */}
           <input
             type="number"
             value={quantity}
             onChange={(e) => setQuantity(e.target.value)}
-            placeholder="Enter quantity"
+            placeholder="Enter quantity manually"
             step="0.000001"
-            className="form-input"
+            className="form-input quantity-input"
           />
+          
+          {/* Balance Display */}
+          <div className="balance-display">
+            <div className="balance-item">
+              <span className="balance-label">Asset Amount:</span>
+              <span className="balance-value">{(parseFloat(quantity || 0)).toFixed(6)} {selectedAsset}</span>
+            </div>
+            <div className="balance-item">
+              <span className="balance-label">Token Value:</span>
+              <span className="balance-value">${calculateBasePositionValue().toFixed(2)} SENSES</span>
+            </div>
+          </div>
         </div>
 
         {/* Leverage */}
@@ -298,6 +345,7 @@ const TradingPanel = ({ selectedAsset, marketData, portfolioData, onTradeSuccess
           />
           <div className="leverage-labels">
             <span>1x</span>
+            <span>2x</span>
             <span>{portfolioData?.riskLimits?.maxLeverage || 3}x</span>
           </div>
         </div>
@@ -665,9 +713,17 @@ const TradingPanel = ({ selectedAsset, marketData, portfolioData, onTradeSuccess
           box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
         }
         
-        .leverage-slider {
+        .leverage-slider, .quantity-slider {
           width: 100%;
           margin: 8px 0;
+          cursor: pointer;
+        }
+        
+        .slider-labels {
+          display: flex;
+          justify-content: space-between;
+          font-size: 0.75rem;
+          font-weight: 500;
         }
         
         .leverage-labels {
@@ -675,13 +731,95 @@ const TradingPanel = ({ selectedAsset, marketData, portfolioData, onTradeSuccess
           justify-content: space-between;
           font-size: 0.75rem;
           font-weight: 500;
+          position: relative;
         }
         
-        .dark .leverage-labels {
+        .leverage-labels span:nth-child(2) {
+          position: absolute;
+          left: 50%;
+          transform: translateX(-50%);
+        }
+        
+        .quantity-slider-container {
+          margin: 12px 0;
+        }
+        
+        .quantity-input {
+          margin-top: 12px;
+          font-size: 0.875rem;
+        }
+        
+        .balance-display {
+          margin-top: 16px;
+          padding: 16px;
+          border-radius: 12px;
+          border: 1px solid;
+        }
+        
+        .dark .balance-display {
+          background: rgba(255, 255, 255, 0.02);
+          border-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        .light .balance-display {
+          background: rgba(0, 0, 0, 0.01);
+          border-color: rgba(0, 0, 0, 0.1);
+        }
+        
+        .balance-item {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 8px;
+        }
+        
+        .balance-item:last-child {
+          margin-bottom: 0;
+          padding-top: 8px;
+          border-top: 1px solid;
+          font-weight: 600;
+        }
+        
+        .dark .balance-item:last-child {
+          border-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        .light .balance-item:last-child {
+          border-color: rgba(0, 0, 0, 0.1);
+        }
+        
+        .balance-label {
+          font-size: 0.875rem;
+          font-weight: 500;
+        }
+        
+        .dark .balance-label {
+          color: rgba(255, 255, 255, 0.7);
+        }
+        
+        .light .balance-label {
+          color: rgba(0, 0, 0, 0.7);
+        }
+        
+        .balance-value {
+          font-size: 0.875rem;
+          font-weight: 600;
+          font-family: 'SF Mono', Monaco, monospace;
+        }
+        
+        .dark .balance-value {
+          color: rgba(255, 255, 255, 0.9);
+        }
+        
+        .light .balance-value {
+          color: rgba(0, 0, 0, 0.9);
+        }
+        
+        .dark .leverage-labels, .dark .slider-labels {
           color: rgba(255, 255, 255, 0.6);
         }
         
-        .light .leverage-labels {
+        .light .leverage-labels, .light .slider-labels {
           color: rgba(0, 0, 0, 0.6);
         }
         
