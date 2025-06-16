@@ -97,33 +97,51 @@ async function portfolioHandler(req, res) {
     
     // Update each open trade with current market price
     for (const trade of openTrades) {
-      const currentPrice = priceSimulator.getPrice(trade.symbol);
+      // Use the same real market price function as close-trade
+      let currentPrice = await getCurrentMarketPrice(trade.symbol);
       
-      // Calculate P&L based on position side
+      // Fallback to price simulator if real price fails
+      if (!currentPrice) {
+        currentPrice = priceSimulator.getPrice(trade.symbol);
+      }
+      
+      // Calculate P&L using standardized calculation
+      const { calculateUnrealizedPnL, calculatePnLPercentage } = require('../../../lib/pnl-calculator');
       let pnl = 0;
-      if (trade.side === 'long') {
-        pnl = (currentPrice - trade.entryPrice) * trade.quantity;
-      } else { // short
-        pnl = (trade.entryPrice - currentPrice) * trade.quantity;
+      try {
+        pnl = calculateUnrealizedPnL({
+          side: trade.side,
+          entryPrice: trade.entryPrice,
+          currentPrice: currentPrice,
+          quantity: trade.quantity,
+          totalFees: trade.fees?.total || 0
+        });
+      } catch (error) {
+        console.error('Error calculating P&L for trade:', trade._id, error);
+        pnl = 0;
       }
       
       // Update trade object with current data
-      trade.currentPrice = currentPrice;
+      trade.currentPrice = Math.round(currentPrice * 100) / 100;
       trade.unrealizedPnL = pnl;
-      trade.pnlPercentage = (pnl / (trade.entryPrice * trade.quantity)) * 100;
+      trade.pnlPercentage = calculatePnLPercentage(pnl, trade.marginUsed);
       
       totalUnrealizedPnL += pnl;
       
       // Save updated trade data
       await SandboxTrade.findByIdAndUpdate(trade._id, {
-        currentPrice: currentPrice,
-        unrealizedPnL: pnl,
-        pnlPercentage: trade.pnlPercentage
+        currentPrice: trade.currentPrice,
+        unrealizedPnL: trade.unrealizedPnL
       });
     }
     
     // Calculate current portfolio value
-    const currentValue = portfolio.balance + totalUnrealizedPnL;
+    const currentValue = Math.round((portfolio.balance + totalUnrealizedPnL) * 100) / 100;
+    
+    // Update high water mark if current value is higher
+    if (currentValue > portfolio.highWaterMark) {
+      portfolio.highWaterMark = currentValue;
+    }
     
     // Update portfolio metrics
     portfolio.updatePerformanceMetrics();
@@ -133,29 +151,30 @@ async function portfolioHandler(req, res) {
     const tradingStats = await SandboxTrade.getUserTradingStats(userId);
     
     const response = {
-      // Portfolio Overview
-      balance: portfolio.balance,
-      currentValue: currentValue,
-      totalPnL: currentValue - portfolio.initialBalance,
-      totalPnLPercentage: ((currentValue - portfolio.initialBalance) / portfolio.initialBalance) * 100,
+      // Portfolio Overview - currentValue is the main balance users should see
+      balance: Math.round(portfolio.balance * 100) / 100, // Base balance (without unrealized P&L)
+      currentValue: currentValue, // Main balance to display (includes unrealized P&L)
+      totalPnL: Math.round((currentValue - portfolio.initialBalance) * 100) / 100,
+      totalPnLPercentage: Math.round(((currentValue - portfolio.initialBalance) / portfolio.initialBalance) * 100 * 100) / 100,
       
-      // Performance Metrics
+      // Performance Metrics - Use real-time calculated stats
       performance: {
-        totalReturn: portfolio.totalReturn,
-        highWaterMark: portfolio.highWaterMark,
+        totalReturn: Math.round(((currentValue - portfolio.initialBalance) / portfolio.initialBalance) * 100 * 100) / 100,
+        highWaterMark: Math.max(portfolio.highWaterMark, currentValue),
         maxDrawdown: portfolio.maxDrawdown,
         sharpeRatio: portfolio.sharpeRatio,
-        winRate: portfolio.winRate,
-        profitFactor: portfolio.profitFactor
+        winRate: tradingStats.winRate,
+        profitFactor: tradingStats.profitFactor,
+        bestReturn: tradingStats.bestReturn
       },
       
-      // Trading Statistics
+      // Trading Statistics - Use real-time calculated stats
       trading: {
-        totalTrades: portfolio.totalTrades,
-        winningTrades: portfolio.winningTrades,
-        losingTrades: portfolio.losingTrades,
-        averageWin: portfolio.averageWin,
-        averageLoss: portfolio.averageLoss,
+        totalTrades: tradingStats.totalTrades,
+        winningTrades: tradingStats.winningTrades,
+        losingTrades: tradingStats.losingTrades,
+        averageWin: tradingStats.averageWin,
+        averageLoss: tradingStats.averageLoss,
         lastTradeAt: portfolio.lastTradeAt
       },
       
@@ -200,11 +219,13 @@ async function portfolioHandler(req, res) {
         id: trade._id,
         symbol: trade.symbol,
         side: trade.side,
+        quantity: trade.quantity,
         entryPrice: trade.entryPrice,
         exitPrice: trade.exitPrice,
         realizedPnL: trade.realizedPnL,
         pnlPercentage: trade.pnlPercentage,
         leverage: trade.leverage,
+        marginUsed: trade.marginUsed,
         duration: trade.duration,
         entryTime: trade.entryTime,
         exitTime: trade.exitTime
@@ -243,6 +264,40 @@ async function portfolioHandler(req, res) {
       error: 'Failed to fetch portfolio',
       message: error.message 
     });
+  }
+}
+
+// Helper function to get real market prices (same as close-trade.js)
+async function getCurrentMarketPrice(symbol) {
+  try {
+    const TWELVEDATA_API_KEY = process.env.TWELVE_DATA_API_KEY;
+    
+    if (!TWELVEDATA_API_KEY) {
+      throw new Error('Twelvedata API key not configured');
+    }
+    
+    // Convert symbol to API format (BTC -> BTC/USD)
+    const { getAPISymbol } = require('../../../lib/sandbox-constants');
+    const apiSymbol = getAPISymbol(symbol);
+    const url = `https://api.twelvedata.com/price?symbol=${apiSymbol}&apikey=${TWELVEDATA_API_KEY}`;
+    
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+      throw new Error(`API request failed: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    
+    if (data.price && !isNaN(parseFloat(data.price))) {
+      return parseFloat(data.price);
+    }
+    
+    return null;
+    
+  } catch (error) {
+    console.error(`Error fetching price for ${symbol}:`, error);
+    return null;
   }
 }
 

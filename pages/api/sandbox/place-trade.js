@@ -5,6 +5,17 @@ import connectDB from '../../../lib/database';
 import SandboxPortfolio from '../../../models/SandboxPortfolio';
 import SandboxTrade from '../../../models/SandboxTrade';
 import { getPriceSimulator } from '../../../lib/priceSimulation';
+import { validateTradeRequest } from '../../../lib/trading-validation';
+import { 
+  logTradingError, 
+  handleMarketDataError, 
+  handleDatabaseError,
+  formatErrorResponse,
+  TradingError,
+  APIFailureHandler,
+  marketDataCircuitBreaker
+} from '../../../lib/trading-error-handler';
+import { adminSecurityValidator } from '../../../lib/admin-security';
 
 async function placeTradeHandler(req, res) {
   await connectDB();
@@ -23,10 +34,64 @@ async function placeTradeHandler(req, res) {
   } = req.body;
 
   try {
-    // Get user's sandbox portfolio
-    const portfolio = await SandboxPortfolio.findOne({ userId, unlocked: true });
+    // Comprehensive input validation
+    const validation = validateTradeRequest({
+      symbol,
+      side,
+      type,
+      quantity,
+      leverage,
+      limitPrice,
+      stopLoss,
+      takeProfit
+    });
+
+    if (!validation.isValid) {
+      await logTradingError(
+        new TradingError(
+          `Trade validation failed: ${validation.errors.map(e => e.message).join(', ')}`,
+          'VALIDATION_FAILED',
+          'medium',
+          { validationErrors: validation.errors }
+        ),
+        userId,
+        'place_trade_validation',
+        { 
+          ipAddress: req.ip, 
+          userAgent: req.get('User-Agent'),
+          requestBody: req.body
+        }
+      );
+
+      return res.status(400).json({
+        success: false,
+        error: 'Validation failed',
+        validationErrors: validation.errors
+      });
+    }
+
+    // Use validated data
+    const validatedData = validation.data;
+
+    // Get user's sandbox portfolio with error handling
+    let portfolio;
+    try {
+      portfolio = await SandboxPortfolio.findOne({ userId, unlocked: true });
+    } catch (error) {
+      await handleDatabaseError('fetch_portfolio', error, userId, {
+        operation: 'place_trade'
+      });
+      return res.status(500).json(formatErrorResponse(error));
+    }
     
     if (!portfolio) {
+      const error = new TradingError(
+        'Sandbox not unlocked or portfolio not found',
+        'PORTFOLIO_NOT_FOUND',
+        'medium',
+        { userId }
+      );
+      await logTradingError(error, userId, 'place_trade_access');
       return res.status(403).json({ 
         error: 'Sandbox not unlocked',
         message: 'Complete required tests to unlock sandbox trading' 
@@ -35,63 +100,213 @@ async function placeTradeHandler(req, res) {
 
     // Check if monthly reset is due
     if (portfolio.isResetDue()) {
+      const error = new TradingError(
+        'Monthly reset required',
+        'MONTHLY_RESET_DUE',
+        'low',
+        { userId, resetDate: portfolio.monthlyResetDate }
+      );
+      await logTradingError(error, userId, 'place_trade_reset');
       return res.status(400).json({ 
         error: 'Monthly reset required',
         message: 'Your portfolio needs to be reset for the new month' 
       });
     }
 
-    // Validate required fields
-    if (!symbol || !side || !type || !quantity || !preTradeAnalysis) {
+    // Validate pre-trade analysis
+    if (!preTradeAnalysis || !preTradeAnalysis.entryReason) {
+      const error = new TradingError(
+        'Pre-trade analysis required',
+        'ANALYSIS_REQUIRED',
+        'medium',
+        { userId, symbol: validatedData.symbol }
+      );
+      await logTradingError(error, userId, 'place_trade_analysis');
       return res.status(400).json({ 
-        error: 'Missing required fields',
-        message: 'Symbol, side, type, quantity, and pre-trade analysis are required' 
+        error: 'Missing pre-trade analysis',
+        message: 'Entry reason is required for educational purposes' 
       });
     }
 
-    // Validate pre-trade analysis
     const analysisErrors = validatePreTradeAnalysis(preTradeAnalysis);
     if (analysisErrors.length > 0) {
+      const error = new TradingError(
+        `Invalid pre-trade analysis: ${analysisErrors.join(', ')}`,
+        'INVALID_ANALYSIS',
+        'medium',
+        { userId, analysisErrors }
+      );
+      await logTradingError(error, userId, 'place_trade_analysis');
       return res.status(400).json({ 
         error: 'Invalid pre-trade analysis',
         message: analysisErrors.join('. ')
       });
     }
 
-    // Get current market price
-    const currentPrice = await getCurrentMarketPrice(symbol);
-    if (!currentPrice) {
-      return res.status(400).json({ 
-        error: 'Invalid symbol',
-        message: 'Unable to get current price for symbol' 
+    // Get current market price with comprehensive error handling
+    let currentPrice;
+    const apiHandler = new APIFailureHandler(3, 1000);
+    
+    try {
+      currentPrice = await marketDataCircuitBreaker.call(
+        async () => {
+          return await apiHandler.withRetry(
+            async () => {
+              const price = await getCurrentMarketPrice(validatedData.symbol);
+              if (!price) {
+                throw new Error(`No price data available for ${validatedData.symbol}`);
+              }
+              return price;
+            },
+            `fetch_price_${validatedData.symbol}`,
+            { userId, symbol: validatedData.symbol }
+          );
+        },
+        `market_data_${validatedData.symbol}`,
+        { userId, symbol: validatedData.symbol }
+      );
+    } catch (error) {
+      // CRITICAL: DO NOT use fallback prices for real trading!
+      // This could cause massive losses with incorrect prices
+      await logTradingError(
+        new TradingError(
+          `CRITICAL: Real price API failed for ${validatedData.symbol} - BLOCKING TRADE`,
+          'REAL_PRICE_API_FAILED',
+          'critical',
+          { 
+            symbol: validatedData.symbol, 
+            originalError: error.message,
+            apiKey: process.env.TWELVEDATA_API_KEY ? 'CONFIGURED' : 'MISSING'
+          }
+        ),
+        userId,
+        'place_trade_api_failure'
+      );
+      
+      return res.status(503).json({
+        success: false,
+        error: 'Real-time price unavailable',
+        message: `Cannot execute trade for ${validatedData.symbol}. Real market data is required for trading. Please check API configuration and try again.`,
+        technicalDetails: {
+          apiKey: process.env.TWELVEDATA_API_KEY ? 'configured' : 'missing',
+          symbol: validatedData.symbol,
+          apiSymbol: getAPISymbol ? getAPISymbol(validatedData.symbol) : 'unknown'
+        }
+      });
+    }
+
+    // Final validation with current price and portfolio balance
+    const finalValidation = validateTradeRequest({
+      symbol: validatedData.symbol,
+      side: validatedData.side,
+      type: validatedData.type,
+      quantity: validatedData.quantity,
+      leverage: validatedData.leverage,
+      limitPrice: validatedData.limitPrice,
+      stopLoss: validatedData.stopLoss,
+      takeProfit: validatedData.takeProfit,
+      currentPrice: currentPrice,
+      portfolioBalance: portfolio.balance
+    });
+
+    if (!finalValidation.isValid) {
+      await logTradingError(
+        new TradingError(
+          `Final validation failed: ${finalValidation.errors.map(e => e.message).join(', ')}`,
+          'FINAL_VALIDATION_FAILED',
+          'medium',
+          { validationErrors: finalValidation.errors }
+        ),
+        userId,
+        'place_trade_final_validation'
+      );
+
+      return res.status(400).json({
+        success: false,
+        error: 'Validation failed',
+        validationErrors: finalValidation.errors
       });
     }
 
     // Determine execution price
     let executionPrice = currentPrice;
-    if (type === 'limit') {
-      if (!limitPrice || limitPrice <= 0) {
-        return res.status(400).json({ 
-          error: 'Invalid limit price',
-          message: 'Limit price must be greater than 0' 
-        });
-      }
-      executionPrice = limitPrice;
+    if (validatedData.type === 'limit') {
+      executionPrice = validatedData.limitPrice;
     }
 
-    // Calculate position value and margin
-    const positionValue = executionPrice * quantity;
-    const marginRequired = positionValue / leverage;
+    // Calculate position value and margin using validated data
+    const positionValue = executionPrice * validatedData.quantity;
+    const marginRequired = positionValue / validatedData.leverage;
 
-    // Check if user is admin
-    const User = require('../../../models/User');
-    const user = await User.findById(userId);
-    const isAdmin = user?.isAdmin || false;
+    // Check if user is admin with error handling
+    let user, isAdmin;
+    try {
+      const User = require('../../../models/User');
+      user = await User.findById(userId);
+      isAdmin = user?.isAdmin || false;
+    } catch (error) {
+      await handleDatabaseError('fetch_user', error, userId, {
+        operation: 'place_trade_admin_check'
+      });
+      return res.status(500).json(formatErrorResponse(error));
+    }
     
-    // Position size limits (25% of portfolio) - except for admins
-    if (!isAdmin) {
+    // Apply enhanced security checks for admins, regular limits for users
+    if (isAdmin) {
+      // Comprehensive admin security validation
+      const adminValidation = await adminSecurityValidator.validateAdminTrade(userId, {
+        symbol: validatedData.symbol,
+        side: validatedData.side,
+        quantity: validatedData.quantity,
+        leverage: validatedData.leverage,
+        positionValue,
+        portfolioBalance: portfolio.balance
+      }, req.body.adminJustification);
+
+      if (!adminValidation.allowed) {
+        await logTradingError(
+          new TradingError(
+            `Admin trade blocked by security validation: ${adminValidation.warnings.join(', ')}`,
+            'ADMIN_TRADE_BLOCKED',
+            'critical',
+            { adminValidation, positionValue, portfolioBalance: portfolio.balance }
+          ),
+          userId,
+          'admin_trade_security_block'
+        );
+
+        return res.status(403).json({
+          success: false,
+          error: 'Admin trade blocked by security controls',
+          details: adminValidation.warnings,
+          requiresApproval: adminValidation.requiresApproval
+        });
+      }
+
+      if (adminValidation.warnings.length > 0) {
+        await logTradingError(
+          new TradingError(
+            `Admin trade with security warnings: ${adminValidation.warnings.join(', ')}`,
+            'ADMIN_TRADE_WARNING',
+            'high',
+            { adminValidation, positionValue, portfolioBalance: portfolio.balance }
+          ),
+          userId,
+          'admin_trade_security_warning'
+        );
+      }
+    } else {
+      // Regular user limits
       const maxPositionSize = portfolio.balance * (portfolio.maxPositionSize || 0.25);
       if (positionValue > maxPositionSize) {
+        const error = new TradingError(
+          `Position size too large: ${positionValue.toFixed(2)} SENSES exceeds limit of ${maxPositionSize.toFixed(2)} SENSES`,
+          'POSITION_SIZE_EXCEEDED',
+          'medium',
+          { positionValue, maxPositionSize, balancePercent: (portfolio.maxPositionSize || 0.25) * 100 }
+        );
+        await logTradingError(error, userId, 'place_trade_position_limit');
+        
         return res.status(400).json({ 
           error: 'Position size too large',
           message: `Position size exceeds limit (${((portfolio.maxPositionSize || 0.25) * 100).toFixed(0)}% of portfolio)` 
@@ -100,17 +315,33 @@ async function placeTradeHandler(req, res) {
     }
 
     // Validate leverage
-    if (leverage > portfolio.maxLeverage) {
+    if (validatedData.leverage > portfolio.maxLeverage) {
+      const error = new TradingError(
+        `Leverage too high: ${validatedData.leverage}x exceeds maximum ${portfolio.maxLeverage}x`,
+        'LEVERAGE_EXCEEDED',
+        'medium',
+        { requestedLeverage: validatedData.leverage, maxLeverage: portfolio.maxLeverage }
+      );
+      await logTradingError(error, userId, 'place_trade_leverage');
+      
       return res.status(400).json({ 
         error: 'Leverage too high',
         message: `Maximum leverage is ${portfolio.maxLeverage}x` 
       });
     }
 
-    // Check available margin
-    const openTrades = await SandboxTrade.find({ userId, status: 'open' });
-    const usedMargin = openTrades.reduce((sum, trade) => sum + trade.marginUsed, 0);
-    const availableMargin = portfolio.balance - usedMargin;
+    // Check available margin with error handling
+    let openTrades, usedMargin, availableMargin;
+    try {
+      openTrades = await SandboxTrade.find({ userId, status: 'open' });
+      usedMargin = openTrades.reduce((sum, trade) => sum + trade.marginUsed, 0);
+      availableMargin = portfolio.balance - usedMargin;
+    } catch (error) {
+      await handleDatabaseError('fetch_open_trades', error, userId, {
+        operation: 'place_trade_margin_check'
+      });
+      return res.status(500).json(formatErrorResponse(error));
+    }
 
     if (marginRequired > availableMargin) {
       return res.status(400).json({ 
@@ -169,12 +400,20 @@ async function placeTradeHandler(req, res) {
       tradeData.fees.entry = tradeData.positionValue * feeRate;
       tradeData.fees.total = tradeData.fees.entry;
       
-      // Calculate initial unrealized P&L (should be close to zero after fees)
-      const priceDiff = side === 'long' 
-        ? currentPrice - tradeData.entryPrice
-        : tradeData.entryPrice - currentPrice;
-      // P&L = price difference * quantity (leverage already in position size)
-      tradeData.unrealizedPnL = (priceDiff * quantity) - tradeData.fees.total;
+      // Calculate initial unrealized P&L using standardized calculation
+      const { calculateUnrealizedPnL } = require('../../../lib/pnl-calculator');
+      try {
+        tradeData.unrealizedPnL = calculateUnrealizedPnL({
+          side: side,
+          entryPrice: tradeData.entryPrice,
+          currentPrice: currentPrice,
+          quantity: quantity,
+          totalFees: tradeData.fees.total
+        });
+      } catch (error) {
+        console.error('Error calculating initial unrealized P&L:', error);
+        tradeData.unrealizedPnL = 0;
+      }
     } else if (type === 'limit') {
       // For limit orders, create as pending
       tradeData.status = 'pending';

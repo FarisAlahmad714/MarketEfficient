@@ -7,6 +7,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:trading": "jest __tests__/trading-validation.test.js __tests__/pnl-calculator.test.js",
     "generate:images": "node scripts/generatePlaceholderImages.js",
     "create-indexes": "node scripts/create-indexes.js"
   },
@@ -58,6 +62,7 @@
   },
   "devDependencies": {
     "@next/bundle-analyzer": "^15.1.8",
-    "eslint-plugin-security": "^3.0.1"
+    "eslint-plugin-security": "^3.0.1",
+    "jest": "^30.0.0"
   }
 }

@@ -160,6 +160,9 @@ const PortfolioOverview = ({ portfolioData, onRefresh }) => {
   }
 
   const formatCurrency = (amount) => {
+    if (amount === null || amount === undefined || isNaN(amount)) {
+      return '0.00';
+    }
     return new Intl.NumberFormat('en-US', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
@@ -220,7 +223,7 @@ const PortfolioOverview = ({ portfolioData, onRefresh }) => {
             <span className="metric-label">Current Balance</span>
           </div>
           <div className="metric-value">
-            {formatCurrency(portfolioData.currentValue || portfolioData.balance)} SENSE$
+            {formatCurrency(portfolioData.currentValue || portfolioData.balance)} SENSES
           </div>
           <div 
             className="metric-sublabel"
@@ -252,7 +255,7 @@ const PortfolioOverview = ({ portfolioData, onRefresh }) => {
             <span className="metric-label">Best Return</span>
           </div>
           <div className="metric-value">
-            {formatPercentage(portfolioData.performance?.highWaterMark || 0)}
+            {formatPercentage(portfolioData.performance?.bestReturn || 0)}
           </div>
           <div className="metric-sublabel">High Water Mark</div>
         </div>

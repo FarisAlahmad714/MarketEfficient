@@ -71,20 +71,40 @@ async function closeTradeHandler(req, res) {
     // Handle partial close
     const isPartialClose = partialPercentage && partialPercentage > 0 && partialPercentage < 100;
     const closeQuantity = isPartialClose ? trade.quantity * (partialPercentage / 100) : trade.quantity;
+    const originalQuantity = trade.quantity; // Store original quantity before modification
     
     // Calculate exit fee (0.1% for market orders, 0.05% for limit orders)
     const exitFeeRate = 0.001; // 0.1% for closing
     const positionValue = exitPrice * closeQuantity;
     const exitFee = positionValue * exitFeeRate;
 
-    // Calculate realized P&L for the closed portion
-    const priceDiff = trade.side === 'long'
-      ? exitPrice - trade.entryPrice
-      : trade.entryPrice - exitPrice;
+    // Calculate realized P&L using standardized calculation
+    const { calculatePartialClosePnL } = require('../../../lib/pnl-calculator');
+    let realizedPnL = 0;
+    let feesPaid = 0;
     
-    // P&L calculation: price difference * closed quantity (leverage already in position)
-    const grossPnL = priceDiff * closeQuantity;
-    const realizedPnL = grossPnL - (trade.fees.total * (closeQuantity / trade.quantity)) - exitFee;
+    try {
+      const result = calculatePartialClosePnL({
+        side: trade.side,
+        entryPrice: trade.entryPrice,
+        exitPrice: exitPrice,
+        totalQuantity: originalQuantity,
+        closeQuantity: closeQuantity,
+        totalFees: trade.fees.total,
+        exitFee: exitFee
+      });
+      realizedPnL = result.realizedPnL;
+      feesPaid = result.feesPaid;
+    } catch (error) {
+      console.error('Error calculating partial close P&L:', error);
+      // Fallback to basic calculation
+      const priceDiff = trade.side === 'long'
+        ? exitPrice - trade.entryPrice
+        : trade.entryPrice - exitPrice;
+      const grossPnL = priceDiff * closeQuantity;
+      realizedPnL = grossPnL - (trade.fees.total * (closeQuantity / originalQuantity)) - exitFee;
+      feesPaid = (trade.fees.total * (closeQuantity / originalQuantity)) + exitFee;
+    }
 
     if (isPartialClose) {
       // Create a new trade record for the closed portion
@@ -93,15 +113,16 @@ async function closeTradeHandler(req, res) {
         ...trade.toObject(),
         _id: undefined,
         quantity: closeQuantity,
+        marginUsed: (trade.marginUsed * closeQuantity) / originalQuantity,
         exitPrice: exitPrice,
         exitTime: new Date(),
         status: 'closed',
         closeReason: closeType,
         realizedPnL: realizedPnL,
         fees: {
-          entry: trade.fees.entry * (closeQuantity / trade.quantity),
+          entry: trade.fees.entry * (closeQuantity / originalQuantity),
           exit: exitFee,
-          total: (trade.fees.total * (closeQuantity / trade.quantity)) + exitFee
+          total: (trade.fees.total * (closeQuantity / originalQuantity)) + exitFee
         }
       });
       
@@ -109,8 +130,8 @@ async function closeTradeHandler(req, res) {
       
       // Update the original trade to reduce quantity and fees
       trade.quantity = trade.quantity - closeQuantity;
-      trade.fees.total = trade.fees.total * (trade.quantity / (trade.quantity + closeQuantity));
-      trade.marginUsed = trade.marginUsed * (trade.quantity / (trade.quantity + closeQuantity));
+      trade.fees.total = trade.fees.total * (trade.quantity / originalQuantity);
+      trade.marginUsed = trade.marginUsed * (trade.quantity / originalQuantity);
       
       await trade.save();
       
@@ -127,7 +148,7 @@ async function closeTradeHandler(req, res) {
     // Update portfolio
     if (isPartialClose) {
       // Add back the margin that was used for closed portion
-      const closedMargin = trade.marginUsed * (closeQuantity / (trade.quantity + closeQuantity));
+      const closedMargin = (trade.marginUsed * closeQuantity) / originalQuantity;
       portfolio.balance += closedMargin;
     } else {
       // Add back the margin that was used for full close
@@ -205,34 +226,64 @@ async function closeTradeHandler(req, res) {
 
 async function getCurrentMarketPrice(symbol) {
   try {
-    const TWELVEDATA_API_KEY = process.env.TWELVE_DATA_API_KEY;
+    // Try real API first with correct env var name
+    const TWELVEDATA_API_KEY = process.env.TWELVEDATA_API_KEY;
     
-    if (!TWELVEDATA_API_KEY) {
-      throw new Error('Twelvedata API key not configured');
+    if (TWELVEDATA_API_KEY) {
+      try {
+        // Convert symbol to API format (BTC -> BTC/USD)
+        const { getAPISymbol } = require('../../../lib/sandbox-constants');
+        const apiSymbol = getAPISymbol(symbol);
+        const url = `https://api.twelvedata.com/price?symbol=${apiSymbol}&apikey=${TWELVEDATA_API_KEY}`;
+        
+        const response = await fetch(url);
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.price && !isNaN(parseFloat(data.price))) {
+            return parseFloat(data.price);
+          }
+        }
+      } catch (apiError) {
+        console.log(`Real API failed for ${symbol}, using fallback:`, apiError.message);
+      }
     }
     
-    // Convert symbol to API format (BTC -> BTC/USD)
-    const { getAPISymbol } = require('../../../lib/sandbox-constants');
-    const apiSymbol = getAPISymbol(symbol);
-    const url = `https://api.twelvedata.com/price?symbol=${apiSymbol}&apikey=${TWELVEDATA_API_KEY}`;
+    // CRITICAL: For closing trades, we MUST allow fallback
+    // Users cannot be trapped in positions due to API failures
+    console.log(`Using simulated price for closing ${symbol} position`);
+    const { getPriceSimulator } = require('../../../lib/priceSimulation');
+    const priceSimulator = getPriceSimulator();
+    const simulatedPrice = priceSimulator.getPrice(symbol);
     
-    const response = await fetch(url);
-    
-    if (!response.ok) {
-      throw new Error(`API request failed: ${response.status}`);
+    if (simulatedPrice && simulatedPrice > 0) {
+      return simulatedPrice;
     }
     
-    const data = await response.json();
-    
-    if (data.price && !isNaN(parseFloat(data.price))) {
-      return parseFloat(data.price);
-    }
-    
-    return null;
+    throw new Error(`Unable to get any price for ${symbol}`);
     
   } catch (error) {
     console.error(`Error fetching price for ${symbol}:`, error);
-    return null;
+    
+    // Last resort: Return a reasonable fallback price to allow position closing
+    // This prevents users from being trapped in positions
+    const fallbackPrices = {
+      'BTC': 65000,
+      'ETH': 3500,
+      'SOL': 150,
+      'ADA': 0.45,
+      'LINK': 15,
+      'AAPL': 220,
+      'GOOGL': 170,
+      'TSLA': 250,
+      'AMZN': 180,
+      'MSFT': 420,
+      'SPY': 550,
+      'QQQ': 460
+    };
+    
+    console.log(`Using emergency fallback price for ${symbol}`);
+    return fallbackPrices[symbol] || 100; // Default fallback
   }
 }
 

@@ -126,7 +126,7 @@ const SandboxTradeSchema = new mongoose.Schema({
   
   closeReason: {
     type: String,
-    enum: ['manual', 'stop_loss', 'take_profit', 'liquidation', 'cancelled'],
+    enum: ['manual', 'partial', 'stop_loss', 'take_profit', 'liquidation', 'cancelled'],
     default: null
   },
   
@@ -253,18 +253,36 @@ SandboxTradeSchema.virtual('duration').get(function() {
 SandboxTradeSchema.virtual('pnlPercentage').get(function() {
   if (this.status === 'open') {
     if (!this.currentPrice) return 0;
-    const priceDiff = this.side === 'long' 
-      ? this.currentPrice - this.entryPrice
-      : this.entryPrice - this.currentPrice;
-    // Percentage based on margin used (leverage effect)
-    return ((priceDiff * this.quantity - this.fees.total) / this.marginUsed) * 100;
+    // Use standardized P&L calculation
+    const { calculateUnrealizedPnL, calculatePnLPercentage } = require('../lib/pnl-calculator');
+    try {
+      const pnl = calculateUnrealizedPnL({
+        side: this.side,
+        entryPrice: this.entryPrice,
+        currentPrice: this.currentPrice,
+        quantity: this.quantity,
+        totalFees: this.fees.total
+      });
+      return calculatePnLPercentage(pnl, this.marginUsed);
+    } catch (error) {
+      return 0;
+    }
   } else {
     if (!this.exitPrice) return 0;
-    const priceDiff = this.side === 'long'
-      ? this.exitPrice - this.entryPrice
-      : this.entryPrice - this.exitPrice;
-    // Percentage based on margin used (leverage effect)
-    return ((priceDiff * this.quantity - this.fees.total) / this.marginUsed) * 100;
+    // Use standardized P&L calculation for closed positions
+    const { calculateRealizedPnL, calculatePnLPercentage } = require('../lib/pnl-calculator');
+    try {
+      const pnl = calculateRealizedPnL({
+        side: this.side,
+        entryPrice: this.entryPrice,
+        exitPrice: this.exitPrice,
+        quantity: this.quantity,
+        totalFees: this.fees.total
+      });
+      return calculatePnLPercentage(pnl, this.marginUsed);
+    } catch (error) {
+      return 0;
+    }
   }
 });
 
@@ -284,13 +302,20 @@ SandboxTradeSchema.methods.updateUnrealizedPnL = function(currentPrice) {
   
   this.currentPrice = currentPrice;
   
-  const priceDiff = this.side === 'long'
-    ? currentPrice - this.entryPrice
-    : this.entryPrice - currentPrice;
-  
-  // P&L = price difference * quantity (leverage already factored into quantity via margin)
-  // Don't multiply by leverage again as it's already in the position size
-  this.unrealizedPnL = (priceDiff * this.quantity) - this.fees.total;
+  // Use standardized P&L calculation
+  const { calculateUnrealizedPnL } = require('../lib/pnl-calculator');
+  try {
+    this.unrealizedPnL = calculateUnrealizedPnL({
+      side: this.side,
+      entryPrice: this.entryPrice,
+      currentPrice: currentPrice,
+      quantity: this.quantity,
+      totalFees: this.fees.total
+    });
+  } catch (error) {
+    console.error('Error calculating unrealized P&L:', error);
+    this.unrealizedPnL = 0;
+  }
 };
 
 // Method to close trade
@@ -377,6 +402,18 @@ SandboxTradeSchema.statics.getUserTradingStats = async function(userId) {
   const grossLoss = Math.abs(losingTrades.reduce((sum, trade) => sum + trade.realizedPnL, 0));
   const profitFactor = grossLoss > 0 ? grossProfit / grossLoss : 0;
   
+  // Find best single trade return percentage
+  const validReturns = trades
+    .filter(trade => trade.marginUsed && trade.marginUsed > 0 && trade.realizedPnL !== null && trade.realizedPnL !== undefined)
+    .map(trade => {
+      const returnPercent = (trade.realizedPnL / trade.marginUsed) * 100;
+      // Cap extreme returns to prevent calculation errors
+      return Math.min(Math.max(returnPercent, -100), 100);
+    })
+    .filter(ret => !isNaN(ret) && isFinite(ret));
+  
+  const bestReturn = validReturns.length > 0 ? Math.max(...validReturns) : 0;
+  
   return {
     totalTrades: trades.length,
     winningTrades: winningTrades.length,
@@ -385,7 +422,8 @@ SandboxTradeSchema.statics.getUserTradingStats = async function(userId) {
     averageWin,
     averageLoss,
     profitFactor,
-    totalPnL
+    totalPnL,
+    bestReturn
   };
 };
 

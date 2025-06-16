@@ -2,8 +2,9 @@ import React, { useState, useContext, useEffect } from 'react';
 import { ThemeContext } from '../../contexts/ThemeContext';
 import { FaLongArrowAltUp, FaLongArrowAltDown, FaExclamationTriangle, FaBrain, FaChartLine, FaShieldAlt } from 'react-icons/fa';
 import storage from '../../lib/storage';
+import { formatSandboxPrice, formatSandboxCurrency } from '../../lib/sandbox-utils';
 
-const TradingPanel = ({ selectedAsset, marketData, portfolioData, onTradeSuccess }) => {
+const TradingPanel = ({ selectedAsset, marketData, portfolioData, onTradeSuccess, onUserInteracting }) => {
   const { darkMode } = useContext(ThemeContext);
   
   const [orderType, setOrderType] = useState('market');
@@ -28,9 +29,21 @@ const TradingPanel = ({ selectedAsset, marketData, portfolioData, onTradeSuccess
   
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  
+  // Track user interaction to prevent auto-refresh during trading
+  const handleUserInteraction = (interacting) => {
+    if (onUserInteracting) {
+      onUserInteracting(interacting);
+    }
+  };
 
-  const currentPrice = marketData[selectedAsset]?.price || 0;
+  // Get current price with multiple fallbacks
+  const currentPrice = marketData[selectedAsset]?.price || 
+                      marketData[selectedAsset]?.currentPrice || 
+                      portfolioData?.openPositions?.find(p => p.symbol === selectedAsset)?.currentPrice ||
+                      (selectedAsset === 'BTC' ? 107000 : selectedAsset === 'SOL' ? 156 : selectedAsset === 'ETH' ? 3800 : 0);
   const availableBalance = portfolioData?.balance || 0;
+  const currentValue = portfolioData?.currentValue || availableBalance;
   const availableMargin = portfolioData?.riskLimits?.availableMargin ?? availableBalance;
   
   
@@ -221,11 +234,32 @@ const TradingPanel = ({ selectedAsset, marketData, portfolioData, onTradeSuccess
   const canPlaceTrade = tradeErrors.length === 0 && analysisErrors.length === 0;
 
   return (
-    <div className={`trading-panel ${darkMode ? 'dark' : 'light'}`}>
+    <div 
+      className={`trading-panel ${darkMode ? 'dark' : 'light'}`}
+      onMouseEnter={() => handleUserInteraction(true)}
+      onMouseLeave={() => handleUserInteraction(false)}
+      onFocus={() => handleUserInteraction(true)}
+      onClick={() => handleUserInteraction(true)}
+    >
       <div className="panel-header">
         <h3>📈 Place Order</h3>
         <div className="asset-price">
-          {selectedAsset}: ${currentPrice.toFixed(2)}
+          <div className="price-display">
+            <span className="asset-symbol">{selectedAsset}</span>
+            <span className="price-value">${currentPrice.toFixed(2)}</span>
+            <span className="price-conversion">
+              (1 SENSES = {currentPrice > 0 ? (1 / currentPrice).toFixed(8) : '0.00000000'} {selectedAsset})
+            </span>
+          </div>
+          
+          <div className="balance-info">
+            <div className="available-balance">
+              Available: {formatSandboxCurrency(availableMargin)}
+            </div>
+            <div className="buying-power">
+              Can Buy: {currentPrice > 0 ? (availableMargin / currentPrice).toFixed(6) : '0.000000'} {selectedAsset}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -314,6 +348,8 @@ const TradingPanel = ({ selectedAsset, marketData, portfolioData, onTradeSuccess
             type="number"
             value={quantity}
             onChange={(e) => setQuantity(e.target.value)}
+            onFocus={() => handleUserInteraction(true)}
+            onBlur={() => handleUserInteraction(false)}
             placeholder="Enter quantity manually"
             step="0.000001"
             className="form-input quantity-input"
@@ -327,7 +363,7 @@ const TradingPanel = ({ selectedAsset, marketData, portfolioData, onTradeSuccess
             </div>
             <div className="balance-item">
               <span className="balance-label">Token Value:</span>
-              <span className="balance-value">${calculateBasePositionValue().toFixed(2)} SENSES</span>
+              <span className="balance-value">{formatSandboxCurrency(calculateBasePositionValue())}</span>
             </div>
           </div>
         </div>
@@ -380,15 +416,15 @@ const TradingPanel = ({ selectedAsset, marketData, portfolioData, onTradeSuccess
         <div className="trade-summary">
           <div className="summary-row">
             <span>Position Value:</span>
-            <span>${calculatePositionValue().toFixed(2)}</span>
+            <span>{formatSandboxCurrency(calculatePositionValue())}</span>
           </div>
           <div className="summary-row">
             <span>Margin Required:</span>
-            <span>${calculateMarginRequired().toFixed(2)}</span>
+            <span>{formatSandboxCurrency(calculateMarginRequired())}</span>
           </div>
           <div className="summary-row">
             <span>Available Margin:</span>
-            <span>${availableMargin.toFixed(2)}</span>
+            <span>{formatSandboxCurrency(availableMargin)}</span>
           </div>
         </div>
 
@@ -411,6 +447,8 @@ const TradingPanel = ({ selectedAsset, marketData, portfolioData, onTradeSuccess
                 <textarea
                   value={analysis.entryReason}
                   onChange={(e) => setAnalysis({...analysis, entryReason: e.target.value})}
+                  onFocus={() => handleUserInteraction(true)}
+                  onBlur={() => handleUserInteraction(false)}
                   placeholder="Explain your reasoning for entering this position... (minimum 10 characters)"
                   className="analysis-textarea"
                   rows="4"
@@ -541,6 +579,7 @@ const TradingPanel = ({ selectedAsset, marketData, portfolioData, onTradeSuccess
             {!showAnalysis && analysisErrors.length > 0 && (
               <div className="validation-error">• Complete pre-trade analysis required</div>
             )}
+            
           </div>
         )}
       </div>
@@ -582,18 +621,80 @@ const TradingPanel = ({ selectedAsset, marketData, portfolioData, onTradeSuccess
         }
         
         .asset-price {
-          font-size: 0.875rem;
-          font-weight: 600;
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+        
+        .price-display {
+          display: flex;
+          align-items: center;
+          gap: 8px;
           font-family: 'SF Mono', Monaco, monospace;
         }
         
-        .dark .asset-price {
-          color: rgba(255, 255, 255, 0.7);
+        .asset-symbol {
+          font-size: 1rem;
+          font-weight: 700;
+          color: #3b82f6;
         }
         
-        .light .asset-price {
-          color: rgba(0, 0, 0, 0.7);
+        .price-value {
+          font-size: 1rem;
+          font-weight: 600;
         }
+        
+        .dark .price-value {
+          color: rgba(255, 255, 255, 0.9);
+        }
+        
+        .light .price-value {
+          color: rgba(0, 0, 0, 0.9);
+        }
+        
+        .price-conversion {
+          font-size: 0.875rem;
+          font-weight: 500;
+          color: #10b981;
+        }
+        
+        .balance-info {
+          display: flex;
+          gap: 12px;
+          flex-wrap: wrap;
+        }
+        
+        .available-balance,
+        .buying-power {
+          font-size: 0.875rem;
+          font-weight: 600;
+          padding: 6px 12px;
+          border-radius: 6px;
+          white-space: nowrap;
+        }
+        
+        .available-balance {
+          background: rgba(16, 185, 129, 0.1);
+          color: #10b981;
+          border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+        
+        .buying-power {
+          background: rgba(245, 158, 11, 0.1);
+          color: #f59e0b;
+          border: 1px solid rgba(245, 158, 11, 0.2);
+        }
+        
+        .light .available-balance {
+          background: rgba(16, 185, 129, 0.05);
+          color: #059669;
+        }
+        
+        .light .buying-power {
+          background: rgba(245, 158, 11, 0.05);
+          color: #d97706;
+        }
+        
         
         .panel-content {
           flex: 1;
@@ -1065,6 +1166,7 @@ const TradingPanel = ({ selectedAsset, marketData, portfolioData, onTradeSuccess
           color: #ef4444;
           margin-bottom: 4px;
         }
+        
         
         @media (max-width: 768px) {
           .panel-content {

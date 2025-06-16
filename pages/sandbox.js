@@ -159,26 +159,9 @@ const SandboxPage = () => {
           <div className="header-content">
             <div className="title-section">
               <h1>🎯 Sandbox Trading</h1>
-              <p>Practice trading with virtual SENSE$ in a safe environment</p>
+              <p>Practice trading with virtual SENSES in a safe environment</p>
             </div>
             
-            <div className="balance-display">
-              <div className="balance-item">
-                <span className="balance-label">Balance</span>
-                <span className="balance-value">
-                  {sandboxStatus.portfolio?.balance?.toLocaleString() || '10,000'} SENSE$
-                </span>
-              </div>
-              
-              {sandboxStatus.portfolio?.totalReturn !== undefined && (
-                <div className="balance-item">
-                  <span className="balance-label">P&L</span>
-                  <span className={`balance-value ${sandboxStatus.portfolio.totalReturn >= 0 ? 'positive' : 'negative'}`}>
-                    {sandboxStatus.portfolio.totalReturn >= 0 ? '+' : ''}{sandboxStatus.portfolio.totalReturn.toFixed(2)}%
-                  </span>
-                </div>
-              )}
-            </div>
           </div>
         </div>
 
@@ -200,8 +183,9 @@ const SandboxPage = () => {
         
         .header-content {
           display: flex;
-          justify-content: space-between;
+          justify-content: center;
           align-items: center;
+          text-align: center;
           flex-wrap: wrap;
           gap: 20px;
           max-width: 1400px;
@@ -231,72 +215,14 @@ const SandboxPage = () => {
           color: rgba(0, 0, 0, 0.7);
         }
         
-        .balance-display {
-          display: flex;
-          gap: 24px;
-          align-items: center;
-        }
-        
-        .balance-item {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 4px;
-        }
-        
-        .balance-label {
-          font-size: 0.875rem;
-          font-weight: 500;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-        }
-        
-        .dark .balance-label {
-          color: rgba(255, 255, 255, 0.6);
-        }
-        
-        .light .balance-label {
-          color: rgba(0, 0, 0, 0.6);
-        }
-        
-        .balance-value {
-          font-size: 1.25rem;
-          font-weight: 700;
-          font-family: 'SF Mono', Monaco, monospace;
-        }
-        
-        .dark .balance-value {
-          color: rgba(255, 255, 255, 0.9);
-        }
-        
-        .light .balance-value {
-          color: rgba(0, 0, 0, 0.9);
-        }
-        
-        .balance-value.positive {
-          color: #10b981;
-        }
-        
-        .balance-value.negative {
-          color: #ef4444;
-        }
         
         @media (max-width: 768px) {
           .sandbox-page {
             padding: 16px;
           }
           
-          .header-content {
-            flex-direction: column;
-            text-align: center;
-          }
-          
           .title-section h1 {
             font-size: 1.75rem;
-          }
-          
-          .balance-display {
-            justify-content: center;
           }
         }
       `}</style>

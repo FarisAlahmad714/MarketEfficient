@@ -10,9 +10,16 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
   const [closingPosition, setClosingPosition] = useState(null);
   const [partialCloseData, setPartialCloseData] = useState({ positionId: null, percentage: 50 });
   const [showPartialClose, setShowPartialClose] = useState(false);
+  const [showCloseConfirm, setShowCloseConfirm] = useState(false);
+  const [positionToClose, setPositionToClose] = useState(null);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [orderToCancel, setOrderToCancel] = useState(null);
   const [loading, setLoading] = useState(false);
 
   const formatCurrency = (amount) => {
+    if (amount === null || amount === undefined || isNaN(amount)) {
+      return '0.00';
+    }
     return new Intl.NumberFormat('en-US', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
@@ -20,7 +27,55 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
   };
 
   const formatPercentage = (percentage) => {
+    if (percentage === null || percentage === undefined || isNaN(percentage)) {
+      return '(0.00%)';
+    }
     return `${percentage >= 0 ? '+' : ''}${percentage.toFixed(2)}%`;
+  };
+
+  const calculatePnLPercentage = (realizedPnL, marginUsed, leverage = 1) => {
+    if (!marginUsed || marginUsed === 0 || isNaN(marginUsed) || isNaN(realizedPnL)) return 0;
+    // Calculate percentage based on margin used (which is the actual capital at risk)
+    return (realizedPnL / marginUsed) * 100;
+  };
+
+  const formatTradeDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      month: 'numeric',
+      day: 'numeric', 
+      year: 'numeric'
+    });
+  };
+
+  const calculateLiquidationPrice = (position) => {
+    if (!position || position.leverage <= 1) return null;
+    
+    // Liquidation at 90% loss of margin
+    const liquidationThreshold = 0.9;
+    const maxLoss = position.marginUsed * liquidationThreshold;
+    const maxPriceMove = maxLoss / position.quantity;
+    
+    if (position.side === 'long') {
+      return position.entryPrice - maxPriceMove;
+    } else {
+      return position.entryPrice + maxPriceMove;
+    }
+  };
+
+  const getLiquidationRisk = (position, currentPrice) => {
+    const liquidationPrice = calculateLiquidationPrice(position);
+    if (!liquidationPrice) return null;
+    
+    const distance = position.side === 'long' 
+      ? ((currentPrice - liquidationPrice) / currentPrice) * 100
+      : ((liquidationPrice - currentPrice) / currentPrice) * 100;
+    
+    return {
+      price: liquidationPrice,
+      distance: distance,
+      risk: distance < 20 ? 'high' : distance < 50 ? 'medium' : 'low'
+    };
   };
 
   const getPerformanceColor = (value) => {
@@ -128,7 +183,7 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
     }
   };
 
-  const handleEditStopLoss = async (positionId, newStopLoss) => {
+  const handleEditStopLossAndTakeProfit = async (positionId, newStopLoss, newTakeProfit) => {
     try {
       setLoading(true);
       
@@ -141,7 +196,8 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
         },
         body: JSON.stringify({
           tradeId: positionId,
-          stopLoss: newStopLoss
+          stopLoss: newStopLoss,
+          takeProfit: newTakeProfit
         })
       });
       
@@ -216,7 +272,7 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
                           {position.leverage > 1 && ` ${position.leverage}x`}
                         </span>
                         <span className="quantity">
-                          {position.quantity} units
+                          {position.quantity?.toFixed(6) || '0'} units
                         </span>
                       </div>
                       
@@ -238,7 +294,10 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
                         </button>
                         <button 
                           className="action-button close"
-                          onClick={() => handleClosePosition(position.id)}
+                          onClick={() => {
+                            setPositionToClose(position);
+                            setShowCloseConfirm(true);
+                          }}
                           disabled={loading || closingPosition === position.id}
                           title="Close Position"
                         >
@@ -254,26 +313,114 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
                     <div className="position-details">
                       <div className="detail-row">
                         <span className="detail-label">Entry Price:</span>
-                        <span className="detail-value">${position.entryPrice?.toFixed(2)}</span>
+                        <span className="detail-value">{position.entryPrice?.toFixed(2)} SENSES</span>
                       </div>
                       
                       <div className="detail-row">
-                        <span className="detail-label">Current Price:</span>
-                        <span className="detail-value">
-                          ${marketData[position.symbol]?.price?.toFixed(2) || position.currentPrice?.toFixed(2)}
+                        <span className="detail-label">
+                          Current Price:
+                          <span 
+                            className="info-icon" 
+                            title={`Market price movement since entry. For ${position.side} positions: ${position.side === 'long' ? 'Green = profit, Red = loss' : 'Green = market up (loss for short), Red = market down (profit for short)'}`}
+                            style={{ 
+                              marginLeft: '4px', 
+                              cursor: 'help',
+                              color: '#666',
+                              fontSize: '0.7rem'
+                            }}
+                          >
+                            ⓘ
+                          </span>
                         </span>
+                        <span className="detail-value">
+                          {marketData[position.symbol]?.price?.toFixed(2) || position.currentPrice?.toFixed(2)} SENSES
+                          {(() => {
+                            const currentPrice = marketData[position.symbol]?.price || position.currentPrice;
+                            const priceChange = currentPrice - position.entryPrice;
+                            const priceChangePercent = (priceChange / position.entryPrice) * 100;
+                            
+                            // Color based on price change direction: green for positive, red for negative
+                            const color = priceChange >= 0 ? '#00ff88' : '#ff4757';
+                            
+                            return (
+                              <span className="price-change" style={{ 
+                                color: color, 
+                                marginLeft: '8px', 
+                                fontSize: '0.75rem',
+                                fontWeight: '600'
+                              }}>
+                                ({priceChange >= 0 ? '+' : ''}{priceChange.toFixed(2)} SENSES | {priceChangePercent >= 0 ? '+' : ''}{priceChangePercent.toFixed(2)}%)
+                              </span>
+                            );
+                          })()} 
+                        </span>
+                      </div>
+                      
+                      {/* P&L Breakdown */}
+                      <div className="detail-row pnl-breakdown">
+                        <span className="detail-label">P&L Breakdown:</span>
+                        <div className="pnl-details">
+                          {(() => {
+                            const currentPrice = marketData[position.symbol]?.price || position.currentPrice;
+                            const priceChange = currentPrice - position.entryPrice;
+                            
+                            // Calculate raw P&L from price movement using standardized logic
+                            const rawPnL = position.side === 'long' 
+                              ? priceChange * position.quantity 
+                              : -priceChange * position.quantity;
+                            
+                            // Actual P&L includes fees
+                            const actualPnL = position.unrealizedPnL || 0;
+                            const estimatedFees = rawPnL - actualPnL;
+                            
+                            return (
+                              <div className="pnl-breakdown-details">
+                                <div className="pnl-line">
+                                  <span>Price Movement:</span>
+                                  <span style={{ color: rawPnL >= 0 ? '#00ff88' : '#ff4757' }}>
+                                    {rawPnL >= 0 ? '+' : ''}{rawPnL.toFixed(2)} SENSES
+                                  </span>
+                                </div>
+                                {estimatedFees !== 0 && (
+                                  <div className="pnl-line">
+                                    <span>Est. Fees:</span>
+                                    <span style={{ color: '#ff4757' }}>
+                                      -{Math.abs(estimatedFees).toFixed(2)} SENSES
+                                    </span>
+                                  </div>
+                                )}
+                                <div className="pnl-line total">
+                                  <span>Net P&L:</span>
+                                  <span style={{ color: actualPnL >= 0 ? '#00ff88' : '#ff4757' }}>
+                                    {actualPnL >= 0 ? '+' : ''}{actualPnL.toFixed(2)} SENSES
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      </div>
+                      
+                      <div className="detail-row">
+                        <span className="detail-label">Position Value:</span>
+                        <span className="detail-value">{formatCurrency((marketData[position.symbol]?.price || position.currentPrice || position.entryPrice) * position.quantity)} SENSES</span>
                       </div>
                       
                       <div className="detail-row">
                         <span className="detail-label">Margin Used:</span>
-                        <span className="detail-value">${formatCurrency(position.marginUsed)}</span>
+                        <span className="detail-value">{formatCurrency(position.marginUsed || 0)} SENSES</span>
+                      </div>
+                      
+                      <div className="detail-row">
+                        <span className="detail-label">Entry Time:</span>
+                        <span className="detail-value">{formatTradeDate(position.entryTime)}</span>
                       </div>
                       
                       {position.stopLoss?.price && (
                         <div className="detail-row">
                           <span className="detail-label">Stop Loss:</span>
                           <span className="detail-value stop-loss">
-                            ${position.stopLoss.price.toFixed(2)}
+                            {position.stopLoss.price.toFixed(2)} SENSES
                           </span>
                         </div>
                       )}
@@ -282,10 +429,36 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
                         <div className="detail-row">
                           <span className="detail-label">Take Profit:</span>
                           <span className="detail-value take-profit">
-                            ${position.takeProfit.price.toFixed(2)}
+                            {position.takeProfit.price.toFixed(2)} SENSES
                           </span>
                         </div>
                       )}
+                      
+                      {/* Liquidation Risk Info */}
+                      {position.leverage > 1 && (() => {
+                        const currentPrice = marketData[position.symbol]?.price || position.currentPrice;
+                        const liquidationInfo = getLiquidationRisk(position, currentPrice);
+                        
+                        if (liquidationInfo) {
+                          return (
+                            <div className="detail-row">
+                              <span className="detail-label">Liquidation Risk:</span>
+                              <span className="detail-value">
+                                {liquidationInfo.price.toFixed(2)} SENSES
+                                <span className={`risk-indicator risk-${liquidationInfo.risk}`} style={{
+                                  marginLeft: '8px',
+                                  fontSize: '0.75rem',
+                                  fontWeight: '600',
+                                  color: liquidationInfo.risk === 'high' ? '#ff4757' : liquidationInfo.risk === 'medium' ? '#ffa502' : '#7bed9f'
+                                }}>
+                                  ({liquidationInfo.distance.toFixed(1)}% away)
+                                </span>
+                              </span>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
                     </div>
 
                     <div className="position-performance">
@@ -294,7 +467,7 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
                           className="pnl-amount"
                           style={{ color: getPerformanceColor(position.unrealizedPnL || 0) }}
                         >
-                          {position.unrealizedPnL >= 0 ? '+' : ''}{formatCurrency(position.unrealizedPnL || 0)} SENSE$
+                          {position.unrealizedPnL >= 0 ? '+' : ''}{formatCurrency(position.unrealizedPnL || 0)} SENSES
                         </div>
                         <div 
                           className="pnl-percentage"
@@ -311,7 +484,7 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
                         </div>
                         <div className="meta-item">
                           <span className="confidence">
-                            Confidence: {position.confidenceLevel}/10
+                            Confidence: {position.confidenceLevel || 'N/A'}/10
                           </span>
                         </div>
                       </div>
@@ -324,25 +497,36 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
                       </div>
                     </div>
 
-                    {/* Edit Stop Loss Modal */}
+                    {/* Edit Stop Loss & Take Profit Modal */}
                     {editingPosition === position.id && (
                       <div className="edit-modal">
-                        <div className="modal-content">
-                          <h4>Edit Stop Loss</h4>
-                          <input
-                            type="number"
-                            placeholder="New stop loss price"
-                            step="0.01"
-                            className="modal-input"
-                            onKeyPress={(e) => {
-                              if (e.key === 'Enter') {
-                                const newStopLoss = parseFloat(e.target.value);
-                                if (newStopLoss > 0) {
-                                  handleEditStopLoss(position.id, newStopLoss);
-                                }
-                              }
-                            }}
-                          />
+                        <div className="modal-content edit-sl-tp-modal">
+                          <h4>Edit Stop Loss & Take Profit</h4>
+                          
+                          <div className="edit-fields">
+                            <div className="edit-field">
+                              <label>Stop Loss Price (SENSES)</label>
+                              <input
+                                type="number"
+                                placeholder={position.stopLoss?.price || "Enter stop loss price"}
+                                step="0.01"
+                                className="modal-input"
+                                id="stopLossInput"
+                              />
+                            </div>
+                            
+                            <div className="edit-field">
+                              <label>Take Profit Price (SENSES)</label>
+                              <input
+                                type="number"
+                                placeholder={position.takeProfit?.price || "Enter take profit price"}
+                                step="0.01"
+                                className="modal-input"
+                                id="takeProfitInput"
+                              />
+                            </div>
+                          </div>
+                          
                           <div className="modal-actions">
                             <button 
                               className="modal-button cancel"
@@ -352,15 +536,15 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
                             </button>
                             <button 
                               className="modal-button save"
-                              onClick={(e) => {
-                                const input = e.target.parentElement.previousElementSibling;
-                                const newStopLoss = parseFloat(input.value);
-                                if (newStopLoss > 0) {
-                                  handleEditStopLoss(position.id, newStopLoss);
-                                }
+                              onClick={() => {
+                                const stopLossInput = document.getElementById('stopLossInput');
+                                const takeProfitInput = document.getElementById('takeProfitInput');
+                                const newStopLoss = parseFloat(stopLossInput.value) || null;
+                                const newTakeProfit = parseFloat(takeProfitInput.value) || null;
+                                handleEditStopLossAndTakeProfit(position.id, newStopLoss, newTakeProfit);
                               }}
                             >
-                              Save
+                              Save Changes
                             </button>
                           </div>
                         </div>
@@ -370,6 +554,116 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Close Confirmation Modal */}
+        {showCloseConfirm && positionToClose && (
+          <div className="modal-overlay">
+            <div className="modal-content close-confirm-modal">
+              <h4>⚠️ Close Position</h4>
+              <p>Are you sure you want to close this position?</p>
+              
+              <div className="position-summary">
+                <div className="summary-item">
+                  <span className="label">Asset:</span>
+                  <span className="value">{positionToClose.symbol} {positionToClose.side.toUpperCase()} {positionToClose.leverage}x</span>
+                </div>
+                <div className="summary-item">
+                  <span className="label">Quantity:</span>
+                  <span className="value">{positionToClose.quantity?.toFixed(6)} units</span>
+                </div>
+                <div className="summary-item">
+                  <span className="label">Current P&L:</span>
+                  <span className="value" style={{ color: (positionToClose.unrealizedPnL || 0) >= 0 ? '#00ff88' : '#ff4757' }}>
+                    {(positionToClose.unrealizedPnL || 0) >= 0 ? '+' : ''}{formatCurrency(positionToClose.unrealizedPnL || 0)} SENSES
+                  </span>
+                </div>
+                <div className="summary-item">
+                  <span className="label">Entry Reason:</span>
+                  <span className="value reason">{positionToClose.entryReason || 'No reason provided'}</span>
+                </div>
+              </div>
+
+              <div className="modal-actions">
+                <button 
+                  className="modal-button cancel"
+                  onClick={() => {
+                    setShowCloseConfirm(false);
+                    setPositionToClose(null);
+                  }}
+                >
+                  Cancel
+                </button>
+                <button 
+                  className="modal-button danger"
+                  onClick={() => {
+                    handleClosePosition(positionToClose.id);
+                    setShowCloseConfirm(false);
+                    setPositionToClose(null);
+                  }}
+                  disabled={loading}
+                >
+                  {loading ? 'Closing...' : 'Yes, Close Position'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Cancel Order Confirmation Modal */}
+        {showCancelConfirm && orderToCancel && (
+          <div className="modal-overlay">
+            <div className="modal-content close-confirm-modal">
+              <h4>⚠️ Cancel Order</h4>
+              <p>Are you sure you want to cancel this pending order?</p>
+              
+              <div className="position-summary">
+                <div className="summary-item">
+                  <span className="label">Asset:</span>
+                  <span className="value">{orderToCancel.symbol} {orderToCancel.side.toUpperCase()} {orderToCancel.leverage}x</span>
+                </div>
+                <div className="summary-item">
+                  <span className="label">Order Type:</span>
+                  <span className="value">{orderToCancel.type.toUpperCase()}</span>
+                </div>
+                <div className="summary-item">
+                  <span className="label">Quantity:</span>
+                  <span className="value">{orderToCancel.quantity} units</span>
+                </div>
+                <div className="summary-item">
+                  <span className="label">Limit Price:</span>
+                  <span className="value">{orderToCancel.limitPrice?.toFixed(2)} SENSES</span>
+                </div>
+                <div className="summary-item">
+                  <span className="label">Entry Reason:</span>
+                  <span className="value reason">{orderToCancel.entryReason || 'No reason provided'}</span>
+                </div>
+              </div>
+
+              <div className="modal-actions">
+                <button 
+                  className="modal-button cancel"
+                  onClick={() => {
+                    setShowCancelConfirm(false);
+                    setOrderToCancel(null);
+                  }}
+                >
+                  Keep Order
+                </button>
+                <button 
+                  className="modal-button danger"
+                  onClick={() => {
+                    handleCancelOrder(orderToCancel.id);
+                    setShowCancelConfirm(false);
+                    setOrderToCancel(null);
+                  }}
+                  disabled={loading}
+                >
+                  {loading ? 'Cancelling...' : 'Yes, Cancel Order'}
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
@@ -465,7 +759,10 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
                       <div className="order-actions">
                         <button 
                           className="action-button cancel"
-                          onClick={() => handleCancelOrder(order.id)}
+                          onClick={() => {
+                            setOrderToCancel(order);
+                            setShowCancelConfirm(true);
+                          }}
                           disabled={loading}
                           title="Cancel Order"
                         >
@@ -481,26 +778,26 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
                     <div className="order-details">
                       <div className="detail-row">
                         <span className="detail-label">Limit Price:</span>
-                        <span className="detail-value">${order.limitPrice?.toFixed(2)}</span>
+                        <span className="detail-value">{order.limitPrice?.toFixed(2)} SENSES</span>
                       </div>
                       
                       <div className="detail-row">
                         <span className="detail-label">Current Price:</span>
                         <span className="detail-value">
-                          ${marketData[order.symbol]?.price?.toFixed(2) || 'Loading...'}
+                          {marketData[order.symbol]?.price?.toFixed(2) || 'Loading...'} SENSES
                         </span>
                       </div>
                       
                       <div className="detail-row">
                         <span className="detail-label">Margin Reserved:</span>
-                        <span className="detail-value">${formatCurrency(order.marginReserved)}</span>
+                        <span className="detail-value">{formatCurrency(order.marginReserved)} SENSES</span>
                       </div>
                       
                       {order.stopLoss?.price && (
                         <div className="detail-row">
                           <span className="detail-label">Stop Loss:</span>
                           <span className="detail-value stop-loss">
-                            ${order.stopLoss.price.toFixed(2)}
+                            {order.stopLoss.price.toFixed(2)} SENSES
                           </span>
                         </div>
                       )}
@@ -509,7 +806,7 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
                         <div className="detail-row">
                           <span className="detail-label">Take Profit:</span>
                           <span className="detail-value take-profit">
-                            ${order.takeProfit.price.toFixed(2)}
+                            {order.takeProfit.price.toFixed(2)} SENSES
                           </span>
                         </div>
                       )}
@@ -522,7 +819,7 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
                       </div>
                       <div className="meta-item">
                         <span className="confidence">
-                          Confidence: {order.confidenceLevel}/10
+                          Confidence: {order.confidenceLevel || 'N/A'}/10
                         </span>
                       </div>
                     </div>
@@ -560,16 +857,19 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
                           {trade.side.toUpperCase()}
                           {trade.leverage > 1 && ` ${trade.leverage}x`}
                         </span>
+                        <span className="quantity">{trade.quantity?.toFixed(6) || '0'} units</span>
                       </div>
                       
                       <div 
                         className="trade-result"
                         style={{ color: getPerformanceColor(trade.realizedPnL || 0) }}
                       >
-                        {trade.realizedPnL >= 0 ? '+' : ''}{formatCurrency(trade.realizedPnL || 0)}
-                        <span className="result-percentage">
-                          ({formatPercentage(trade.pnlPercentage || 0)})
-                        </span>
+                        <div className="pnl-amount">
+                          {trade.realizedPnL >= 0 ? '+' : ''}{formatCurrency(trade.realizedPnL || 0)} SENSES
+                        </div>
+                        <div className="result-percentage">
+                          ({formatPercentage(calculatePnLPercentage(trade.realizedPnL, trade.marginUsed, trade.leverage))})
+                        </div>
                       </div>
                     </div>
 
@@ -577,20 +877,24 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
                       <div className="detail-grid">
                         <div className="detail-item">
                           <span className="label">Entry:</span>
-                          <span className="value">${trade.entryPrice?.toFixed(2)}</span>
+                          <span className="value">{trade.entryPrice?.toFixed(2)} SENSES</span>
                         </div>
                         <div className="detail-item">
                           <span className="label">Exit:</span>
-                          <span className="value">${trade.exitPrice?.toFixed(2)}</span>
+                          <span className="value">{trade.exitPrice?.toFixed(2)} SENSES</span>
                         </div>
                         <div className="detail-item">
                           <span className="label">Duration:</span>
                           <span className="value">{trade.duration}</span>
                         </div>
                         <div className="detail-item">
+                          <span className="label">Margin:</span>
+                          <span className="value">{formatCurrency(trade.marginUsed || 0)} SENSES</span>
+                        </div>
+                        <div className="detail-item">
                           <span className="label">Date:</span>
                           <span className="value">
-                            {new Date(trade.exitTime).toLocaleDateString()}
+                            {formatTradeDate(trade.exitTime)}
                           </span>
                         </div>
                       </div>
@@ -949,6 +1253,65 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
           color: #00ff88;
         }
         
+        .pnl-breakdown {
+          flex-direction: column;
+          align-items: flex-start;
+          margin-bottom: 16px;
+          padding: 12px;
+          border-radius: 8px;
+        }
+        
+        .dark .pnl-breakdown {
+          background: rgba(255, 255, 255, 0.02);
+          border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .light .pnl-breakdown {
+          background: rgba(0, 0, 0, 0.01);
+          border: 1px solid rgba(0, 0, 0, 0.05);
+        }
+        
+        .pnl-breakdown .detail-label {
+          margin-bottom: 8px;
+          font-weight: 600;
+        }
+        
+        .pnl-breakdown-details {
+          width: 100%;
+        }
+        
+        .pnl-line {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 4px;
+          font-size: 0.8rem;
+        }
+        
+        .pnl-line.total {
+          margin-top: 8px;
+          padding-top: 8px;
+          border-top: 1px solid;
+          font-weight: 600;
+          font-size: 0.875rem;
+        }
+        
+        .dark .pnl-line.total {
+          border-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        .light .pnl-line.total {
+          border-color: rgba(0, 0, 0, 0.1);
+        }
+        
+        .dark .pnl-line span:first-child {
+          color: rgba(255, 255, 255, 0.7);
+        }
+        
+        .light .pnl-line span:first-child {
+          color: rgba(0, 0, 0, 0.7);
+        }
+        
         .position-performance {
           display: flex;
           justify-content: space-between;
@@ -1101,6 +1464,101 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
         .modal-button.save {
           background: #3b82f6;
           color: white;
+        }
+        
+        .modal-button.danger {
+          background: #ef4444;
+          color: white;
+        }
+        
+        .modal-button.danger:hover:not(:disabled) {
+          background: #dc2626;
+        }
+        
+        .modal-button.danger:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+        
+        .close-confirm-modal {
+          min-width: 400px;
+          max-width: 90vw;
+        }
+        
+        .close-confirm-modal h4 {
+          margin: 0 0 8px 0;
+          font-size: 1.25rem;
+          font-weight: 700;
+          color: #ef4444;
+        }
+        
+        .close-confirm-modal p {
+          margin: 0 0 20px 0;
+          font-size: 0.875rem;
+        }
+        
+        .dark .close-confirm-modal p {
+          color: rgba(255, 255, 255, 0.7);
+        }
+        
+        .light .close-confirm-modal p {
+          color: rgba(0, 0, 0, 0.7);
+        }
+        
+        .position-summary {
+          background: rgba(239, 68, 68, 0.05);
+          border: 1px solid rgba(239, 68, 68, 0.2);
+          border-radius: 8px;
+          padding: 16px;
+          margin-bottom: 20px;
+        }
+        
+        .summary-item {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          margin-bottom: 8px;
+          font-size: 0.875rem;
+        }
+        
+        .summary-item:last-child {
+          margin-bottom: 0;
+        }
+        
+        .summary-item .label {
+          font-weight: 600;
+          min-width: 80px;
+        }
+        
+        .dark .summary-item .label {
+          color: rgba(255, 255, 255, 0.8);
+        }
+        
+        .light .summary-item .label {
+          color: rgba(0, 0, 0, 0.8);
+        }
+        
+        .summary-item .value {
+          font-weight: 600;
+          text-align: right;
+          flex: 1;
+          margin-left: 12px;
+        }
+        
+        .dark .summary-item .value {
+          color: rgba(255, 255, 255, 0.9);
+        }
+        
+        .light .summary-item .value {
+          color: rgba(0, 0, 0, 0.9);
+        }
+        
+        .summary-item .value.reason {
+          font-weight: 400;
+          font-style: italic;
+          opacity: 0.8;
+          font-size: 0.8rem;
+          line-height: 1.3;
         }
         
         .history-details {
