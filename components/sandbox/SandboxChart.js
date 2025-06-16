@@ -1,9 +1,9 @@
 import React, { useEffect, useRef, useContext, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { ThemeContext } from '../../contexts/ThemeContext';
-import { FaChevronDown, FaClock, FaExpand } from 'react-icons/fa';
+import { FaChevronDown, FaClock, FaExpand, FaPencilAlt } from 'react-icons/fa';
 import { SANDBOX_ASSETS } from '../../lib/sandbox-constants';
-// import SimpleChart from './SimpleChart'; // Not needed anymore
+import SandboxDrawingTools from './SandboxDrawingTools';
 import storage from '../../lib/storage';
 
 const SandboxChart = ({ selectedAsset, marketData, onAssetChange, portfolioData }) => {
@@ -18,6 +18,9 @@ const SandboxChart = ({ selectedAsset, marketData, onAssetChange, portfolioData 
   const [showAssetSelector, setShowAssetSelector] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
+  const [showDrawingTools, setShowDrawingTools] = useState(false);
+  const [drawings, setDrawings] = useState([]);
+  const [candlestickSeries, setCandlestickSeries] = useState(null);
   
   const timeframes = [
     { label: '1M', value: '1min' },
@@ -123,7 +126,7 @@ const SandboxChart = ({ selectedAsset, marketData, onAssetChange, portfolioData 
           horzLines: { color: darkMode ? '#1a1a1a' : '#f0f0f0' },
         },
         crosshair: {
-          mode: 1,
+          mode: 0,
           vertLine: {
             width: 1,
             color: darkMode ? '#505050' : '#999999',
@@ -154,7 +157,7 @@ const SandboxChart = ({ selectedAsset, marketData, onAssetChange, portfolioData 
       chartInstanceRef.current = createChart(chartContainerRef.current, chartOptions);
       
       // Add candlestick series
-      const candlestickSeries = chartInstanceRef.current.addCandlestickSeries({
+      const candlestickSeriesInstance = chartInstanceRef.current.addCandlestickSeries({
         upColor: '#00ff88',
         downColor: '#ff4757',
         borderUpColor: '#00ff88',
@@ -163,17 +166,18 @@ const SandboxChart = ({ selectedAsset, marketData, onAssetChange, portfolioData 
         wickDownColor: '#ff4757',
       });
       
-      candlestickSeries.setData(data);
+      candlestickSeriesInstance.setData(data);
+      setCandlestickSeries(candlestickSeriesInstance);
       
       // Add position markers if portfolio has open positions
       if (portfolioData?.openPositions?.length > 0) {
-        addPositionMarkers(candlestickSeries);
+        addPositionMarkers(candlestickSeriesInstance);
       }
       
       // Add click handler for order placement
       chartInstanceRef.current.subscribeCrosshairMove((param) => {
         if (param.time && param.seriesPrices) {
-          const price = param.seriesPrices.get(candlestickSeries);
+          const price = param.seriesPrices.get(candlestickSeriesInstance);
           if (price) {
             // Could emit price for order placement
           }
@@ -367,6 +371,14 @@ const SandboxChart = ({ selectedAsset, marketData, onAssetChange, portfolioData 
           </div>
           
           <button 
+            className={`drawing-tools-button ${showDrawingTools ? 'active' : ''}`}
+            onClick={() => setShowDrawingTools(!showDrawingTools)}
+            title="Toggle Drawing Tools"
+          >
+            <FaPencilAlt />
+          </button>
+          
+          <button 
             className="fullscreen-button"
             onClick={() => setFullscreen(!fullscreen)}
           >
@@ -390,9 +402,21 @@ const SandboxChart = ({ selectedAsset, marketData, onAssetChange, portfolioData 
           style={{ 
             width: '100%', 
             height: fullscreen ? 'calc(100vh - 200px)' : '500px',
-            opacity: loading ? 0.3 : 1 
+            opacity: loading ? 0.3 : 1,
+            position: 'relative'
           }}
         />
+        
+        {/* Drawing Tools Overlay */}
+        {showDrawingTools && chartInstanceRef.current && chartContainerRef.current && candlestickSeries && (
+          <SandboxDrawingTools
+            chartInstance={chartInstanceRef.current}
+            chartContainer={chartContainerRef.current}
+            candlestickSeries={candlestickSeries}
+            chartData={chartData}
+            onDrawingUpdate={setDrawings}
+          />
+        )}
       </div>
 
       <style jsx>{`
@@ -742,6 +766,44 @@ const SandboxChart = ({ selectedAsset, marketData, onAssetChange, portfolioData 
         .light .fullscreen-button:hover {
           background: rgba(0, 0, 0, 0.04);
           color: rgba(0, 0, 0, 0.9);
+        }
+        
+        .drawing-tools-button {
+          padding: 8px;
+          border: none;
+          border-radius: 6px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+        
+        .dark .drawing-tools-button {
+          background: rgba(255, 255, 255, 0.05);
+          color: rgba(255, 255, 255, 0.7);
+        }
+        
+        .light .drawing-tools-button {
+          background: rgba(0, 0, 0, 0.02);
+          color: rgba(0, 0, 0, 0.7);
+        }
+        
+        .drawing-tools-button:hover {
+          transform: translateY(-1px);
+        }
+        
+        .dark .drawing-tools-button:hover {
+          background: rgba(255, 255, 255, 0.08);
+          color: rgba(255, 255, 255, 0.9);
+        }
+        
+        .light .drawing-tools-button:hover {
+          background: rgba(0, 0, 0, 0.04);
+          color: rgba(0, 0, 0, 0.9);
+        }
+        
+        .drawing-tools-button.active {
+          background: #00ff88;
+          color: #000;
+          font-weight: 600;
         }
         
         .chart-content {
