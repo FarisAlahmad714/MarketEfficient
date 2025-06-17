@@ -253,6 +253,46 @@ const SandboxChart = ({ selectedAsset, marketData, onAssetChange, portfolioData 
         }
       }
     });
+
+    // Add pending limit order markers
+    if (portfolioData?.pendingOrders?.length > 0) {
+      portfolioData.pendingOrders.forEach(order => {
+        if (order.symbol === selectedAsset) {
+          // Add pending limit order line
+          series.createPriceLine({
+            price: order.limitPrice,
+            color: '#ffa502', // Orange for pending limit orders
+            lineWidth: 2,
+            lineStyle: 2, // dotted
+            axisLabelVisible: true,
+            title: `${order.side.toUpperCase()} Limit: ${order.limitPrice} SENSES`,
+          });
+
+          // Add TP/SL for pending orders if they exist
+          if (order.stopLoss?.price) {
+            series.createPriceLine({
+              price: order.stopLoss.price,
+              color: '#ff6b6b',
+              lineWidth: 1,
+              lineStyle: 3, // large dashed for pending order SL
+              axisLabelVisible: true,
+              title: `Pending SL: ${order.stopLoss.price} SENSES`,
+            });
+          }
+
+          if (order.takeProfit?.price) {
+            series.createPriceLine({
+              price: order.takeProfit.price,
+              color: '#51cf66',
+              lineWidth: 1,
+              lineStyle: 3, // large dashed for pending order TP
+              axisLabelVisible: true,
+              title: `Pending TP: ${order.takeProfit.price} SENSES`,
+            });
+          }
+        }
+      });
+    }
   };
 
   const getCurrentPrice = () => {

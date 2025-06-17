@@ -789,6 +789,11 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
                       </div>
                       
                       <div className="detail-row">
+                        <span className="detail-label">Leverage:</span>
+                        <span className="detail-value">{order.leverage || 1}x</span>
+                      </div>
+                      
+                      <div className="detail-row">
                         <span className="detail-label">Margin Reserved:</span>
                         <span className="detail-value">{formatCurrency(order.marginReserved)} SENSES</span>
                       </div>

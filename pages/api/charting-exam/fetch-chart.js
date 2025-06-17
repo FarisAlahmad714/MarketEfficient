@@ -68,34 +68,34 @@ async function fetchChartHandler(req, res) {
   const timeframe = timeframes[Math.floor(Math.random() * timeframes.length)];
 
   // Map timeframe to API parameters
-  let apiTimeframe, days;
+  let apiTimeframe, candles;
   switch (timeframe) {
     case '1h':
-      apiTimeframe = 'hourly';
-      days = 1;
+      apiTimeframe = '1h';
+      candles = 150; // ~6 days of 1h candles
       break;
     case '4h':
-      apiTimeframe = 'hourly';
-      days = 7;
+      apiTimeframe = '4h';
+      candles = 120; // ~20 days of 4h candles
       break;
     case '1d':
-      apiTimeframe = 'daily';
-      days = 30;
+      apiTimeframe = '1day';
+      candles = 180; // ~6 months
       break;
     case '1w':
-      apiTimeframe = 'daily';
-      days = 365;
+      apiTimeframe = '1week';
+      candles = 260; // ~5 years of weekly candles
       break;
     default:
-      apiTimeframe = 'daily';
-      days = 30;
+      apiTimeframe = '1day';
+      candles = 180;
   }
 
-  logger.log(`Fetching data for ${asset.apiId} on timeframe ${timeframe} (${apiTimeframe}, ${days} days)`);
+  logger.log(`Fetching data for ${asset.apiId} on timeframe ${timeframe} (${apiTimeframe}, ${candles} candles)`);
 
   let chartData;
   try {
-    const ohlcData = await fetchAssetOHLCData(asset, apiTimeframe, days);
+    const ohlcData = await fetchAssetOHLCData(asset, apiTimeframe, candles);
     chartData = {
       chart_data: ohlcData.map(candle => ({
         time: Math.floor(new Date(candle.date).getTime() / 1000),

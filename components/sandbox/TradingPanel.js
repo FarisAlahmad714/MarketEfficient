@@ -85,8 +85,9 @@ const TradingPanel = ({ selectedAsset, marketData, portfolioData, onTradeSuccess
   };
   
   useEffect(() => {
-    // Auto-fill limit price with current price
-    if (orderType === 'limit' && currentPrice > 0) {
+    // Auto-fill limit price with current price only when switching to limit order
+    // Don't override user's manually entered limit price
+    if (orderType === 'limit' && currentPrice > 0 && !limitPrice) {
       setLimitPrice(currentPrice.toFixed(2));
     }
   }, [orderType, currentPrice]);
@@ -197,7 +198,10 @@ const TradingPanel = ({ selectedAsset, marketData, portfolioData, onTradeSuccess
       
       // Reset form
       setQuantity('');
-      setLimitPrice('');
+      // Don't reset limit price if user is still on limit order type
+      if (orderType !== 'limit') {
+        setLimitPrice('');
+      }
       setStopLoss('');
       setTakeProfit('');
       setAnalysis({

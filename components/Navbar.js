@@ -309,53 +309,88 @@ const Navbar = () => {
           </Link>
           
           {isAuthenticated && (
-            <Link 
-              href={sandboxUnlocked || user?.isAdmin ? "/sandbox" : "#"} 
-              className={`nav-link ${router.pathname.includes('/sandbox') ? 'active' : ''} ${!sandboxUnlocked && !user?.isAdmin ? 'locked' : ''}`}
-              onClick={!sandboxUnlocked && !user?.isAdmin ? (e) => {
-                e.preventDefault();
-                // Could show a modal with unlock requirements
-              } : undefined}
-              title={user?.isAdmin ? 'Sandbox Trading (Admin Access)' : sandboxUnlocked ? 'Sandbox Trading' : `Sandbox Trading (${sandboxProgress.toFixed(0)}% complete)`}
-            >
-              <div className="nav-icon-wrapper">
-                {sandboxUnlocked || user?.isAdmin ? (
-                  <RiExchangeLine className="nav-icon" />
-                ) : (
-                  <FaLock className="nav-icon" />
-                )}
-                <span className="nav-glow"></span>
-                {!sandboxUnlocked && !user?.isAdmin && sandboxProgress > 0 && (
-                  <div className="progress-ring">
-                    <svg width="40" height="40" className="progress-circle">
-                      <circle 
-                        cx="20" 
-                        cy="20" 
-                        r="18" 
-                        stroke="rgba(59, 130, 246, 0.3)" 
-                        strokeWidth="2" 
-                        fill="none"
-                      />
-                      <circle 
-                        cx="20" 
-                        cy="20" 
-                        r="18" 
-                        stroke="#3b82f6" 
-                        strokeWidth="2" 
-                        fill="none"
-                        strokeDasharray={`${2 * Math.PI * 18}`}
-                        strokeDashoffset={`${2 * Math.PI * 18 * (1 - sandboxProgress / 100)}`}
-                        className="progress-circle-fill"
-                      />
-                    </svg>
+            <div className="sandbox-nav-container">
+              <Link 
+                href={sandboxUnlocked || user?.isAdmin ? "/sandbox" : "#"} 
+                className={`nav-link ${router.pathname.includes('/sandbox') ? 'active' : ''} ${!sandboxUnlocked && !user?.isAdmin ? 'locked' : ''}`}
+                onClick={!sandboxUnlocked && !user?.isAdmin ? (e) => {
+                  e.preventDefault();
+                  // Could show a modal with unlock requirements
+                } : undefined}
+                title={user?.isAdmin ? 'Sandbox Trading (Admin Access)' : sandboxUnlocked ? 'Sandbox Trading' : `Sandbox Trading (${sandboxProgress.toFixed(0)}% complete)`}
+              >
+                <div className="nav-icon-wrapper">
+                  {sandboxUnlocked || user?.isAdmin ? (
+                    <RiExchangeLine className="nav-icon" />
+                  ) : (
+                    <FaLock className="nav-icon" />
+                  )}
+                  <span className="nav-glow"></span>
+                  {!sandboxUnlocked && !user?.isAdmin && sandboxProgress > 0 && (
+                    <div className="progress-ring">
+                      <svg width="40" height="40" className="progress-circle">
+                        <circle 
+                          cx="20" 
+                          cy="20" 
+                          r="18" 
+                          stroke="rgba(59, 130, 246, 0.3)" 
+                          strokeWidth="2" 
+                          fill="none"
+                        />
+                        <circle 
+                          cx="20" 
+                          cy="20" 
+                          r="18" 
+                          stroke="#3b82f6" 
+                          strokeWidth="2" 
+                          fill="none"
+                          strokeDasharray={`${2 * Math.PI * 18}`}
+                          strokeDashoffset={`${2 * Math.PI * 18 * (1 - sandboxProgress / 100)}`}
+                          className="progress-circle-fill"
+                        />
+                      </svg>
+                    </div>
+                  )}
+                </div>
+                <span className="nav-text">
+                  {user?.isAdmin ? 'Sandbox' : sandboxUnlocked ? 'Sandbox' : `Sandbox ${sandboxProgress.toFixed(0)}%`}
+                </span>
+                {router.pathname.includes('/sandbox') && <div className="nav-active-dot"></div>}
+              </Link>
+              
+              {!sandboxUnlocked && !user?.isAdmin && (
+                <div className="sandbox-tooltip">
+                  <div className="tooltip-content">
+                    <div className="tooltip-header">
+                      <FaLock className="tooltip-icon" />
+                      <h4>Complete Tests to Unlock</h4>
+                    </div>
+                    <div className="tooltip-progress">
+                      <div className="progress-bar">
+                        <div 
+                          className="progress-fill" 
+                          style={{ width: `${sandboxProgress}%` }}
+                        ></div>
+                      </div>
+                      <span className="progress-text">{sandboxProgress.toFixed(0)}% Complete</span>
+                    </div>
+                    <div className="tooltip-requirements">
+                      <div className="requirement-item">
+                        <TbScale className="req-icon" />
+                        <span>Complete Bias Tests</span>
+                      </div>
+                      <div className="requirement-item">
+                        <TbChartLine className="req-icon" />
+                        <span>Pass Chart Exams</span>
+                      </div>
+                    </div>
+                    <div className="tooltip-footer">
+                      <span>Unlock $10,000 SENSE$ Trading</span>
+                    </div>
                   </div>
-                )}
-              </div>
-              <span className="nav-text">
-                {user?.isAdmin ? 'Sandbox' : sandboxUnlocked ? 'Sandbox' : `Sandbox ${sandboxProgress.toFixed(0)}%`}
-              </span>
-              {router.pathname.includes('/sandbox') && <div className="nav-active-dot"></div>}
-            </Link>
+                </div>
+              )}
+            </div>
           )}
         </nav>
 
@@ -2283,6 +2318,172 @@ const Navbar = () => {
           }
         }
         
+        /* Sandbox Tooltip Styles */
+        .sandbox-nav-container {
+          position: relative;
+        }
+        
+        .sandbox-tooltip {
+          position: absolute;
+          top: 100%;
+          left: 50%;
+          transform: translateX(-50%);
+          margin-top: 12px;
+          opacity: 0;
+          visibility: hidden;
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          z-index: 9999;
+          pointer-events: none;
+        }
+        
+        .sandbox-nav-container:hover .sandbox-tooltip {
+          opacity: 1;
+          visibility: visible;
+          transform: translateX(-50%) translateY(4px);
+          pointer-events: auto;
+        }
+        
+        .tooltip-content {
+          background: rgba(10, 12, 30, 0.98);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 12px;
+          padding: 20px;
+          width: 280px;
+          box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+          backdrop-filter: blur(20px);
+          position: relative;
+        }
+        
+        .light .tooltip-content {
+          background: rgba(255, 255, 255, 0.98);
+          border-color: rgba(0, 0, 0, 0.1);
+          box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+        }
+        
+        .tooltip-content::before {
+          content: '';
+          position: absolute;
+          top: -6px;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 12px;
+          height: 12px;
+          background: rgba(10, 12, 30, 0.98);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-bottom: none;
+          border-right: none;
+          transform: translateX(-50%) rotate(45deg);
+        }
+        
+        .light .tooltip-content::before {
+          background: rgba(255, 255, 255, 0.98);
+          border-color: rgba(0, 0, 0, 0.1);
+        }
+        
+        .tooltip-header {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin-bottom: 16px;
+        }
+        
+        .tooltip-icon {
+          color: #f59e0b;
+          font-size: 16px;
+        }
+        
+        .tooltip-header h4 {
+          margin: 0;
+          font-size: 14px;
+          font-weight: 600;
+          color: rgba(255, 255, 255, 0.9);
+        }
+        
+        .light .tooltip-header h4 {
+          color: rgba(0, 0, 0, 0.9);
+        }
+        
+        .tooltip-progress {
+          margin-bottom: 16px;
+        }
+        
+        .progress-bar {
+          width: 100%;
+          height: 6px;
+          background: rgba(255, 255, 255, 0.1);
+          border-radius: 3px;
+          overflow: hidden;
+          margin-bottom: 8px;
+        }
+        
+        .light .progress-bar {
+          background: rgba(0, 0, 0, 0.1);
+        }
+        
+        .progress-fill {
+          height: 100%;
+          background: linear-gradient(90deg, #3b82f6 0%, #6366f1 100%);
+          border-radius: 3px;
+          transition: width 0.5s ease;
+        }
+        
+        .progress-text {
+          font-size: 12px;
+          font-weight: 500;
+          color: rgba(255, 255, 255, 0.7);
+        }
+        
+        .light .progress-text {
+          color: rgba(0, 0, 0, 0.7);
+        }
+        
+        .tooltip-requirements {
+          margin-bottom: 16px;
+        }
+        
+        .requirement-item {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 8px 0;
+          font-size: 13px;
+          color: rgba(255, 255, 255, 0.8);
+        }
+        
+        .light .requirement-item {
+          color: rgba(0, 0, 0, 0.8);
+        }
+        
+        .req-icon {
+          color: #3b82f6;
+          font-size: 14px;
+          width: 16px;
+        }
+        
+        .tooltip-footer {
+          padding-top: 12px;
+          border-top: 1px solid rgba(255, 255, 255, 0.1);
+          text-align: center;
+        }
+        
+        .light .tooltip-footer {
+          border-color: rgba(0, 0, 0, 0.1);
+        }
+        
+        .tooltip-footer span {
+          font-size: 12px;
+          font-weight: 600;
+          color: #10b981;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 4px;
+        }
+        
+        .tooltip-footer span::before {
+          content: '💰';
+        }
+
         @media (max-width: 480px) {
           .navbar-container {
             padding: 0 16px;
@@ -2291,6 +2492,20 @@ const Navbar = () => {
           .premium-dropdown {
             right: 8px;
             width: calc(100vw - 16px);
+          }
+          
+          .sandbox-tooltip {
+            left: 0;
+            transform: none;
+            margin-top: 8px;
+          }
+          
+          .sandbox-nav-container:hover .sandbox-tooltip {
+            transform: translateY(4px);
+          }
+          
+          .tooltip-content {
+            width: 260px;
           }
         }
       `}</style>
