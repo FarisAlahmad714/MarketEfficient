@@ -214,21 +214,39 @@ async function saveResultsHandler(req, res) {
         await testResult.save();
         logger.log(`Bias test result saved, score: ${finalScore}/${totalPoints} for ${sanitizedAssetSymbol}`);
         
-        // Process analytics data asynchronously
-        try {
-          const deviceInfo = {
-            userAgent: req.headers['user-agent'] || '',
-            screenResolution: req.headers['x-screen-resolution'] || '',
-            isMobile: /Mobile|Android|iPhone|iPad/.test(req.headers['user-agent'] || ''),
-            timezone: req.headers['x-timezone'] || 'UTC',
-            language: req.headers['accept-language']?.split(',')[0] || 'en'
-          };
-          
-          await processBiasTestAnalytics(testResult, deviceInfo);
-          logger.log(`Analytics processed for bias test: ${testResult._id}`);
-        } catch (analyticsError) {
-          logger.error('Error processing bias test analytics:', analyticsError);
-          // Don't fail the main request if analytics processing fails
+        // Process analytics data asynchronously (only for bias tests)
+        if (testResult.testType === 'bias-test') {
+          try {
+            logger.log(`Starting analytics processing for test result: ${testResult._id}`);
+            const deviceInfo = {
+              userAgent: req.headers['user-agent'] || '',
+              screenResolution: req.headers['x-screen-resolution'] || '',
+              isMobile: /Mobile|Android|iPhone|iPad/.test(req.headers['user-agent'] || ''),
+              timezone: req.headers['x-timezone'] || 'UTC',
+              language: req.headers['accept-language']?.split(',')[0] || 'en'
+            };
+            
+            logger.log(`Device info prepared:`, deviceInfo);
+            logger.log(`Test result data for analytics:`, {
+              testType: testResult.testType,
+              assetSymbol: testResult.assetSymbol,
+              score: testResult.score,
+              totalPoints: testResult.totalPoints,
+              testDetailsCount: testResult.details?.testDetails?.length || 0
+            });
+            
+            await processBiasTestAnalytics(testResult, deviceInfo);
+            logger.log(`Analytics processed successfully for bias test: ${testResult._id}`);
+          } catch (analyticsError) {
+            logger.error('Error processing bias test analytics:', analyticsError);
+            logger.error('Analytics error stack:', analyticsError.stack);
+            logger.error('Analytics error details:', {
+              message: analyticsError.message,
+              name: analyticsError.name,
+              testResultId: testResult._id
+            });
+            // Don't fail the main request if analytics processing fails
+          }
         }
         
         return res.status(200).json({

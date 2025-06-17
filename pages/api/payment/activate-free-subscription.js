@@ -75,15 +75,9 @@ export default async function handler(req, res) {
       );
     }
 
-    // Calculate subscription period
+    // Calculate subscription period - only 100% free promo codes give unlimited access
     const periodStart = new Date();
-    const periodEnd = new Date();
-    
-    if (plan === 'monthly') {
-      periodEnd.setMonth(periodEnd.getMonth() + 1);
-    } else if (plan === 'annual') {
-      periodEnd.setFullYear(periodEnd.getFullYear() + 1);
-    }
+    const periodEnd = null; // No expiration for 100% free promo code subscriptions
 
     // Create subscription record
     const subscription = await Subscription.create({

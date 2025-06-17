@@ -11,9 +11,7 @@ async function biasAnalyticsHandler(req, res) {
   try {
     // User is already authenticated and verified as admin via middleware
 
-    // Connect to database
-    const { connectToDatabase } = require('../../../lib/database');
-    await connectToDatabase();
+    // Database connection is handled by API handler
 
     // Parse query parameters
     const { timeRange = '30', testType, format, metric = 'overview' } = req.query;

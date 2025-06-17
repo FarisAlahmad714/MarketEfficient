@@ -102,6 +102,14 @@ const BiasTestAnalyticsSchema = new mongoose.Schema({
       type: Number, // Character count
       required: true
     },
+    aiAnalysis: {
+      type: String,
+      required: false // Not all questions may have AI analysis yet
+    },
+    aiAnalysisLength: {
+      type: Number, // Character count of AI analysis
+      required: false
+    },
     technicalFactors: [{
       type: String
     }],

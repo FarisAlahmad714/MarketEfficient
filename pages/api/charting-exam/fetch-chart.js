@@ -16,14 +16,10 @@ const CRYPTO_ASSETS = [
 ];
 
 const STOCK_ASSETS = [
-  { type: 'equity', symbol: 'aapl', apiId: 'AAPL' },
-  { type: 'equity', symbol: 'nvda', apiId: 'NVDA' },
-  { type: 'equity', symbol: 'tsla', apiId: 'TSLA' },
-  { type: 'equity', symbol: 'msft', apiId: 'MSFT' },
-  { type: 'equity', symbol: 'googl', apiId: 'GOOGL' },
-  { type: 'equity', symbol: 'amzn', apiId: 'AMZN' },
-  { type: 'equity', symbol: 'meta', apiId: 'META' },
-  { type: 'equity', symbol: 'nflx', apiId: 'NFLX' }
+  { type: 'equity', symbol: 'nvda', apiId: 'NVDA' },   // NVIDIA
+  { type: 'equity', symbol: 'aapl', apiId: 'AAPL' },   // APPLE  
+  { type: 'equity', symbol: 'gld', apiId: 'GLD' },     // GOLD ETF
+  { type: 'equity', symbol: 'tsla', apiId: 'TSLA' }    // TESLA
 ];
 
 const ASSETS = [...CRYPTO_ASSETS, ...STOCK_ASSETS];

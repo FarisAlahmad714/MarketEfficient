@@ -1,5 +1,6 @@
 // models/index.js
 require('./AdminAction');
+require('./BiasTestAnalytics');
 require('./Payment');
 require('./PaymentHistory');
 require('./PendingRegistration');

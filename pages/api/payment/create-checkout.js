@@ -109,11 +109,14 @@ async function handler(req, res) {
               ? `${plan === 'monthly' ? 'Monthly' : 'Annual'} subscription with promo code ${promoCode}`
               : `${plan === 'monthly' ? 'Monthly' : 'Annual'} subscription`
           },
-          unit_amount: pricing.finalPrice
+          unit_amount: pricing.finalPrice,
+          recurring: {
+            interval: plan === 'monthly' ? 'month' : 'year'
+          }
         },
         quantity: 1
       }],
-      mode: 'payment',
+      mode: 'subscription',
       success_url: `${process.env.NEXT_PUBLIC_APP_URL}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/pricing?cancelled=true&email=${encodeURIComponent(pendingReg.email)}&plan=${plan}`,
       customer_email: pendingReg.email,
