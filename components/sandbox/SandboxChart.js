@@ -14,7 +14,7 @@ const SandboxChart = ({ selectedAsset, marketData, onAssetChange, portfolioData 
   
   const [chartData, setChartData] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [timeframe, setTimeframe] = useState('1h');
+  const [timeframe, setTimeframe] = useState('4h');
   const [showAssetSelector, setShowAssetSelector] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
@@ -35,6 +35,7 @@ const SandboxChart = ({ selectedAsset, marketData, onAssetChange, portfolioData 
 
   useEffect(() => {
     if (selectedAsset) {
+      console.log(`Loading chart data for ${selectedAsset} on ${timeframe}`);
       loadChartData();
     }
   }, [selectedAsset, timeframe]); // Removed darkMode to prevent auto-refresh
@@ -72,12 +73,25 @@ const SandboxChart = ({ selectedAsset, marketData, onAssetChange, portfolioData 
     };
   }, [showAssetSelector]);
 
+  const getOptimalOutputSize = (timeframe) => {
+    const sizeMap = {
+      '1min': 500,   // ~8 hours
+      '5min': 1000,  // ~3.5 days  
+      '15min': 1500, // ~15 days
+      '1h': 2000,    // ~83 days
+      '4h': 3000,    // ~1 year
+      '1day': 5000   // ~13 years
+    };
+    return sizeMap[timeframe] || 1000;
+  };
+
   const loadChartData = async () => {
     try {
       setLoading(true);
       
       const token = storage.getItem('auth_token');
-      const response = await fetch(`/api/sandbox/market-data?symbols=${selectedAsset}&interval=${timeframe}&type=chart&outputsize=100`, {
+      const outputsize = getOptimalOutputSize(timeframe);
+      const response = await fetch(`/api/sandbox/market-data?symbols=${selectedAsset}&interval=${timeframe}&type=chart&outputsize=${outputsize}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -88,8 +102,10 @@ const SandboxChart = ({ selectedAsset, marketData, onAssetChange, portfolioData 
       }
 
       const data = await response.json();
+      console.log(`Chart data response:`, data);
       
       if (data.success && data.chartData) {
+        console.log(`Setting chart data: ${data.chartData.length} candles`);
         setChartData(data.chartData);
       }
       

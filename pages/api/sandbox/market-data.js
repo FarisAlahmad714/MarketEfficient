@@ -10,7 +10,7 @@ async function marketDataHandler(req, res) {
   await connectDB();
   
   const userId = req.user.id;
-  const { symbols, interval = '1min', outputsize = '100', type = 'price' } = req.query;
+  const { symbols, interval = '1min', outputsize = '1000', type = 'price' } = req.query;
   
   try {
     // Check if user is admin first
@@ -51,6 +51,7 @@ async function marketDataHandler(req, res) {
         
         // Get real historical chart data for charting
         try {
+          console.log(`Fetching chart data for ${apiSymbol}, interval: ${interval}, outputsize: ${outputsize}`);
           const chartData = await getHistoricalData(apiSymbol, interval, parseInt(outputsize));
           
           // Convert USD prices to SENSES prices (1:1 for now)
@@ -68,7 +69,9 @@ async function marketDataHandler(req, res) {
             symbol: requestedSymbol,
             pair: `${requestedSymbol}/SENSES`,
             interval: interval,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            dataAge: sensesChartData.length > 0 ? new Date(sensesChartData[sensesChartData.length-1].time * 1000).toISOString() : null,
+            marketStatus: 'real-time' // Will be updated based on data freshness
           });
         } catch (error) {
           console.log('Falling back to simulated data for chart:', error.message);
@@ -219,9 +222,9 @@ async function fetchTwelvedataRealTime(symbols) {
         });
       }
       
-      // Rate limiting - wait between batches
+      // Rate limiting - wait between batches (reduced for Pro tier)
       if (i + batchSize < symbols.length) {
-        await new Promise(resolve => setTimeout(resolve, 500)); // Increased delay to reduce API load
+        await new Promise(resolve => setTimeout(resolve, 200)); // Optimized for Pro tier API limits
       }
       
     } catch (error) {
@@ -243,6 +246,7 @@ async function getHistoricalData(symbol, interval = '1h', outputsize = 100) {
   
   try {
     const url = `https://api.twelvedata.com/time_series?symbol=${symbol}&interval=${interval}&outputsize=${outputsize}&apikey=${TWELVEDATA_API_KEY}`;
+    console.log(`Twelve Data API URL: ${url}`);
     
     const response = await fetch(url);
     
@@ -269,6 +273,8 @@ async function getHistoricalData(symbol, interval = '1h', outputsize = 100) {
       close: parseFloat(item.close),
       volume: item.volume ? parseFloat(item.volume) : 0
     }));
+    
+    console.log(`Chart data received: ${chartData.length} candles, latest: ${new Date(chartData[chartData.length-1]?.time * 1000)}, oldest: ${new Date(chartData[0]?.time * 1000)}`);
     
     return chartData;
     
