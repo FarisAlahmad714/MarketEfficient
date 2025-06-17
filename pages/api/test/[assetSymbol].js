@@ -8,6 +8,7 @@ import { createApiHandler } from '../../../lib/api-handler';
 import { requireAuth } from '../../../middleware/auth';
 import { composeMiddleware } from '../../../lib/api-handler';
 import { processBiasTestAnalytics } from '../../../lib/biasTestAnalytics';
+import { filterContent } from '../../../lib/contentFilter';
 
 // Store sessions in memory (in a real app, this would be a database)
 // Use global to persist across Next.js module reloads in development
@@ -407,6 +408,22 @@ async function handleTestSubmission(req, res, assetSymbol) {
   
   if (!answers || !Array.isArray(answers)) {
     return res.status(400).json({ error: 'Answers array is required' });
+  }
+
+  // Content filtering validation for all reasoning inputs
+  for (const answer of answers) {
+    if (answer.reasoning) {
+      const contentCheck = filterContent(answer.reasoning, { strictMode: false });
+      if (!contentCheck.isValid) {
+        logger.log(`Content filter blocked submission for test_id ${answer.test_id}: ${contentCheck.code} - ${contentCheck.reason}`);
+        return res.status(400).json({ 
+          error: 'Content validation failed',
+          message: `Question ${answer.test_id}: ${contentCheck.reason}`,
+          code: contentCheck.code,
+          test_id: answer.test_id
+        });
+      }
+    }
   }
   
   // Get the test session

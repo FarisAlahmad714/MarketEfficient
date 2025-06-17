@@ -1,4 +1,5 @@
-import React, { useState, useEffect, memo, useRef, useCallback } from 'react'; // Added useRef and useCallback here
+import React, { useState, useEffect, memo, useRef, useCallback, useContext } from 'react'; // Added useRef and useCallback here
+import { ThemeContext } from '../contexts/ThemeContext';
 
 import { useRouter } from 'next/router';
 import axios from 'axios';
@@ -62,13 +63,11 @@ const Header = styled.div`
 const Title = styled.h1`
   font-size: 3.5rem;
   margin-bottom: 25px;
-  background: linear-gradient(135deg, #00c4ff 0%, #00ff88 50%, #ff6b6b 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
   font-weight: 800;
   letter-spacing: -0.02em;
   line-height: 1.1;
   position: relative;
+  color: ${({ darkMode }) => (darkMode ? '#FFFFFF' : '#1A1A1A')};
   
   @media (max-width: 768px) {
     font-size: 2.5rem;
@@ -82,7 +81,7 @@ const Title = styled.h1`
     transform: translateX(-50%);
     width: 100px;
     height: 4px;
-    background: linear-gradient(90deg, #00c4ff, #00ff88);
+    background: ${({ darkMode }) => (darkMode ? 'linear-gradient(90deg, #00c4ff, #00ff88)' : 'linear-gradient(90deg, #4f46e5, #14b8a6)')};
     border-radius: 2px;
     animation: pulse 2s ease-in-out infinite;
   }
@@ -179,14 +178,14 @@ const CategoryHeader = styled.div`
 const CategoryTitle = styled.h2`
   font-size: 2.5rem;
   font-weight: 700;
-  color: #fff;
   margin: 0;
   padding: 0 40px;
-  background: linear-gradient(135deg, #121212 0%, #1a1a1a 100%);
   position: relative;
   z-index: 2;
   text-align: center;
   letter-spacing: -0.02em;
+  color: ${({ darkMode }) => (darkMode ? '#e0e0e0' : '#1a1a1a')};
+  background: none;
   
   &.crypto {
     background: linear-gradient(135deg, #F7931A, #FF9900);
@@ -614,6 +613,8 @@ const AssetSelector = () => {
   const cryptoIntervalRef = useRef(null);
   const equityIntervalRef = useRef(null); 
 
+  const { darkMode } = useContext(ThemeContext);
+
  useEffect(() => {
     const fetchAssets = async () => {
       try {
@@ -670,6 +671,25 @@ const AssetSelector = () => {
   }, []);
   
   const [itemsPerView, setItemsPerView] = useState(getItemsPerView());
+  
+  // Ensure carousel auto-plays on mobile view only
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const MOBILE_MAX_WIDTH = 480;
+
+    const applyAutoPlaySetting = () => {
+      const isMobile = window.innerWidth <= MOBILE_MAX_WIDTH;
+      setCryptoAutoPlay(isMobile);
+      setEquityAutoPlay(isMobile);
+    };
+
+    applyAutoPlaySetting();
+
+    // Update on resize so behaviour follows viewport changes
+    window.addEventListener('resize', applyAutoPlaySetting);
+    return () => window.removeEventListener('resize', applyAutoPlaySetting);
+  }, []);
   
   useEffect(() => {
     const handleResize = () => {
@@ -901,7 +921,7 @@ const AssetSelector = () => {
     return (
       <CategorySection>
         <CategoryHeader>
-          <CategoryTitle className={categoryName.toLowerCase()}>
+          <CategoryTitle darkMode={darkMode} className={categoryName.toLowerCase()}>
             {categoryName}
           </CategoryTitle>
         </CategoryHeader>
@@ -1079,7 +1099,7 @@ const AssetSelector = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, ease: "easeOut" }}
         >
-          <Title>
+          <Title darkMode={darkMode}>
             Select Your <Highlight>Asset</Highlight>
           </Title>
         </motion.div>
@@ -1102,7 +1122,7 @@ const AssetSelector = () => {
             <FaSearch style={{ color: '#a0a0a0', marginRight: '12px', fontSize: '1.1rem' }} />
             <SearchInput
               type="text"
-              placeholder="Search assets..."
+              placeholder="Search assets... (More assets coming soon)"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               aria-label="Search assets"

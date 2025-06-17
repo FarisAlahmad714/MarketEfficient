@@ -4,132 +4,313 @@ import { useEffect, useContext } from 'react';
 import { ThemeContext } from '../contexts/ThemeContext';
 import { AuthContext } from '../contexts/AuthContext';
 import Leaderboard from '../components/Leaderboard';
-import { ShieldCheck, BarChart2, Users, Zap, Brain, LineChart as LucideLineChart } from 'lucide-react';
+import { ShieldCheck, BarChart2, Users, Zap, Brain, LineChart as LucideLineChart, BookOpen, TrendingUp, Play, Clock, Target, TrendingDown, Award, Star, Eye, ChevronRight, Sparkles } from 'lucide-react';
 import { motion } from 'framer-motion';
 import TrackedPage from '../components/TrackedPage';
 import logger from '../lib/logger';
 import heroStyles from '../styles/Hero.module.css';
 
-// FeatureCard Component with Enhanced Design and Information
-const FeatureCard = ({ darkMode, icon, title, description, link, linkText, color, accentColor, benefits }) => {
+// Enhanced FeatureCard Component with Clean Design
+const FeatureCard = ({ darkMode, icon, title, description, link, linkText, color, accentColor, benefits, videoTitle }) => {
   const IconComponent = icon;
+  
   return (
     <motion.div
-      initial={{ opacity: 0, y: 50 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6, ease: 'easeOut' }}
+      initial={{ opacity: 0, y: 80, rotateX: 45 }}
+      whileInView={{ opacity: 1, y: 0, rotateX: 0 }}
+      transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
       viewport={{ once: true }}
       style={{
         background: darkMode
-          ? `linear-gradient(145deg, rgba(30, 30, 30, 0.9), rgba(20, 20, 20, 0.95)), ${color}22`
-          : `linear-gradient(145deg, rgba(255, 255, 255, 0.9), rgba(240, 240, 240, 0.95)), ${color}11`,
-        borderRadius: '20px',
-        border: `1px solid ${darkMode ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.1)'}`,
+          ? `linear-gradient(145deg, rgba(15, 15, 15, 0.95), rgba(25, 25, 25, 0.9)), radial-gradient(circle at 30% 30%, ${color}15, transparent 70%)`
+          : `linear-gradient(145deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 0.9)), radial-gradient(circle at 30% 30%, ${color}08, transparent 70%)`,
+        borderRadius: '24px',
+        border: darkMode 
+          ? `1px solid rgba(255, 255, 255, 0.1)` 
+          : `1px solid rgba(0, 0, 0, 0.05)`,
         boxShadow: darkMode
-          ? `0 15px 40px rgba(0, 0, 0, 0.4), inset 0 0 2px ${accentColor}33`
-          : `0 15px 40px rgba(0, 0, 0, 0.1), inset 0 0 2px ${accentColor}22`,
+          ? `0 25px 60px rgba(0, 0, 0, 0.6), 0 0 40px ${accentColor}20, inset 0 1px 0 rgba(255, 255, 255, 0.1)`
+          : `0 25px 60px rgba(0, 0, 0, 0.15), 0 0 40px ${accentColor}15, inset 0 1px 0 rgba(255, 255, 255, 0.8)`,
         transformStyle: 'preserve-3d',
-        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-        padding: '35px',
+        transition: 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+        padding: '0',
         position: 'relative',
         overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
         height: '100%',
+        backdropFilter: 'blur(20px)',
       }}
-      onMouseOver={(e) => {
-        e.currentTarget.style.transform = 'translateZ(20px) scale(1.05)';
-        e.currentTarget.style.boxShadow = darkMode
-          ? `0 25px 50px rgba(0, 0, 0, 0.5), 0 0 30px ${accentColor}66`
-          : `0 25px 50px rgba(0, 0, 0, 0.15), 0 0 30px ${accentColor}44`;
-      }}
-      onMouseOut={(e) => {
-        e.currentTarget.style.transform = 'translateZ(0) scale(1)';
-        e.currentTarget.style.boxShadow = darkMode
-          ? `0 15px 40px rgba(0, 0, 0, 0.4), inset 0 0 2px ${accentColor}33`
-          : `0 15px 40px rgba(0, 0, 0, 0.1), inset 0 0 2px ${accentColor}22`;
+      whileHover={{
+        y: -8,
+        rotateY: 2,
+        scale: 1.02,
+        transition: { duration: 0.3, ease: 'easeOut' }
       }}
     >
-      <div className={`${heroStyles.heroBackground} ${darkMode ? heroStyles.dark : heroStyles.light}`}>
-        <div className={heroStyles.animatedGradient}></div>
-        <ul className={heroStyles.particles}>
-          {Array.from({ length: 10 }).map((_, i) => (
-            <li key={i} className={heroStyles.particle}></li>
-          ))}
-        </ul>
+      {/* Floating Particles */}
+      <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+        {Array.from({ length: 6 }).map((_, i) => (
+          <motion.div
+            key={i}
+            style={{
+              position: 'absolute',
+              width: '4px',
+              height: '4px',
+              background: accentColor,
+              borderRadius: '50%',
+              left: `${20 + i * 15}%`,
+              top: `${10 + (i % 3) * 30}%`,
+            }}
+            animate={{
+              y: [0, -10, 0],
+              opacity: [0.3, 0.8, 0.3],
+              scale: [1, 1.2, 1],
+            }}
+            transition={{
+              duration: 3 + i * 0.5,
+              repeat: Infinity,
+              ease: 'easeInOut',
+            }}
+          />
+        ))}
       </div>
-      <div style={{ zIndex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
-        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '25px' }}>
-          {IconComponent && (
+
+      {/* Content Container */}
+      <div style={{ padding: 'clamp(20px, 4vw, 30px)', display: 'flex', flexDirection: 'column', height: '100%', position: 'relative', zIndex: 2 }}>
+        
+        {/* Clean Video Section */}
+        <motion.div
+          whileHover={{ scale: 1.02 }}
+          style={{
+            background: `linear-gradient(135deg, rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.6))`,
+            borderRadius: '20px',
+            padding: '0',
+            marginBottom: '25px',
+            border: `2px solid ${accentColor}60`,
+            position: 'relative',
+            overflow: 'hidden',
+            minHeight: '120px',
+            cursor: 'pointer',
+            backdropFilter: 'blur(10px)',
+          }}
+        >
+          <div style={{
+            background: `linear-gradient(45deg, ${color}40, ${accentColor}60)`,
+            height: '100%',
+            position: 'relative',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+            {/* Play Button */}
             <motion.div
-              whileHover={{ rotate: 10, scale: 1.1 }}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
               style={{
-                padding: '15px',
-                background: `${accentColor}33`,
-                borderRadius: '12px',
-                border: `1px solid ${accentColor}88`,
-                marginRight: '20px',
+                background: 'rgba(255, 255, 255, 0.15)',
+                borderRadius: '50%',
+                width: '60px',
+                height: '60px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backdropFilter: 'blur(20px)',
+                border: '2px solid rgba(255, 255, 255, 0.3)',
               }}
             >
-              <IconComponent size={35} color={accentColor} />
+              <Play size={24} color="#FFFFFF" fill="#FFFFFF" />
             </motion.div>
-          )}
-          <h2 style={{
-            fontSize: '28px',
-            fontWeight: 700,
-            color: darkMode ? '#F5F5F5' : '#1A1A1A',
-            margin: 0,
-            lineHeight: 1.2,
-          }}>{title}</h2>
+
+            {/* Video Title */}
+            <div style={{
+              position: 'absolute',
+              bottom: '12px',
+              left: '12px',
+              right: '12px',
+              background: 'rgba(0, 0, 0, 0.8)',
+              borderRadius: '8px',
+              padding: '8px 12px',
+              backdropFilter: 'blur(10px)',
+            }}>
+              <span style={{
+                color: '#FFFFFF',
+                fontSize: '13px',
+                fontWeight: 600,
+                lineHeight: 1.2,
+              }}>
+                {videoTitle}
+              </span>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Feature Header with Enhanced Design */}
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '18px' }}>
+          <motion.div
+            whileHover={{ rotate: 12, scale: 1.1 }}
+            style={{
+              padding: '14px',
+              background: `linear-gradient(135deg, ${accentColor}20, ${accentColor}40)`,
+              borderRadius: '16px',
+              border: `2px solid ${accentColor}60`,
+              marginRight: '16px',
+              position: 'relative',
+              overflow: 'hidden',
+            }}
+          >
+            <div style={{
+              position: 'absolute',
+              inset: 0,
+              background: `linear-gradient(45deg, transparent, ${accentColor}30, transparent)`,
+              transform: 'translateX(-100%)',
+              animation: 'shimmer 2s infinite',
+            }} />
+            <IconComponent size={28} color={accentColor} style={{ position: 'relative', zIndex: 1 }} />
+          </motion.div>
+          <div>
+            <h2 style={{
+              fontSize: '22px',
+              fontWeight: 800,
+              color: darkMode ? '#F5F5F5' : '#1A1A1A',
+              margin: 0,
+              lineHeight: 1.1,
+              letterSpacing: '-0.5px',
+            }}>{title}</h2>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              marginTop: '4px',
+            }}>
+              <Sparkles size={14} color={accentColor} />
+              <span style={{
+                fontSize: '12px',
+                color: accentColor,
+                fontWeight: 600,
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+              }}>
+                Premium Feature
+              </span>
+            </div>
+          </div>
         </div>
+
+        {/* Enhanced Description */}
         <p style={{
-          fontSize: '16px',
-          color: darkMode ? '#D0D0D0' : '#4A4A4A',
-          lineHeight: '1.8',
+          fontSize: '14px',
+          color: darkMode ? '#C0C0C0' : '#555',
+          lineHeight: '1.6',
           marginBottom: '20px',
+          letterSpacing: '0.2px',
         }}>{description}</p>
-        <ul style={{
-          listStyle: 'none',
-          padding: 0,
-          margin: '0 0 30px 0',
-          color: darkMode ? '#B0B0B0' : '#5A5A5A',
-          fontSize: '15px',
-          lineHeight: '1.7',
-          flexGrow: 1,
-        }}>
-          {benefits.map((benefit, index) => (
-            <li key={index} style={{ display: 'flex', alignItems: 'center', marginBottom: '10px' }}>
-              <Zap size={18} color={accentColor} style={{ marginRight: '12px' }} />
-              {benefit}
-            </li>
-          ))}
-        </ul>
-        <Link href={link} style={{
-          display: 'inline-block',
-          padding: '14px 30px',
-          background: `linear-gradient(90deg, ${color}, ${accentColor})`,
-          color: '#FFFFFF',
-          textDecoration: 'none',
-          borderRadius: '12px',
-          fontWeight: 600,
-          fontSize: '16px',
-          textAlign: 'center',
-          transition: 'all 0.3s ease',
-          marginTop: 'auto',
-          boxShadow: `0 6px 15px ${accentColor}66`,
-        }}
-        onMouseOver={(e) => {
-          e.currentTarget.style.transform = 'scale(1.05)';
-          e.currentTarget.style.boxShadow = `0 8px 20px ${accentColor}99`;
-        }}
-        onMouseOut={(e) => {
-          e.currentTarget.style.transform = 'scale(1)';
-          e.currentTarget.style.boxShadow = `0 6px 15px ${accentColor}66`;
-        }}
+
+        {/* Benefits with Progress Indicators */}
+        <div style={{ marginBottom: '25px', flexGrow: 1 }}>
+          <h4 style={{
+            fontSize: '13px',
+            fontWeight: 700,
+            color: darkMode ? '#888' : '#666',
+            textTransform: 'uppercase',
+            letterSpacing: '1px',
+            marginBottom: '12px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+          }}>
+            <Award size={14} color={accentColor} />
+            Key Benefits
+          </h4>
+          <ul style={{
+            listStyle: 'none',
+            padding: 0,
+            margin: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+          }}>
+            {benefits.map((benefit, index) => (
+              <motion.li 
+                key={index} 
+                initial={{ opacity: 0, x: -30 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                transition={{ delay: index * 0.1, duration: 0.6, ease: 'easeOut' }}
+                style={{ 
+                  display: 'flex', 
+                  alignItems: 'center',
+                  padding: '8px 12px',
+                  borderRadius: '8px',
+                  background: darkMode ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
+                  border: `1px solid ${darkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'}`,
+                  transition: 'all 0.2s ease',
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.background = darkMode ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.04)';
+                  e.currentTarget.style.transform = 'translateX(4px)';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.background = darkMode ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)';
+                  e.currentTarget.style.transform = 'translateX(0)';
+                }}
+              >
+                <Zap size={14} color={accentColor} style={{ marginRight: '10px', flexShrink: 0 }} />
+                <span style={{ 
+                  fontSize: '13px',
+                  color: darkMode ? '#B0B0B0' : '#666',
+                  lineHeight: 1.4,
+                }}>{benefit}</span>
+              </motion.li>
+            ))}
+          </ul>
+        </div>
+
+        {/* Enhanced CTA Button */}
+        <motion.div
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
         >
-          {linkText}
-        </Link>
+          <Link href={link} style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px',
+            padding: '14px 24px',
+            background: `linear-gradient(135deg, ${color}, ${accentColor})`,
+            color: '#FFFFFF',
+            textDecoration: 'none',
+            borderRadius: '12px',
+            fontWeight: 700,
+            fontSize: '14px',
+            textAlign: 'center',
+            transition: 'all 0.3s ease',
+            boxShadow: `0 8px 25px ${accentColor}40`,
+            border: `1px solid ${accentColor}80`,
+            position: 'relative',
+            overflow: 'hidden',
+          }}
+          onMouseOver={(e) => {
+            e.currentTarget.style.boxShadow = `0 12px 35px ${accentColor}60`;
+            e.currentTarget.style.transform = 'translateY(-2px)';
+          }}
+          onMouseOut={(e) => {
+            e.currentTarget.style.boxShadow = `0 8px 25px ${accentColor}40`;
+            e.currentTarget.style.transform = 'translateY(0)';
+          }}
+          >
+            <span>{linkText}</span>
+            <ChevronRight size={16} />
+          </Link>
+        </motion.div>
       </div>
+      
+      {/* Shimmer Animation CSS */}
+      <style jsx>{`
+        @keyframes shimmer {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(200%); }
+        }
+      `}</style>
     </motion.div>
   );
 };
@@ -147,9 +328,11 @@ export default function HomePage() {
     <div style={{
       maxWidth: '1440px',
       margin: '0 auto',
-      padding: '0 20px 60px',
+      padding: '0 clamp(15px, 4vw, 40px) 60px',
       fontFamily: "'Poppins', sans-serif",
       background: darkMode ? '#121212' : '#F8FAFC',
+      minHeight: '100vh',
+      boxSizing: 'border-box',
     }}>
       {/* Enhanced Hero Section */}
   <motion.section
@@ -285,65 +468,118 @@ export default function HomePage() {
 
       {/* Feature Cards Section */}
       <section style={{ marginBottom: '80px' }}>
-        <h2 style={{
-          textAlign: 'center',
-          fontSize: 'clamp(2.5rem, 5vw, 3.5rem)',
-          fontWeight: 800,
-          color: darkMode ? '#F5F5F5' : '#1E293B',
-          marginBottom: '50px',
-          textShadow: darkMode ? '0 2px 10px rgba(0,0,0,0.3)' : 'none',
-        }}>
-          Power Up Your Trading Arsenal
-        </h2>
+        <motion.h2 
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, ease: 'easeOut' }}
+          style={{
+            textAlign: 'center',
+            fontSize: 'clamp(2.5rem, 5vw, 3.5rem)',
+            fontWeight: 800,
+            color: darkMode ? '#F5F5F5' : '#1E293B',
+            marginBottom: '60px',
+            textShadow: darkMode ? '0 2px 10px rgba(0,0,0,0.3)' : 'none',
+            letterSpacing: '-1px',
+          }}
+        >
+          Master the Markets with Premium Features
+        </motion.h2>
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
-          gap: '40px',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 380px), 1fr))',
+          gap: 'clamp(20px, 3vw, 35px)',
+          width: '100%',
+          boxSizing: 'border-box',
         }}>
+          <FeatureCard
+            darkMode={darkMode}
+            icon={BookOpen}
+            title="Comprehensive Study Hub"
+            description="Access a curated library of essential trading knowledge designed to accelerate your learning curve. From fundamental market mechanics to advanced trading strategies, our study materials combine theoretical depth with practical application. Each module includes interactive elements, real-world case studies, and progressive assessments to ensure knowledge retention. Whether you're building foundational understanding or diving into sophisticated concepts like market microstructure and algorithmic trading patterns, the study hub provides structured learning paths tailored to your experience level and trading goals."
+            benefits={[
+              "Structured learning paths from beginner to advanced levels",
+              "Interactive modules with real-world case studies",
+              "Essential market mechanics and trading strategy coverage",
+              "Progressive assessments to ensure knowledge retention",
+              "Advanced topics including market microstructure analysis"
+            ]}
+            link="/study"
+            linkText="Expand Your Knowledge"
+            color="#8B5CF6"
+            accentColor="#A78BFA"
+            videoTitle="Accelerate Your Learning"
+          />
           <FeatureCard
             darkMode={darkMode}
             icon={Brain}
             title="AI-Powered Bias Test"
-            description="Dive into daily challenges that expose your hidden market biases. Submit predictions and reasoning based on real historical data, then get a personalized AI breakdown of your decision-making. This isn't just a test—it's a mirror to sharpen your instincts and dominate the markets."
+            description="Transform your trading psychology with cutting-edge AI analysis. Every day, confront real market scenarios that expose your hidden biases and cognitive traps. Submit your predictions with detailed reasoning, then receive personalized AI feedback that dissects your decision-making patterns. This revolutionary approach combines behavioral finance with machine learning to create a mirror for your trading mind—revealing blind spots, confirming strengths, and building the mental resilience needed to consistently profit in volatile markets."
             benefits={[
-              "Reveal unconscious trading blind spots",
-              "Boost decision-making precision with AI insights",
-              "Build confidence for live trading scenarios",
+              "Expose and eliminate unconscious trading biases",
+              "Receive personalized AI analysis of your reasoning patterns", 
+              "Build mental resilience through daily psychological challenges",
+              "Track bias reduction progress with detailed metrics",
+              "Develop consistent decision-making under market pressure"
             ]}
             link="/bias-test"
             linkText="Confront Your Biases"
             color="#22C55E"
             accentColor="#4ADE80"
+            videoTitle="Master Your Trading Psychology"
           />
           <FeatureCard
             darkMode={darkMode}
             icon={LucideLineChart}
             title="Hands-On Charting Exams"
-            description="Step into the ultimate charting dojo. Practice spotting swing points, drawing Fibonacci levels, and identifying fair value gaps on interactive, simulated charts. It's like a gym for your technical analysis skills—train hard, trade smart."
+            description="Enter the ultimate technical analysis training ground where theory meets practice. Master three critical charting skills through interactive, gamified exams: precise swing point identification for trend analysis, strategic Fibonacci retracement placement for entry/exit timing, and fair value gap recognition for institutional-level market reading. Each exam uses real market data with progressive difficulty levels, from beginner-friendly scenarios to expert-level challenges that mirror actual trading conditions. Perfect your chart reading skills in a risk-free environment before applying them to live markets."
             benefits={[
-              "Master advanced charting techniques",
-              "Develop razor-sharp pattern recognition",
-              "Simulate real-world trading without the risk",
+              "Master swing points for accurate trend identification",
+              "Perfect Fibonacci retracements for optimal entry/exit timing",
+              "Identify fair value gaps like institutional traders",
+              "Practice on real historical market data scenarios", 
+              "Progressive difficulty from beginner to expert level"
             ]}
             link="/chart-exam"
             linkText="Sharpen Your Skills"
             color="#3B82F6"
             accentColor="#60A5FA"
+            videoTitle="Master Technical Analysis"
           />
           <FeatureCard
             darkMode={darkMode}
             icon={BarChart2}
             title="Comprehensive Analytics Hub"
-            description="Unlock the full story of your trading evolution. Dive into detailed stats—scores, accuracy, pitfalls, and AI-analyzed reasoning trends. This is your command center to spot weaknesses, double down on strengths, and rise above the competition."
+            description="Your personal trading performance command center powered by advanced analytics and AI insights. Track every aspect of your learning journey with precision: bias test scores, charting accuracy rates, improvement trends, and detailed breakdowns of your strongest and weakest areas. The dashboard doesn't just show numbers—it tells the story of your trading evolution through interactive charts, heat maps, and AI-generated insights that pinpoint exactly where to focus your efforts next. Set goals, monitor streaks, and compare your progress against other traders to maintain momentum and competitive edge."
             benefits={[
-              "Track your growth with precision",
-              "Pinpoint and fix trading flaws fast",
-              "Compare your stats with top traders",
+              "Comprehensive performance tracking across all features",
+              "AI-powered insights identifying improvement opportunities", 
+              "Interactive charts and visualizations of your progress",
+              "Detailed accuracy breakdowns by test type and market condition",
+              "Goal setting and achievement tracking with streak monitoring"
             ]}
             link="/dashboard"
             linkText="Analyze Your Edge"
             color="#F59E0B"
             accentColor="#FBBF24"
+            videoTitle="Track Your Trading Evolution"
+          />
+          <FeatureCard
+            darkMode={darkMode}
+            icon={TrendingUp}
+            title="Sandbox Trading Environment"
+            description="Step into a realistic virtual trading environment where you can test strategies, practice execution, and build confidence without risking real capital. Our sandbox simulates live market conditions with real-time data feeds, realistic slippage, and authentic market dynamics. Practice position sizing, risk management, and order execution while tracking your virtual P&L. The environment includes various market conditions—trending, ranging, and volatile scenarios—allowing you to experience how your strategies perform across different market cycles. Unlock access by demonstrating competency in bias tests and charting exams."
+            benefits={[
+              "Risk-free trading practice with realistic market simulation",
+              "Real-time data feeds with authentic market dynamics",
+              "Practice position sizing and risk management strategies",
+              "Experience various market conditions and volatility scenarios",
+              "Unlock access through demonstrated skill progression"
+            ]}
+            link="/sandbox"
+            linkText="Practice Trading"
+            color="#EF4444"
+            accentColor="#F87171"
+            videoTitle="Practice Risk-Free Trading"
           />
         </div>
       </section>

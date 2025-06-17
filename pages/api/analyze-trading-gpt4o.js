@@ -1,6 +1,7 @@
 // pages/api/analyze-trading-gpt4o.js
 import OpenAI from 'openai';
 import logger from '../../lib/logger';
+import { filterContent } from '../../lib/contentFilter';
 
 // Technical Analysis Pattern Recognition
 const CANDLESTICK_PATTERNS = {
@@ -269,6 +270,19 @@ export default async function handler(req, res) {
     // Validate inputs
     if (!chartData || !Array.isArray(chartData) || chartData.length === 0) {
       return res.status(400).json({ error: 'Valid chart data is required' });
+    }
+
+    // Content filtering for reasoning
+    if (reasoning) {
+      const contentCheck = filterContent(reasoning, { strictMode: false });
+      if (!contentCheck.isValid) {
+        logger.log(`Content filter blocked reasoning: ${contentCheck.code} - ${contentCheck.reason}`);
+        return res.status(400).json({ 
+          error: 'Content validation failed',
+          message: contentCheck.reason,
+          code: contentCheck.code
+        });
+      }
     }
 
     // Perform comprehensive technical analysis

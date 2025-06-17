@@ -926,13 +926,6 @@ const FairValueGaps = ({
       icon: 'fa-ban',
       onClick: markNoFvgsFound,
       disabled: isNoFVGsDisabled
-    },
-    {
-      id: 'submit',
-      label: 'Submit Answer',
-      icon: 'fa-check',
-      onClick: handleSubmit,
-      primary: true
     }
   ];
 

@@ -10,6 +10,7 @@ import { ThemeContext } from '../../contexts/ThemeContext';
 import storage from '../../lib/storage';
 import AppModal from '../../components/common/AppModal';
 import { useModal } from '../../lib/useModal';
+import { filterContent, quickValidate } from '../../lib/contentFilter';
 
 // Import CandlestickChart with SSR disabled
 const CandlestickChart = dynamic(
@@ -53,6 +54,7 @@ export default function AssetTestPage() {
   const [showVolume, setShowVolume] = useState(true); // State to toggle volume display
   const [questionTimestamps, setQuestionTimestamps] = useState({}); // Track time spent per question
   const [confidenceLevels, setConfidenceLevels] = useState({}); // Track confidence per question
+  const [contentWarnings, setContentWarnings] = useState({}); // Track content validation warnings
   const cryptoLoaderRef = useRef(null);
   const { darkMode } = useContext(ThemeContext);
   const { isOpen: modalOpen, modalProps, hideModal, showAlert, showError } = useModal();
@@ -209,16 +211,19 @@ export default function AssetTestPage() {
         const initialReasoning = {};
         const initialTimestamps = {};
         const initialConfidence = {};
+        const initialWarnings = {};
         response.data.questions.forEach(q => {
           initialAnswers[q.id] = '';
           initialReasoning[q.id] = '';
           initialTimestamps[q.id] = Date.now(); // Start tracking time for each question
           initialConfidence[q.id] = 5; // Default confidence level
+          initialWarnings[q.id] = null; // No warnings initially
         });
         setUserAnswers(initialAnswers);
         setReasoningInputs(initialReasoning);
         setQuestionTimestamps(initialTimestamps);
         setConfidenceLevels(initialConfidence);
+        setContentWarnings(initialWarnings);
         setLoading(false);
         
         // Set a small timeout to simulate charts loading
@@ -247,11 +252,18 @@ export default function AssetTestPage() {
     }));
   };
 
-  // Handle reasoning input changes
+  // Handle reasoning input changes with content filtering
   const handleReasoningChange = (questionId, reasoning) => {
     setReasoningInputs(prev => ({
       ...prev,
       [questionId]: reasoning
+    }));
+    
+    // Real-time content validation
+    const validation = quickValidate(reasoning);
+    setContentWarnings(prev => ({
+      ...prev,
+      [questionId]: validation.warning
     }));
   };
 
@@ -282,12 +294,21 @@ export default function AssetTestPage() {
       }
     }
 
-    // If predictions are valid, check if all have reasoning
+    // If predictions are valid, check if all have reasoning and content is appropriate
     if (isValid) {
       for (const questionId in reasoningInputs) {
-        if (!reasoningInputs[questionId].trim()) {
+        const reasoning = reasoningInputs[questionId].trim();
+        if (!reasoning) {
           isValid = false;
           message = "Please provide reasoning for all your predictions.";
+          break;
+        }
+        
+        // Content filtering validation
+        const contentCheck = filterContent(reasoning, { strictMode: false });
+        if (!contentCheck.isValid) {
+          isValid = false;
+          message = `Question ${questionId}: ${contentCheck.reason}`;
           break;
         }
       }
@@ -802,17 +823,35 @@ export default function AssetTestPage() {
                     width: '100%',
                     padding: '12px',
                     borderRadius: '8px',
-                    border: `1px solid ${darkMode ? '#444' : '#ddd'}`,
+                    border: `1px solid ${contentWarnings[question.id] ? '#ff5722' : (darkMode ? '#444' : '#ddd')}`,
                     backgroundColor: darkMode ? '#333' : 'white',
                     color: darkMode ? '#e0e0e0' : '#333',
                     height: '100px',
                     resize: 'vertical',
-                    marginBottom: '10px',
+                    marginBottom: contentWarnings[question.id] ? '5px' : '10px',
                     fontFamily: 'inherit',
                     fontSize: '14px',
                     lineHeight: '1.5'
                   }}
                 />
+                
+                {/* Content Warning Message */}
+                {contentWarnings[question.id] && (
+                  <div style={{
+                    backgroundColor: darkMode ? '#2d1b1e' : '#ffebee',
+                    color: darkMode ? '#ff8a80' : '#c62828',
+                    padding: '8px 12px',
+                    borderRadius: '4px',
+                    fontSize: '13px',
+                    marginBottom: '10px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}>
+                    <i className="fas fa-exclamation-triangle" style={{ fontSize: '12px' }}></i>
+                    {contentWarnings[question.id]}
+                  </div>
+                )}
                 
                 {/* Confidence Level Slider */}
                 <div style={{ marginTop: '15px' }}>
