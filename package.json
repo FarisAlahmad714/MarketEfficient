@@ -31,7 +31,7 @@
     "dotenv": "^16.5.0",
     "express-mongo-sanitize": "^2.2.0",
     "express-rate-limit": "^7.5.0",
-    "firebase": "^11.8.1",
+    "firebase": "^11.9.1",
     "framer-motion": "^12.9.2",
     "helmet": "^8.1.0",
     "html2canvas": "^1.4.1",
