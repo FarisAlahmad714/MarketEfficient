@@ -4,6 +4,7 @@ import SandboxChart from './SandboxChart';
 import TradingPanel from './TradingPanel';
 import PortfolioOverview from './PortfolioOverview';
 import PositionsPanel from './PositionsPanel';
+// import PerformanceChart from './PerformanceChart';
 import storage from '../../lib/storage';
 // WebSocket removed - using API polling instead
 
@@ -424,7 +425,7 @@ const SandboxTradingInterface = ({ sandboxStatus, onPortfolioUpdate }) => {
           </div>
         </div>
 
-        {/* Bottom Section - Positions */}
+        {/* Bottom Section - Positions Panel with Performance Tab */}
         <div className="bottom-section">
           <PositionsPanel
             portfolioData={portfolioData}

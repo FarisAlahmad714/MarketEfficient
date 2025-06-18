@@ -145,17 +145,9 @@ async function closeTradeHandler(req, res) {
       await trade.save();
     }
 
-    // Update portfolio
-    if (isPartialClose) {
-      // Add back the margin that was used for closed portion
-      const closedMargin = (trade.marginUsed * closeQuantity) / originalQuantity;
-      portfolio.balance += closedMargin;
-    } else {
-      // Add back the margin that was used for full close
-      portfolio.balance += trade.marginUsed;
-    }
-    
-    // Add/subtract the realized P&L
+    // Update portfolio - ONLY add/subtract the realized P&L
+    // Note: Margin is virtual and should not be added back to balance
+    // The balance already represents available funds, margin is just reserved
     portfolio.balance += realizedPnL;
     
     // Update trading statistics
@@ -227,7 +219,7 @@ async function closeTradeHandler(req, res) {
 async function getCurrentMarketPrice(symbol) {
   try {
     // Try real API first with correct env var name
-    const TWELVEDATA_API_KEY = process.env.TWELVEDATA_API_KEY;
+    const TWELVEDATA_API_KEY = process.env.TWELVE_DATA_API_KEY || '08f0aa1220414f6ba782aaae2cd515e3';
     
     if (TWELVEDATA_API_KEY) {
       try {

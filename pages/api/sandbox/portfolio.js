@@ -88,8 +88,8 @@ async function portfolioHandler(req, res) {
       status: 'closed' 
     })
     .sort({ exitTime: -1 })
-    .limit(10)
-    .select('symbol side entryPrice exitPrice realizedPnL leverage entryTime exitTime duration pnlPercentage');
+    .limit(20)
+    .select('symbol side entryPrice exitPrice realizedPnL leverage entryTime exitTime duration pnlPercentage marginUsed quantity');
     
     // Calculate total unrealized P&L from open positions with real-time prices
     const priceSimulator = getPriceSimulator();
@@ -270,7 +270,7 @@ async function portfolioHandler(req, res) {
 // Helper function to get real market prices (same as close-trade.js)
 async function getCurrentMarketPrice(symbol) {
   try {
-    const TWELVEDATA_API_KEY = process.env.TWELVE_DATA_API_KEY;
+    const TWELVEDATA_API_KEY = process.env.TWELVE_DATA_API_KEY || '08f0aa1220414f6ba782aaae2cd515e3';
     
     if (!TWELVEDATA_API_KEY) {
       throw new Error('Twelvedata API key not configured');

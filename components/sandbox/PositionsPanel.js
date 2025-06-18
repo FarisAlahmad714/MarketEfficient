@@ -36,7 +36,8 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
   const calculatePnLPercentage = (realizedPnL, marginUsed, leverage = 1) => {
     if (!marginUsed || marginUsed === 0 || isNaN(marginUsed) || isNaN(realizedPnL)) return 0;
     // Calculate percentage based on margin used (which is the actual capital at risk)
-    return (realizedPnL / marginUsed) * 100;
+    const percentage = (realizedPnL / marginUsed) * 100;
+    return isNaN(percentage) ? 0 : percentage;
   };
 
   const formatTradeDate = (dateString) => {
@@ -246,6 +247,12 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
             onClick={() => setActiveTab('history')}
           >
             📊 Trade History ({recentTrades.length})
+          </button>
+          <button 
+            className={`tab-button ${activeTab === 'performance' ? 'active' : ''}`}
+            onClick={() => setActiveTab('performance')}
+          >
+            📈 Performance
           </button>
         </div>
       </div>
@@ -873,7 +880,28 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
                           {trade.realizedPnL >= 0 ? '+' : ''}{formatCurrency(trade.realizedPnL || 0)} SENSES
                         </div>
                         <div className="result-percentage">
-                          ({formatPercentage(calculatePnLPercentage(trade.realizedPnL, trade.marginUsed, trade.leverage))})
+                          {(() => {
+                            // Calculate percentage based on available data
+                            let percentage = 0;
+                            
+                            if (trade.marginUsed && trade.marginUsed > 0) {
+                              // Use margin as base for leveraged trades
+                              percentage = (trade.realizedPnL / trade.marginUsed) * 100;
+                            } else if (trade.entryPrice && trade.exitPrice && trade.quantity) {
+                              // Fallback: calculate based on price movement
+                              const priceChange = trade.exitPrice - trade.entryPrice;
+                              const priceChangePercent = (priceChange / trade.entryPrice) * 100;
+                              
+                              // Adjust for position side and leverage
+                              if (trade.side === 'short') {
+                                percentage = -priceChangePercent * (trade.leverage || 1);
+                              } else {
+                                percentage = priceChangePercent * (trade.leverage || 1);
+                              }
+                            }
+                            
+                            return `(${formatPercentage(percentage)})`;
+                          })()}
                         </div>
                       </div>
                     </div>
@@ -908,6 +936,248 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {activeTab === 'performance' && (
+          <div className="performance-content">
+            {(() => {
+              // Calculate performance metrics
+              const calculateMetrics = () => {
+                if (!recentTrades.length) return { totalReturn: 0, totalReturnPercent: 0, winRate: 0, totalTrades: 0 };
+
+                const startingBalance = 100000;
+                
+                // Try multiple ways to get current balance - use currentValue which includes unrealized P&L
+                const currentBalance = portfolioData?.currentValue || 
+                                     portfolioData?.totalBalance || 
+                                     portfolioData?.balance || 
+                                     startingBalance;
+                
+                
+                // Calculate total return - use API calculated values if available
+                const totalReturn = portfolioData?.totalPnL || (() => {
+                  const totalPnLFromTrades = recentTrades.reduce((sum, trade) => {
+                    const pnl = trade.realizedPnL || 0;
+                    return sum + pnl;
+                  }, 0);
+                  return totalPnLFromTrades;
+                })();
+                
+                const totalReturnPercent = portfolioData?.totalPnLPercentage || 
+                                         (startingBalance > 0 ? (totalReturn / startingBalance) * 100 : 0);
+
+                const profitableTrades = recentTrades.filter(trade => (trade.realizedPnL || 0) > 0).length;
+                const winRate = recentTrades.length > 0 ? (profitableTrades / recentTrades.length) * 100 : 0;
+
+
+                return { totalReturn, totalReturnPercent, winRate, totalTrades: recentTrades.length };
+              };
+
+              const metrics = calculateMetrics();
+
+              return (
+                <>
+                  <div className="performance-header">
+                    <h3>📈 Performance Analytics</h3>
+                    <p>Overview of your trading performance</p>
+                  </div>
+
+                  <div className="metrics-grid">
+                    <div className="metric-card">
+                      <div className="metric-content">
+                        <div className="metric-label">Total Return</div>
+                        <div className="metric-value" style={{ color: metrics.totalReturn >= 0 ? '#00ff88' : '#ff4757' }}>
+                          {metrics.totalReturn >= 0 ? '+' : ''}{formatCurrency(metrics.totalReturn)} SENSES
+                        </div>
+                        <div className="metric-subtitle" style={{ color: metrics.totalReturnPercent >= 0 ? '#00ff88' : '#ff4757' }}>
+                          ({formatPercentage(metrics.totalReturnPercent)})
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="metric-card">
+                      <div className="metric-content">
+                        <div className="metric-label">Win Rate</div>
+                        <div className="metric-value" style={{ color: metrics.winRate >= 50 ? '#00ff88' : '#ffa502' }}>
+                          {metrics.winRate.toFixed(1)}%
+                        </div>
+                        <div className="metric-subtitle">
+                          {metrics.totalTrades} total trades
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="metric-card">
+                      <div className="metric-content">
+                        <div className="metric-label">Portfolio Balance</div>
+                        <div className="metric-value">
+                          {formatCurrency(
+                            portfolioData?.currentValue || 
+                            portfolioData?.totalBalance || 
+                            portfolioData?.balance || 
+                            100000
+                          )} SENSES
+                        </div>
+                        <div className="metric-subtitle">
+                          Available: {formatCurrency(
+                            portfolioData?.riskLimits?.availableMargin || 
+                            portfolioData?.balance || 
+                            portfolioData?.currentValue || 
+                            0
+                          )} SENSES
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Simple Performance Chart */}
+                  <div className="performance-chart-section">
+                    <h4>Trading Performance Trend</h4>
+                    <div className="simple-chart">
+                      {(() => {
+                        // Create a simple bar chart from recent trades
+                        const chartTrades = recentTrades.slice(0, 12); // Most recent 12 trades
+                        const maxAbsPnL = Math.max(...chartTrades.map(t => Math.abs(t.realizedPnL || 0)));
+                        
+                        if (chartTrades.length === 0) {
+                          return (
+                            <div className="empty-chart">
+                              <div className="empty-chart-icon">📊</div>
+                              <p>No trades to display</p>
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div className="simple-chart-container">
+                            <div className="chart-header">
+                              <span className="chart-title">Recent Trades Performance</span>
+                              <span className="chart-subtitle">Profit & Loss</span>
+                            </div>
+                            
+                            <div className="chart-bars">
+                              {chartTrades.map((trade, index) => {
+                                const pnl = trade.realizedPnL || 0;
+                                const isProfit = pnl >= 0;
+                                const heightPercent = maxAbsPnL > 0 ? Math.min((Math.abs(pnl) / maxAbsPnL) * 80, 80) : 10;
+                                const minHeight = 8;
+                                const finalHeight = Math.max(heightPercent, minHeight);
+                                
+                                return (
+                                  <div 
+                                    key={trade.id || index} 
+                                    className="trade-bar"
+                                    title={`${trade.symbol} ${trade.side.toUpperCase()} ${trade.leverage}x: ${pnl >= 0 ? '+' : ''}${formatCurrency(pnl)} SENSES`}
+                                  >
+                                    <div 
+                                      className={`bar ${isProfit ? 'profit' : 'loss'}`}
+                                      style={{ 
+                                        height: `${finalHeight}%`,
+                                        backgroundColor: isProfit ? '#22c55e' : '#ef4444'
+                                      }}
+                                    >
+                                      <div className="bar-tooltip">
+                                        {pnl >= 0 ? '+' : ''}{formatCurrency(pnl)}
+                                      </div>
+                                    </div>
+                                    
+                                    <div className="bar-label">
+                                      <div className="symbol">{trade.symbol}</div>
+                                      <div className={`trade-type ${trade.side}`}>
+                                        {trade.side === 'long' ? '📈' : '📉'} {trade.leverage}x
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                            
+                            <div className="chart-legend">
+                              <div className="legend-item">
+                                <div className="legend-color profit"></div>
+                                <span>Profit</span>
+                              </div>
+                              <div className="legend-item">
+                                <div className="legend-color loss"></div>
+                                <span>Loss</span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </div>
+
+                  <div className="recent-performance">
+                    <h4>Recent Trading Performance</h4>
+                    {recentTrades.length > 0 ? (
+                      <div className="performance-trades">
+                        {recentTrades.slice(0, 8).map((trade, index) => {
+                          
+                          let percentage = 0;
+                          
+                          // Calculate percentage based on price movement, not margin
+                          if (trade.entryPrice && trade.exitPrice && trade.quantity) {
+                            const priceChange = trade.exitPrice - trade.entryPrice;
+                            const priceChangePercent = (priceChange / trade.entryPrice) * 100;
+                            // For leveraged trades, the percentage is the price change * leverage
+                            percentage = trade.side === 'short' 
+                              ? -priceChangePercent * (trade.leverage || 1)
+                              : priceChangePercent * (trade.leverage || 1);
+                          } else if (trade.pnlPercentage !== undefined && trade.pnlPercentage !== null && trade.pnlPercentage !== 0) {
+                            // Use pre-calculated percentage from API only if it exists and is not zero
+                            percentage = trade.pnlPercentage;
+                          } else {
+                            // Fallback: calculate based on a reasonable position size estimate
+                            // Estimate position value from marginUsed * leverage
+                            const estimatedPositionValue = (trade.marginUsed || 1000) * (trade.leverage || 1);
+                            percentage = ((trade.realizedPnL || 0) / estimatedPositionValue) * 100;
+                          }
+
+                          return (
+                            <div key={trade.id || index} className="performance-trade-item">
+                              <div className="trade-summary">
+                                <div className="trade-symbol-info">
+                                  <span className="symbol">{trade.symbol}</span>
+                                  <span className={`side ${trade.side}`}>
+                                    {trade.side?.toUpperCase()} {trade.leverage > 1 ? `${trade.leverage}x` : ''}
+                                  </span>
+                                </div>
+                                <div className="trade-date">
+                                  {formatTradeDate(trade.exitTime)}
+                                </div>
+                              </div>
+                              
+                              <div className="trade-performance">
+                                <div 
+                                  className="pnl-amount"
+                                  style={{ color: (trade.realizedPnL || 0) >= 0 ? '#00ff88' : '#ff4757' }}
+                                >
+                                  {(trade.realizedPnL || 0) >= 0 ? '+' : ''}{formatCurrency(trade.realizedPnL || 0)}
+                                </div>
+                                <div 
+                                  className="pnl-percentage"
+                                  style={{ color: percentage >= 0 ? '#00ff88' : '#ff4757' }}
+                                >
+                                  ({formatPercentage(percentage)})
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="empty-state">
+                        <div className="empty-icon">📈</div>
+                        <h3>No Trading History</h3>
+                        <p>Start trading to see your performance analytics</p>
+                      </div>
+                    )}
+                  </div>
+                </>
+              );
+            })()}
           </div>
         )}
       </div>
@@ -1774,6 +2044,439 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
           .detail-grid {
             grid-template-columns: repeat(2, 1fr);
           }
+          
+          .metrics-grid {
+            grid-template-columns: 1fr;
+          }
+          
+          .performance-trades {
+            gap: 8px;
+          }
+        }
+        
+        /* Performance Tab Styles */
+        .performance-content {
+          padding: 24px;
+        }
+        
+        .performance-header {
+          text-align: center;
+          margin-bottom: 32px;
+        }
+        
+        .performance-header h3 {
+          margin: 0 0 8px 0;
+          font-size: 1.5rem;
+          font-weight: 700;
+        }
+        
+        .dark .performance-header h3 {
+          color: rgba(255, 255, 255, 0.9);
+        }
+        
+        .light .performance-header h3 {
+          color: rgba(0, 0, 0, 0.9);
+        }
+        
+        .performance-header p {
+          margin: 0;
+          font-size: 0.875rem;
+        }
+        
+        .dark .performance-header p {
+          color: rgba(255, 255, 255, 0.7);
+        }
+        
+        .light .performance-header p {
+          color: rgba(0, 0, 0, 0.7);
+        }
+        
+        .metrics-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          gap: 16px;
+          margin-bottom: 32px;
+        }
+        
+        .metric-card {
+          padding: 20px;
+          border-radius: 12px;
+          text-align: center;
+        }
+        
+        .dark .metric-card {
+          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        
+        .light .metric-card {
+          background: rgba(0, 0, 0, 0.02);
+          border: 1px solid rgba(0, 0, 0, 0.08);
+        }
+        
+        .metric-label {
+          font-size: 0.875rem;
+          font-weight: 500;
+          margin-bottom: 8px;
+        }
+        
+        .dark .metric-label {
+          color: rgba(255, 255, 255, 0.7);
+        }
+        
+        .light .metric-label {
+          color: rgba(0, 0, 0, 0.7);
+        }
+        
+        .metric-value {
+          font-size: 1.25rem;
+          font-weight: 700;
+          font-family: 'SF Mono', Monaco, monospace;
+          margin-bottom: 4px;
+        }
+        
+        .metric-subtitle {
+          font-size: 0.75rem;
+          font-weight: 500;
+        }
+        
+        .dark .metric-subtitle {
+          color: rgba(255, 255, 255, 0.6);
+        }
+        
+        .light .metric-subtitle {
+          color: rgba(0, 0, 0, 0.6);
+        }
+        
+        .recent-performance h4 {
+          margin: 0 0 16px 0;
+          font-size: 1.25rem;
+          font-weight: 700;
+        }
+        
+        .dark .recent-performance h4 {
+          color: rgba(255, 255, 255, 0.9);
+        }
+        
+        .light .recent-performance h4 {
+          color: rgba(0, 0, 0, 0.9);
+        }
+        
+        .performance-trades {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+        
+        .performance-trade-item {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 16px;
+          border-radius: 8px;
+          transition: all 0.3s ease;
+        }
+        
+        .dark .performance-trade-item {
+          background: rgba(255, 255, 255, 0.02);
+          border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .light .performance-trade-item {
+          background: rgba(0, 0, 0, 0.01);
+          border: 1px solid rgba(0, 0, 0, 0.05);
+        }
+        
+        .performance-trade-item:hover {
+          transform: translateY(-1px);
+        }
+        
+        .dark .performance-trade-item:hover {
+          background: rgba(255, 255, 255, 0.04);
+        }
+        
+        .light .performance-trade-item:hover {
+          background: rgba(0, 0, 0, 0.02);
+        }
+        
+        .trade-summary {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+        
+        .trade-symbol-info {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        
+        .trade-date {
+          font-size: 0.75rem;
+          font-weight: 500;
+        }
+        
+        .dark .trade-date {
+          color: rgba(255, 255, 255, 0.6);
+        }
+        
+        .light .trade-date {
+          color: rgba(0, 0, 0, 0.6);
+        }
+        
+        .trade-performance {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-end;
+          gap: 2px;
+        }
+        
+        .trade-performance .pnl-amount {
+          font-size: 0.875rem;
+          font-weight: 700;
+          font-family: 'SF Mono', Monaco, monospace;
+        }
+        
+        .trade-performance .pnl-percentage {
+          font-size: 0.75rem;
+          font-weight: 600;
+          font-family: 'SF Mono', Monaco, monospace;
+        }
+        
+        /* Performance Chart Styles */
+        .performance-chart-section {
+          margin: 32px 0;
+        }
+        
+        .performance-chart-section h4 {
+          margin: 0 0 20px 0;
+          font-size: 1.25rem;
+          font-weight: 700;
+        }
+        
+        .dark .performance-chart-section h4 {
+          color: rgba(255, 255, 255, 0.9);
+        }
+        
+        .light .performance-chart-section h4 {
+          color: rgba(0, 0, 0, 0.9);
+        }
+        
+        .simple-chart {
+          padding: 0;
+        }
+        
+        .empty-chart {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding: 40px;
+          text-align: center;
+        }
+        
+        .empty-chart-icon {
+          font-size: 2rem;
+          margin-bottom: 12px;
+          opacity: 0.5;
+        }
+        
+        .empty-chart p {
+          margin: 0;
+          font-size: 0.875rem;
+          opacity: 0.7;
+        }
+        
+        .simple-chart-container {
+          border-radius: 12px;
+          padding: 20px;
+          margin: 16px 0;
+        }
+        
+        .dark .simple-chart-container {
+          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        
+        .light .simple-chart-container {
+          background: rgba(0, 0, 0, 0.02);
+          border: 1px solid rgba(0, 0, 0, 0.08);
+        }
+        
+        .chart-header {
+          text-align: center;
+          margin-bottom: 20px;
+        }
+        
+        .chart-title {
+          display: block;
+          font-size: 1rem;
+          font-weight: 700;
+          margin-bottom: 4px;
+        }
+        
+        .dark .chart-title {
+          color: rgba(255, 255, 255, 0.9);
+        }
+        
+        .light .chart-title {
+          color: rgba(0, 0, 0, 0.9);
+        }
+        
+        .chart-subtitle {
+          font-size: 0.8rem;
+          font-weight: 500;
+        }
+        
+        .dark .chart-subtitle {
+          color: rgba(255, 255, 255, 0.6);
+        }
+        
+        .light .chart-subtitle {
+          color: rgba(0, 0, 0, 0.6);
+        }
+        
+        .chart-bars {
+          display: flex;
+          align-items: flex-end;
+          justify-content: center;
+          gap: 12px;
+          height: 150px;
+          padding: 0 10px;
+          margin-bottom: 20px;
+        }
+        
+        .trade-bar {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          flex: 1;
+          max-width: 35px;
+          cursor: pointer;
+          transition: all 0.3s ease;
+        }
+        
+        .trade-bar:hover {
+          transform: translateY(-2px);
+        }
+        
+        .bar {
+          width: 100%;
+          border-radius: 4px 4px 0 0;
+          transition: all 0.3s ease;
+          position: relative;
+          min-height: 8px;
+          margin-bottom: 8px;
+        }
+        
+        .bar:hover {
+          opacity: 0.8;
+          transform: scaleX(1.1);
+        }
+        
+        .bar.profit {
+          background: linear-gradient(180deg, #22c55e 0%, #16a34a 100%);
+          box-shadow: 0 2px 6px rgba(34, 197, 94, 0.3);
+        }
+        
+        .bar.loss {
+          background: linear-gradient(180deg, #ef4444 0%, #dc2626 100%);
+          box-shadow: 0 2px 6px rgba(239, 68, 68, 0.3);
+        }
+        
+        .bar-tooltip {
+          position: absolute;
+          top: -30px;
+          left: 50%;
+          transform: translateX(-50%);
+          background: rgba(0, 0, 0, 0.8);
+          color: white;
+          padding: 4px 8px;
+          border-radius: 4px;
+          font-size: 0.7rem;
+          font-weight: 600;
+          white-space: nowrap;
+          opacity: 0;
+          pointer-events: none;
+          transition: opacity 0.3s ease;
+          z-index: 10;
+        }
+        
+        .bar:hover .bar-tooltip {
+          opacity: 1;
+        }
+        
+        .bar-label {
+          text-align: center;
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+        }
+        
+        .bar-label .symbol {
+          font-size: 0.75rem;
+          font-weight: 700;
+        }
+        
+        .dark .bar-label .symbol {
+          color: rgba(255, 255, 255, 0.8);
+        }
+        
+        .light .bar-label .symbol {
+          color: rgba(0, 0, 0, 0.8);
+        }
+        
+        .trade-type {
+          font-size: 0.65rem;
+          font-weight: 600;
+          padding: 2px 4px;
+          border-radius: 3px;
+        }
+        
+        .trade-type.long {
+          background: rgba(34, 197, 94, 0.15);
+          color: #16a34a;
+        }
+        
+        .trade-type.short {
+          background: rgba(239, 68, 68, 0.15);
+          color: #dc2626;
+        }
+        
+        .chart-legend {
+          display: flex;
+          justify-content: center;
+          gap: 20px;
+        }
+        
+        .legend-item {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 0.75rem;
+          font-weight: 500;
+        }
+        
+        .dark .legend-item {
+          color: rgba(255, 255, 255, 0.7);
+        }
+        
+        .light .legend-item {
+          color: rgba(0, 0, 0, 0.7);
+        }
+        
+        .legend-color {
+          width: 12px;
+          height: 12px;
+          border-radius: 2px;
+        }
+        
+        .legend-color.profit {
+          background: #22c55e;
+        }
+        
+        .legend-color.loss {
+          background: #ef4444;
         }
       `}</style>
     </div>

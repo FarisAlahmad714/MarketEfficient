@@ -49,6 +49,7 @@ const SandboxChart = ({ selectedAsset, marketData, onAssetChange, portfolioData 
       if (chartInstanceRef.current) {
         chartInstanceRef.current.remove();
         chartInstanceRef.current = null;
+        setCandlestickSeries(null); // Clear series reference
       }
       if (chartContainerRef.current?._cleanup) {
         chartContainerRef.current._cleanup();
@@ -326,6 +327,36 @@ const SandboxChart = ({ selectedAsset, marketData, onAssetChange, portfolioData 
     
     return { change, percentage };
   };
+
+  // Update chart with real-time prices (with disposal safety)
+  useEffect(() => {
+    if (candlestickSeries && 
+        chartInstanceRef.current && 
+        marketData[selectedAsset] && 
+        chartData.length > 0) {
+      try {
+        const realTimePrice = marketData[selectedAsset].price;
+        const lastCandle = chartData[chartData.length - 1];
+        
+        if (lastCandle && realTimePrice && realTimePrice !== lastCandle.close) {
+          // Check if chart is still valid before updating
+          if (chartInstanceRef.current && !chartInstanceRef.current._disposed) {
+            const updatedCandle = {
+              time: lastCandle.time,
+              open: lastCandle.open,
+              high: Math.max(lastCandle.high, realTimePrice),
+              low: Math.min(lastCandle.low, realTimePrice),
+              close: realTimePrice
+            };
+            
+            candlestickSeries.update(updatedCandle);
+          }
+        }
+      } catch (error) {
+        console.warn('Chart update failed (chart may be disposed):', error.message);
+      }
+    }
+  }, [marketData, selectedAsset, candlestickSeries, chartData]);
 
   const priceChange = getPriceChange();
   const currentPrice = getCurrentPrice();
