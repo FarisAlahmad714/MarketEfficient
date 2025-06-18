@@ -79,7 +79,7 @@ async function portfolioHandler(req, res) {
     })
     .sort({ exitTime: -1 })
     .limit(20)
-    .select('symbol side entryPrice exitPrice realizedPnL leverage entryTime exitTime duration pnlPercentage marginUsed quantity');
+    .select('symbol side entryPrice exitPrice realizedPnL leverage entryTime exitTime duration pnlPercentage marginUsed quantity fees');
     
     // Calculate total unrealized P&L from open positions with real-time prices
     const priceSimulator = getPriceSimulator();

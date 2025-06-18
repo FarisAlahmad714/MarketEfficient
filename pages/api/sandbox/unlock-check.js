@@ -112,8 +112,9 @@ async function unlockCheckHandler(req, res) {
         totalTrades: portfolio.totalTrades,
         winRate: portfolio.winRate,
         lastTradeAt: portfolio.lastTradeAt,
-        monthlyResetDate: portfolio.monthlyResetDate,
-        isResetDue: portfolio.isResetDue()
+        nextTopUpDate: portfolio.nextTopUpDate,
+        isTopUpDue: portfolio.isTopUpDue(),
+        topUpCount: portfolio.topUpCount
       } : null
     };
     

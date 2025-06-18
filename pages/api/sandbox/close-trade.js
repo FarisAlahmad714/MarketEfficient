@@ -75,8 +75,10 @@ async function closeTradeHandler(req, res) {
     
     // Calculate exit fee (0.1% for market orders, 0.05% for limit orders)
     const exitFeeRate = 0.001; // 0.1% for closing
-    const positionValue = exitPrice * closeQuantity;
+    const positionValue = exitPrice * closeQuantity * trade.leverage; // Apply leverage to position value
     const exitFee = positionValue * exitFeeRate;
+    
+    console.log(`Exit fee calculation: ${exitPrice} * ${closeQuantity} * ${trade.leverage} * ${exitFeeRate} = ${exitFee.toFixed(2)} SENSES`);
 
     // Calculate realized P&L using standardized calculation
     const { calculatePartialClosePnL } = require('../../../lib/pnl-calculator');
@@ -90,6 +92,7 @@ async function closeTradeHandler(req, res) {
         exitPrice: exitPrice,
         totalQuantity: originalQuantity,
         closeQuantity: closeQuantity,
+        leverage: trade.leverage,
         totalFees: trade.fees.total,
         exitFee: exitFee
       });
@@ -101,7 +104,7 @@ async function closeTradeHandler(req, res) {
       const priceDiff = trade.side === 'long'
         ? exitPrice - trade.entryPrice
         : trade.entryPrice - exitPrice;
-      const grossPnL = priceDiff * closeQuantity;
+      const grossPnL = priceDiff * closeQuantity * trade.leverage; // Apply leverage to P&L
       realizedPnL = grossPnL - (trade.fees.total * (closeQuantity / originalQuantity)) - exitFee;
       feesPaid = (trade.fees.total * (closeQuantity / originalQuantity)) + exitFee;
     }
@@ -136,10 +139,14 @@ async function closeTradeHandler(req, res) {
       await trade.save();
       
     } else {
-      // Full close
-      trade.closeTrade(exitPrice, closeType);
+      // Full close - Update fees BEFORE calling closeTrade
       trade.fees.exit = exitFee;
       trade.fees.total += exitFee;
+      
+      // Now close the trade (this will calculate P&L with updated fees)
+      trade.closeTrade(exitPrice, closeType);
+      
+      // Override with our more accurate P&L calculation
       trade.realizedPnL = realizedPnL;
       
       await trade.save();
