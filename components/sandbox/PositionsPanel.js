@@ -54,13 +54,18 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
     
     // Liquidation at 90% loss of margin
     const liquidationThreshold = 0.9;
-    const maxLoss = position.marginUsed * liquidationThreshold;
-    const maxPriceMove = maxLoss / position.quantity;
+    
+    // For leveraged positions, calculate the price movement that would cause 90% margin loss
+    // liquidationThreshold = (priceMove / entryPrice) * leverage
+    // priceMove = liquidationThreshold * entryPrice / leverage
+    const priceMovementRatio = liquidationThreshold / position.leverage;
     
     if (position.side === 'long') {
-      return position.entryPrice - maxPriceMove;
+      // Long position loses money when price goes down
+      return position.entryPrice * (1 - priceMovementRatio);
     } else {
-      return position.entryPrice + maxPriceMove;
+      // Short position loses money when price goes up
+      return position.entryPrice * (1 + priceMovementRatio);
     }
   };
 
@@ -371,10 +376,10 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
                             const currentPrice = marketData[position.symbol]?.price || position.currentPrice;
                             const priceChange = currentPrice - position.entryPrice;
                             
-                            // Calculate raw P&L from price movement using standardized logic
+                            // Calculate raw P&L from price movement using standardized logic (with leverage)
                             const rawPnL = position.side === 'long' 
-                              ? priceChange * position.quantity 
-                              : -priceChange * position.quantity;
+                              ? priceChange * position.quantity * (position.leverage || 1)
+                              : -priceChange * position.quantity * (position.leverage || 1);
                             
                             // Actual P&L includes fees
                             const actualPnL = position.unrealizedPnL || 0;
@@ -410,7 +415,7 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
                       
                       <div className="detail-row">
                         <span className="detail-label">Position Value:</span>
-                        <span className="detail-value">{formatCurrency((marketData[position.symbol]?.price || position.currentPrice || position.entryPrice) * position.quantity)} SENSES</span>
+                        <span className="detail-value">{formatCurrency((marketData[position.symbol]?.price || position.currentPrice || position.entryPrice) * position.quantity * (position.leverage || 1))} SENSES</span>
                       </div>
                       
                       <div className="detail-row">
@@ -449,7 +454,7 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
                         if (liquidationInfo) {
                           return (
                             <div className="detail-row">
-                              <span className="detail-label">Liquidation Risk:</span>
+                              <span className="detail-label">Liquidation Price:</span>
                               <span className="detail-value">
                                 {liquidationInfo.price.toFixed(2)} SENSES
                                 <span className={`risk-indicator risk-${liquidationInfo.risk}`} style={{
@@ -923,6 +928,12 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
                         <div className="detail-item">
                           <span className="label">Margin:</span>
                           <span className="value">{formatCurrency(trade.marginUsed || 0)} SENSES</span>
+                        </div>
+                        <div className="detail-item">
+                          <span className="label">Fees:</span>
+                          <span className="value" style={{ color: '#ff4757' }}>
+                            -{formatCurrency(trade.fees?.total || 0)} SENSES
+                          </span>
                         </div>
                         <div className="detail-item">
                           <span className="label">Date:</span>

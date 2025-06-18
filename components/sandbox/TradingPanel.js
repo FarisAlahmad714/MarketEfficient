@@ -388,6 +388,20 @@ const TradingPanel = ({ selectedAsset, marketData, portfolioData, onTradeSuccess
             <span>2x</span>
             <span>{portfolioData?.riskLimits?.maxLeverage || 3}x</span>
           </div>
+          
+          {/* Leverage Fee Warning */}
+          {leverage > 1 && (
+            <div className="leverage-warning">
+              <div className="fee-info">
+                📊 Higher leverage = Higher fees on position value
+              </div>
+              <div className="fee-breakdown">
+                <span>1x Fee: {(calculateBasePositionValue() * 0.001).toFixed(2)} SENSES</span>
+                <span>→</span>
+                <span>{leverage}x Fee: {(calculatePositionValue() * 0.001).toFixed(2)} SENSES</span>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Stop Loss & Take Profit */}
@@ -926,6 +940,45 @@ const TradingPanel = ({ selectedAsset, marketData, portfolioData, onTradeSuccess
         
         .light .leverage-labels, .light .slider-labels {
           color: rgba(0, 0, 0, 0.6);
+        }
+        
+        .leverage-warning {
+          margin-top: 12px;
+          padding: 12px;
+          border-radius: 8px;
+          font-size: 0.75rem;
+        }
+        
+        .dark .leverage-warning {
+          background: rgba(245, 158, 11, 0.1);
+          border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+        
+        .light .leverage-warning {
+          background: rgba(245, 158, 11, 0.05);
+          border: 1px solid rgba(245, 158, 11, 0.2);
+        }
+        
+        .fee-info {
+          font-weight: 600;
+          margin-bottom: 6px;
+          color: #f59e0b;
+        }
+        
+        .fee-breakdown {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-family: 'SF Mono', Monaco, monospace;
+          font-size: 0.7rem;
+        }
+        
+        .dark .fee-breakdown {
+          color: rgba(255, 255, 255, 0.7);
+        }
+        
+        .light .fee-breakdown {
+          color: rgba(0, 0, 0, 0.7);
         }
         
         .form-row {

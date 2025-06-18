@@ -114,6 +114,7 @@ async function portfolioHandler(req, res) {
           entryPrice: trade.entryPrice,
           currentPrice: currentPrice,
           quantity: trade.quantity,
+          leverage: trade.leverage,
           totalFees: trade.fees?.total || 0
         });
       } catch (error) {

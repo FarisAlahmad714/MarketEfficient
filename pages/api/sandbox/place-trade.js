@@ -235,8 +235,9 @@ async function placeTradeHandler(req, res) {
     }
 
     // Calculate position value and margin using validated data
-    const positionValue = executionPrice * validatedData.quantity;
-    const marginRequired = positionValue / validatedData.leverage;
+    const basePositionValue = executionPrice * validatedData.quantity;
+    const positionValue = basePositionValue * validatedData.leverage; // Total exposure with leverage
+    const marginRequired = basePositionValue; // Actual money required from balance
 
     // Check if user is admin with error handling
     let user, isAdmin;
@@ -392,8 +393,9 @@ async function placeTradeHandler(req, res) {
       // Add slippage simulation (0.01% for realistic execution)
       const slippage = side === 'long' ? 1.0001 : 0.9999;
       tradeData.entryPrice = currentPrice * slippage;
-      tradeData.positionValue = tradeData.entryPrice * quantity;
-      tradeData.marginUsed = tradeData.positionValue / leverage;
+      const basePositionValue = tradeData.entryPrice * quantity;
+      tradeData.positionValue = basePositionValue * leverage; // Leveraged exposure
+      tradeData.marginUsed = basePositionValue; // Actual margin from balance
       tradeData.status = 'open';
       
       // Recalculate fees with actual execution price
@@ -408,6 +410,7 @@ async function placeTradeHandler(req, res) {
           entryPrice: tradeData.entryPrice,
           currentPrice: currentPrice,
           quantity: quantity,
+          leverage: leverage,
           totalFees: tradeData.fees.total
         });
       } catch (error) {
@@ -418,8 +421,9 @@ async function placeTradeHandler(req, res) {
       // For limit orders, create as pending
       tradeData.status = 'pending';
       tradeData.entryPrice = limitPrice;
-      tradeData.positionValue = tradeData.entryPrice * quantity;
-      tradeData.marginUsed = tradeData.positionValue / leverage;
+      const basePositionValue = tradeData.entryPrice * quantity;
+      tradeData.positionValue = basePositionValue * leverage; // Leveraged exposure
+      tradeData.marginUsed = basePositionValue; // Actual margin from balance
       tradeData.unrealizedPnL = 0; // No P&L until filled
     }
 

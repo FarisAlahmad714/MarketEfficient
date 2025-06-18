@@ -93,12 +93,12 @@ const SandboxTradeSchema = new mongoose.Schema({
   // Financial Data
   positionValue: {
     type: Number,
-    required: true // Entry price * quantity
+    required: true // Entry price * quantity * leverage (total exposure)
   },
   
   marginUsed: {
     type: Number,
-    required: true // Position value / leverage
+    required: true // Entry price * quantity (actual margin from balance)
   },
   
   unrealizedPnL: {
@@ -261,6 +261,7 @@ SandboxTradeSchema.virtual('pnlPercentage').get(function() {
         entryPrice: this.entryPrice,
         currentPrice: this.currentPrice,
         quantity: this.quantity,
+        leverage: this.leverage,
         totalFees: this.fees.total
       });
       return calculatePnLPercentage(pnl, this.marginUsed);
@@ -277,6 +278,7 @@ SandboxTradeSchema.virtual('pnlPercentage').get(function() {
         entryPrice: this.entryPrice,
         exitPrice: this.exitPrice,
         quantity: this.quantity,
+        leverage: this.leverage,
         totalFees: this.fees.total
       });
       return calculatePnLPercentage(pnl, this.marginUsed);
@@ -310,6 +312,7 @@ SandboxTradeSchema.methods.updateUnrealizedPnL = function(currentPrice) {
       entryPrice: this.entryPrice,
       currentPrice: currentPrice,
       quantity: this.quantity,
+      leverage: this.leverage,
       totalFees: this.fees.total
     });
   } catch (error) {
@@ -331,8 +334,8 @@ SandboxTradeSchema.methods.closeTrade = function(exitPrice, reason = 'manual') {
     ? exitPrice - this.entryPrice
     : this.entryPrice - exitPrice;
   
-  // P&L = price difference * quantity (leverage already factored in via position size)
-  this.realizedPnL = (priceDiff * this.quantity) - this.fees.total;
+  // P&L = price difference * quantity * leverage - fees
+  this.realizedPnL = (priceDiff * this.quantity * this.leverage) - this.fees.total;
   this.unrealizedPnL = 0; // Clear unrealized P&L
 };
 
@@ -355,6 +358,23 @@ SandboxTradeSchema.methods.checkTakeProfit = function(currentPrice) {
     return currentPrice >= this.takeProfit.price;
   } else {
     return currentPrice <= this.takeProfit.price;
+  }
+};
+
+// Method to calculate liquidation price
+SandboxTradeSchema.methods.getLiquidationPrice = function() {
+  if (this.status !== 'open' || this.leverage === 1) return null;
+  
+  // Liquidation at 90% loss of margin
+  const liquidationThreshold = 0.9;
+  const priceMovementRatio = liquidationThreshold / this.leverage;
+  
+  if (this.side === 'long') {
+    // Long position loses money when price goes down
+    return this.entryPrice * (1 - priceMovementRatio);
+  } else {
+    // Short position loses money when price goes up
+    return this.entryPrice * (1 + priceMovementRatio);
   }
 };
 
