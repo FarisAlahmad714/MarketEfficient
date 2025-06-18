@@ -75,15 +75,30 @@ const SandboxChart = ({ selectedAsset, marketData, onAssetChange, portfolioData 
   }, [showAssetSelector]);
 
   const getOptimalOutputSize = (timeframe) => {
+    // Realistic candle counts with appropriate historical coverage
     const sizeMap = {
-      '1min': 500,   // ~8 hours
-      '5min': 1000,  // ~3.5 days  
-      '15min': 1500, // ~15 days
-      '1h': 2000,    // ~83 days
-      '4h': 3000,    // ~1 year
-      '1day': 5000   // ~13 years
+      '1min': 480,     // 8 hours (realistic for intraday scalping)
+      '5min': 288,     // 24 hours (1 full trading day)  
+      '15min': 384,    // 4 days (96 * 4 = good for swing setups)
+      '1h': 720,       // 30 days (1 month of hourly data)
+      '4h': 180,       // 30 days (1 month of 4h candles)
+      '1day': 365      // 1 year (365 daily candles)
     };
-    return sizeMap[timeframe] || 1000;
+    return sizeMap[timeframe] || 300;
+  };
+
+  // Get API limits for real data vs simulated data
+  const getAPIOutputSize = (timeframe) => {
+    // Conservative limits for TwelveData API to avoid rate limiting
+    const apiLimits = {
+      '1min': 300,     // API limit: ~5 hours
+      '5min': 500,     // API limit: ~1.7 days  
+      '15min': 800,    // API limit: ~8 days
+      '1h': 1000,      // API limit: ~41 days
+      '4h': 1000,      // API limit: ~166 days  
+      '1day': 1000     // API limit: ~2.7 years
+    };
+    return apiLimits[timeframe] || 300;
   };
 
   const loadChartData = async () => {
@@ -91,8 +106,10 @@ const SandboxChart = ({ selectedAsset, marketData, onAssetChange, portfolioData 
       setLoading(true);
       
       const token = storage.getItem('auth_token');
-      const outputsize = getOptimalOutputSize(timeframe);
-      const response = await fetch(`/api/sandbox/market-data?symbols=${selectedAsset}&interval=${timeframe}&type=chart&outputsize=${outputsize}`, {
+      
+      // First try to get real data with API limits
+      const apiOutputSize = getAPIOutputSize(timeframe);
+      let response = await fetch(`/api/sandbox/market-data?symbols=${selectedAsset}&interval=${timeframe}&type=chart&outputsize=${apiOutputSize}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -106,8 +123,50 @@ const SandboxChart = ({ selectedAsset, marketData, onAssetChange, portfolioData 
       console.log(`Chart data response:`, data);
       
       if (data.success && data.chartData) {
-        console.log(`Setting chart data: ${data.chartData.length} candles`);
-        setChartData(data.chartData);
+        let chartData = data.chartData;
+        
+        // If we got real data but need more historical data, extend with simulated data
+        const desiredSize = getOptimalOutputSize(timeframe);
+        if (chartData.length < desiredSize && !data.isSimulated) {
+          console.log(`Extending ${chartData.length} real candles to ${desiredSize} with simulated historical data`);
+          
+          // Request additional simulated historical data to fill the gap
+          const additionalSize = desiredSize - chartData.length;
+          const extendResponse = await fetch(`/api/sandbox/market-data?symbols=${selectedAsset}&interval=${timeframe}&type=chart&outputsize=${additionalSize}&extend=true&latestTime=${chartData[0]?.time}`, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          
+          if (extendResponse.ok) {
+            const extendData = await extendResponse.json();
+            if (extendData.success && extendData.chartData) {
+              // Prepend historical simulated data and ensure proper time ordering
+              chartData = [...extendData.chartData, ...chartData];
+              
+              // Sort by time to ensure ascending order (required by lightweight-charts)
+              chartData.sort((a, b) => a.time - b.time);
+              
+              // Remove any duplicate timestamps
+              chartData = chartData.filter((candle, index, array) => 
+                index === 0 || candle.time !== array[index - 1].time
+              );
+              
+              console.log(`Extended chart data to ${chartData.length} candles total (sorted)`);
+            }
+          }
+        }
+        
+        // Final safety check: ensure data is properly sorted and has no duplicates
+        chartData.sort((a, b) => a.time - b.time);
+        
+        // Log first and last candle times for debugging
+        if (chartData.length > 0) {
+          console.log(`Final chart data: ${chartData.length} candles (${data.isSimulated ? 'simulated' : 'real + simulated'})`);
+          console.log(`Time range: ${new Date(chartData[0].time * 1000).toISOString()} to ${new Date(chartData[chartData.length-1].time * 1000).toISOString()}`);
+        }
+        
+        setChartData(chartData);
       }
       
     } catch (error) {

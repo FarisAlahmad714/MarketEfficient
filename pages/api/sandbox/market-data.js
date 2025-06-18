@@ -10,7 +10,7 @@ async function marketDataHandler(req, res) {
   await connectDB();
   
   const userId = req.user.id;
-  const { symbols, interval = '1min', outputsize = '1000', type = 'price' } = req.query;
+  const { symbols, interval = '1min', outputsize = '1000', type = 'price', extend = 'false', latestTime } = req.query;
   
   try {
     // Check if user is admin first
@@ -76,7 +76,12 @@ async function marketDataHandler(req, res) {
         } catch (error) {
           console.log('Falling back to simulated data for chart:', error.message);
           // Fallback to simulated data if real data fails
-          const chartData = generateSimulatedChartData(requestedSymbol, interval, parseInt(outputsize));
+          const chartData = generateSimulatedChartData(
+            requestedSymbol, 
+            interval, 
+            parseInt(outputsize),
+            extend === 'true' ? parseInt(latestTime) : null
+          );
           
           return res.status(200).json({
             success: true,
@@ -85,7 +90,8 @@ async function marketDataHandler(req, res) {
             pair: `${requestedSymbol}/SENSES`,
             interval: interval,
             timestamp: new Date().toISOString(),
-            isSimulated: true // Flag to indicate this is simulated data
+            isSimulated: true, // Flag to indicate this is simulated data
+            isExtension: extend === 'true'
           });
         }
       }
@@ -285,13 +291,13 @@ async function getHistoricalData(symbol, interval = '1h', outputsize = 100) {
 }
 
 // Generate simulated chart data for sandbox trading  
-function generateSimulatedChartData(symbol, interval, outputsize) {
+function generateSimulatedChartData(symbol, interval, outputsize, extendFromTime = null) {
   const priceSimulator = getPriceSimulator();
   const currentPrice = priceSimulator.getPrice(symbol);
   
   // Generate historical data leading up to current price
   const data = [];
-  const now = new Date();
+  const now = extendFromTime ? new Date(extendFromTime * 1000) : new Date();
   const intervalMinutes = getIntervalMinutes(interval);
   
   // Start from current simulated price and work backwards
@@ -299,16 +305,32 @@ function generateSimulatedChartData(symbol, interval, outputsize) {
   
   // Generate data points going backwards in time
   for (let i = outputsize - 1; i >= 0; i--) {
-    const timestamp = new Date(now.getTime() - (i * intervalMinutes * 60 * 1000));
+    let timestamp;
     
-    // For current candle (i=0), use exact current price
-    if (i === 0) {
-      workingPrice = currentPrice;
+    if (extendFromTime) {
+      // For extension: generate data going backwards from the provided time
+      timestamp = new Date(now.getTime() - ((outputsize - i) * intervalMinutes * 60 * 1000));
     } else {
+      // Normal mode: generate data leading up to current time
+      timestamp = new Date(now.getTime() - ((outputsize - 1 - i) * intervalMinutes * 60 * 1000));
+    }
+    
+    // For extending mode, generate older historical data before the real data
+    if (extendFromTime) {
       // Generate realistic price movement for historical data
       const volatility = 0.005; // Reduced volatility for smoother historical data
       const change = (Math.random() - 0.5) * volatility;
       workingPrice = workingPrice * (1 + change);
+    } else {
+      // For current candle (i=0), use exact current price
+      if (i === 0) {
+        workingPrice = currentPrice;
+      } else {
+        // Generate realistic price movement for historical data
+        const volatility = 0.005; // Reduced volatility for smoother historical data
+        const change = (Math.random() - 0.5) * volatility;
+        workingPrice = workingPrice * (1 + change);
+      }
     }
     
     // Generate OHLC data around working price
