@@ -98,19 +98,12 @@ async function placeTradeHandler(req, res) {
       });
     }
 
-    // Check if monthly reset is due
-    if (portfolio.isResetDue()) {
-      const error = new TradingError(
-        'Monthly reset required',
-        'MONTHLY_RESET_DUE',
-        'low',
-        { userId, resetDate: portfolio.monthlyResetDate }
-      );
-      await logTradingError(error, userId, 'place_trade_reset');
-      return res.status(400).json({ 
-        error: 'Monthly reset required',
-        message: 'Your portfolio needs to be reset for the new month' 
-      });
+    // Check if quarterly top-up is due and apply it automatically
+    if (portfolio.isTopUpDue()) {
+      console.log(`Quarterly top-up due for user ${userId}, adding 10,000 SENSES`);
+      portfolio.performQuarterlyTopUp();
+      await portfolio.save();
+      console.log(`Top-up completed. New balance: ${portfolio.balance} SENSES`);
     }
 
     // Validate pre-trade analysis

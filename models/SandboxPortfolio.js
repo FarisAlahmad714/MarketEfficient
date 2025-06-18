@@ -32,18 +32,28 @@ const SandboxPortfolioSchema = new mongoose.Schema({
     default: null
   },
   
-  // Reset System
-  monthlyResetDate: {
+  // Quarterly Balance Top-up System
+  nextTopUpDate: {
     type: Date,
     default: function() {
       const now = new Date();
-      return new Date(now.getFullYear(), now.getMonth() + 1, 1); // First day of next month
+      // Next quarter start date (Jan 1, Apr 1, Jul 1, Oct 1)
+      const currentMonth = now.getMonth();
+      const quarterStartMonth = Math.floor(currentMonth / 3) * 3 + 3;
+      const year = quarterStartMonth >= 12 ? now.getFullYear() + 1 : now.getFullYear();
+      const month = quarterStartMonth >= 12 ? 0 : quarterStartMonth;
+      return new Date(year, month, 1);
     }
   },
   
-  resetCount: {
+  topUpCount: {
     type: Number,
     default: 0
+  },
+  
+  lastTopUpDate: {
+    type: Date,
+    default: null
   },
   
   // Performance Metrics
@@ -221,32 +231,30 @@ SandboxPortfolioSchema.methods.updatePerformanceMetrics = function() {
   }
 };
 
-// Method to check if monthly reset is due
-SandboxPortfolioSchema.methods.isResetDue = function() {
-  return new Date() >= this.monthlyResetDate;
+// Method to check if quarterly top-up is due
+SandboxPortfolioSchema.methods.isTopUpDue = function() {
+  return new Date() >= this.nextTopUpDate;
 };
 
-// Method to perform monthly reset
-SandboxPortfolioSchema.methods.performMonthlyReset = function() {
-  this.balance = this.initialBalance;
-  this.totalTrades = 0;
-  this.winningTrades = 0;
-  this.losingTrades = 0;
-  this.winRate = 0;
-  this.averageWin = 0;
-  this.averageLoss = 0;
-  this.profitFactor = 0;
-  this.sharpeRatio = 0;
-  this.totalReturn = 0;
-  this.totalReturnDollar = 0;
-  this.highWaterMark = this.initialBalance;
-  this.maxDrawdown = 0;
-  this.lastTradeAt = null;
-  this.resetCount += 1;
+// Method to perform quarterly balance top-up (PRESERVES ALL PROGRESS)
+SandboxPortfolioSchema.methods.performQuarterlyTopUp = function() {
+  // Add 10,000 SENSES to current balance (no reset!)
+  this.balance += 10000;
+  this.topUpCount += 1;
+  this.lastTopUpDate = new Date();
   
-  // Set next reset date
+  // Set next top-up date (next quarter)
   const now = new Date();
-  this.monthlyResetDate = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  const currentMonth = now.getMonth();
+  const quarterStartMonth = Math.floor(currentMonth / 3) * 3 + 3;
+  const year = quarterStartMonth >= 12 ? now.getFullYear() + 1 : now.getFullYear();
+  const month = quarterStartMonth >= 12 ? 0 : quarterStartMonth;
+  this.nextTopUpDate = new Date(year, month, 1);
+  
+  // Update high water mark if needed
+  if (this.balance > this.highWaterMark) {
+    this.highWaterMark = this.balance;
+  }
 };
 
 // Method to update unlock progress
@@ -288,6 +296,6 @@ SandboxPortfolioSchema.methods.updateUnlockProgress = async function() {
 // Index for efficient queries
 SandboxPortfolioSchema.index({ userId: 1 });
 SandboxPortfolioSchema.index({ unlocked: 1 });
-SandboxPortfolioSchema.index({ monthlyResetDate: 1 });
+SandboxPortfolioSchema.index({ nextTopUpDate: 1 });
 
 module.exports = mongoose.models.SandboxPortfolio || mongoose.model('SandboxPortfolio', SandboxPortfolioSchema);

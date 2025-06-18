@@ -52,22 +52,12 @@ async function portfolioHandler(req, res) {
       });
     }
     
-    // Check if monthly reset is due
-    if (portfolio.isResetDue()) {
-      // Close all open trades before reset
-      await SandboxTrade.updateMany(
-        { userId, status: 'open' },
-        { 
-          status: 'closed',
-          closeReason: 'monthly_reset',
-          exitTime: new Date(),
-          realizedPnL: 0 // Reset trades don't affect P&L
-        }
-      );
-      
-      // Perform reset
-      portfolio.performMonthlyReset();
+    // Check if quarterly top-up is due and apply automatically  
+    if (portfolio.isTopUpDue()) {
+      console.log(`Quarterly top-up due for user ${userId}, adding 10,000 SENSES`);
+      portfolio.performQuarterlyTopUp();
       await portfolio.save();
+      console.log(`Top-up completed. New balance: ${portfolio.balance} SENSES`);
     }
     
     // Get open positions
