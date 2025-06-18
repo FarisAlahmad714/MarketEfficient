@@ -236,7 +236,7 @@ const Leaderboard = () => {
         >
           <User size={18} />
           <span>
-            Your rank: <strong>#{currentUserRank}</strong> of {totalParticipants} participants
+            Your rank: <strong>#{currentUserRank}</strong>
             {testType !== 'all' && ` in ${testTypes.find((t) => t.id === testType)?.name || testType}`}
             {period !== 'all' && ` for ${periods.find((p) => p.id === period)?.name.toLowerCase()}`}
           </span>
@@ -496,16 +496,12 @@ const Leaderboard = () => {
               backgroundColor: darkMode ? '#262626' : '#f5f5f5',
               borderRadius: '4px',
               display: 'flex',
-              justifyContent: 'space-between',
+              justifyContent: 'center',
               alignItems: 'center',
               color: darkMode ? '#b0b0b0' : '#666',
               fontSize: '0.9rem',
             }}
           >
-            <div>
-              <strong>{totalParticipants}</strong>{' '}
-              {totalParticipants === 1 ? 'participant' : 'participants'} in total
-            </div>
             <div>Showing top {Math.min(leaderboardData.length, 5)} users</div>
           </div>
         </>

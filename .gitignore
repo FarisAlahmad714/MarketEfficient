@@ -142,3 +142,7 @@ check-admin-password.js
 fix-admin-password.js
 test-gcs-creds.js
 unlock-admin-script.js
+
+# Development/test files
+components/tester.js
+pages/api/test.js
