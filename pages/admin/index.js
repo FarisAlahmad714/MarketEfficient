@@ -6,6 +6,8 @@ import { ThemeContext } from '../../contexts/ThemeContext';
 import Link from 'next/link';
 import CryptoLoader from '../../components/CryptoLoader';
 import UserDetailsModal from '../../components/admin/UserDetailsModal';
+import AIRecommendationsModal from '../../components/admin/AIRecommendationsModal';
+import EmailCampaignModal from '../../components/admin/EmailCampaignModal';
 import TrackedPage from '../../components/TrackedPage';
 import storage from '../../lib/storage'; // Adjust the path to your storage utility
 
@@ -50,6 +52,10 @@ const AdminPanel = () => {
   const [auditData, setAuditData] = useState(null);
   const [auditLoading, setAuditLoading] = useState(false);
   const [auditPage, setAuditPage] = useState(1);
+  const [showRecommendationModal, setShowRecommendationModal] = useState(false);
+  const [selectedRecommendation, setSelectedRecommendation] = useState(null);
+  const [showEmailCampaignModal, setShowEmailCampaignModal] = useState(false);
+  const [emailCampaignData, setEmailCampaignData] = useState(null);
 
   // Define tools for the admin panel
   const tools = [
@@ -124,33 +130,38 @@ const AdminPanel = () => {
     const recommendations = [];
     if (insights.inactiveUsers > 0) {
       recommendations.push({
+        type: 'inactive_users',
         title: 'Re-engage Inactive Users',
         description: `There are ${insights.inactiveUsers} users who haven't logged in for over 30 days. Consider sending a reminder email or offering a special promotion to bring them back.`,
-        action: 'Create Campaign',
-        actionLink: '/admin/campaigns/new'
+        action: 'View Details',
+        actionType: 'modal'
       });
     }
     if (insights.revenueChange < 0) {
       recommendations.push({
+        type: 'revenue_change',
         title: 'Address Revenue Decline',
         description: `Revenue has decreased by ${Math.abs(insights.revenueChange)}% compared to last month. Review your pricing strategy or consider offering limited-time discounts to boost sales.`,
-        action: 'View Revenue Report',
-        actionLink: '/admin/reports/revenue'
+        action: 'View Details',
+        actionType: 'modal'
       });
     } else if (insights.revenueChange > 0) {
       recommendations.push({
+        type: 'revenue_change',
         title: 'Capitalize on Revenue Growth',
         description: `Revenue has increased by ${insights.revenueChange}% compared to last month. Consider investing in marketing or expanding your offerings to maintain this momentum.`,
-        action: 'View Revenue Report',
-        actionLink: '/admin/reports/revenue'
+        action: 'View Details',
+        actionType: 'modal'
       });
     }
-    if (insights.topRegion !== 'N/A') {
+    // Replace region with timezone analysis since we don't collect location data
+    if (insights.totalUsers > 0) {
       recommendations.push({
-        title: 'Focus on Top Performing Region',
-        description: `Users in ${insights.topRegion} have the highest engagement, with an average of ${insights.topRegionEngagement} tests per user. Consider creating region-specific content or promotions to further boost engagement.`,
-        action: 'View Engagement Map',
-        actionLink: '/admin/engagement/map'
+        type: 'timezone_analysis',
+        title: 'Optimize for User Timezones',
+        description: `Analyze user activity patterns across different timezones to optimize content delivery and engagement timing.`,
+        action: 'View Analysis',
+        actionType: 'modal'
       });
     }
     return recommendations;
@@ -229,6 +240,26 @@ const AdminPanel = () => {
     }
   };
 
+  // Handle recommendation modal
+  const handleRecommendationClick = (recommendation) => {
+    setSelectedRecommendation(recommendation);
+    setShowRecommendationModal(true);
+  };
+
+  // Handle email campaign creation
+  const handleEmailCampaign = (campaignType, targetUsers) => {
+    setEmailCampaignData({ campaignType, targetUsers });
+    setShowEmailCampaignModal(true);
+  };
+
+  // Handle campaign success
+  const handleCampaignSuccess = (result) => {
+    setShowEmailCampaignModal(false);
+    setEmailCampaignData(null);
+    // Optionally show a success message
+    alert(`Campaign "${result.campaign.name}" created successfully!`);
+  };
+
   return (
     <TrackedPage>
     <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px 20px' }}>
@@ -271,18 +302,22 @@ const AdminPanel = () => {
                 <h4 style={{ color: darkMode ? '#e0e0e0' : '#333', marginBottom: '10px', fontSize: '16px' }}>{rec.title}</h4>
                 <p style={{ color: darkMode ? '#b0b0b0' : '#666', marginBottom: '15px', fontSize: '14px' }}>{rec.description}</p>
                 {rec.action && (
-                  <Link href={rec.actionLink || '#'} style={{
-                    display: 'inline-block',
-                    padding: '8px 15px',
-                    backgroundColor: '#2196F3',
-                    color: 'white',
-                    textDecoration: 'none',
-                    borderRadius: '4px',
-                    fontSize: '14px',
-                    fontWeight: '500'
-                  }}>
+                  <button
+                    onClick={() => handleRecommendationClick(rec)}
+                    style={{
+                      display: 'inline-block',
+                      padding: '8px 15px',
+                      backgroundColor: '#2196F3',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '4px',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      cursor: 'pointer'
+                    }}
+                  >
                     {rec.action}
-                  </Link>
+                  </button>
                 )}
               </div>
             ))}
@@ -946,6 +981,30 @@ const AdminPanel = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* AI Recommendations Modal */}
+      {showRecommendationModal && selectedRecommendation && (
+        <AIRecommendationsModal
+          recommendation={selectedRecommendation}
+          darkMode={darkMode}
+          onClose={() => setShowRecommendationModal(false)}
+          onEmailCampaign={handleEmailCampaign}
+        />
+      )}
+
+      {/* Email Campaign Modal */}
+      {showEmailCampaignModal && emailCampaignData && (
+        <EmailCampaignModal
+          campaignType={emailCampaignData.campaignType}
+          targetUsers={emailCampaignData.targetUsers}
+          darkMode={darkMode}
+          onClose={() => {
+            setShowEmailCampaignModal(false);
+            setEmailCampaignData(null);
+          }}
+          onSuccess={handleCampaignSuccess}
+        />
       )}
     </div>
     </TrackedPage>
