@@ -366,82 +366,82 @@ const SandboxChart = ({ selectedAsset, marketData, onAssetChange, portfolioData 
       {/* Chart Header */}
       <div className="chart-header">
         <div className="asset-info">
-          <div 
-            ref={dropdownRef}
-            className="asset-selector" 
-            onClick={(e) => {
-              if (!showAssetSelector) {
-                const rect = e.currentTarget.getBoundingClientRect();
-                setDropdownPosition({
-                  bottom: window.innerHeight - rect.top + window.scrollY + 8,
-                  left: rect.left + window.scrollX
-                });
-              }
-              setShowAssetSelector(!showAssetSelector);
-            }}
+          <button 
+            className="asset-selector-button"
+            onClick={() => setShowAssetSelector(true)}
           >
-            <span className="asset-name">
+            <span className="selected-asset">
               {allAssets.find(a => a.symbol === selectedAsset)?.name || selectedAsset}
             </span>
-            <span className="asset-symbol">({selectedAsset}/SENSES)</span>
-            <FaChevronDown className={`dropdown-icon ${showAssetSelector ? 'open' : ''}`} />
-            
-            {showAssetSelector && (
-              <>
-                <div className="dropdown-overlay" onClick={() => setShowAssetSelector(false)} />
-                <div 
-                  className="asset-dropdown"
-                  style={{
-                    bottom: `${dropdownPosition.bottom}px`,
-                    left: `${dropdownPosition.left}px`
-                  }}
-                >
-                <div className="asset-category">
-                  <h4>Cryptocurrencies</h4>
-                  {SANDBOX_ASSETS.crypto.map(asset => (
-                    <div 
-                      key={asset.symbol}
-                      className={`asset-option ${selectedAsset === asset.symbol ? 'selected' : ''}`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onAssetChange(asset.symbol);
-                        setShowAssetSelector(false);
-                      }}
-                    >
-                      <span className="option-name">{asset.name}</span>
-                      <span className="option-symbol">{asset.symbol}</span>
-                    </div>
-                  ))}
+            <span className="asset-symbol">({selectedAsset})</span>
+            <FaChevronDown />
+          </button>
+
+          {/* BEAUTIFUL MODAL */}
+          {showAssetSelector && (
+            <div className="modal-overlay" onClick={() => setShowAssetSelector(false)}>
+              <div className="asset-modal" onClick={(e) => e.stopPropagation()}>
+                <div className="modal-header">
+                  <h3>Select Asset</h3>
+                  <button className="close-btn" onClick={() => setShowAssetSelector(false)}>✕</button>
                 </div>
                 
-                <div className="asset-category">
-                  <h4>Stocks & ETFs</h4>
-                  {SANDBOX_ASSETS.stocks.map(asset => (
-                    <div 
-                      key={asset.symbol}
-                      className={`asset-option ${selectedAsset === asset.symbol ? 'selected' : ''}`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onAssetChange(asset.symbol);
-                        setShowAssetSelector(false);
-                      }}
-                    >
-                      <span className="option-name">{asset.name}</span>
-                      <span className="option-symbol">{asset.symbol}</span>
+                <div className="modal-content">
+                  <div className="asset-section">
+                    <h4>Cryptocurrencies</h4>
+                    <div className="asset-grid">
+                      {SANDBOX_ASSETS.crypto.map(asset => (
+                        <div 
+                          key={asset.symbol}
+                          className={`asset-card ${selectedAsset === asset.symbol ? 'selected' : ''}`}
+                          onClick={() => {
+                            onAssetChange(asset.symbol);
+                            setShowAssetSelector(false);
+                          }}
+                        >
+                          <div className="asset-info">
+                            <span className="asset-name">{asset.name}</span>
+                            <span className="asset-symbol">{asset.symbol}</span>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  </div>
+                  
+                  <div className="asset-section">
+                    <h4>Stocks & ETFs</h4>
+                    <div className="asset-grid">
+                      {SANDBOX_ASSETS.stocks.map(asset => (
+                        <div 
+                          key={asset.symbol}
+                          className={`asset-card ${selectedAsset === asset.symbol ? 'selected' : ''}`}
+                          onClick={() => {
+                            onAssetChange(asset.symbol);
+                            setShowAssetSelector(false);
+                          }}
+                        >
+                          <div className="asset-info">
+                            <span className="asset-name">{asset.name}</span>
+                            <span className="asset-symbol">{asset.symbol}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
-              </>
-            )}
-          </div>
+            </div>
+          )}
           
           <div className="price-info">
-            <span className="current-price">{currentPrice.toFixed(2)} SENSES</span>
-            <span className={`price-change ${priceChange.percentage >= 0 ? 'positive' : 'negative'}`}>
-              {priceChange.percentage >= 0 ? '+' : ''}{priceChange.percentage.toFixed(2)}%
-            </span>
+            <div className="current-price">
+              {currentPrice.toFixed(2)} SENSES
+            </div>
+            <div className={`price-change ${priceChange.change >= 0 ? 'positive' : 'negative'}`}>
+              {priceChange.change >= 0 ? '+' : ''}{priceChange.change.toFixed(2)} ({priceChange.percentage.toFixed(2)}%)
+            </div>
           </div>
+
         </div>
 
         <div className="chart-controls">
@@ -628,12 +628,215 @@ const SandboxChart = ({ selectedAsset, marketData, onAssetChange, portfolioData 
           transform: rotate(180deg);
         }
         
+        .asset-selector-button {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 12px 16px;
+          border-radius: 12px;
+          border: 1px solid;
+          background: transparent;
+          color: inherit;
+          font-size: 1rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.3s ease;
+        }
+        
+        .dark .asset-selector-button {
+          border-color: rgba(255, 255, 255, 0.2);
+          background: rgba(255, 255, 255, 0.05);
+          color: white;
+        }
+        
+        .light .asset-selector-button {
+          border-color: rgba(0, 0, 0, 0.2);
+          background: rgba(0, 0, 0, 0.02);
+          color: black;
+        }
+        
+        .asset-selector-button:hover {
+          border-color: #3b82f6;
+          transform: translateY(-1px);
+        }
+        
+        /* BEAUTIFUL MODAL STYLES */
+        .modal-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.5);
+          backdrop-filter: blur(8px);
+          z-index: 99999;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          animation: fadeIn 0.2s ease;
+        }
+        
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        
+        .asset-modal {
+          background: var(--modal-bg);
+          border-radius: 20px;
+          padding: 0;
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+          max-width: 600px;
+          width: 90vw;
+          max-height: 80vh;
+          overflow: hidden;
+          animation: slideIn 0.3s ease;
+        }
+        
+        @keyframes slideIn {
+          from { transform: translateY(-20px) scale(0.95); opacity: 0; }
+          to { transform: translateY(0) scale(1); opacity: 1; }
+        }
+        
+        .dark .asset-modal {
+          --modal-bg: rgba(10, 10, 10, 0.95);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .light .asset-modal {
+          --modal-bg: rgba(255, 255, 255, 0.95);
+          border: 1px solid rgba(0, 0, 0, 0.1);
+        }
+        
+        .modal-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 24px 24px 16px;
+          border-bottom: 1px solid;
+        }
+        
+        .dark .modal-header {
+          border-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        .light .modal-header {
+          border-color: rgba(0, 0, 0, 0.1);
+        }
+        
+        .modal-header h3 {
+          margin: 0;
+          font-size: 1.25rem;
+          font-weight: 700;
+        }
+        
+        .close-btn {
+          background: none;
+          border: none;
+          font-size: 1.5rem;
+          cursor: pointer;
+          padding: 4px;
+          border-radius: 50%;
+          width: 32px;
+          height: 32px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.2s ease;
+        }
+        
+        .dark .close-btn {
+          color: rgba(255, 255, 255, 0.7);
+        }
+        
+        .light .close-btn {
+          color: rgba(0, 0, 0, 0.7);
+        }
+        
+        .close-btn:hover {
+          background: rgba(255, 0, 0, 0.1);
+          color: #ef4444;
+        }
+        
+        .modal-content {
+          padding: 16px 24px 24px;
+          max-height: 60vh;
+          overflow-y: auto;
+        }
+        
+        .asset-section {
+          margin-bottom: 24px;
+        }
+        
+        .asset-section:last-child {
+          margin-bottom: 0;
+        }
+        
+        .asset-section h4 {
+          margin: 0 0 12px 0;
+          font-size: 0.875rem;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          opacity: 0.7;
+        }
+        
+        .asset-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+          gap: 8px;
+        }
+        
+        .asset-card {
+          padding: 12px;
+          border-radius: 12px;
+          border: 1px solid;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+        
+        .dark .asset-card {
+          border-color: rgba(255, 255, 255, 0.1);
+          background: rgba(255, 255, 255, 0.02);
+        }
+        
+        .light .asset-card {
+          border-color: rgba(0, 0, 0, 0.1);
+          background: rgba(0, 0, 0, 0.02);
+        }
+        
+        .asset-card:hover {
+          border-color: #3b82f6;
+          transform: translateY(-1px);
+        }
+        
+        .asset-card.selected {
+          border-color: #3b82f6;
+          background: rgba(59, 130, 246, 0.1);
+        }
+        
+        .asset-info {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+        
+        .asset-name {
+          font-weight: 600;
+          font-size: 0.875rem;
+        }
+        
+        .asset-symbol {
+          font-size: 0.75rem;
+          opacity: 0.7;
+          font-family: 'SF Mono', Monaco, monospace;
+        }
+        
         .asset-dropdown {
           position: fixed !important;
           bottom: auto !important;
-          left: auto !important;
           right: auto !important;
-          top: auto !important;
+          /* old dropdown styles - can be removed later */
           border-radius: 12px;
           padding: 16px;
           z-index: 99999 !important;

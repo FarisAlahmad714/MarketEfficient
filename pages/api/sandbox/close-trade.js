@@ -263,13 +263,11 @@ async function getCurrentMarketPrice(symbol) {
       'BTC': 65000,
       'ETH': 3500,
       'SOL': 150,
-      'ADA': 0.45,
-      'LINK': 15,
+      'BNB': 600,
       'AAPL': 220,
-      'GOOGL': 170,
+      'NVDA': 800,
       'TSLA': 250,
-      'AMZN': 180,
-      'MSFT': 420,
+      'GLD': 200,
       'SPY': 550,
       'QQQ': 460
     };

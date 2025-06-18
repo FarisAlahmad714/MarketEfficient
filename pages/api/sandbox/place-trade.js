@@ -550,7 +550,7 @@ async function getCurrentMarketPrice(symbol) {
 // getMockPrice function removed - now using price simulator
 
 function getAssetType(symbol) {
-  const cryptoSymbols = ['BTCUSD', 'ETHUSD', 'ADAUSD', 'SOLUSD', 'LINKUSD'];
+  const cryptoSymbols = ['BTCUSD', 'ETHUSD', 'SOLUSD', 'BNBUSD'];
   return cryptoSymbols.includes(symbol.toUpperCase()) ? 'crypto' : 'stock';
 }
 
