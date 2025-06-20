@@ -32,6 +32,9 @@ async function chartAnalyticsHandler(req, res) {
     const analyticsData = await ChartExamAnalytics.find(query)
       .sort({ sessionStartTime: -1 })
       .lean();
+    
+    console.log(`Chart Analytics Query:`, query);
+    console.log(`Found ${analyticsData.length} chart exam analytics records`);
 
     // If CSV export requested
     if (format === 'csv') {

@@ -85,7 +85,9 @@ async function validateFvgHandler(req, res) {
   });
   
   // End session and collect analytics
-  const sessionAnalytics = endChartSession(userId, 'fvg', chartCount, part);
+  console.log(`Ending chart session for user ${userId}, exam: fvg, chart: ${chartCount}, part: ${part}`);
+  const sessionAnalytics = await endChartSession(userId, 'fvg', chartCount, part);
+  console.log(`Session analytics result:`, sessionAnalytics ? 'Success' : 'Failed');
   
   return res.status(200).json({
     success: true,

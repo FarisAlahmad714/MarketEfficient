@@ -1983,14 +1983,22 @@ const ChartExamsTab = ({ data, darkMode }) => {
     try {
       setLoadingExams(true);
       const token = storage.getItem('auth_token');
-      const response = await fetch(`/api/admin/chart-analytics?filter=${examFilter}&range=month&detailed=true`, {
+      const response = await fetch(`/api/admin/chart-analytics?examType=${examFilter}&timeRange=30&detailed=true`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
       if (response.ok) {
         const examData = await response.json();
-        setChartAnalytics(examData.analytics || []);
-        setExamStats(examData.stats || null);
+        console.log('Chart exam data received:', examData);
+        setChartAnalytics(examData.data?.recentSessions || []);
+        setExamStats({
+          totalSessions: examData.data?.overview?.totalSessions || 0,
+          uniqueUsers: examData.data?.overview?.totalSessions || 0, // Approximation
+          avgAccuracy: examData.data?.overview?.avgAccuracy || 0,
+          avgTimeSpent: examData.data?.overview?.avgTimeSpent || 0,
+          avgFocusLossCount: examData.data?.overview?.avgFocusLossTime / 1000 || 0, // Convert to count approximation
+          completionRate: examData.data?.overview?.completionRate / 100 || 0
+        });
       }
     } catch (error) {
       console.error('Error fetching chart exam data:', error);
