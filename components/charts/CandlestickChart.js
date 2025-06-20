@@ -10,7 +10,7 @@ const LoadingChart = ({ height = 400 }) => {
 };
 
 // The main chart component - this will be client-side only
-const CandlestickChartComponent = ({ data, height = 400 }) => {
+const CandlestickChartComponent = ({ data, height = 400, timeframe = 'daily' }) => {
   const { darkMode } = useContext(ThemeContext);
   const containerRef = React.useRef(null);
   const chartRef = React.useRef(null);
@@ -51,6 +51,19 @@ const CandlestickChartComponent = ({ data, height = 400 }) => {
         // Make sure container exists
         if (!containerRef.current) return;
         
+        // Configure timeframe-specific chart settings
+        const getTimeframeConfig = (tf) => {
+          const configs = {
+            '4h': { barSpacing: 8, rightOffset: 10 },
+            'daily': { barSpacing: 6, rightOffset: 5 },
+            'weekly': { barSpacing: 12, rightOffset: 3 },
+            'monthly': { barSpacing: 15, rightOffset: 2 }
+          };
+          return configs[tf] || configs['daily'];
+        };
+        
+        const timeframeConfig = getTimeframeConfig(timeframe);
+        
         // Create chart with theme colors
         chartRef.current = createChart(containerRef.current, {
           width: containerRef.current.clientWidth,
@@ -71,9 +84,13 @@ const CandlestickChartComponent = ({ data, height = 400 }) => {
           },
           timeScale: {
             timeVisible: true,
+            secondsVisible: false,
             borderColor: darkMode ? '#555' : '#ddd',
-            rightOffset: 5,
-            barSpacing: 6,
+            rightOffset: timeframeConfig.rightOffset,
+            barSpacing: timeframeConfig.barSpacing,
+            fixLeftEdge: false,
+            fixRightEdge: false,
+            lockVisibleTimeRangeOnResize: true,
           },
           rightPriceScale: {
             borderColor: darkMode ? '#555' : '#ddd',
@@ -90,38 +107,70 @@ const CandlestickChartComponent = ({ data, height = 400 }) => {
           wickDownColor: '#ef5350',
         });
         
-        // Format data - carefully handling time values
-        const formattedData = data.map(item => {
+        // Format data - carefully handling time values with proper timezone handling
+        const formattedData = data.map((item, index) => {
           let timeValue;
           
           if (typeof item.time === 'number') {
-            timeValue = item.time;
+            // If already a timestamp, use it
+            timeValue = item.time > 1000000000000 ? Math.floor(item.time / 1000) : item.time;
           } else if (item.date) {
-            // Handle date strings
+            // Handle date strings with proper parsing
             try {
+              let dateObj;
               if (typeof item.date === 'string') {
-                timeValue = Math.floor(new Date(item.date).getTime() / 1000);
+                // Parse ISO string and ensure UTC interpretation
+                dateObj = new Date(item.date);
+                // Check if date is valid
+                if (isNaN(dateObj.getTime())) {
+                  throw new Error('Invalid date');
+                }
+              } else if (item.date instanceof Date) {
+                dateObj = item.date;
               } else {
-                timeValue = Math.floor(item.date / 1000);
+                // Assume it's a timestamp
+                dateObj = new Date(item.date);
               }
+              
+              // Convert to Unix timestamp (seconds since epoch)
+              timeValue = Math.floor(dateObj.getTime() / 1000);
+              
+              // Validate the timestamp is reasonable (not in the future, not too old)
+              const now = Math.floor(Date.now() / 1000);
+              const oneYearAgo = now - (365 * 24 * 60 * 60);
+              const oneYearFromNow = now + (365 * 24 * 60 * 60);
+              
+              if (timeValue < oneYearAgo || timeValue > oneYearFromNow) {
+                console.warn('Timestamp seems out of reasonable range:', item.date, timeValue);
+              }
+              
             } catch (e) {
-              console.error('Invalid date format:', item.date);
-              // Fallback
-              timeValue = Math.floor(Date.now() / 1000) - (86400 * 30);
+              console.error('Invalid date format:', item.date, e);
+              // Create fallback timestamp based on index (going backwards in time)
+              const now = Math.floor(Date.now() / 1000);
+              timeValue = now - ((data.length - index) * 86400); // 1 day intervals as fallback
             }
           } else {
-            // Default fallback
-            timeValue = Math.floor(Date.now() / 1000) - (86400 * 30);
+            // Default fallback - create sequential timestamps
+            const now = Math.floor(Date.now() / 1000);
+            timeValue = now - ((data.length - index) * 86400); // 1 day intervals as fallback
           }
           
           return {
             time: timeValue,
-            open: item.open,
-            high: item.high,
-            low: item.low,
-            close: item.close
+            open: parseFloat(item.open) || 0,
+            high: parseFloat(item.high) || 0,
+            low: parseFloat(item.low) || 0,
+            close: parseFloat(item.close) || 0
           };
-        });
+        }).filter(item => 
+          // Filter out any invalid data points
+          !isNaN(item.time) && 
+          !isNaN(item.open) && 
+          !isNaN(item.high) && 
+          !isNaN(item.low) && 
+          !isNaN(item.close)
+        ).sort((a, b) => a.time - b.time); // Ensure chronological order
         
         // Set data and fit to view
         candlestickSeries.setData(formattedData);
@@ -157,7 +206,7 @@ const CandlestickChartComponent = ({ data, height = 400 }) => {
         chartRef.current = null;
       }
     };
-  }, [data, height, darkMode]); // Re-initialize when these props change
+  }, [data, height, darkMode, timeframe]); // Re-initialize when these props change
   
   return (
     <div 

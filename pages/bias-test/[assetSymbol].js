@@ -651,7 +651,8 @@ export default function AssetTestPage() {
                       {/* Main price chart */}
                       <CandlestickChart 
                         data={question.ohlc_data} 
-                        height={400} 
+                        height={400}
+                        timeframe={question.timeframe || timeframe || 'daily'}
                       />
                       
                       {/* Separate volume chart */}

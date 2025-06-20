@@ -177,6 +177,22 @@ function getRandomSeed() {
 }
 
 /**
+ * Get timeframe-specific candle amounts for realistic chart representation
+ * @param {string} timeframe - Timeframe for the chart
+ * @returns {Object} Setup and outcome candle counts
+ */
+function getTimeframeCandleCounts(timeframe) {
+  const candleCounts = {
+    '4h': { setup: 50, outcome: 25 },      // 4h: 50 candles = ~8 days setup, 25 = ~4 days outcome
+    'daily': { setup: 30, outcome: 15 },   // Daily: 30 candles = ~1 month setup, 15 = ~2 weeks outcome  
+    'weekly': { setup: 20, outcome: 12 },  // Weekly: 20 candles = ~5 months setup, 12 = ~3 months outcome
+    'monthly': { setup: 12, outcome: 6 }   // Monthly: 12 candles = ~1 year setup, 6 = ~6 months outcome
+  };
+  
+  return candleCounts[timeframe] || candleCounts['daily']; // Default to daily if timeframe not found
+}
+
+/**
  * Fetch a large dataset once, then slice it into different segments for each question
  * @param {Object} asset - Asset object
  * @param {string} timeframe - Timeframe for the chart
@@ -184,10 +200,8 @@ function getRandomSeed() {
  * @returns {Promise<Array>} Array of data segments for each question
  */
 async function fetchSegmentedData(asset, timeframe, questionCount) {
-  // Configure candle counts for setup and outcome
-  // Making both equal to have consistent chart sizes
-  const SETUP_CANDLES = 25;  // Number of candles to show in the setup chart
-  const OUTCOME_CANDLES = 25;  // Number of candles to show in the outcome (now equal)
+  // Configure candle counts based on timeframe for realistic representation
+  const { setup: SETUP_CANDLES, outcome: OUTCOME_CANDLES } = getTimeframeCandleCounts(timeframe);
   
   // Calculate how much data we need
   const OVERLAP = 10; // Overlap between segments for diversity
@@ -937,8 +951,7 @@ async function handler(req, res) {
   try {
     // Generate questions with market data
     const questionCount = 5;
-    const SETUP_CANDLES = 25;
-    const OUTCOME_CANDLES = 25; // Make this equal to SETUP_CANDLES for balanced charts
+    const { setup: SETUP_CANDLES, outcome: OUTCOME_CANDLES } = getTimeframeCandleCounts(timeframe);
     
     // Log randomization parameters
     const randomSeed = Date.now();
@@ -954,7 +967,8 @@ async function handler(req, res) {
       for (let i = 0; i < questionCount; i++) {
         const questionAsset = availableAssets[Math.floor(Math.random() * availableAssets.length)];
         const questionTimeframe = availableTimeframes[Math.floor(Math.random() * availableTimeframes.length)];
-        logger.log(`Generating question ${i + 1} with ${questionAsset.name} (${questionAsset.symbol}) at ${questionTimeframe} timeframe`);
+        const { setup: questionSetupCandles, outcome: questionOutcomeCandles } = getTimeframeCandleCounts(questionTimeframe);
+        logger.log(`Generating question ${i + 1} with ${questionAsset.name} (${questionAsset.symbol}) at ${questionTimeframe} timeframe (${questionSetupCandles}/${questionOutcomeCandles} candles)`);
         
         // Fetch individual data segment for this specific asset and timeframe
         const questionDataSegments = await fetchSegmentedData(questionAsset, questionTimeframe, 1);
@@ -962,9 +976,9 @@ async function handler(req, res) {
         if (questionDataSegments && questionDataSegments.length > 0) {
           const segment = questionDataSegments[0];
           
-          // Split the segment into setup and outcome
-          const setupData = segment.slice(0, SETUP_CANDLES);
-          const outcomeData = segment.slice(SETUP_CANDLES, SETUP_CANDLES + OUTCOME_CANDLES);
+          // Split the segment into setup and outcome using timeframe-specific counts
+          const setupData = segment.slice(0, questionSetupCandles);
+          const outcomeData = segment.slice(questionSetupCandles, questionSetupCandles + questionOutcomeCandles);
           
           // Determine if the outcome was bullish or bearish
           const lastSetupCandle = setupData[setupData.length - 1];
@@ -996,7 +1010,8 @@ async function handler(req, res) {
       
       for (let i = 0; i < questionCount; i++) {
         const questionTimeframe = availableTimeframes[Math.floor(Math.random() * availableTimeframes.length)];
-        logger.log(`Generating question ${i + 1} with ${questionTimeframe} timeframe`);
+        const { setup: questionSetupCandles, outcome: questionOutcomeCandles } = getTimeframeCandleCounts(questionTimeframe);
+        logger.log(`Generating question ${i + 1} with ${questionTimeframe} timeframe (${questionSetupCandles}/${questionOutcomeCandles} candles)`);
         
         // Fetch individual data segment for this specific timeframe
         const questionDataSegments = await fetchSegmentedData(asset, questionTimeframe, 1);
@@ -1004,9 +1019,9 @@ async function handler(req, res) {
         if (questionDataSegments && questionDataSegments.length > 0) {
           const segment = questionDataSegments[0];
           
-          // Split the segment into setup and outcome
-          const setupData = segment.slice(0, SETUP_CANDLES);
-          const outcomeData = segment.slice(SETUP_CANDLES, SETUP_CANDLES + OUTCOME_CANDLES);
+          // Split the segment into setup and outcome using timeframe-specific counts
+          const setupData = segment.slice(0, questionSetupCandles);
+          const outcomeData = segment.slice(questionSetupCandles, questionSetupCandles + questionOutcomeCandles);
           
           // Determine if the outcome was bullish or bearish
           const lastSetupCandle = setupData[setupData.length - 1];
@@ -1110,9 +1125,8 @@ async function handler(req, res) {
     
     // Return basic mock test data as fallback
     const randomSeed = Date.now();
-    // Configure candle counts for mock data
-    const SETUP_CANDLES = 25;
-    const OUTCOME_CANDLES = 25; // Equal to setup for balanced charts
+    // Configure candle counts for mock data based on timeframe
+    const { setup: SETUP_CANDLES, outcome: OUTCOME_CANDLES } = getTimeframeCandleCounts(timeframe);
     
     const mockTestData = {
       asset_name: asset.name,
