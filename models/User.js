@@ -120,6 +120,22 @@ const UserSchema = new mongoose.Schema({
     default: false
   },
   // Profile fields
+  username: {
+    type: String,
+    unique: true,
+    sparse: true, // Allows null values to not conflict with uniqueness
+    trim: true,
+    lowercase: true,
+    minlength: [3, 'Username must be at least 3 characters'],
+    maxlength: [20, 'Username cannot be more than 20 characters'],
+    validate: {
+      validator: function(v) {
+        // Allow alphanumeric and underscores only, must start with letter
+        return !v || /^[a-z][a-z0-9_]*$/.test(v);
+      },
+      message: 'Username can only contain lowercase letters, numbers, and underscores, and must start with a letter'
+    }
+  },
   bio: {
     type: String,
     maxlength: [500, 'Bio cannot be more than 500 characters'],
@@ -132,6 +148,48 @@ const UserSchema = new mongoose.Schema({
   profileImageGcsPath: {
     type: String,
     default: ''
+  },
+  socialLinks: {
+    twitter: {
+      type: String,
+      default: '',
+      validate: {
+        validator: function(v) {
+          return !v || /^https?:\/\/(www\.)?(twitter\.com|x\.com)\/[A-Za-z0-9_]+\/?$/.test(v);
+        },
+        message: 'Please provide a valid Twitter/X URL'
+      }
+    },
+    linkedin: {
+      type: String,
+      default: '',
+      validate: {
+        validator: function(v) {
+          return !v || /^https?:\/\/(www\.)?linkedin\.com\/in\/[A-Za-z0-9-]+\/?$/.test(v);
+        },
+        message: 'Please provide a valid LinkedIn profile URL'
+      }
+    },
+    instagram: {
+      type: String,
+      default: '',
+      validate: {
+        validator: function(v) {
+          return !v || /^https?:\/\/(www\.)?instagram\.com\/[A-Za-z0-9_.]+\/?$/.test(v);
+        },
+        message: 'Please provide a valid Instagram URL'
+      }
+    }
+  },
+  // Social profile settings
+  profileVisibility: {
+    type: String,
+    enum: ['public', 'private'],
+    default: 'public'
+  },
+  shareResults: {
+    type: Boolean,
+    default: true
   },
   // Email change fields
   newEmail: {
@@ -162,6 +220,8 @@ const UserSchema = new mongoose.Schema({
 UserSchema.index({ email: 1, isVerified: 1 });
 // Index for performance (verificationToken already has sparse index)
 UserSchema.index({ resetPasswordToken: 1 });
+// Index for username lookup for public profiles
+UserSchema.index({ username: 1 });
 
 // Virtual for account lock status
 UserSchema.virtual('isLocked').get(function() {

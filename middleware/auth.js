@@ -88,7 +88,7 @@ export const authenticate = (options = {}) => {
       
       // Find user
       const user = await User.findById(decoded.userId)
-        .select('-password -verificationToken -resetPasswordToken');
+        .select('-password -verificationToken -resetPasswordToken -newEmailVerificationToken');
       
       if (!user) {
         return res.status(404).json({ 
@@ -96,6 +96,63 @@ export const authenticate = (options = {}) => {
           code: 'USER_NOT_FOUND'
         });
       }
+
+      // Auto-generate username for existing users who don't have one
+      if (!user.username) {
+        console.log(`[AUTH MIDDLEWARE] Generating username for user ${user._id}`);
+        try {
+          let baseUsername = '';
+          if (user.name) {
+            // Use name, remove spaces and special characters, make lowercase
+            baseUsername = user.name
+              .toLowerCase()
+              .replace(/[^a-z0-9]/g, '')
+              .substring(0, 15);
+          } else {
+            // Use email prefix if no name
+            baseUsername = user.email
+              .split('@')[0]
+              .toLowerCase()
+              .replace(/[^a-z0-9]/g, '')
+              .substring(0, 15);
+          }
+
+          // Ensure it starts with a letter
+          if (!/^[a-z]/.test(baseUsername)) {
+            baseUsername = 'user' + baseUsername;
+          }
+
+          // Find an available username
+          let username = baseUsername;
+          let counter = 1;
+          
+          while (true) {
+            const existingUser = await User.findOne({ username });
+            if (!existingUser) {
+              break;
+            }
+            username = `${baseUsername}${counter}`;
+            counter++;
+            
+            // Prevent infinite loop
+            if (counter > 9999) {
+              username = `user${Date.now().toString().slice(-6)}`;
+              break;
+            }
+          }
+
+          // Update user with new username
+          user.username = username;
+          await user.save();
+          
+          console.log(`[AUTH MIDDLEWARE] Auto-generated username for user ${user._id}`);
+        } catch (error) {
+          console.error('[AUTH MIDDLEWARE] Error auto-generating username:', error);
+          // Continue without username - don't break auth flow
+        }
+      }
+
+      // Debug logging removed for security
       
       // Check if user is verified (optional based on your requirements)
       if (!user.isVerified && process.env.REQUIRE_EMAIL_VERIFICATION === 'true') {
@@ -121,8 +178,17 @@ export const authenticate = (options = {}) => {
         userId: user._id.toString(), // For backwards compatibility
         email: user.email,
         name: user.name,
+        username: user.username,
+        bio: user.bio,
+        profileImageUrl: user.profileImageUrl,
+        profileImageGcsPath: user.profileImageGcsPath,
+        socialLinks: user.socialLinks,
+        profileVisibility: user.profileVisibility,
+        shareResults: user.shareResults,
         isAdmin: user.isAdmin || false,
-        isVerified: user.isVerified || false
+        isVerified: user.isVerified || false,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt
       };
       
       // Continue to next middleware

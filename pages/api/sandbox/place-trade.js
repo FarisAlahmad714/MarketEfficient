@@ -59,7 +59,7 @@ async function placeTradeHandler(req, res) {
         { 
           ipAddress: req.ip, 
           userAgent: req.get('User-Agent'),
-          requestBody: req.body
+          requestBodySize: JSON.stringify(req.body || {}).length
         }
       );
 
@@ -169,7 +169,7 @@ async function placeTradeHandler(req, res) {
           { 
             symbol: validatedData.symbol, 
             originalError: error.message,
-            apiKey: process.env.TWELVEDATA_API_KEY ? 'CONFIGURED' : 'MISSING'
+            apiKeyConfigured: !!process.env.TWELVEDATA_API_KEY
           }
         ),
         userId,
@@ -181,7 +181,7 @@ async function placeTradeHandler(req, res) {
         error: 'Real-time price unavailable',
         message: `Cannot execute trade for ${validatedData.symbol}. Real market data is required for trading. Please check API configuration and try again.`,
         technicalDetails: {
-          apiKey: process.env.TWELVEDATA_API_KEY ? 'configured' : 'missing',
+          apiKeyConfigured: !!process.env.TWELVEDATA_API_KEY,
           symbol: validatedData.symbol,
           apiSymbol: getAPISymbol ? getAPISymbol(validatedData.symbol) : 'unknown'
         }
@@ -508,7 +508,7 @@ function validatePreTradeAnalysis(analysis) {
 
 async function getCurrentMarketPrice(symbol) {
   try {
-    const TWELVEDATA_API_KEY = process.env.TWELVE_DATA_API_KEY || '08f0aa1220414f6ba782aaae2cd515e3';
+    const TWELVEDATA_API_KEY = process.env.TWELVE_DATA_API_KEY;
     
     if (!TWELVEDATA_API_KEY) {
       console.log(`Using simulated price for trade: ${symbol}`);

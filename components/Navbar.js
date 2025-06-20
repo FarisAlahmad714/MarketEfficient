@@ -4,7 +4,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/router';
 import { BiHomeAlt } from 'react-icons/bi';
 import { TbScale, TbChartLine } from 'react-icons/tb';
-import { FaTachometerAlt, FaSun, FaMoon, FaChevronDown, FaUserCog, FaUserShield, FaSignOutAlt, FaCommentDots, FaGraduationCap, FaLock, FaChartLine as FaChartTradingLine } from 'react-icons/fa';
+import { FaTachometerAlt, FaSun, FaMoon, FaChevronDown, FaUserCog, FaUserShield, FaSignOutAlt, FaCommentDots, FaGraduationCap, FaLock, FaChartLine as FaChartTradingLine, FaUser } from 'react-icons/fa';
 import { RiExchangeLine } from 'react-icons/ri';
 import { HiMenuAlt3, HiX } from 'react-icons/hi';
 import { AuthContext } from '../contexts/AuthContext';
@@ -25,7 +25,7 @@ const Navbar = () => {
   const canvasRef = useRef(null);
 
   // Fetch profile image for authenticated user
-  const { profileImageUrl, loading: imageLoading } = useProfileImage(user?.id, isAuthenticated);
+  const { profileImageUrl, loading: imageLoading, refreshProfileImage } = useProfileImage(user?.id, isAuthenticated);
 
   // Sandbox unlock status
   const [sandboxUnlocked, setSandboxUnlocked] = useState(false);
@@ -162,6 +162,20 @@ const Navbar = () => {
       setSandboxProgress(0);
     }
   }, [isAuthenticated, user]);
+
+  // Listen for profile image updates
+  useEffect(() => {
+    const handleProfileImageUpdate = () => {
+      if (refreshProfileImage) {
+        refreshProfileImage();
+      }
+    };
+
+    window.addEventListener('profileImageUpdated', handleProfileImageUpdate);
+    return () => {
+      window.removeEventListener('profileImageUpdated', handleProfileImageUpdate);
+    };
+  }, [refreshProfileImage]);
 
   // Handle window resize for canvas (if used for background effects)
   useEffect(() => {
@@ -464,27 +478,40 @@ const Navbar = () => {
                     </Link>
                     
                     {!user?.isAdmin && (
-                      <Link href="/profile" className="dropdown-item" onClick={() => setShowUserMenu(false)}>
-                        <div className="item-icon">
-                          <FaUserCog />
-                        </div>
-                        <div className="item-content">
-                          <span className="item-title">Profile Settings</span>
-                          <span className="item-subtitle">Manage your account</span>
-                        </div>
-                      </Link>
-                    )}
+  <>
+    <Link href={`/u/${user?.username || 'undefined'}`} className="dropdown-item" onClick={() => setShowUserMenu(false)}>
+      <div className="item-icon">
+        <FaUser />
+      </div>
+      <div className="item-content">
+        <span className="item-title">{user?.username ? 'Profile' : 'Setup Profile'}</span>
+        <span className="item-subtitle">{user?.username ? 'Your public profile' : 'Create your username first'}</span>
+      </div>
+    </Link>
+  </>
+)}
                     
                     {user?.isAdmin && (
-                      <Link href="/admin" className="dropdown-item admin-item" onClick={() => setShowUserMenu(false)}>
-                        <div className="item-icon">
-                          <FaUserShield />
-                        </div>
-                        <div className="item-content">
-                          <span className="item-title">Admin Panel</span>
-                          <span className="item-subtitle">System management</span>
-                        </div>
-                      </Link>
+                      <>
+                        <Link href="/admin" className="dropdown-item admin-item" onClick={() => setShowUserMenu(false)}>
+                          <div className="item-icon">
+                            <FaUserShield />
+                          </div>
+                          <div className="item-content">
+                            <span className="item-title">Admin Panel</span>
+                            <span className="item-subtitle">System management</span>
+                          </div>
+                        </Link>
+                        <Link href={user?.username ? `/u/${user.username}` : "/profile"} className="dropdown-item" onClick={() => setShowUserMenu(false)}>
+                          <div className="item-icon">
+                            <FaUser />
+                          </div>
+                          <div className="item-content">
+                            <span className="item-title">My Profile</span>
+                            <span className="item-subtitle">View your public profile</span>
+                          </div>
+                        </Link>
+                      </>
                     )}
 
                     {!user?.isAdmin && (
@@ -628,12 +655,6 @@ const Navbar = () => {
                   </div>
                 </div>
                 
-                {!user?.isAdmin && (
-                  <Link href="/profile" className="mobile-link" onClick={() => setMobileMenuOpen(false)}>
-                    <FaUserCog className="mobile-icon" />
-                    <span>Profile Settings</span>
-                  </Link>
-                )}
                 
                 {user?.isAdmin && (
                   <Link href="/admin" className="mobile-link admin" onClick={() => setMobileMenuOpen(false)}>

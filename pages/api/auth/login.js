@@ -174,6 +174,8 @@ async function loginApiRouteHandler(req, res) {
                 id: user._id,
                 name: user.name,
                 email: user.email,
+                username: user.username,
+                bio: user.bio,
                 isVerified: user.isVerified,
                 isAdmin: user.isAdmin
               },

@@ -413,7 +413,7 @@ export async function fetchStockOHLCData(symbol, timeframe = 'daily', candles = 
                          interval === 'daily' ? 'TIME_SERIES_DAILY' : 
                          interval === 'weekly' ? 'TIME_SERIES_WEEKLY' : 'TIME_SERIES_MONTHLY';
     
-    const ALPHA_VANTAGE_API_KEY = 'QRL7874F7OJAGJHY';
+    const ALPHA_VANTAGE_API_KEY = process.env.ALPHA_VANTAGE_API_KEY;
     const url = `https://www.alphavantage.co/query?function=${function_name}&symbol=${symbol}&interval=${interval === '60min' ? '60min' : ''}&outputsize=full&apikey=${ALPHA_VANTAGE_API_KEY}`;
     
     logger.log(`Fetching stock data from: ${url}`);

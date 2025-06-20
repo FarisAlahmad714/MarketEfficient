@@ -7,15 +7,16 @@ import { FaUser, FaCamera, FaCreditCard, FaCheckCircle,
          FaExclamationCircle, FaLock } from 'react-icons/fa';
 import Head from 'next/head';
 import CryptoLoader from '../components/CryptoLoader';
+import ProfileHeader from '../components/profile/ProfileHeader';
 import storage from '../lib/storage';
 import AppModal from '../components/common/AppModal';
 import { useModal } from '../lib/useModal';
 
 const ProfilePage = () => {
   const { darkMode } = useContext(ThemeContext);
-  const { user, isAuthenticated, logout } = useContext(AuthContext);
+  const { user, isAuthenticated, logout, refreshUserData } = useContext(AuthContext);
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState('profile');
+  const [activeTab, setActiveTab] = useState('subscription');
   const [profileImage, setProfileImage] = useState(null);
   const [loading, setLoading] = useState(true);
   const [subscription, setSubscription] = useState(null);
@@ -99,8 +100,8 @@ const ProfilePage = () => {
       
       if (response.ok) {
         const data = await response.json();
-        if (data.signedUrl) {
-          setProfileImage(data.signedUrl);
+        if (data.profileImageUrl) {
+          setProfileImage(data.profileImageUrl);
         } else {
           setProfileImage(null);
         }
@@ -174,6 +175,9 @@ const ProfilePage = () => {
       // Refresh the profile image from GCS
       await fetchProfileImage();
       
+      // Trigger navbar refresh
+      window.dispatchEvent(new CustomEvent('profileImageUpdated'));
+      
     } catch (error) {
       console.error('Error saving profile image:', error);
       setSaveError(error.message);
@@ -213,6 +217,11 @@ const ProfilePage = () => {
       const data = await response.json();
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
+      
+      // Refresh user data in AuthContext to update navbar
+      if (refreshUserData) {
+        await refreshUserData();
+      }
       
     } catch (error) {
       console.error('Error saving profile:', error);
@@ -539,11 +548,30 @@ const ProfilePage = () => {
         margin: '40px auto',
         padding: '0 20px',
       }}>
+        {/* Profile Header with integrated settings */}
+        <ProfileHeader 
+          profile={{
+            username: user?.username,
+            name: user?.name,
+            bio: user?.bio,
+            profileImageUrl: profileImage,
+            socialLinks: user?.socialLinks || { twitter: '', linkedin: '', instagram: '' },
+            profileVisibility: 'public', // All profiles are public
+            shareResults: true, // All users share results
+            stats: {
+              memberSince: user?.createdAt
+            }
+          }}
+          isOwnProfile={true}
+          onProfileUpdate={fetchUserData}
+          showActionButtons={false}
+        />
+
         <h1 style={{
           color: darkMode ? '#e0e0e0' : '#333',
           marginBottom: '20px'
         }}>
-          Your Profile
+          Account Settings
         </h1>
 
         <div style={{
@@ -553,99 +581,7 @@ const ProfilePage = () => {
           flexWrap: 'wrap',
         }}>
           {/* Left sidebar */}
-          <div style={{ flex: '0 0 240px' }}>
-            {/* Profile Card */}
-            <div style={{
-              backgroundColor: darkMode ? '#1e1e1e' : 'white',
-              borderRadius: '12px',
-              boxShadow: darkMode ? '0 4px 12px rgba(0,0,0,0.3)' : '0 4px 12px rgba(0,0,0,0.1)',
-              padding: '20px',
-              marginBottom: '20px',
-              textAlign: 'center',
-            }}>
-              <div style={{
-                position: 'relative',
-                width: '120px',
-                height: '120px',
-                borderRadius: '50%',
-                margin: '0 auto 15px',
-                backgroundColor: darkMode ? '#333' : '#f0f0f0',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                border: `2px solid ${darkMode ? '#555' : '#e0e0e0'}`,
-                overflow: 'hidden',
-              }}>
-                {profileImage ? (
-                  <img 
-                    src={profileImage} 
-                    alt="Profile" 
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                  />
-                ) : (
-                  <FaUser size={50} color={darkMode ? '#666' : '#999'} />
-                )}
-                <label htmlFor="profile-image-upload" style={{
-                  position: 'absolute',
-                  bottom: '0',
-                  right: '0',
-                  backgroundColor: darkMode ? '#1976D2' : '#2196F3',
-                  borderRadius: '50%',
-                  width: '32px',
-                  height: '32px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  border: `2px solid ${darkMode ? '#1e1e1e' : 'white'}`,
-                }}>
-                  <FaCamera color="white" size={14} />
-                  <input 
-                    type="file" 
-                    id="profile-image-upload" 
-                    accept="image/*" 
-                    onChange={handleImageUpload} 
-                    style={{ display: 'none' }} 
-                  />
-                </label>
-              </div>
-              
-              <h2 style={{ 
-                color: darkMode ? '#e0e0e0' : '#333',
-                fontSize: '18px', 
-                margin: '0 0 5px 0',
-                fontWeight: 'bold',
-              }}>
-                {formData.name}
-              </h2>
-              
-              <p style={{ 
-                color: darkMode ? '#b0b0b0' : '#666',
-                margin: '0 0 15px 0',
-                fontSize: '14px',
-              }}>
-                {formData.email}
-              </p>
-              
-              {getSubscriptionBadge()}
-              
-              {subscription?.plan && (
-                <div style={{
-                  marginTop: '10px',
-                  padding: '4px 12px',
-                  borderRadius: '4px',
-                  backgroundColor: darkMode ? 'rgba(33, 150, 243, 0.15)' : 'rgba(33, 150, 243, 0.1)',
-                  color: darkMode ? '#90caf9' : '#2196F3',
-                  display: 'inline-block',
-                  fontSize: '13px',
-                  fontWeight: '500',
-                  textTransform: 'capitalize',
-                }}>
-                  {subscription.plan} Plan
-                </div>
-              )}
-            </div>
-            
+          <div style={{ flex: '0 0 240px' }}>            
             {/* Navigation */}
             <div style={{
               backgroundColor: darkMode ? '#1e1e1e' : 'white',
@@ -654,7 +590,6 @@ const ProfilePage = () => {
               overflow: 'hidden',
             }}>
               {[
-                { id: 'profile', icon: FaUser, label: 'Profile Settings' },
                 { id: 'subscription', icon: FaCreditCard, label: 'Subscription' },
                 { id: 'security', icon: FaLock, label: 'Security' }
               ].map(tab => (
@@ -724,117 +659,6 @@ const ProfilePage = () => {
               </div>
             )}
 
-            {/* Profile Tab */}
-            {activeTab === 'profile' && (
-              <div>
-                <h2 style={{ 
-                  color: darkMode ? '#e0e0e0' : '#333',
-                  marginTop: 0,
-                  marginBottom: '20px',
-                  fontSize: '20px',
-                }}>
-                  Profile Settings
-                </h2>
-                
-                <div style={{ marginBottom: '20px' }}>
-                  <label style={{
-                    display: 'block',
-                    marginBottom: '8px',
-                    color: darkMode ? '#b0b0b0' : '#666',
-                    fontWeight: '500',
-                  }}>
-                    Full Name
-                  </label>
-                  <input 
-                    type="text"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleInputChange}
-                    style={{
-                      width: '100%',
-                      padding: '12px',
-                      fontSize: '16px',
-                      border: `1px solid ${darkMode ? '#444' : '#ddd'}`,
-                      borderRadius: '6px',
-                      backgroundColor: darkMode ? '#333' : '#fff',
-                      color: darkMode ? '#e0e0e0' : '#333',
-                    }}
-                  />
-                </div>
-                
-                <div style={{ marginBottom: '20px' }}>
-                  <label style={{
-                    display: 'block',
-                    marginBottom: '8px',
-                    color: darkMode ? '#b0b0b0' : '#666',
-                    fontWeight: '500',
-                  }}>
-                    Email Address
-                  </label>
-                  <input 
-                    type="email"
-                    value={formData.email}
-                    style={{
-                      width: '100%',
-                      padding: '12px',
-                      fontSize: '16px',
-                      border: `1px solid ${darkMode ? '#444' : '#ddd'}`,
-                      borderRadius: '6px',
-                      backgroundColor: darkMode ? '#333' : '#fff',
-                      color: darkMode ? '#e0e0e0' : '#333',
-                    }}
-                    disabled
-                  />
-                </div>
-                
-                <div style={{ marginBottom: '25px' }}>
-                  <label style={{
-                    display: 'block',
-                    marginBottom: '8px',
-                    color: darkMode ? '#b0b0b0' : '#666',
-                    fontWeight: '500',
-                  }}>
-                    Bio
-                  </label>
-                  <textarea 
-                    name="bio"
-                    value={formData.bio}
-                    onChange={handleInputChange}
-                    style={{
-                      width: '100%',
-                      padding: '12px',
-                      fontSize: '16px',
-                      border: `1px solid ${darkMode ? '#444' : '#ddd'}`,
-                      borderRadius: '6px',
-                      backgroundColor: darkMode ? '#333' : '#fff',
-                      color: darkMode ? '#e0e0e0' : '#333',
-                      height: '100px',
-                      resize: 'vertical',
-                    }}
-                    placeholder="Tell us about yourself..."
-                  />
-                </div>
-                
-                <button 
-                  onClick={handleSaveProfile}
-                  disabled={loading}
-                  style={{
-                    backgroundColor: '#2196F3',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    padding: '12px 24px',
-                    fontSize: '16px',
-                    fontWeight: '500',
-                    cursor: loading ? 'not-allowed' : 'pointer',
-                    opacity: loading ? 0.7 : 1,
-                  }}
-                >
-                  {loading ? 'Saving...' : 'Save Changes'}
-                </button>
-              </div>
-            )}
-            
             {/* Subscription Tab */}
             {activeTab === 'subscription' && (
               <div>

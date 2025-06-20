@@ -18,7 +18,16 @@ async function handler(req, res) {
   await connectDB();
 
   const userId = req.user.id || req.user._id;
-  const { name, bio, profileImage: newProfileImageBase64, email: newEmailRequest } = req.body; // profileImage is base64 string
+  const { 
+    name, 
+    bio, 
+    username,
+    socialLinks,
+    profileVisibility,
+    shareResults,
+    profileImage: newProfileImageBase64, 
+    email: newEmailRequest 
+  } = req.body; // profileImage is base64 string
 
   try {
     const userToUpdate = await User.findById(userId);
@@ -87,6 +96,56 @@ async function handler(req, res) {
         userToUpdate.bio = '';
     }
 
+    // Handle username update
+    if (username && typeof username === 'string') {
+      const trimmedUsername = username.trim().toLowerCase();
+      
+      // Check if username is different from current
+      if (trimmedUsername !== userToUpdate.username) {
+        // Check if username is already taken
+        const existingUser = await User.findOne({ 
+          username: trimmedUsername,
+          _id: { $ne: userId }
+        });
+        
+        if (existingUser) {
+          return res.status(400).json({ error: 'Username is already taken.' });
+        }
+        
+        userToUpdate.username = trimmedUsername;
+      }
+    } else if (username === '') { // Allow clearing username
+      userToUpdate.username = undefined;
+    }
+
+    // Handle social links
+    if (socialLinks && typeof socialLinks === 'object') {
+      if (!userToUpdate.socialLinks) {
+        userToUpdate.socialLinks = {};
+      }
+      
+      // Update each social link if provided
+      if (socialLinks.hasOwnProperty('twitter')) {
+        userToUpdate.socialLinks.twitter = socialLinks.twitter || '';
+      }
+      if (socialLinks.hasOwnProperty('linkedin')) {
+        userToUpdate.socialLinks.linkedin = socialLinks.linkedin || '';
+      }
+      if (socialLinks.hasOwnProperty('instagram')) {
+        userToUpdate.socialLinks.instagram = socialLinks.instagram || '';
+      }
+    }
+
+    // Handle profile visibility
+    if (profileVisibility && ['public', 'private'].includes(profileVisibility)) {
+      userToUpdate.profileVisibility = profileVisibility;
+    }
+
+    // Handle share results setting
+    if (typeof shareResults === 'boolean') {
+      userToUpdate.shareResults = shareResults;
+    }
+
     // Handle GCS Image Upload
     if (newProfileImageBase64 && typeof newProfileImageBase64 === 'string' && newProfileImageBase64.startsWith('data:image')) {
       // 1. Delete old image from GCS if it exists
@@ -123,7 +182,11 @@ async function handler(req, res) {
         name: userToUpdate.name,
         email: userToUpdate.email,
         newEmail: userToUpdate.newEmail,
+        username: userToUpdate.username,
         bio: userToUpdate.bio,
+        socialLinks: userToUpdate.socialLinks,
+        profileVisibility: userToUpdate.profileVisibility,
+        shareResults: userToUpdate.shareResults,
         // profileImageUrl is no longer a direct public URL.
         // The client will need to fetch a signed URL using the gcsPath.
         // We can choose to send back the gcsPath if useful, or have client re-fetch profile.

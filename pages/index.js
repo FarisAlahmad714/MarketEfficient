@@ -1,6 +1,6 @@
 // pages/index.js
 import Link from 'next/link';
-import { useEffect, useContext } from 'react';
+import React, { useEffect, useContext, useState } from 'react';
 import { ThemeContext } from '../contexts/ThemeContext';
 import { AuthContext } from '../contexts/AuthContext';
 import Leaderboard from '../components/Leaderboard';
@@ -319,6 +319,26 @@ export default function HomePage() {
   const { darkMode } = useContext(ThemeContext);
   const { isAuthenticated, user } = useContext(AuthContext);
 
+  const [privacyUpdateResult, setPrivacyUpdateResult] = useState(null);
+  const [updating, setUpdating] = useState(false);
+
+  const updateUserPrivacy = async () => {
+    setUpdating(true);
+    try {
+      const response = await fetch('/api/admin/update-user-privacy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      const data = await response.json();
+      setPrivacyUpdateResult(data);
+      setTimeout(() => setPrivacyUpdateResult(null), 5000);
+    } catch (error) {
+      setPrivacyUpdateResult({ error: error.message });
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   useEffect(() => {
     logger.log('Home page loaded');
   }, []);
@@ -334,6 +354,47 @@ export default function HomePage() {
       minHeight: '100vh',
       boxSizing: 'border-box',
     }}>
+      {/* Admin Quick Fix Button */}
+      {user?.isAdmin && (
+        <div style={{
+          position: 'fixed',
+          top: '100px',
+          right: '20px',
+          zIndex: 1000,
+          backgroundColor: darkMode ? '#1e1e1e' : '#fff',
+          padding: '15px',
+          borderRadius: '12px',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+          border: `1px solid ${darkMode ? '#333' : '#ddd'}`
+        }}>
+          <button
+            onClick={updateUserPrivacy}
+            disabled={updating}
+            style={{
+              backgroundColor: '#2196F3',
+              color: 'white',
+              border: 'none',
+              padding: '8px 16px',
+              borderRadius: '6px',
+              cursor: updating ? 'not-allowed' : 'pointer',
+              fontSize: '14px',
+              marginBottom: privacyUpdateResult ? '10px' : '0'
+            }}
+          >
+            {updating ? 'Fixing...' : 'Fix User Privacy'}
+          </button>
+          {privacyUpdateResult && (
+            <div style={{
+              fontSize: '12px',
+              color: privacyUpdateResult.error ? '#F44336' : '#4CAF50',
+              marginTop: '8px'
+            }}>
+              {privacyUpdateResult.error || `✅ Updated ${privacyUpdateResult.modifiedCount} users`}
+            </div>
+          )}
+        </div>
+      )}
+      
       {/* Enhanced Hero Section */}
   <motion.section
       initial={{ opacity: 0, scale: 0.95 }}

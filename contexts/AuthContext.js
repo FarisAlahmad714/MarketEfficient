@@ -28,14 +28,9 @@ export const AuthProvider = ({ children }) => {
   // Get current pathname and avoid router dependency in auth initialization
   const currentPath = router?.asPath;
 
-  if (process.env.NODE_ENV === 'development') {
-    console.log('[AuthContext] Component rendering/re-rendering. Initial isLoading:', isLoading);
-  }
+  // Debug logging removed for security
 
   const wrappedSetIsLoading = (value) => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[AuthContext] setIsLoading CALLED. New value:', value, 'Current user:', user ? 'SET' : 'NULL', 'IsAuthenticated:', isAuthenticated);
-    }
     setIsLoading(value);
   };
 
@@ -52,9 +47,7 @@ export const AuthProvider = ({ children }) => {
         headers['X-CSRF-Token'] = csrfTokenValue;
       } else {
         // Fallback or error, though ideally csrfTokenValue should always be set by initializeApp
-        if (process.env.NODE_ENV === 'development') {
-          console.warn('[AuthContext] CSRF token not available in state for secureApiCall. Check initialization.');
-        }
+        // CSRF token not available
       }
     }
 
@@ -73,9 +66,7 @@ export const AuthProvider = ({ children }) => {
   
   useEffect(() => {
     const initializeApp = async () => {
-      if (process.env.NODE_ENV === 'development') {
-        console.log('[AuthContext] initializeApp: STARTING. Setting isLoading to true.');
-      }
+      // Starting app initialization
       wrappedSetIsLoading(true);
       try {
         // Fetch CSRF token first
@@ -86,15 +77,11 @@ export const AuthProvider = ({ children }) => {
             setCsrfTokenValue(csrfData.csrfToken); // Store fetched token in state
             // Cookie is also set by the API route, which is fine. The state value gives us immediate access.
           } else {
-            if (process.env.NODE_ENV === 'development') {
-              console.error('[AuthContext] Failed to fetch CSRF token, status:', csrfResponse.status);
-            }
+            // Failed to fetch CSRF token
             setCsrfTokenValue(null); // Ensure it's null if fetch fails
           }
         } catch (csrfError) {
-          if (process.env.NODE_ENV === 'development') {
-            console.error('[AuthContext] Error fetching CSRF token:', csrfError);
-          }
+          // Error fetching CSRF token
           setCsrfTokenValue(null); // Ensure it's null on error
         }
 
@@ -110,17 +97,13 @@ export const AuthProvider = ({ children }) => {
             const userData = await response.json();
             setUser(userData);
             setIsAuthenticated(true);
-            if (process.env.NODE_ENV === 'development') {
-              console.log('[AuthContext] initializeApp: /api/auth/me SUCCESS. User set. isAuthenticated=true');
-            }
+            // User authenticated successfully
           } else {
             // Token is invalid or expired, or /me endpoint failed
             await storage.removeItem('auth_token');
             setUser(null); // Clear user state
             setIsAuthenticated(false); // Ensure not authenticated
-            if (process.env.NODE_ENV === 'development') {
-              console.log('[AuthContext] initializeApp: /api/auth/me FAILED or token invalid. User cleared. isAuthenticated=false. Status:', response.status);
-            }
+            // Authentication failed or token invalid
             // Optionally, redirect to login if preferred on auth failure
             // router.push('/auth/login'); 
           }
@@ -128,35 +111,25 @@ export const AuthProvider = ({ children }) => {
           // No token found, user is not logged in
           setUser(null);
           setIsAuthenticated(false);
-          if (process.env.NODE_ENV === 'development') {
-            console.log('[AuthContext] initializeApp: No token found. User cleared. isAuthenticated=false.');
-          }
+          // No authentication token found
         }
       } catch (error) {
-        if (process.env.NODE_ENV === 'development') {
-          console.error('[AuthContext] initializeApp: CATCH BLOCK ERROR:', error);
-        }
+        // Authentication initialization error
         // Generic error handling: ensure user is not authenticated and token is cleared
         setUser(null);
         setIsAuthenticated(false);
         try {
           await storage.removeItem('auth_token'); // Attempt to clear any potentially stale token
         } catch (storageError) {
-          if (process.env.NODE_ENV === 'development') {
-            console.error('[AuthContext] Failed to clear auth_token during error handling:', storageError);
-          }
+          // Failed to clear auth token
         }
       } finally {
-        if (process.env.NODE_ENV === 'development') {
-          console.log('[AuthContext] initializeApp: FINALLY BLOCK. Setting isLoading to false.');
-        }
+        // Initialization complete
         wrappedSetIsLoading(false);
       }
     };
     
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[AuthContext] useEffect for initializeApp FIRED.');
-    }
+    // Initializing authentication
     initializeApp();
   }, []); // Empty dependency array ensures this runs once on mount
   
@@ -189,9 +162,7 @@ export const AuthProvider = ({ children }) => {
       
       return false;
     } catch (error) {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('Registration failed:', error);
-      }
+      // Registration error
       throw error;
     }
   }, [secureApiCall]);
@@ -243,9 +214,7 @@ export const AuthProvider = ({ children }) => {
         };
       }
     } catch (error) {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('Login failed:', error);
-      }
+      // Login error
       return { 
         success: false, 
         message: 'An error occurred during login'
@@ -260,9 +229,7 @@ export const AuthProvider = ({ children }) => {
         method: 'POST'
       });
     } catch (error) {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('Logout failed:', error);
-      }
+      // Logout error
     } finally {
       // Use storage wrapper for cleanup
       await storage.removeItem('auth_token');
@@ -284,9 +251,7 @@ export const AuthProvider = ({ children }) => {
       
       return response.ok;
     } catch (error) {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('Token refresh failed:', error);
-      }
+      // Token refresh error
       return false;
     }
   }, [secureApiCall]);
@@ -301,6 +266,33 @@ export const AuthProvider = ({ children }) => {
   const getAuthToken = useCallback(async () => {
     return await storage.getItem('auth_token');
   }, []);
+
+  // Method to refresh user data from server
+  const refreshUserData = useCallback(async () => {
+    try {
+      // Add cache-busting parameter to force fresh data
+      const response = await secureApiCall(`/api/auth/me?_t=${Date.now()}`, {
+        method: 'GET',
+        headers: {
+          'Cache-Control': 'no-cache'
+        }
+      });
+      
+      if (response.ok) {
+        const userData = await response.json();
+        setUser(userData);
+        setIsAuthenticated(true);
+        // User data refreshed
+        return true;
+      } else {
+        // Failed to refresh user data
+        return false;
+      }
+    } catch (error) {
+      // Error refreshing user data
+      return false;
+    }
+  }, [secureApiCall]);
   
   // Export the secure API call function for use in other components
   // const makeSecureRequest = secureApiCall; // This was exporting the old one, now it's part of the context value
@@ -314,6 +306,7 @@ export const AuthProvider = ({ children }) => {
     login,
     logout,
     refreshToken,
+    refreshUserData,
     hasValidSession,
     getAuthToken,
     makeSecureRequest: secureApiCall // Expose the new secureApiCall bound to the provider's instance and state
@@ -325,6 +318,7 @@ export const AuthProvider = ({ children }) => {
     login,
     logout,
     refreshToken,
+    refreshUserData,
     hasValidSession,
     getAuthToken,
     secureApiCall

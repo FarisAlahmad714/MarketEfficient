@@ -128,10 +128,54 @@ export default async function handler(req, res) {
         const verificationToken = generateToken();
         const verificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
         
+        // Auto-generate username
+        let baseUsername = '';
+        if (name.trim()) {
+          // Use name, remove spaces and special characters, make lowercase
+          baseUsername = name.trim()
+            .toLowerCase()
+            .replace(/[^a-z0-9]/g, '')
+            .substring(0, 15);
+        } else {
+          // Use email prefix if no name
+          baseUsername = emailLower
+            .split('@')[0]
+            .toLowerCase()
+            .replace(/[^a-z0-9]/g, '')
+            .substring(0, 15);
+        }
+
+        // Ensure it starts with a letter
+        if (!/^[a-z]/.test(baseUsername)) {
+          baseUsername = 'user' + baseUsername;
+        }
+
+        // Find an available username
+        let username = baseUsername;
+        let counter = 1;
+        
+        while (true) {
+          const existingUser = await User.findOne({ username });
+          if (!existingUser) {
+            break;
+          }
+          username = `${baseUsername}${counter}`;
+          counter++;
+          
+          // Prevent infinite loop
+          if (counter > 9999) {
+            username = `user${Date.now().toString().slice(-6)}`;
+            break;
+          }
+        }
+        
         const user = await User.create({
           name: name.trim(),
           email: emailLower,
           password,
+          username, // Add the auto-generated username
+          profileVisibility: 'public', // All profiles are public
+          shareResults: true, // Share results by default
           verificationToken,
           verificationTokenExpires,
           registrationPromoCode: promoCodeValid ? promoCode : null,
@@ -194,6 +238,7 @@ export default async function handler(req, res) {
           user: {
             id: user._id,
             name: user.name,
+            
             email: user.email,
             isVerified: user.isVerified,
             isAdmin: user.isAdmin,
