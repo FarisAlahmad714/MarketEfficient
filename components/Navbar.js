@@ -220,40 +220,42 @@ const Navbar = () => {
     <header className={`navbar ${darkMode ? 'dark' : 'light'}`}>
       <canvas ref={canvasRef} className="navbar-background"></canvas>
       
-      <div className="asset-ticker">
-        {assetPrices.length > 0 ? (
-          assetPrices.map((asset, index) => (
-            <div key={`${asset.symbol}-${index}`} className="ticker-item">
-              <span className="ticker-symbol">{asset.symbol}</span>
-              <span className="ticker-price">
-                ${typeof asset.price === 'number' ? 
-                  (asset.price < 1 ? asset.price.toFixed(4) : asset.price.toFixed(2)) : 
-                  'N/A'
-                }
-              </span>
-              <span className={`ticker-change ${asset.change24h >= 0 ? 'positive' : 'negative'}`}>
-                {typeof asset.change24h === 'number' ? 
-                  `${asset.change24h >= 0 ? '+' : ''}${asset.change24h.toFixed(2)}%` : 
-                  'N/A'
-                }
-              </span>
+      <div className="ticker-container">
+        <div className="asset-ticker">
+          {assetPrices.length > 0 ? (
+            assetPrices.map((asset, index) => (
+              <div key={`${asset.symbol}-${index}`} className="ticker-item">
+                <span className="ticker-symbol">{asset.symbol}</span>
+                <span className="ticker-price">
+                  ${typeof asset.price === 'number' ? 
+                    (asset.price < 1 ? asset.price.toFixed(4) : asset.price.toFixed(2)) : 
+                    'N/A'
+                  }
+                </span>
+                <span className={`ticker-change ${asset.change24h >= 0 ? 'positive' : 'negative'}`}>
+                  {typeof asset.change24h === 'number' ? 
+                    `${asset.change24h >= 0 ? '+' : ''}${asset.change24h.toFixed(2)}%` : 
+                    'N/A'
+                  }
+                </span>
+              </div>
+            ))
+          ) : pricesLoading ? (
+            // Loading state
+            Array.from({ length: 8 }, (_, index) => (
+              <div key={`loading-${index}`} className="ticker-item">
+                <span className="ticker-symbol">---</span>
+                <span className="loading">Loading...</span>
+              </div>
+            ))
+          ) : (
+            // Error state
+            <div className="ticker-item ticker-error">
+              <span className="ticker-symbol">ERROR</span>
+              <span className="loading">Unable to load prices</span>
             </div>
-          ))
-        ) : pricesLoading ? (
-          // Loading state
-          Array.from({ length: 8 }, (_, index) => (
-            <div key={`loading-${index}`} className="ticker-item">
-              <span className="ticker-symbol">---</span>
-              <span className="loading">Loading...</span>
-            </div>
-          ))
-        ) : (
-          // Error state
-          <div className="ticker-item ticker-error">
-            <span className="ticker-symbol">ERROR</span>
-            <span className="loading">Unable to load prices</span>
-          </div>
-        )}
+          )}
+        </div>
       </div>
       
       <div className="navbar-container">
@@ -853,7 +855,7 @@ const Navbar = () => {
           top: 0;
           z-index: 9999;
           transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-          overflow: hidden;
+          overflow: visible;
           isolation: isolate;
         }
         
@@ -894,19 +896,25 @@ const Navbar = () => {
           opacity: 0.6;
         }
         
-        .asset-ticker {
+        .ticker-container {
           position: absolute;
           bottom: 0;
           left: 0;
           right: 0;
           width: 100%;
-          max-width: 100%;
           height: 16px;
+          overflow: hidden;
+          pointer-events: none;
+        }
+        
+        .asset-ticker {
+          position: relative;
+          width: 100%;
+          height: 100%;
           display: flex;
           gap: 25px;
           font-size: 14px;
           font-weight: 600;
-          overflow: hidden;
           white-space: nowrap;
           opacity: 0.8;
           animation: ticker 180s linear infinite;
