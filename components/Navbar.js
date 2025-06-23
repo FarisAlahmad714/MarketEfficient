@@ -917,7 +917,7 @@ const Navbar = () => {
           font-weight: 600;
           white-space: nowrap;
           opacity: 0.8;
-          animation: ticker 180s linear infinite;
+          animation: ticker 60s linear infinite;
           background: linear-gradient(90deg, 
             transparent 0%, 
             rgba(33, 150, 243, 0.05) 50%, 
@@ -2344,6 +2344,10 @@ const Navbar = () => {
           
           .premium-mobile-menu {
             width: 100vw;
+          }
+          
+          .asset-ticker {
+            animation: ticker 45s linear infinite;
           }
         }
         
