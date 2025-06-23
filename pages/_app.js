@@ -43,6 +43,17 @@ function AppContent({ Component, pageProps }) {
       script.referrerPolicy = 'no-referrer';
       document.head.appendChild(script);
     }
+
+    // Register service worker for PWA
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js')
+        .then((registration) => {
+          console.log('SW registered: ', registration);
+        })
+        .catch((registrationError) => {
+          console.log('SW registration failed: ', registrationError);
+        });
+    }
   }, []);
   
   // Listen for route changes to check authentication
@@ -150,6 +161,12 @@ function MyApp({ Component, pageProps }) {
     <AuthProvider>
       <Head>
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#000000" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="Chartsense" />
+        <link rel="apple-touch-icon" href="/images/logo.webp" />
       </Head>
       <AppContent Component={Component} pageProps={pageProps} />
       <div id="modal-root"></div>

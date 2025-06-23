@@ -15,7 +15,7 @@ const EnhancedPromoCodeManagement = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState('codes');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
@@ -385,8 +385,8 @@ const EnhancedPromoCodeManagement = () => {
           paddingBottom: '0'
         }}>
           {[
-            { id: 'overview', label: 'Overview', icon: '📊' },
             { id: 'codes', label: 'Promo Codes', icon: '🎫' },
+            { id: 'overview', label: 'Overview', icon: '📊' },
             { id: 'users', label: 'User Management', icon: '👥' },
             { id: 'analytics', label: 'Analytics', icon: '📈' }
           ].map(tab => (
@@ -573,7 +573,178 @@ const PromoCodesTab = ({ promoCodes, search, setSearch, statusFilter, setStatusF
   
   return (
     <div>
-      {/* Preset Code Filter Buttons */}
+      {/* Main Control Panel */}
+      <div style={{
+        backgroundColor: darkMode ? '#1f2937' : 'white',
+        borderRadius: '16px',
+        padding: '24px',
+        marginBottom: '24px',
+        boxShadow: darkMode ? '0 4px 20px rgba(0,0,0,0.3)' : '0 4px 20px rgba(0,0,0,0.1)'
+      }}>
+        {/* Preset Codes Section */}
+        <div style={{ marginBottom: '24px' }}>
+          <h4 style={{
+            color: darkMode ? '#e0e0e0' : '#1f2937',
+            marginBottom: '16px',
+            fontSize: '16px',
+            fontWeight: '600'
+          }}>
+            🎯 Generate from Templates
+          </h4>
+          
+          <div style={{ 
+            display: 'flex',
+            gap: '12px',
+            flexWrap: 'wrap'
+          }}>
+            {presetCodes.map((code) => (
+              <button
+                key={code._id}
+                onClick={() => onGenerate(code)}
+                style={{
+                  background: code.discountType === 'free_access' 
+                    ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+                    : 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '12px',
+                  padding: '12px 20px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
+                  transition: 'all 0.3s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+                onMouseOver={(e) => e.target.style.transform = 'translateY(-2px)'}
+                onMouseOut={(e) => e.target.style.transform = 'translateY(0)'}
+              >
+                <span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>
+                  {code.code}
+                </span>
+                <span style={{ fontSize: '12px', opacity: 0.9 }}>
+                  {code.discountType === 'free_access' ? 'FREE' : 
+                   code.finalPrice ? `$${(code.finalPrice / 100).toFixed(2)}` :
+                   code.discountType === 'percentage' ? `${code.discountValue}% off` :
+                   `$${(code.discountValue / 100).toFixed(2)} off`}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Filters Section */}
+        <div style={{ 
+          borderTop: `1px solid ${darkMode ? '#374151' : '#e5e7eb'}`,
+          paddingTop: '24px'
+        }}>
+          <h4 style={{
+            color: darkMode ? '#e0e0e0' : '#1f2937',
+            marginBottom: '16px',
+            fontSize: '16px',
+            fontWeight: '600'
+          }}>
+            🔍 Filter & Search
+          </h4>
+          
+          <div style={{ 
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+            gap: '16px'
+          }}>
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search codes..."
+              style={{
+                padding: '12px 16px',
+                border: `1px solid ${darkMode ? '#374151' : '#d1d5db'}`,
+                borderRadius: '8px',
+                backgroundColor: darkMode ? '#374151' : 'white',
+                color: darkMode ? '#e0e0e0' : '#1f2937',
+                fontSize: '14px'
+              }}
+            />
+            
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              style={{
+                padding: '12px 16px',
+                border: `1px solid ${darkMode ? '#374151' : '#d1d5db'}`,
+                borderRadius: '8px',
+                backgroundColor: darkMode ? '#374151' : 'white',
+                color: darkMode ? '#e0e0e0' : '#1f2937',
+                fontSize: '14px'
+              }}
+            >
+              <option value="all">All Status</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+            
+            <select
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value)}
+              style={{
+                padding: '12px 16px',
+                border: `1px solid ${darkMode ? '#374151' : '#d1d5db'}`,
+                borderRadius: '8px',
+                backgroundColor: darkMode ? '#374151' : 'white',
+                color: darkMode ? '#e0e0e0' : '#1f2937',
+                fontSize: '14px'
+              }}
+            >
+              <option value="all">All Types</option>
+              <option value="generated">Generated</option>
+              <option value="custom">Custom</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* Active Codes Carousel */}
+      <PromoCodeCarousel
+        title="🔥 Active Codes"
+        subtitle="Codes that are being used"
+        codes={promoCodes.filter(code => code.type !== 'preset' && code.currentUses > 0)}
+        darkMode={darkMode}
+        onGenerate={onGenerate}
+        emptyMessage="No active codes yet. Generate some codes and they'll appear here once used!"
+      />
+
+      {/* Unused Codes Carousel */}
+      <PromoCodeCarousel
+        title="💤 Unused Codes"
+        subtitle="Codes waiting to be discovered"
+        codes={promoCodes.filter(code => code.type !== 'preset' && code.currentUses === 0)}
+        darkMode={darkMode}
+        onGenerate={onGenerate}
+        emptyMessage="All your codes are being used! Generate more to see them here."
+      />
+    </div>
+  );
+};
+
+// Carousel Component for Promo Codes
+const PromoCodeCarousel = ({ title, subtitle, codes, darkMode, onGenerate, emptyMessage }) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const cardsPerView = 3;
+  const maxIndex = Math.max(0, codes.length - cardsPerView);
+
+  const nextSlide = () => {
+    setCurrentIndex(prev => Math.min(prev + 1, maxIndex));
+  };
+
+  const prevSlide = () => {
+    setCurrentIndex(prev => Math.max(prev - 1, 0));
+  };
+
+  if (codes.length === 0) {
+    return (
       <div style={{
         backgroundColor: darkMode ? '#1f2937' : 'white',
         borderRadius: '16px',
@@ -583,136 +754,171 @@ const PromoCodesTab = ({ promoCodes, search, setSearch, statusFilter, setStatusF
       }}>
         <h4 style={{
           color: darkMode ? '#e0e0e0' : '#1f2937',
-          marginBottom: '16px',
-          fontSize: '16px',
+          margin: '0 0 8px 0',
+          fontSize: '18px',
           fontWeight: '600'
         }}>
-          🎯 Preset Codes (Click to Generate)
+          {title}
         </h4>
-        
-        <div style={{ 
-          display: 'flex',
-          gap: '12px',
-          flexWrap: 'wrap'
+        <p style={{
+          color: darkMode ? '#9ca3af' : '#6b7280',
+          fontSize: '14px',
+          margin: '0 0 20px 0'
         }}>
-          {presetCodes.map((code) => (
-            <button
+          {subtitle}
+        </p>
+        <div style={{
+          textAlign: 'center',
+          padding: '40px',
+          color: darkMode ? '#9ca3af' : '#6b7280',
+          fontSize: '14px'
+        }}>
+          {emptyMessage}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{
+      backgroundColor: darkMode ? '#1f2937' : 'white',
+      borderRadius: '16px',
+      padding: '24px',
+      marginBottom: '24px',
+      boxShadow: darkMode ? '0 4px 20px rgba(0,0,0,0.3)' : '0 4px 20px rgba(0,0,0,0.1)'
+    }}>
+      {/* Header */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: '20px'
+      }}>
+        <div>
+          <h4 style={{
+            color: darkMode ? '#e0e0e0' : '#1f2937',
+            margin: '0 0 4px 0',
+            fontSize: '18px',
+            fontWeight: '600'
+          }}>
+            {title} ({codes.length})
+          </h4>
+          <p style={{
+            color: darkMode ? '#9ca3af' : '#6b7280',
+            fontSize: '14px',
+            margin: 0
+          }}>
+            {subtitle}
+          </p>
+        </div>
+        
+        {/* Navigation Controls */}
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button
+            onClick={prevSlide}
+            disabled={currentIndex === 0}
+            style={{
+              backgroundColor: currentIndex === 0 
+                ? (darkMode ? '#374151' : '#f3f4f6')
+                : (darkMode ? '#4b5563' : '#e5e7eb'),
+              color: currentIndex === 0 
+                ? (darkMode ? '#6b7280' : '#9ca3af')
+                : (darkMode ? '#e0e0e0' : '#374151'),
+              border: 'none',
+              borderRadius: '8px',
+              padding: '8px 12px',
+              cursor: currentIndex === 0 ? 'not-allowed' : 'pointer',
+              fontSize: '14px',
+              fontWeight: '500',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            ← Prev
+          </button>
+          <button
+            onClick={nextSlide}
+            disabled={currentIndex >= maxIndex}
+            style={{
+              backgroundColor: currentIndex >= maxIndex 
+                ? (darkMode ? '#374151' : '#f3f4f6')
+                : (darkMode ? '#4b5563' : '#e5e7eb'),
+              color: currentIndex >= maxIndex 
+                ? (darkMode ? '#6b7280' : '#9ca3af')
+                : (darkMode ? '#e0e0e0' : '#374151'),
+              border: 'none',
+              borderRadius: '8px',
+              padding: '8px 12px',
+              cursor: currentIndex >= maxIndex ? 'not-allowed' : 'pointer',
+              fontSize: '14px',
+              fontWeight: '500',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            Next →
+          </button>
+        </div>
+      </div>
+
+      {/* Carousel Container */}
+      <div style={{
+        position: 'relative',
+        overflow: 'hidden',
+        borderRadius: '12px'
+      }}>
+        <div style={{
+          display: 'flex',
+          transform: `translateX(-${currentIndex * (100 / cardsPerView)}%)`,
+          transition: 'transform 0.3s ease-in-out',
+          gap: '16px'
+        }}>
+          {codes.map((code, index) => (
+            <div
               key={code._id}
-              onClick={() => onGenerate(code)}
               style={{
-                background: code.discountType === 'free_access' 
-                  ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
-                  : 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
-                color: 'white',
-                border: 'none',
-                borderRadius: '12px',
-                padding: '12px 20px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '600',
-                boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
-                transition: 'all 0.3s ease',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
+                minWidth: `calc(${100 / cardsPerView}% - ${16 * (cardsPerView - 1) / cardsPerView}px)`,
+                opacity: index >= currentIndex && index < currentIndex + cardsPerView ? 1 : 0.7,
+                transform: index >= currentIndex && index < currentIndex + cardsPerView 
+                  ? 'scale(1)' 
+                  : 'scale(0.95)',
+                transition: 'all 0.3s ease'
               }}
-              onMouseOver={(e) => e.target.style.transform = 'translateY(-2px)'}
-              onMouseOut={(e) => e.target.style.transform = 'translateY(0)'}
             >
-              <span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>
-                {code.code}
-              </span>
-              <span style={{ fontSize: '12px', opacity: 0.9 }}>
-                {code.discountType === 'free_access' ? 'FREE' : 
-                 code.finalPrice ? `$${(code.finalPrice / 100).toFixed(2)}` :
-                 code.discountType === 'percentage' ? `${code.discountValue}% off` :
-                 `$${(code.discountValue / 100).toFixed(2)} off`}
-              </span>
-            </button>
+              <PromoCodeCard 
+                code={code}
+                darkMode={darkMode}
+                onGenerate={() => onGenerate(code)}
+              />
+            </div>
           ))}
         </div>
       </div>
 
-      {/* Filters */}
+      {/* Indicators */}
       <div style={{
-        backgroundColor: darkMode ? '#1f2937' : 'white',
-        borderRadius: '16px',
-        padding: '24px',
-        marginBottom: '24px',
-        boxShadow: darkMode ? '0 4px 20px rgba(0,0,0,0.3)' : '0 4px 20px rgba(0,0,0,0.1)'
+        display: 'flex',
+        justifyContent: 'center',
+        gap: '8px',
+        marginTop: '16px'
       }}>
-        <div style={{ 
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-          gap: '16px'
-        }}>
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search generated codes..."
+        {Array.from({ length: maxIndex + 1 }, (_, i) => (
+          <button
+            key={i}
+            onClick={() => setCurrentIndex(i)}
             style={{
-              padding: '12px 16px',
-              border: `1px solid ${darkMode ? '#374151' : '#d1d5db'}`,
-              borderRadius: '8px',
-              backgroundColor: darkMode ? '#374151' : 'white',
-              color: darkMode ? '#e0e0e0' : '#1f2937',
-              fontSize: '14px'
+              width: '8px',
+              height: '8px',
+              borderRadius: '50%',
+              border: 'none',
+              backgroundColor: i === currentIndex 
+                ? '#3b82f6' 
+                : (darkMode ? '#4b5563' : '#d1d5db'),
+              cursor: 'pointer',
+              transition: 'all 0.2s ease'
             }}
           />
-          
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            style={{
-              padding: '12px 16px',
-              border: `1px solid ${darkMode ? '#374151' : '#d1d5db'}`,
-              borderRadius: '8px',
-              backgroundColor: darkMode ? '#374151' : 'white',
-              color: darkMode ? '#e0e0e0' : '#1f2937',
-              fontSize: '14px'
-            }}
-          >
-            <option value="all">All Status</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-          </select>
-          
-          <select
-            value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value)}
-            style={{
-              padding: '12px 16px',
-              border: `1px solid ${darkMode ? '#374151' : '#d1d5db'}`,
-              borderRadius: '8px',
-              backgroundColor: darkMode ? '#374151' : 'white',
-              color: darkMode ? '#e0e0e0' : '#1f2937',
-              fontSize: '14px'
-            }}
-          >
-            <option value="all">All Types</option>
-            <option value="generated">Generated</option>
-            <option value="custom">Custom</option>
-          </select>
-        </div>
+        ))}
       </div>
-
-    {/* Generated Codes Grid */}
-    <div style={{
-      display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
-      gap: '20px'
-    }}>
-      {promoCodes.filter(code => code.type !== 'preset').map((code) => (
-        <PromoCodeCard 
-          key={code._id}
-          code={code}
-          darkMode={darkMode}
-          onGenerate={() => onGenerate(code)}
-        />
-      ))}
     </div>
-  </div>
   );
 };
 
@@ -729,101 +935,118 @@ const PromoCodeCard = ({ code, darkMode, onGenerate }) => {
 
   const getDiscountDisplay = () => {
     if (code.discountType === 'free_access') return 'FREE';
-    if (code.finalPrice) return `$${(code.finalPrice / 100).toFixed(2)} final`;
+    if (code.finalPrice) return `$${(code.finalPrice / 100).toFixed(2)}`;
     if (code.discountType === 'percentage') return `${code.discountValue}% off`;
     return `$${(code.discountValue / 100).toFixed(2)} off`;
   };
 
+  const usageRate = (code.currentUses / code.maxUses) * 100;
+  const isHighPerformer = usageRate >= 50;
+  const isExhausted = code.currentUses >= code.maxUses;
+
   return (
     <div style={{
-      backgroundColor: darkMode ? '#1f2937' : 'white',
-      borderRadius: '16px',
-      padding: '24px',
-      boxShadow: darkMode ? '0 4px 20px rgba(0,0,0,0.3)' : '0 4px 20px rgba(0,0,0,0.1)',
-      border: `1px solid ${darkMode ? '#374151' : '#e5e7eb'}`,
+      backgroundColor: darkMode ? '#374151' : '#f9fafb',
+      borderRadius: '12px',
+      padding: '20px',
+      height: '280px',
+      display: 'flex',
+      flexDirection: 'column',
+      justifyContent: 'space-between',
+      border: `2px solid ${isHighPerformer ? '#10b981' : isExhausted ? '#ef4444' : 'transparent'}`,
       transition: 'all 0.3s ease',
-      cursor: 'pointer'
+      position: 'relative',
+      overflow: 'hidden'
     }}
     onMouseOver={(e) => {
       e.currentTarget.style.transform = 'translateY(-4px)';
       e.currentTarget.style.boxShadow = darkMode 
-        ? '0 8px 30px rgba(0,0,0,0.4)' 
-        : '0 8px 30px rgba(0,0,0,0.15)';
+        ? '0 8px 25px rgba(0,0,0,0.4)' 
+        : '0 8px 25px rgba(0,0,0,0.15)';
     }}
     onMouseOut={(e) => {
       e.currentTarget.style.transform = 'translateY(0)';
-      e.currentTarget.style.boxShadow = darkMode 
-        ? '0 4px 20px rgba(0,0,0,0.3)' 
-        : '0 4px 20px rgba(0,0,0,0.1)';
+      e.currentTarget.style.boxShadow = 'none';
     }}
     >
+      {/* Performance Badge */}
+      {(isHighPerformer || isExhausted) && (
+        <div style={{
+          position: 'absolute',
+          top: '12px',
+          right: '12px',
+          backgroundColor: isExhausted ? '#ef4444' : '#10b981',
+          color: 'white',
+          padding: '4px 8px',
+          borderRadius: '12px',
+          fontSize: '10px',
+          fontWeight: '600',
+          textTransform: 'uppercase'
+        }}>
+          {isExhausted ? 'Exhausted' : 'Hot'}
+        </div>
+      )}
+
       {/* Header */}
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'flex-start',
-        marginBottom: '16px'
-      }}>
-        <div>
-          <div style={{
-            fontSize: '20px',
-            fontWeight: 'bold',
-            color: darkMode ? '#e0e0e0' : '#1f2937',
-            marginBottom: '4px',
-            fontFamily: 'monospace'
-          }}>
-            {code.code}
-          </div>
-          <div style={{
-            display: 'inline-block',
-            backgroundColor: getTypeColor(code.type),
-            color: 'white',
-            padding: '4px 8px',
-            borderRadius: '6px',
-            fontSize: '12px',
-            fontWeight: '500',
-            textTransform: 'uppercase'
-          }}>
-            {code.type}
-          </div>
+      <div>
+        <div style={{
+          fontSize: '18px',
+          fontWeight: '700',
+          color: darkMode ? '#e0e0e0' : '#1f2937',
+          fontFamily: 'monospace',
+          marginBottom: '8px'
+        }}>
+          {code.code}
         </div>
         
         <div style={{
-          backgroundColor: code.isActive 
-            ? (darkMode ? '#065f46' : '#d1fae5')
-            : (darkMode ? '#7f1d1d' : '#fee2e2'),
-          color: code.isActive 
-            ? (darkMode ? '#10b981' : '#065f46')
-            : (darkMode ? '#ef4444' : '#dc2626'),
-          padding: '6px 12px',
-          borderRadius: '20px',
-          fontSize: '12px',
-          fontWeight: '600'
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          marginBottom: '12px'
         }}>
-          {code.isActive ? 'ACTIVE' : 'INACTIVE'}
+          <span style={{
+            fontSize: '10px',
+            color: getTypeColor(code.type),
+            backgroundColor: `${getTypeColor(code.type)}20`,
+            padding: '2px 6px',
+            borderRadius: '4px',
+            fontWeight: '600',
+            textTransform: 'uppercase'
+          }}>
+            {code.type}
+          </span>
+          <span style={{
+            fontSize: '10px',
+            fontWeight: '600',
+            color: code.isActive ? '#10b981' : '#ef4444',
+            backgroundColor: code.isActive ? '#10b98120' : '#ef444420',
+            padding: '2px 6px',
+            borderRadius: '4px'
+          }}>
+            {code.isActive ? 'ACTIVE' : 'INACTIVE'}
+          </span>
         </div>
+
+        <p style={{
+          color: darkMode ? '#9ca3af' : '#6b7280',
+          fontSize: '12px',
+          lineHeight: '1.4',
+          marginBottom: '16px',
+          height: '32px',
+          overflow: 'hidden'
+        }}>
+          {code.description}
+        </p>
       </div>
 
-      {/* Description */}
-      <p style={{
-        color: darkMode ? '#9ca3af' : '#6b7280',
-        fontSize: '14px',
-        lineHeight: '1.5',
-        marginBottom: '16px',
-        minHeight: '42px'
-      }}>
-        {code.description}
-      </p>
-
-      {/* Discount Info */}
+      {/* Main Stats */}
       <div style={{
-        backgroundColor: darkMode ? '#374151' : '#f9fafb',
-        borderRadius: '8px',
-        padding: '12px',
-        marginBottom: '16px'
+        textAlign: 'center',
+        padding: '16px 0'
       }}>
         <div style={{
-          fontSize: '24px',
+          fontSize: '28px',
           fontWeight: 'bold',
           color: code.discountType === 'free_access' 
             ? '#10b981' 
@@ -832,85 +1055,80 @@ const PromoCodeCard = ({ code, darkMode, onGenerate }) => {
         }}>
           {getDiscountDisplay()}
         </div>
+        
+        <div style={{
+          fontSize: '20px',
+          fontWeight: '600',
+          color: isExhausted 
+            ? '#ef4444' 
+            : isHighPerformer 
+              ? '#10b981' 
+              : (darkMode ? '#e0e0e0' : '#1f2937'),
+          marginBottom: '8px'
+        }}>
+          {code.currentUses}/{code.maxUses}
+        </div>
+
+        {/* Usage Bar */}
+        <div style={{
+          width: '100%',
+          height: '6px',
+          backgroundColor: darkMode ? '#4b5563' : '#e5e7eb',
+          borderRadius: '3px',
+          overflow: 'hidden',
+          marginBottom: '8px'
+        }}>
+          <div style={{
+            width: `${Math.min(100, usageRate)}%`,
+            height: '100%',
+            backgroundColor: isExhausted 
+              ? '#ef4444' 
+              : isHighPerformer 
+                ? '#10b981' 
+                : '#f59e0b',
+            borderRadius: '3px',
+            transition: 'width 0.3s ease'
+          }}></div>
+        </div>
+
         <div style={{
           fontSize: '12px',
           color: darkMode ? '#9ca3af' : '#6b7280'
         }}>
-          {code.discountType === 'free_access' ? 'Complete Access' : 'Discount'}
+          {usageRate.toFixed(0)}% used
         </div>
       </div>
 
-      {/* Usage Stats */}
+      {/* Footer */}
       <div style={{
         display: 'flex',
         justifyContent: 'space-between',
-        marginBottom: '16px'
+        alignItems: 'center'
       }}>
-        <div>
+        {code.validUntil && (
           <div style={{
-            fontSize: '16px',
-            fontWeight: 'bold',
-            color: darkMode ? '#e0e0e0' : '#1f2937'
-          }}>
-            {code.currentUses}/{code.maxUses}
-          </div>
-          <div style={{
-            fontSize: '12px',
+            fontSize: '11px',
             color: darkMode ? '#9ca3af' : '#6b7280'
           }}>
-            Uses
-          </div>
-        </div>
-        
-        {code.validUntil && (
-          <div style={{ textAlign: 'right' }}>
-            <div style={{
-              fontSize: '12px',
-              color: darkMode ? '#e0e0e0' : '#1f2937',
-              fontWeight: '500'
-            }}>
-              Expires: {new Date(code.validUntil).toLocaleDateString()}
-            </div>
+            Expires {new Date(code.validUntil).toLocaleDateString()}
           </div>
         )}
-      </div>
-
-      {/* Actions */}
-      <div style={{ display: 'flex', gap: '8px' }}>
+        
         <button
           style={{
-            flex: 1,
-            backgroundColor: '#3b82f6',
-            color: 'white',
+            backgroundColor: darkMode ? '#4b5563' : '#e5e7eb',
+            color: darkMode ? '#e0e0e0' : '#374151',
             border: 'none',
-            borderRadius: '8px',
-            padding: '8px 12px',
-            fontSize: '12px',
+            borderRadius: '6px',
+            padding: '6px 12px',
+            fontSize: '11px',
             fontWeight: '500',
-            cursor: 'pointer'
+            cursor: 'pointer',
+            marginLeft: 'auto'
           }}
         >
           Edit
         </button>
-        
-        {code.type === 'preset' && (
-          <button
-            onClick={() => onGenerate()}
-            style={{
-              flex: 1,
-              backgroundColor: '#10b981',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              padding: '8px 12px',
-              fontSize: '12px',
-              fontWeight: '500',
-              cursor: 'pointer'
-            }}
-          >
-            Generate
-          </button>
-        )}
       </div>
     </div>
   );

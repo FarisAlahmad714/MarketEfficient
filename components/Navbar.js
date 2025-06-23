@@ -853,7 +853,7 @@ const Navbar = () => {
           top: 0;
           z-index: 9999;
           transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-          overflow: visible;
+          overflow: hidden;
           isolation: isolate;
         }
         
@@ -900,7 +900,7 @@ const Navbar = () => {
           left: 0;
           right: 0;
           width: 100%;
-          max-width: 100vw;
+          max-width: 100%;
           height: 16px;
           display: flex;
           gap: 25px;
@@ -928,7 +928,7 @@ const Navbar = () => {
         
         @keyframes ticker {
           0% { transform: translateX(100%); }
-          100% { transform: translateX(-200%); }
+          100% { transform: translateX(-100%); }
         }
         
         .ticker-item {
