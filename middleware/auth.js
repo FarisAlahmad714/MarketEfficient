@@ -224,3 +224,50 @@ export const optionalAuth = authenticate({ required: false });
 export const getUserFromRequest = (req) => {
   return req.user || null;
 };
+
+/**
+ * Verify JWT token and return user data (for backwards compatibility)
+ * @param {string} token - JWT token string
+ * @returns {Object|null} User data or null if invalid
+ */
+export const verifyToken = async (token) => {
+  try {
+    if (!token) {
+      return null;
+    }
+
+    // Verify token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    // Connect to database
+    await connectDB();
+    
+    // Find user
+    const user = await User.findById(decoded.userId)
+      .select('-password -verificationToken -resetPasswordToken -newEmailVerificationToken');
+    
+    if (!user) {
+      return null;
+    }
+    
+    // Return user data with subscription info
+    return {
+      _id: user._id,
+      id: user._id.toString(),
+      userId: user._id.toString(),
+      email: user.email,
+      name: user.name,
+      username: user.username,
+      isAdmin: user.isAdmin || false,
+      isVerified: user.isVerified || false,
+      subscriptionStatus: user.subscriptionStatus,
+      isPremium: user.isPremium || false,
+      promoCode: user.promoCode,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt
+    };
+  } catch (error) {
+    console.error('Token verification error:', error);
+    return null;
+  }
+};

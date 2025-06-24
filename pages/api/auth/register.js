@@ -94,7 +94,7 @@ export default async function handler(req, res) {
         
         // If payment is required, create a temporary token instead of PendingRegistration
         if (!promoCode || requiresPayment) {
-          const bcrypt = require('bcrypt');
+          const bcrypt = require('bcryptjs');
           const passwordHash = await bcrypt.hash(password, 12);
           
           // Create a secure temporary token with registration data

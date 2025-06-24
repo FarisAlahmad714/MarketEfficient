@@ -97,7 +97,7 @@ export default async function handler(req, res) {
     if (!promoCode) {
       // No promo code - user must pay, create pending registration
       const PendingRegistration = require('../../../models/PendingRegistration');
-      const bcrypt = require('bcrypt');
+      const bcrypt = require('bcryptjs');
       const passwordHash = await bcrypt.hash(password, 12);
       
       const pendingReg = await PendingRegistration.create({
@@ -152,7 +152,7 @@ export default async function handler(req, res) {
       
       // Create pending registration
       const PendingRegistration = require('../../../models/PendingRegistration');
-      const bcrypt = require('bcrypt');
+      const bcrypt = require('bcryptjs');
       const passwordHash = await bcrypt.hash(password, 12);
       
       // Check if pending registration already exists

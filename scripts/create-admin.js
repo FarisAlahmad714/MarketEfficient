@@ -1,7 +1,7 @@
 // scripts/create-admin.js
 require('dotenv').config({ path: '.env.local' }); // This loads variables from .env.local
 const mongoose = require('mongoose');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
  // Adjust path to your logger utility
 const MONGODB_URI = process.env.MONGODB_URI;
 

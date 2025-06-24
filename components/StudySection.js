@@ -16,7 +16,10 @@ const StudySection = () => {
 
   useEffect(() => {
     if (user) {
-      if (user.subscriptionStatus === 'active' || user.isPremium) {
+      // Admin users get full access
+      if (user.isAdmin) {
+        setUserSubscription('paid');
+      } else if (user.subscriptionStatus === 'active' || user.isPremium) {
         setUserSubscription('paid');
       } else if (user.promoCode) {
         setUserSubscription('promo');
@@ -36,12 +39,12 @@ const StudySection = () => {
 
   const getAccessibleTopicsCount = (difficulty) => {
     return topicsByDifficulty[difficulty]?.filter(topic => 
-      isTopicAccessible(topic.level, userSubscription)
+      isTopicAccessible(topic.level, userSubscription, user?.isAdmin)
     ).length || 0;
   };
 
   const renderTopicCard = (topic) => {
-    const isAccessible = isTopicAccessible(topic.level, userSubscription);
+    const isAccessible = isTopicAccessible(topic.level, userSubscription, user?.isAdmin);
     
     return (
       <div 
@@ -200,7 +203,7 @@ const StudySection = () => {
             <i className="fas fa-chart-bar"></i>
             <span>
               {Object.values(topicsByDifficulty).reduce((acc, topics) => 
-                acc + topics.filter(topic => isTopicAccessible(topic.level, userSubscription)).length, 0
+                acc + topics.filter(topic => isTopicAccessible(topic.level, userSubscription, user?.isAdmin)).length, 0
               )} topics available
             </span>
           </div>

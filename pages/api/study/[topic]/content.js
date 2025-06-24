@@ -19,13 +19,18 @@ export default async function handler(req, res) {
 
     // Get user info from token
     let userSubscription = 'free';
+    let isAdmin = false;
     const authHeader = req.headers.authorization;
     
     if (authHeader) {
       try {
         const user = await verifyToken(authHeader.replace('Bearer ', ''));
         if (user) {
-          if (user.subscriptionStatus === 'active' || user.isPremium) {
+          // Check if user is admin first
+          if (user.isAdmin) {
+            isAdmin = true;
+            userSubscription = 'paid'; // Treat admin as paid for compatibility
+          } else if (user.subscriptionStatus === 'active' || user.isPremium) {
             userSubscription = 'paid';
           } else if (user.promoCode) {
             userSubscription = 'promo';
@@ -39,7 +44,7 @@ export default async function handler(req, res) {
     }
 
     // Check if user has access to this topic
-    if (!isTopicAccessible(topicData.level, userSubscription)) {
+    if (!isTopicAccessible(topicData.level, userSubscription, isAdmin)) {
       return res.status(403).json({ 
         error: 'Access denied',
         message: 'This content requires a Pro subscription',

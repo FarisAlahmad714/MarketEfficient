@@ -9,13 +9,18 @@ export default async function handler(req, res) {
   try {
     // Get user info from token if available
     let userSubscription = 'free';
+    let isAdmin = false;
     const authHeader = req.headers.authorization;
     
     if (authHeader) {
       try {
         const user = await verifyToken(authHeader.replace('Bearer ', ''));
         if (user) {
-          if (user.subscriptionStatus === 'active' || user.isPremium) {
+          // Check if user is admin first
+          if (user.isAdmin) {
+            isAdmin = true;
+            userSubscription = 'paid'; // Treat admin as paid for compatibility
+          } else if (user.subscriptionStatus === 'active' || user.isPremium) {
             userSubscription = 'paid';
           } else if (user.promoCode) {
             userSubscription = 'promo';
@@ -36,7 +41,7 @@ export default async function handler(req, res) {
       description: topicData.description,
       estimatedTime: topicData.estimatedTime,
       lessonCount: Object.keys(topicData.lessons).length,
-      isAccessible: isTopicAccessible(topicData.level, userSubscription),
+      isAccessible: isTopicAccessible(topicData.level, userSubscription, isAdmin),
       lessons: Object.keys(topicData.lessons)
     }));
 
