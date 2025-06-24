@@ -53,9 +53,9 @@ const ProfileHeader = ({
         shareResults: true // All users share results
       });
       
-      if (profile.profileImageUrl) {
-        setProfileImage(profile.profileImageUrl);
-      }
+      // Always update the profile image when profile prop changes
+      console.log('Setting profile image from prop:', profile.profileImageUrl);
+      setProfileImage(profile.profileImageUrl || '');
     }
   }, [profile]);
 
@@ -287,7 +287,13 @@ const ProfileHeader = ({
             <img 
               src={profileImage} 
               alt={profile?.name || 'Profile'}
-              style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} 
+              style={{ 
+                width: '100%', 
+                height: '100%', 
+                objectFit: 'cover', 
+                borderRadius: '50%',
+                display: 'block'
+              }} 
             />
           ) : (
             <FaUser size={50} color={darkMode ? '#666' : '#999'} />

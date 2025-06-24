@@ -77,8 +77,8 @@ const StudyTopic = ({ topicName }) => {
       if (currentLesson < lessons.length - 1) {
         nextLesson();
       } else {
-        // Completed all lessons - redirect to quiz selection or next topic
-        router.push('/chart-exam');
+        // Completed all lessons - redirect back to study section
+        router.push('/study');
       }
     }, 3000);
   };

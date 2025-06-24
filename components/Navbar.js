@@ -2347,7 +2347,7 @@ const Navbar = () => {
           }
           
           .asset-ticker {
-            animation: ticker 45s linear infinite;
+            animation: ticker 35s linear infinite;
           }
         }
         

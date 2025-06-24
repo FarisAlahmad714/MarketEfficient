@@ -109,7 +109,7 @@ const CryptoTicker = () => {
           overflow: hidden;
           white-space: nowrap;
           opacity: 0.8;
-          animation: ticker 180s linear infinite;
+          animation: ticker 240s linear infinite;
           background: linear-gradient(90deg, 
             transparent 0%, 
             rgba(33, 150, 243, 0.05) 50%, 

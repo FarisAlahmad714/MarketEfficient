@@ -50,8 +50,11 @@ const ProfileAvatar = ({
           src={imageUrl}
           alt={`${name}'s profile`}
           fill
-          className={`object-cover ${imageClassName}`}
-          style={{ borderRadius }}
+          className={imageClassName}
+          style={{ 
+            objectFit: 'cover',
+            borderRadius
+          }}
           sizes={`${size}px`}
           onError={(e) => {
             // Hide the image if it fails to load

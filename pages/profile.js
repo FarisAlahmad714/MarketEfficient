@@ -54,6 +54,18 @@ const ProfilePage = () => {
       });
       fetchUserData();
     }
+    
+    // Listen for profile image updates from ProfileHeader
+    const handleProfileImageUpdate = () => {
+      console.log('Profile image update event received, refreshing...');
+      fetchProfileImage();
+    };
+    
+    window.addEventListener('profileImageUpdated', handleProfileImageUpdate);
+    
+    return () => {
+      window.removeEventListener('profileImageUpdated', handleProfileImageUpdate);
+    };
   }, [user, isAuthenticated]);
 
   const fetchUserData = async () => {
@@ -563,7 +575,10 @@ const ProfilePage = () => {
             }
           }}
           isOwnProfile={true}
-          onProfileUpdate={fetchUserData}
+          onProfileUpdate={() => {
+            fetchUserData();
+            fetchProfileImage(); // Also refresh the profile image
+          }}
           showActionButtons={false}
         />
 
