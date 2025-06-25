@@ -160,7 +160,25 @@ function MyApp({ Component, pageProps }) {
   return (
     <AuthProvider>
       <Head>
+        <title>ChartSense - Trading Smarter, Together</title>
+        <meta name="description" content="Trading Smarter, Together." />
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+        
+        {/* Open Graph / Facebook */}
+        <meta property="og:url" content="https://chartsense.trade" />
+        <meta property="og:type" content="website" />
+        <meta property="og:title" content="ChartSense" />
+        <meta property="og:description" content="Trading Smarter, Together." />
+        <meta property="og:image" content="https://www.chartsense.trade/images/logo.webp" />
+        
+        {/* Twitter */}
+        <meta name="twitter:card" content="summary" />
+        <meta property="twitter:domain" content="chartsense.trade" />
+        <meta property="twitter:url" content="https://chartsense.trade" />
+        <meta name="twitter:title" content="ChartSense" />
+        <meta name="twitter:description" content="Trading Smarter, Together." />
+        <meta name="twitter:image" content="https://www.chartsense.trade/images/logo.webp" />
+        
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#000000" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
