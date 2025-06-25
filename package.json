@@ -12,7 +12,8 @@
     "test:coverage": "jest --coverage",
     "test:trading": "jest __tests__/trading-validation.test.js __tests__/pnl-calculator.test.js",
     "generate:images": "node scripts/generatePlaceholderImages.js",
-    "create-indexes": "node scripts/create-indexes.js"
+    "create-indexes": "node scripts/create-indexes.js",
+    "debug:test-results": "node scripts/debug-test-results.js"
   },
   "dependencies": {
     "@google-cloud/storage": "^7.16.0",
