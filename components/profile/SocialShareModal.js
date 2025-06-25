@@ -177,7 +177,7 @@ const SocialShareModal = ({
               marginTop: 0,
               marginBottom: '10px'
             }}>
-              Text Preview
+              Share Preview
             </h4>
             
             {shareData.type === 'achievement' && (
@@ -279,7 +279,7 @@ const SocialShareModal = ({
             }}
           >
             <FaTwitter />
-            Twitter
+            X / Twitter
           </button>
           
           <button
