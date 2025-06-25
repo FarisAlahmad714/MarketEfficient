@@ -4,6 +4,7 @@ import { useRouter } from 'next/router';
 import axios from 'axios';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
+import DOMPurify from 'isomorphic-dompurify';
 import Confetti from 'react-confetti';
 import { ThemeContext } from '../../contexts/ThemeContext';
 import CryptoLoader from '../../components/CryptoLoader';
@@ -1297,7 +1298,7 @@ const Results = () => {
                           lineHeight: '1.8',
                           fontSize: '16px'
                         }}
-                        dangerouslySetInnerHTML={{ __html: answer.ai_analysis }}
+                        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(answer.ai_analysis) }}
                       />
                     </div>
                   ) : (

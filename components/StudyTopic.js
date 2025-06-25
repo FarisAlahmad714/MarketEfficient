@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { studyContent, isTopicAccessible } from '../lib/studyContent';
+import DOMPurify from 'isomorphic-dompurify';
 import { useRouter } from 'next/router';
 
 const StudyTopic = ({ topicName }) => {
@@ -173,7 +174,7 @@ const StudyTopic = ({ topicName }) => {
           
           <div 
             className="lesson-body"
-            dangerouslySetInnerHTML={{ __html: lessonContent.content }}
+            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(lessonContent.content) }}
           />
           
           <div className="lesson-navigation">
