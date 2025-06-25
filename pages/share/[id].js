@@ -1,13 +1,10 @@
 // pages/share/[id].js
-import React from 'react';
-import { useRouter } from 'next/router';
 import Head from 'next/head';
 
-const SharedPage = () => {
-  const router = useRouter();
-  const { id } = router.query;
-
-  // Simple test data
+export async function getServerSideProps(context) {
+  const { id } = context.params;
+  
+  // Static test data for now
   const testData = {
     testType: 'Bias Test',
     percentage: 85,
@@ -18,8 +15,20 @@ const SharedPage = () => {
 
   const pageTitle = `${testData.percentage}% on ${testData.testType} - MarketEfficient`;
   const pageDescription = `Check out this ${testData.testType} result: ${testData.percentage}% (${testData.score}/${testData.totalPoints} points)`;
-  const imageUrl = `https://chartsense.trade/api/og-simple?testType=${encodeURIComponent(testData.testType)}&percentage=${testData.percentage}&title=${encodeURIComponent(pageTitle)}`;
+  const imageUrl = `https://chartsense.trade/api/og-simple`;
 
+  return {
+    props: {
+      id,
+      testData,
+      pageTitle,
+      pageDescription,
+      imageUrl
+    }
+  };
+}
+
+const SharedPage = ({ id, testData, pageTitle, pageDescription, imageUrl }) => {
   return (
     <>
       <Head>
@@ -78,10 +87,6 @@ const SharedPage = () => {
             Take your own tests on MarketEfficient →
           </a>
         </p>
-
-        <div style={{ marginTop: '40px', fontSize: '14px', color: '#666' }}>
-          <p>Image URL: <a href={imageUrl} target="_blank" rel="noopener">{imageUrl}</a></p>
-        </div>
       </div>
     </>
   );
