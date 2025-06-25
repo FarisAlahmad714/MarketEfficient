@@ -90,6 +90,10 @@ const UserSchema = new mongoose.Schema({
     reminders: {
       type: Boolean,
       default: true
+    },
+    badges: {
+      type: Boolean,
+      default: true
     }
   },
   // Subscription-related fields
@@ -206,6 +210,15 @@ const UserSchema = new mongoose.Schema({
     sparse: true
   },
   newEmailVerificationTokenExpires: Date,
+  // Achievement system
+  earnedBadges: {
+    type: [String],
+    default: []
+  },
+  lastBadgeCheck: {
+    type: Date,
+    default: null
+  },
   createdAt: {
     type: Date,
     default: Date.now

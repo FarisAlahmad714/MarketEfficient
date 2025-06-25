@@ -177,6 +177,18 @@ async function closeTradeHandler(req, res) {
     
     await portfolio.save();
 
+    // Check for new badges and send notifications
+    try {
+      const { checkAndNotifyNewBadges } = await import('../../../lib/badge-service');
+      const badgeResult = await checkAndNotifyNewBadges(userId);
+      if (badgeResult.success && badgeResult.newBadges > 0) {
+        console.log(`User ${userId} earned ${badgeResult.newBadges} new badges:`, badgeResult.badges);
+      }
+    } catch (badgeError) {
+      console.error('Error checking for new badges:', badgeError);
+      // Don't fail the main request if badge checking fails
+    }
+
     // Check for risk management triggers
     const riskAlerts = checkRiskAlerts(portfolio, trade, realizedPnL);
 
