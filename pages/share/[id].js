@@ -1,10 +1,20 @@
 // pages/share/[id].js
 import Head from 'next/head';
 
-export async function getServerSideProps(context) {
-  const { id } = context.params;
+export async function getStaticPaths() {
+  return {
+    paths: [
+      { params: { id: 'test123' } },
+      { params: { id: 'test456' } },
+      { params: { id: 'test789' } }
+    ],
+    fallback: 'blocking'
+  };
+}
+
+export async function getStaticProps({ params }) {
+  const { id } = params;
   
-  // Static test data for now
   const testData = {
     testType: 'Bias Test',
     percentage: 85,
@@ -32,21 +42,16 @@ const SharedPage = ({ id, testData, pageTitle, pageDescription, imageUrl }) => {
   return (
     <>
       <Head>
-        {/* HTML Meta Tags */}
         <title>{pageTitle}</title>
         <meta name="description" content={pageDescription} />
-
-        {/* Facebook Meta Tags */}
+        
         <meta property="og:url" content={`https://chartsense.trade/share/${id}`} />
         <meta property="og:type" content="website" />
         <meta property="og:title" content={pageTitle} />
         <meta property="og:description" content={pageDescription} />
         <meta property="og:image" content={imageUrl} />
-
-        {/* Twitter Meta Tags */}
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta property="twitter:domain" content="chartsense.trade" />
-        <meta property="twitter:url" content={`https://chartsense.trade/share/${id}`} />
+        
+        <meta name="twitter:card" content="summary" />
         <meta name="twitter:title" content={pageTitle} />
         <meta name="twitter:description" content={pageDescription} />
         <meta name="twitter:image" content={imageUrl} />
