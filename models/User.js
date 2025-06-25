@@ -220,8 +220,6 @@ const UserSchema = new mongoose.Schema({
 UserSchema.index({ email: 1, isVerified: 1 });
 // Index for performance (verificationToken already has sparse index)
 UserSchema.index({ resetPasswordToken: 1 });
-// Index for username lookup for public profiles
-UserSchema.index({ username: 1 });
 
 // Virtual for account lock status
 UserSchema.virtual('isLocked').get(function() {

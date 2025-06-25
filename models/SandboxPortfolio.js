@@ -294,7 +294,6 @@ SandboxPortfolioSchema.methods.updateUnlockProgress = async function() {
 };
 
 // Index for efficient queries
-SandboxPortfolioSchema.index({ userId: 1 });
 SandboxPortfolioSchema.index({ unlocked: 1 });
 SandboxPortfolioSchema.index({ nextTopUpDate: 1 });
 
