@@ -1,7 +1,8 @@
 import React, { useContext } from 'react';
 import Image from 'next/image';
 import { ThemeContext } from '../contexts/ThemeContext';
-import { FaTwitter, FaLinkedinIn, FaGithub, FaDiscord } from 'react-icons/fa';
+import { FaInstagram, FaLinkedinIn, FaFacebook, FaDiscord } from 'react-icons/fa';
+import { FaXTwitter } from 'react-icons/fa6';
 
 const Footer = () => {
   const { darkMode } = useContext(ThemeContext);
@@ -145,15 +146,17 @@ const Footer = () => {
             alignItems: 'center',
           }}>
             {[
-              { icon: <FaTwitter />, color: '#1DA1F2', label: 'Twitter' },
-              { icon: <FaLinkedinIn />, color: '#0A66C2', label: 'LinkedIn' },
-              { icon: <FaGithub />, color: '#333', label: 'GitHub' },
-              { icon: <FaDiscord />, color: '#5865F2', label: 'Discord' }
+              { icon: <FaXTwitter />, color: '#000000', label: 'X', href: 'https://x.com/ChartSenseIO' },
+              { icon: <FaInstagram />, color: '#E4405F', label: 'Instagram', href: 'https://www.instagram.com/chartsense.trade/' },
+              { icon: <FaFacebook />, color: '#1877F2', label: 'Facebook', href: '#' },
+              { icon: <FaLinkedinIn />, color: '#0A66C2', label: 'LinkedIn', href: '#' }
             ].map((item, index) => (
               <a 
                 key={index}
-                href="#" 
+                href={item.href} 
                 aria-label={item.label}
+                target="_blank"
+                rel="noopener noreferrer"
                 style={{
                   width: '42px',
                   height: '42px',
