@@ -26,7 +26,8 @@ const SharedResultPage = () => {
     return <div>Loading...</div>;
   }
 
-  const ogImageUrl = `${window.location.origin}/api/og-image?` + new URLSearchParams({
+  const baseUrl = 'https://chartsense.trade';
+  const ogImageUrl = `${baseUrl}/api/og-image?` + new URLSearchParams({
     type: 'test_result',
     testType: resultData.testType,
     percentage: resultData.percentage,
@@ -37,6 +38,7 @@ const SharedResultPage = () => {
 
   const pageTitle = `${resultData.percentage}% on ${resultData.testType} - MarketEfficient`;
   const pageDescription = `Check out this ${resultData.testType} result: ${resultData.percentage}% (${resultData.score}/${resultData.totalPoints} points) on MarketEfficient!`;
+  const pageUrl = `${baseUrl}/share/result/${id}`;
 
   return (
     <>
@@ -48,7 +50,7 @@ const SharedResultPage = () => {
         <meta property="og:title" content={pageTitle} />
         <meta property="og:description" content={pageDescription} />
         <meta property="og:type" content="article" />
-        <meta property="og:url" content={window.location.href} />
+        <meta property="og:url" content={pageUrl} />
         <meta property="og:site_name" content="MarketEfficient" />
         <meta property="og:image" content={ogImageUrl} />
         <meta property="og:image:width" content="1200" />

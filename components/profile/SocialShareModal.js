@@ -155,11 +155,12 @@ const SocialShareModal = ({
       };
       
       const encodedData = encodeURIComponent(JSON.stringify(resultData));
-      return `${window.location.origin}/share/result/${encodedData}`;
+      const baseUrl = process.env.NODE_ENV === 'production' ? 'https://chartsense.trade' : (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000');
+      return `${baseUrl}/share/result/${encodedData}`;
     }
     
     // Fallback to profile URL
-    return profileUrl || window.location.href;
+    return profileUrl || (typeof window !== 'undefined' ? window.location.href : 'https://chartsense.trade');
   };
 
   const shareToSocial = async (platform) => {

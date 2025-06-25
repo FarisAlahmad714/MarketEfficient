@@ -93,7 +93,7 @@ const PublicProfilePage = () => {
   };
 
   const getProductionUrl = () => {
-    const domain = process.env.NODE_ENV === 'production' ? 'https://chartsense.trade' : window.location.origin;
+    const domain = process.env.NODE_ENV === 'production' ? 'https://chartsense.trade' : (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000');
     return `${domain}/u/${profile?.username || ''}`;
   };
 
@@ -216,7 +216,7 @@ const PublicProfilePage = () => {
         <meta property="og:site_name" content="MarketEfficient" />
         
         {/* Dynamic OG image based on profile stats */}
-        <meta property="og:image" content={`${window.location.origin}/api/og-image?type=profile&title=${encodeURIComponent(profile.name)}&description=${encodeURIComponent(profile.bio || 'Trading Profile')}&username=${profile.username}&platform=twitter`} />
+        <meta property="og:image" content={`https://chartsense.trade/api/og-image?type=profile&title=${encodeURIComponent(profile.name)}&description=${encodeURIComponent(profile.bio || 'Trading Profile')}&username=${profile.username}&platform=twitter`} />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="675" />
         <meta property="og:image:alt" content={`${profile.name}'s MarketEfficient trading profile`} />
@@ -227,10 +227,10 @@ const PublicProfilePage = () => {
         <meta name="twitter:creator" content={`@${profile.username}`} />
         <meta name="twitter:title" content={`${profile.name} (@${profile.username}) - MarketEfficient`} />
         <meta name="twitter:description" content={profile.bio || `Check out ${profile.name}'s trading performance on MarketEfficient!`} />
-        <meta name="twitter:image" content={`${window.location.origin}/api/og-image?type=profile&title=${encodeURIComponent(profile.name)}&description=${encodeURIComponent(profile.bio || 'Trading Profile')}&username=${profile.username}&platform=twitter`} />
+        <meta name="twitter:image" content={`https://chartsense.trade/api/og-image?type=profile&title=${encodeURIComponent(profile.name)}&description=${encodeURIComponent(profile.bio || 'Trading Profile')}&username=${profile.username}&platform=twitter`} />
         
         {/* LinkedIn specific */}
-        <meta property="og:image:secure_url" content={`${window.location.origin}/api/og-image?type=profile&title=${encodeURIComponent(profile.name)}&description=${encodeURIComponent(profile.bio || 'Trading Profile')}&username=${profile.username}&platform=linkedin`} />
+        <meta property="og:image:secure_url" content={`https://chartsense.trade/api/og-image?type=profile&title=${encodeURIComponent(profile.name)}&description=${encodeURIComponent(profile.bio || 'Trading Profile')}&username=${profile.username}&platform=linkedin`} />
       </Head>
 
       <div style={{
