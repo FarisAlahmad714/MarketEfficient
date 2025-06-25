@@ -18,7 +18,7 @@ const SharedPage = () => {
 
   const pageTitle = `${testData.percentage}% on ${testData.testType} - MarketEfficient`;
   const pageDescription = `Check out this ${testData.testType} result: ${testData.percentage}% (${testData.score}/${testData.totalPoints} points)`;
-  const imageUrl = `https://chartsense.trade/api/og-image?type=test_result&testType=${encodeURIComponent(testData.testType)}&percentage=${testData.percentage}&score=${testData.score}`;
+  const imageUrl = `https://chartsense.trade/api/og-simple?testType=${encodeURIComponent(testData.testType)}&percentage=${testData.percentage}&title=${encodeURIComponent(pageTitle)}`;
 
   return (
     <>

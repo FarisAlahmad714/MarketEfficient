@@ -166,42 +166,24 @@ const SocialShareModal = ({
   const shareToSocial = async (platform) => {
     const text = getPlatformSpecificText(platform);
     const encodedText = encodeURIComponent(text);
+    const shareUrl = getShareUrl();
     
     if (platform === 'twitter') {
-      // Twitter: Share text only (since localhost URLs don't work)
-      window.open(`https://twitter.com/intent/tweet?text=${encodedText}`, '_blank', 'width=600,height=400');
-      
-      if (generatedImages[platform]) {
-        // Auto-download image for manual attachment
-        setTimeout(async () => {
-          await downloadPlatformImage(platform);
-          alert('📥 Image downloaded! Drag and drop it into your tweet composer for a professional look!');
-        }, 1500);
-      }
+      // Twitter with URL - will show Open Graph card if URL has proper meta tags
+      const twitterUrl = shareUrl ? 
+        `https://twitter.com/intent/tweet?text=${encodedText}&url=${encodeURIComponent(shareUrl)}` :
+        `https://twitter.com/intent/tweet?text=${encodedText}`;
+      window.open(twitterUrl, '_blank', 'width=600,height=400');
     } else if (platform === 'linkedin') {
-      // LinkedIn: Share text only for development
-      const linkedinText = getPlatformSpecificText('linkedin');
-      copyToClipboard(linkedinText);
-      window.open('https://www.linkedin.com/feed/', '_blank');
-      
-      if (generatedImages[platform]) {
-        setTimeout(async () => {
-          await downloadPlatformImage(platform);
-          alert('💼 Text copied and professional image downloaded! Create a new LinkedIn post and attach the image.');
-        }, 1000);
-      } else {
-        alert('📋 Text copied! Create a new LinkedIn post and paste the content.');
-      }
+      // LinkedIn with URL
+      const linkedinUrl = shareUrl ?
+        `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}` :
+        'https://www.linkedin.com/feed/';
+      window.open(linkedinUrl, '_blank');
     } else if (platform === 'instagram') {
-      // Instagram: Copy text and download image
+      // Instagram: Copy text (no URL sharing)
       copyToClipboard(text);
-      
-      if (generatedImages[platform]) {
-        await downloadPlatformImage(platform);
-        alert('📸 Caption copied and square image downloaded! Open Instagram app, upload the image, and paste your caption.');
-      } else {
-        alert('📋 Caption copied! Share this on Instagram with your own image.');
-      }
+      alert('📋 Caption copied! Share this on Instagram with your own image.');
     }
     
     // Track platform selection

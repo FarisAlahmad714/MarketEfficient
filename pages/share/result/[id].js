@@ -27,14 +27,7 @@ const SharedResultPage = () => {
   }
 
   const baseUrl = 'https://chartsense.trade';
-  const ogImageUrl = `${baseUrl}/api/og-image?` + new URLSearchParams({
-    type: 'test_result',
-    testType: resultData.testType,
-    percentage: resultData.percentage,
-    score: resultData.score,
-    asset: resultData.asset || '',
-    platform: 'twitter'
-  }).toString();
+  const ogImageUrl = `${baseUrl}/api/og-simple?testType=${encodeURIComponent(resultData.testType)}&percentage=${resultData.percentage}&title=${encodeURIComponent(pageTitle)}`;
 
   const pageTitle = `${resultData.percentage}% on ${resultData.testType} - MarketEfficient`;
   const pageDescription = `Check out this ${resultData.testType} result: ${resultData.percentage}% (${resultData.score}/${resultData.totalPoints} points) on MarketEfficient!`;
