@@ -1,5 +1,5 @@
 // pages/share/[id].js
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 
@@ -7,7 +7,7 @@ const SharedPage = () => {
   const router = useRouter();
   const { id } = router.query;
 
-  // Simple test data - we'll expand this later
+  // Simple test data
   const testData = {
     testType: 'Bias Test',
     percentage: 85,
@@ -16,36 +16,20 @@ const SharedPage = () => {
     asset: 'BTC'
   };
 
-  const baseUrl = 'https://chartsense.trade';
-  const ogImageUrl = `${baseUrl}/api/og-image?type=test_result&testType=${encodeURIComponent(testData.testType)}&percentage=${testData.percentage}&score=${testData.score}`;
-  
   const pageTitle = `${testData.percentage}% on ${testData.testType} - MarketEfficient`;
-  const pageDescription = `Check out this ${testData.testType} result: ${testData.percentage}% (${testData.score}/${testData.totalPoints} points) on MarketEfficient!`;
-  const pageUrl = `${baseUrl}/share/${id}`;
+  const pageDescription = `Check out this ${testData.testType} result: ${testData.percentage}% (${testData.score}/${testData.totalPoints} points)`;
+  const imageUrl = `https://chartsense.trade/api/og-image?type=test_result&testType=${encodeURIComponent(testData.testType)}&percentage=${testData.percentage}&score=${testData.score}`;
 
   return (
     <>
       <Head>
         <title>{pageTitle}</title>
-        <meta name="description" content={pageDescription} />
         
-        {/* Open Graph meta tags */}
-        <meta property="og:title" content={pageTitle} />
-        <meta property="og:description" content={pageDescription} />
-        <meta property="og:type" content="article" />
-        <meta property="og:url" content={pageUrl} />
-        <meta property="og:site_name" content="MarketEfficient" />
-        <meta property="og:image" content={ogImageUrl} />
-        <meta property="og:image:width" content="1200" />
-        <meta property="og:image:height" content="675" />
-        <meta property="og:image:alt" content={`${testData.testType} result: ${testData.percentage}%`} />
-        
-        {/* Twitter Card meta tags */}
+        {/* Minimal Twitter Card tags */}
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:site" content="@MarketEfficient" />
         <meta name="twitter:title" content={pageTitle} />
         <meta name="twitter:description" content={pageDescription} />
-        <meta name="twitter:image" content={ogImageUrl} />
+        <meta name="twitter:image" content={imageUrl} />
       </Head>
 
       <div style={{
@@ -85,8 +69,7 @@ const SharedPage = () => {
         </p>
 
         <div style={{ marginTop: '40px', fontSize: '14px', color: '#666' }}>
-          <p>Test URL: {pageUrl}</p>
-          <p>OG Image: <a href={ogImageUrl} target="_blank" rel="noopener">{ogImageUrl}</a></p>
+          <p>Image URL: <a href={imageUrl} target="_blank" rel="noopener">{imageUrl}</a></p>
         </div>
       </div>
     </>
