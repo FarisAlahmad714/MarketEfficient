@@ -207,13 +207,30 @@ const PublicProfilePage = () => {
       <Head>
         <title>{profile.name} (@{profile.username}) - MarketEfficient</title>
         <meta name="description" content={`${profile.name}'s trading profile on MarketEfficient. ${profile.bio}`} />
+        
+        {/* Open Graph meta tags for social sharing */}
         <meta property="og:title" content={`${profile.name} (@${profile.username}) - MarketEfficient`} />
         <meta property="og:description" content={profile.bio || `Check out ${profile.name}'s trading performance on MarketEfficient!`} />
         <meta property="og:type" content="profile" />
         <meta property="og:url" content={getProductionUrl()} />
-        {profile.profileImageUrl && (
-          <meta property="og:image" content={profile.profileImageUrl} />
-        )}
+        <meta property="og:site_name" content="MarketEfficient" />
+        
+        {/* Dynamic OG image based on profile stats */}
+        <meta property="og:image" content={`${window.location.origin}/api/og-image?type=profile&title=${encodeURIComponent(profile.name)}&description=${encodeURIComponent(profile.bio || 'Trading Profile')}&username=${profile.username}&platform=twitter`} />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="675" />
+        <meta property="og:image:alt" content={`${profile.name}'s MarketEfficient trading profile`} />
+        
+        {/* Twitter Card meta tags */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:site" content="@MarketEfficient" />
+        <meta name="twitter:creator" content={`@${profile.username}`} />
+        <meta name="twitter:title" content={`${profile.name} (@${profile.username}) - MarketEfficient`} />
+        <meta name="twitter:description" content={profile.bio || `Check out ${profile.name}'s trading performance on MarketEfficient!`} />
+        <meta name="twitter:image" content={`${window.location.origin}/api/og-image?type=profile&title=${encodeURIComponent(profile.name)}&description=${encodeURIComponent(profile.bio || 'Trading Profile')}&username=${profile.username}&platform=twitter`} />
+        
+        {/* LinkedIn specific */}
+        <meta property="og:image:secure_url" content={`${window.location.origin}/api/og-image?type=profile&title=${encodeURIComponent(profile.name)}&description=${encodeURIComponent(profile.bio || 'Trading Profile')}&username=${profile.username}&platform=linkedin`} />
       </Head>
 
       <div style={{

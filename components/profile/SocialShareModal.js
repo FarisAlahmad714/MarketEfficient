@@ -1,6 +1,7 @@
 // components/profile/SocialShareModal.js
 import React, { useState, useEffect } from 'react';
-import { FaTwitter, FaLinkedin, FaInstagram, FaCopy, FaTimes, FaDownload, FaShare } from 'react-icons/fa';
+import { FaTwitter, FaLinkedin, FaInstagram, FaCopy, FaTimes, FaDownload, FaShare, FaImage } from 'react-icons/fa';
+import { SocialImageGenerator } from '../../lib/imageGenerator';
 
 const SocialShareModal = ({ 
   isOpen = false,
@@ -12,83 +13,194 @@ const SocialShareModal = ({
   const [shareText, setShareText] = useState('');
   const [copySuccess, setCopySuccess] = useState(false);
   const [selectedPlatforms, setSelectedPlatforms] = useState([]);
+  const [generatedImages, setGeneratedImages] = useState({});
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const [imageGenerator, setImageGenerator] = useState(null);
 
   useEffect(() => {
     if (shareData && isOpen) {
       generateShareText();
+      // Initialize image generator
+      if (!imageGenerator) {
+        setImageGenerator(new SocialImageGenerator());
+      }
     }
   }, [shareData, isOpen]);
+
+  useEffect(() => {
+    if (imageGenerator && shareData && isOpen) {
+      // Pre-generate images for all platforms
+      generateImagesForAllPlatforms();
+    }
+  }, [imageGenerator, shareData, isOpen]);
+
+  const generateImagesForAllPlatforms = async () => {
+    if (!shareData) return;
+
+    setIsGeneratingImage(true);
+    const platforms = ['twitter', 'linkedin', 'instagram'];
+    const images = {};
+
+    try {
+      for (const platform of platforms) {
+        try {
+          // Generate URL for server-side image generation
+          if (shareData.type === 'test_result') {
+            const params = new URLSearchParams({
+              platform,
+              type: 'test_result',
+              testType: shareData.testType || shareData.type,
+              percentage: shareData.percentage || 0,
+              score: shareData.score || 0,
+              asset: shareData.asset || '',
+              completedAt: shareData.completedAt || new Date().toISOString()
+            });
+            
+            images[platform] = `/api/og-image?${params.toString()}`;
+          } else {
+            // For other types, generate a simple branded image
+            const params = new URLSearchParams({
+              platform,
+              type: shareData.type,
+              title: shareData.title || 'MarketEfficient',
+              description: shareData.description || 'Trading Skills & Market Analysis'
+            });
+            
+            images[platform] = `/api/og-image?${params.toString()}`;
+          }
+        } catch (error) {
+          console.error(`Error generating ${platform} image URL:`, error);
+          images[platform] = null;
+        }
+      }
+      setGeneratedImages(images);
+    } catch (error) {
+      console.error('Error generating image URLs:', error);
+    } finally {
+      setIsGeneratingImage(false);
+    }
+  };
+
+  const getBaseText = (shareData) => {
+    if (!shareData) return '';
+
+    if (shareData.type === 'achievement') {
+      return `🏆 Earned "${shareData.title}" on MarketEfficient! ${shareData.description}`;
+    } else if (shareData.type === 'test_result') {
+      return `📊 Scored ${shareData.percentage}% on ${shareData.testType} 🎯`;
+    } else if (shareData.type === 'trading_highlight') {
+      const returnText = shareData.return > 0 ? `+${shareData.return.toFixed(1)}%` : `${shareData.return.toFixed(1)}%`;
+      return `📈 ${shareData.side.toUpperCase()} ${shareData.symbol} trade: ${returnText} return on MarketEfficient! 💪`;
+    } else if (shareData.type === 'profile') {
+      return `Check out my trading profile on MarketEfficient! 📊`;
+    }
+    return '';
+  };
 
   const generateShareText = () => {
     if (!shareData) return;
 
-    let text = '';
+    // Generate Twitter-style text as the default preview
+    const baseText = getBaseText(shareData);
+    const hashtags = '\n\n#TradingSkills #MarketAnalysis';
+    const shareUrl = getShareUrl();
+    const profileLink = shareUrl ? `\n\n${shareUrl}` : '';
     
-    if (shareData.type === 'achievement') {
-      text = `🏆 Just earned "${shareData.title}" on MarketEfficient! ${shareData.description}`;
-    } else if (shareData.type === 'test_result') {
-      text = `📊 Just scored ${shareData.percentage}% on a ${shareData.testType} on MarketEfficient! 🎯`;
-    } else if (shareData.type === 'trading_highlight') {
-      const returnText = shareData.return > 0 ? `+${shareData.return.toFixed(1)}%` : `${shareData.return.toFixed(1)}%`;
-      text = `📈 ${shareData.side.toUpperCase()} ${shareData.symbol} trade: ${returnText} return on MarketEfficient! 💪`;
-    } else if (shareData.type === 'profile') {
-      text = `Check out my trading profile on MarketEfficient! 📊`;
-    }
-
-    // Add hashtags and profile link
-    const hashtags = '\n\n#TradingSkills #MarketAnalysis #TradingEducation';
-    const profileLink = profileUrl ? `\n\n${profileUrl}` : '';
-    
-    setShareText(text + hashtags + profileLink);
+    setShareText(baseText + hashtags + profileLink);
   };
 
   const getPlatformSpecificText = (platform) => {
     if (!shareData) return shareText;
 
-    let text = shareText;
+    const baseText = getBaseText(shareData);
     
     // Platform-specific optimizations
     if (platform === 'twitter') {
-      // Twitter has character limits, so make it concise
-      if (shareData.type === 'achievement') {
-        text = `🏆 Earned "${shareData.title}" on @MarketEfficient! ${shareData.description}\n\n#TradingSkills #Achievement`;
-      } else if (shareData.type === 'test_result') {
-        text = `📊 Scored ${shareData.percentage}% on ${shareData.testType} 🎯\n\n#TradingSkills #MarketAnalysis`;
-      }
-      if (profileUrl) text += `\n\n${profileUrl}`;
+      // Twitter: concise with hashtags and URL
+      const hashtags = '\n\n#TradingSkills #MarketAnalysis';
+      const profileLink = profileUrl ? `\n\n${profileUrl}` : '';
+      return baseText + hashtags + profileLink;
+      
     } else if (platform === 'linkedin') {
-      // LinkedIn is more professional
+      // LinkedIn: more professional tone
+      let linkedinText = '';
       if (shareData.type === 'achievement') {
-        text = `Excited to share that I've earned the "${shareData.title}" achievement on MarketEfficient! ${shareData.description}\n\nContinuing to develop my trading and market analysis skills through structured learning and practice.\n\n#TradingEducation #ProfessionalDevelopment #MarketAnalysis`;
+        linkedinText = `Excited to share that I've earned the "${shareData.title}" achievement on MarketEfficient! ${shareData.description}\n\nContinuing to develop my trading and market analysis skills through structured learning and practice.\n\n#TradingEducation #ProfessionalDevelopment #MarketAnalysis`;
       } else if (shareData.type === 'test_result') {
-        text = `Achieved ${shareData.percentage}% on a ${shareData.testType} assessment on MarketEfficient. Continuing to sharpen my market analysis skills through systematic testing and learning.\n\n#TradingEducation #MarketAnalysis #SkillDevelopment`;
+        linkedinText = `Achieved ${shareData.percentage}% on a ${shareData.testType} assessment on MarketEfficient. Continuing to sharpen my market analysis skills through systematic testing and learning.\n\n#TradingEducation #MarketAnalysis #SkillDevelopment`;
+      } else {
+        linkedinText = baseText + '\n\n#TradingEducation #ProfessionalDevelopment #MarketAnalysis';
       }
-      if (profileUrl) text += `\n\nView my profile: ${profileUrl}`;
+      return linkedinText + (profileUrl ? `\n\nView my profile: ${profileUrl}` : '');
+      
     } else if (platform === 'instagram') {
-      // Instagram is more visual and casual
-      text = shareText + '\n\n📸 #TradingJourney #MarketLearning #FinanceEducation #TradingLife';
+      // Instagram: visual and casual
+      return baseText + '\n\n📸 #TradingJourney #MarketLearning #FinanceEducation #TradingLife';
     }
 
-    return text;
+    // Default: return the base preview text
+    return shareText;
   };
 
-  const shareToSocial = (platform) => {
+  const getShareUrl = () => {
+    if (shareData.type === 'test_result') {
+      // Create a dynamic URL for test results that will show the card image
+      const resultData = {
+        testType: shareData.testType,
+        percentage: shareData.percentage,
+        score: shareData.score,
+        totalPoints: shareData.totalPoints,
+        asset: shareData.asset,
+        completedAt: shareData.completedAt
+      };
+      
+      const encodedData = encodeURIComponent(JSON.stringify(resultData));
+      return `${window.location.origin}/share/result/${encodedData}`;
+    }
+    
+    // Fallback to profile URL
+    return profileUrl || window.location.href;
+  };
+
+  const shareToSocial = async (platform) => {
     const text = getPlatformSpecificText(platform);
     const encodedText = encodeURIComponent(text);
-    const encodedUrl = encodeURIComponent(profileUrl || '');
     
-    const shareUrls = {
-      twitter: `https://twitter.com/intent/tweet?text=${encodedText}`,
-      linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}&summary=${encodedText}`,
-      instagram: `https://www.instagram.com/` // Instagram doesn't support direct posting via URL
-    };
-    
-    if (platform === 'instagram') {
-      // For Instagram, copy text and redirect to Instagram
+    if (platform === 'twitter') {
+      // Twitter: Share text only (since localhost URLs don't work)
+      window.open(`https://twitter.com/intent/tweet?text=${encodedText}`, '_blank', 'width=600,height=400');
+      
+      if (generatedImages[platform]) {
+        // Auto-download image for manual attachment
+        setTimeout(async () => {
+          await downloadPlatformImage(platform);
+          alert('📥 Image downloaded! Drag and drop it into your tweet composer for a professional look!');
+        }, 1500);
+      }
+    } else if (platform === 'linkedin') {
+      // LinkedIn: Share text only for development
+      const linkedinText = getPlatformSpecificText('linkedin');
+      copyToClipboard(linkedinText);
+      window.open('https://www.linkedin.com/feed/', '_blank');
+      
+      if (generatedImages[platform]) {
+        setTimeout(async () => {
+          await downloadPlatformImage(platform);
+          alert('💼 Text copied and professional image downloaded! Create a new LinkedIn post and attach the image.');
+        }, 1000);
+      } else {
+        alert('📋 Text copied! Create a new LinkedIn post and paste the content.');
+      }
+    } else if (platform === 'instagram') {
+      // Instagram: Copy text and download image
       copyToClipboard(text);
-      window.open('https://www.instagram.com/', '_blank');
-    } else if (shareUrls[platform]) {
-      window.open(shareUrls[platform], '_blank', 'width=600,height=400');
+      
+      if (generatedImages[platform]) {
+        await downloadPlatformImage(platform);
+        alert('📸 Caption copied and square image downloaded! Open Instagram app, upload the image, and paste your caption.');
+      } else {
+        alert('📋 Caption copied! Share this on Instagram with your own image.');
+      }
     }
     
     // Track platform selection
@@ -104,16 +216,96 @@ const SocialShareModal = ({
     });
   };
 
-  const downloadAsImage = () => {
-    // This would generate an image card for the achievement/result
-    // For now, we'll just show the concept
-    alert('Image generation feature coming soon! For now, you can copy the text and create your own visual.');
+  const downloadPlatformImage = async (platform) => {
+    if (!generatedImages[platform]) {
+      alert(`No image available for ${platform}. Generating...`);
+      return;
+    }
+
+    try {
+      // Fetch the image from our API
+      const response = await fetch(generatedImages[platform]);
+      if (!response.ok) throw new Error('Failed to fetch image');
+      
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      
+      // Create download link
+      const link = document.createElement('a');
+      link.href = url;
+      
+      // Platform-specific filename
+      const timestamp = new Date().toISOString().slice(0, 10);
+      const type = shareData?.testType || shareData?.type || 'share';
+      const score = shareData?.percentage ? `-${shareData.percentage}pct` : '';
+      link.download = `marketefficient-${type}${score}-${platform}-${timestamp}.jpg`;
+      
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Clean up the blob URL
+      URL.revokeObjectURL(url);
+      
+      return true;
+    } catch (error) {
+      console.error('Error downloading image:', error);
+      alert('Failed to download image. Please try again.');
+      return false;
+    }
   };
+
+  const downloadAsImage = async () => {
+    if (isGeneratingImage) {
+      alert('Images are still being generated. Please wait a moment...');
+      return;
+    }
+
+    if (Object.keys(generatedImages).length === 0) {
+      alert('No images available. Please try refreshing the modal.');
+      return;
+    }
+
+    // Download all platform images
+    const platforms = Object.keys(generatedImages);
+    let downloaded = 0;
+    
+    for (const platform of platforms) {
+      if (generatedImages[platform]) {
+        const success = await downloadPlatformImage(platform);
+        if (success) downloaded++;
+      }
+    }
+
+    if (downloaded > 0) {
+      alert(`✅ Downloaded ${downloaded} optimized image${downloaded > 1 ? 's' : ''} for social sharing!`);
+    } else {
+      alert('Failed to download images. Please try again.');
+    }
+  };
+
+  // Clean up generated image URLs when modal closes
+  useEffect(() => {
+    return () => {
+      Object.values(generatedImages).forEach(url => {
+        if (url) URL.revokeObjectURL(url);
+      });
+    };
+  }, []);
 
   if (!isOpen) return null;
 
   return (
-    <div style={{
+    <>
+      <style>
+        {`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}
+      </style>
+      <div style={{
       position: 'fixed',
       top: 0,
       left: 0,
@@ -172,6 +364,124 @@ const SocialShareModal = ({
           </button>
         </div>
 
+        {/* Image Preview Section */}
+        {(isGeneratingImage || Object.keys(generatedImages).length > 0) && (
+          <div style={{
+            backgroundColor: darkMode ? '#262626' : '#f9f9f9',
+            borderRadius: '12px',
+            padding: '20px',
+            marginBottom: '25px',
+            border: '1px solid #2196F3'
+          }}>
+            <h4 style={{
+              color: darkMode ? '#e0e0e0' : '#333',
+              marginTop: 0,
+              marginBottom: '15px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px'
+            }}>
+              <FaImage style={{ color: '#2196F3' }} />
+              Platform-Optimized Images
+              {isGeneratingImage && (
+                <span style={{
+                  fontSize: '12px',
+                  color: '#2196F3',
+                  fontWeight: 'normal'
+                }}>
+                  Generating...
+                </span>
+              )}
+            </h4>
+
+            {isGeneratingImage ? (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '40px',
+                color: darkMode ? '#888' : '#666'
+              }}>
+                <div style={{
+                  width: '20px',
+                  height: '20px',
+                  border: `2px solid ${darkMode ? '#444' : '#ddd'}`,
+                  borderTop: '2px solid #2196F3',
+                  borderRadius: '50%',
+                  animation: 'spin 1s linear infinite',
+                  marginRight: '10px'
+                }} />
+                Creating optimized images for all platforms...
+              </div>
+            ) : (
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                gap: '15px'
+              }}>
+                {Object.entries(generatedImages).map(([platform, imageUrl]) => (
+                  imageUrl && (
+                    <div key={platform} style={{
+                      border: `1px solid ${darkMode ? '#444' : '#ddd'}`,
+                      borderRadius: '8px',
+                      overflow: 'hidden',
+                      backgroundColor: darkMode ? '#333' : '#fff'
+                    }}>
+                      <img
+                        src={imageUrl}
+                        alt={`${platform} preview`}
+                        style={{
+                          width: '100%',
+                          height: '120px',
+                          objectFit: 'cover',
+                          display: 'block'
+                        }}
+                      />
+                      <div style={{
+                        padding: '10px',
+                        textAlign: 'center'
+                      }}>
+                        <div style={{
+                          color: darkMode ? '#e0e0e0' : '#333',
+                          fontSize: '12px',
+                          fontWeight: '600',
+                          textTransform: 'capitalize',
+                          marginBottom: '5px'
+                        }}>
+                          {platform}
+                        </div>
+                        <div style={{
+                          color: darkMode ? '#888' : '#666',
+                          fontSize: '10px'
+                        }}>
+                          {platform === 'twitter' && '1200×675 (16:9)'}
+                          {platform === 'linkedin' && '1200×627 (1.91:1)'}
+                          {platform === 'instagram' && '1080×1080 (1:1)'}
+                        </div>
+                        <button
+                          onClick={() => downloadPlatformImage(platform)}
+                          style={{
+                            backgroundColor: '#2196F3',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            padding: '4px 8px',
+                            fontSize: '10px',
+                            cursor: 'pointer',
+                            marginTop: '5px'
+                          }}
+                        >
+                          Download
+                        </button>
+                      </div>
+                    </div>
+                  )
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Preview Section */}
         {shareData && (
           <div style={{
@@ -186,7 +496,7 @@ const SocialShareModal = ({
               marginTop: 0,
               marginBottom: '10px'
             }}>
-              Preview
+              Text Preview
             </h4>
             
             {shareData.type === 'achievement' && (
@@ -284,13 +594,24 @@ const SocialShareModal = ({
               gap: '8px',
               fontSize: '14px',
               fontWeight: '500',
-              transition: 'all 0.2s ease'
+              transition: 'all 0.2s ease',
+              position: 'relative'
             }}
             onMouseEnter={(e) => e.target.style.backgroundColor = '#1991db'}
             onMouseLeave={(e) => e.target.style.backgroundColor = '#1DA1F2'}
           >
             <FaTwitter />
             Twitter
+            {generatedImages.twitter && (
+              <FaImage size={10} style={{ 
+                position: 'absolute', 
+                top: '4px', 
+                right: '4px',
+                backgroundColor: '#4CAF50',
+                borderRadius: '2px',
+                padding: '1px'
+              }} />
+            )}
           </button>
           
           <button
@@ -307,13 +628,24 @@ const SocialShareModal = ({
               gap: '8px',
               fontSize: '14px',
               fontWeight: '500',
-              transition: 'all 0.2s ease'
+              transition: 'all 0.2s ease',
+              position: 'relative'
             }}
             onMouseEnter={(e) => e.target.style.backgroundColor = '#006fa3'}
             onMouseLeave={(e) => e.target.style.backgroundColor = '#0077B5'}
           >
             <FaLinkedin />
             LinkedIn
+            {generatedImages.linkedin && (
+              <FaImage size={10} style={{ 
+                position: 'absolute', 
+                top: '4px', 
+                right: '4px',
+                backgroundColor: '#4CAF50',
+                borderRadius: '2px',
+                padding: '1px'
+              }} />
+            )}
           </button>
           
           <button
@@ -330,11 +662,22 @@ const SocialShareModal = ({
               gap: '8px',
               fontSize: '14px',
               fontWeight: '500',
-              transition: 'all 0.2s ease'
+              transition: 'all 0.2s ease',
+              position: 'relative'
             }}
           >
             <FaInstagram />
             Instagram
+            {generatedImages.instagram && (
+              <FaImage size={10} style={{ 
+                position: 'absolute', 
+                top: '4px', 
+                right: '4px',
+                backgroundColor: '#4CAF50',
+                borderRadius: '2px',
+                padding: '1px'
+              }} />
+            )}
           </button>
         </div>
 
@@ -396,21 +739,23 @@ const SocialShareModal = ({
           
           <button
             onClick={downloadAsImage}
+            disabled={isGeneratingImage}
             style={{
-              backgroundColor: darkMode ? '#333' : '#f5f5f5',
-              color: darkMode ? '#e0e0e0' : '#333',
+              backgroundColor: isGeneratingImage ? '#666' : (darkMode ? '#333' : '#f5f5f5'),
+              color: isGeneratingImage ? '#ccc' : (darkMode ? '#e0e0e0' : '#333'),
               border: 'none',
               borderRadius: '8px',
               padding: '10px 16px',
-              cursor: 'pointer',
+              cursor: isGeneratingImage ? 'not-allowed' : 'pointer',
               display: 'flex',
               alignItems: 'center',
               gap: '8px',
-              fontSize: '14px'
+              fontSize: '14px',
+              opacity: isGeneratingImage ? 0.7 : 1
             }}
           >
             <FaDownload size={12} />
-            Download Card
+            {isGeneratingImage ? 'Generating...' : 'Download All Images'}
           </button>
           
           <button
@@ -434,17 +779,35 @@ const SocialShareModal = ({
         <div style={{
           marginTop: '20px',
           padding: '15px',
-          backgroundColor: darkMode ? 'rgba(33, 150, 243, 0.1)' : 'rgba(33, 150, 243, 0.05)',
+          backgroundColor: darkMode ? 'rgba(255, 193, 7, 0.1)' : 'rgba(255, 193, 7, 0.05)',
           borderRadius: '8px',
           fontSize: '12px',
-          color: darkMode ? '#90CAF9' : '#1976D2'
+          color: darkMode ? '#FFD54F' : '#F57C00'
         }}>
-          <strong>💡 Pro Tips:</strong>
+          <strong>⚠️ Development Mode:</strong>
+          <p style={{ margin: '8px 0', lineHeight: '1.4' }}>
+            Social platforms can't show images from localhost URLs. For the full experience with auto-generated cards, you'll need to deploy to a public domain.
+          </p>
+          <p style={{ margin: '8px 0', lineHeight: '1.4' }}>
+            <strong>Current options:</strong>
+          </p>
           <ul style={{ margin: '8px 0 0 0', paddingLeft: '16px' }}>
-            <li>Twitter: Keep it concise and use relevant hashtags</li>
-            <li>LinkedIn: Add professional context and tag relevant connections</li>
-            <li>Instagram: Copy the text, then create a visual story or post</li>
+            <li><strong>Download images</strong> and manually attach to your posts</li>
+            <li><strong>Deploy to production</strong> for automatic card generation</li>
+            <li><strong>Text sharing</strong> works immediately</li>
           </ul>
+          {Object.keys(generatedImages).length > 0 && (
+            <div style={{ 
+              marginTop: '10px', 
+              padding: '8px', 
+              backgroundColor: darkMode ? 'rgba(76, 175, 80, 0.1)' : 'rgba(76, 175, 80, 0.05)',
+              borderRadius: '4px',
+              fontSize: '11px',
+              color: '#4CAF50'
+            }}>
+              ✨ Images ready for download - perfect replicas of your test result cards!
+            </div>
+          )}
         </div>
 
         {/* Success tracking */}
@@ -463,6 +826,7 @@ const SocialShareModal = ({
         )}
       </div>
     </div>
+    </>
   );
 };
 

@@ -80,7 +80,13 @@ const TestResultsCards = ({
   const handleShare = (result, e) => {
     e.stopPropagation();
     if (onShareResult) {
-      onShareResult(result);
+      // Pass the complete result data including visual information
+      onShareResult({
+        ...result,
+        type: 'test_result',
+        testType: result.type, // Map 'type' to 'testType' for clarity
+        completedAt: result.completedAt || new Date().toISOString()
+      });
     }
   };
 
