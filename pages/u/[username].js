@@ -215,22 +215,18 @@ const PublicProfilePage = () => {
         <meta property="og:url" content={getProductionUrl()} />
         <meta property="og:site_name" content="MarketEfficient" />
         
-        {/* Dynamic OG image based on profile stats */}
-        <meta property="og:image" content={`https://chartsense.trade/api/og-image?type=profile&title=${encodeURIComponent(profile.name)}&description=${encodeURIComponent(profile.bio || 'Trading Profile')}&username=${profile.username}&platform=twitter`} />
-        <meta property="og:image:width" content="1200" />
-        <meta property="og:image:height" content="675" />
+        {/* Open Graph image */}
+        <meta property="og:image" content="https://www.chartsense.trade/images/logo.webp" />
+        <meta property="og:image:width" content="1024" />
+        <meta property="og:image:height" content="1024" />
         <meta property="og:image:alt" content={`${profile.name}'s MarketEfficient trading profile`} />
         
         {/* Twitter Card meta tags */}
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:site" content="@MarketEfficient" />
-        <meta name="twitter:creator" content={`@${profile.username}`} />
+        <meta name="twitter:card" content="summary" />
+        <meta name="twitter:site" content="@chartsense" />
         <meta name="twitter:title" content={`${profile.name} (@${profile.username}) - MarketEfficient`} />
         <meta name="twitter:description" content={profile.bio || `Check out ${profile.name}'s trading performance on MarketEfficient!`} />
-        <meta name="twitter:image" content={`https://chartsense.trade/api/og-image?type=profile&title=${encodeURIComponent(profile.name)}&description=${encodeURIComponent(profile.bio || 'Trading Profile')}&username=${profile.username}&platform=twitter`} />
-        
-        {/* LinkedIn specific */}
-        <meta property="og:image:secure_url" content={`https://chartsense.trade/api/og-image?type=profile&title=${encodeURIComponent(profile.name)}&description=${encodeURIComponent(profile.bio || 'Trading Profile')}&username=${profile.username}&platform=linkedin`} />
+        <meta name="twitter:image" content="https://www.chartsense.trade/images/logo.webp" />
       </Head>
 
       <div style={{
