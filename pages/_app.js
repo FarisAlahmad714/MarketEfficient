@@ -173,8 +173,7 @@ function MyApp({ Component, pageProps }) {
         
         {/* Twitter */}
         <meta name="twitter:card" content="summary" />
-        <meta property="twitter:domain" content="chartsense.trade" />
-        <meta property="twitter:url" content="https://chartsense.trade" />
+        <meta name="twitter:site" content="@chartsense" />
         <meta name="twitter:title" content="ChartSense" />
         <meta name="twitter:description" content="Trading Smarter, Together." />
         <meta name="twitter:image" content="https://www.chartsense.trade/images/logo.webp" />
