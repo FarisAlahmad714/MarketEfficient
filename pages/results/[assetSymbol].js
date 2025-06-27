@@ -976,7 +976,18 @@ const Results = () => {
                       >
                         {ohlcData.length > 0 ? (
                           <>
-                            <CandlestickChart data={ohlcData} height={250} />
+                            <div style={{ 
+                              marginBottom: '10px', 
+                              padding: '8px', 
+                              backgroundColor: darkMode ? '#1a1a1a' : '#f0f8ff',
+                              borderRadius: '4px',
+                              border: `1px solid ${darkMode ? '#333' : '#e0e0e0'}`,
+                              fontSize: '13px',
+                              color: darkMode ? '#b0b0b0' : '#666'
+                            }}>
+                              <strong>Chart Context:</strong> {ohlcData.length} candles of historical data ({answer.timeframe} timeframe)
+                            </div>
+                            <CandlestickChart data={ohlcData} height={350} />
                             <div className={styles.lastCandleInfo} style={{ 
                               backgroundColor: darkMode ? '#1a2e1a' : '#e8f5e9', 
                               borderColor: darkMode ? '#265426' : '#c8e6c9',

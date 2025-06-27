@@ -150,8 +150,12 @@ const assets = [
   { id: 5, symbol: 'nvda', name: 'Nvidia', apiId: 'NVDA', type: 'equity', basePrice: 800 },
   { id: 6, symbol: 'aapl', name: 'Apple', apiId: 'AAPL', type: 'equity', basePrice: 175 },
   { id: 7, symbol: 'tsla', name: 'Tesla', apiId: 'TSLA', type: 'equity', basePrice: 250 },
-  { id: 8, symbol: 'gld', name: 'Gold', apiId: 'GLD', type: 'equity', basePrice: 190 },
-  { id: 9, symbol: 'random', name: 'Random Mix', apiId: 'random', type: 'mixed', basePrice: 100 },
+  { id: 8, symbol: 'gld', name: 'Gold ETF (GLD)', apiId: 'GLD', type: 'equity', basePrice: 240 },
+  { id: 9, symbol: 'xau', name: 'Gold Spot (XAU/USD)', apiId: 'XAU/USD', type: 'commodity', basePrice: 2000 },
+  { id: 10, symbol: 'crude', name: 'Crude Oil (WTI)', apiId: 'CL=F', type: 'commodity', basePrice: 75 },
+  { id: 11, symbol: 'silver', name: 'Silver Spot (XAG/USD)', apiId: 'XAG/USD', type: 'commodity', basePrice: 25 },
+  { id: 12, symbol: 'gas', name: 'Natural Gas', apiId: 'NG=F', type: 'commodity', basePrice: 3 },
+  { id: 13, symbol: 'random', name: 'Random Mix', apiId: 'random', type: 'mixed', basePrice: 100 },
 ];
 
 /**
@@ -183,10 +187,10 @@ function getRandomSeed() {
  */
 function getTimeframeCandleCounts(timeframe) {
   const candleCounts = {
-    '4h': { setup: 50, outcome: 25 },      // 4h: 50 candles = ~8 days setup, 25 = ~4 days outcome
-    'daily': { setup: 30, outcome: 15 },   // Daily: 30 candles = ~1 month setup, 15 = ~2 weeks outcome  
-    'weekly': { setup: 20, outcome: 12 },  // Weekly: 20 candles = ~5 months setup, 12 = ~3 months outcome
-    'monthly': { setup: 12, outcome: 6 }   // Monthly: 12 candles = ~1 year setup, 6 = ~6 months outcome
+    '4h': { setup: 120, outcome: 30 },     // 4h: 120 candles = ~20 days setup, 30 = ~5 days outcome
+    'daily': { setup: 90, outcome: 20 },   // Daily: 90 candles = ~3 months setup, 20 = ~3 weeks outcome  
+    'weekly': { setup: 52, outcome: 16 },  // Weekly: 52 candles = ~1 year setup, 16 = ~4 months outcome
+    'monthly': { setup: 36, outcome: 12 }  // Monthly: 36 candles = ~3 years setup, 12 = ~1 year outcome
   };
   
   return candleCounts[timeframe] || candleCounts['daily']; // Default to daily if timeframe not found

@@ -86,16 +86,60 @@ async function assetsHandler(req, res) {
     { 
       id: 8, 
       symbol: 'gld', 
-      name: 'Gold', 
+      name: 'Gold ETF (GLD)', 
       apiId: 'GLD', 
       type: 'equity', 
       isActive: true,
-      description: 'Precious metal used as a store of value and hedge against inflation.',
-      marketCap: 'N/A',
-      yearFounded: 'N/A'
+      description: 'SPDR Gold Shares ETF - tracks the price of gold bullion, providing exposure to gold without physical ownership.',
+      marketCap: '$65B+',
+      yearFounded: 2004
     },
     { 
       id: 9, 
+      symbol: 'xau', 
+      name: 'Gold Spot (XAU/USD)', 
+      apiId: 'XAU/USD', 
+      type: 'commodity', 
+      isActive: true,
+      description: 'Gold spot price in US Dollars - the most liquid precious metals market.',
+      marketCap: '$13T+',
+      yearFounded: 'Ancient'
+    },
+    { 
+      id: 10, 
+      symbol: 'crude', 
+      name: 'Crude Oil (WTI)', 
+      apiId: 'CL=F', 
+      type: 'commodity', 
+      isActive: true,
+      description: 'West Texas Intermediate crude oil futures - benchmark for oil pricing.',
+      marketCap: '$2T+',
+      yearFounded: 1983
+    },
+    { 
+      id: 11, 
+      symbol: 'silver', 
+      name: 'Silver Spot (XAG/USD)', 
+      apiId: 'XAG/USD', 
+      type: 'commodity', 
+      isActive: true,
+      description: 'Silver spot price in US Dollars - industrial and precious metal.',
+      marketCap: '$1.4T+',
+      yearFounded: 'Ancient'
+    },
+    { 
+      id: 12, 
+      symbol: 'gas', 
+      name: 'Natural Gas', 
+      apiId: 'NG=F', 
+      type: 'commodity', 
+      isActive: true,
+      description: 'Natural gas futures - essential energy commodity for heating and power.',
+      marketCap: '$200B+',
+      yearFounded: 1990
+    },
+    { 
+      id: 13, 
       symbol: 'random', 
       name: 'Random Mix', 
       apiId: 'random', 

@@ -647,11 +647,22 @@ export default function AssetTestPage() {
               ) : (
                 question.ohlc_data && question.ohlc_data.length > 0 ? (
                   <>
+                    <div style={{ 
+                      marginBottom: '12px', 
+                      padding: '10px', 
+                      backgroundColor: darkMode ? '#1a1a1a' : '#f0f8ff',
+                      borderRadius: '6px',
+                      border: `1px solid ${darkMode ? '#333' : '#e0e0e0'}`,
+                      fontSize: '14px',
+                      color: darkMode ? '#b0b0b0' : '#666'
+                    }}>
+                      <strong>📈 Chart Analysis Context:</strong> {question.ohlc_data.length} candles of historical data for comprehensive market analysis
+                    </div>
                     <div>
                       {/* Main price chart */}
                       <CandlestickChart 
                         data={question.ohlc_data} 
-                        height={400}
+                        height={450}
                         timeframe={question.timeframe || timeframe || 'daily'}
                       />
                       

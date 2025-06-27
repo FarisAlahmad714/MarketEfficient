@@ -22,6 +22,9 @@ import {
   FaChevronRight,
   FaPause,
   FaPlay,
+  FaOilCan,
+  FaGem,
+  FaFire,
 } from 'react-icons/fa';
 import TimeframeModal from './TimeframeModal';
 
@@ -605,13 +608,16 @@ const AssetSelector = () => {
   // Carousel state
   const [cryptoCurrentIndex, setCryptoCurrentIndex] = useState(0);
   const [equityCurrentIndex, setEquityCurrentIndex] = useState(0);
+  const [commodityCurrentIndex, setCommodityCurrentIndex] = useState(0);
   const [cryptoAutoPlay, setCryptoAutoPlay] = useState(false);
   const [equityAutoPlay, setEquityAutoPlay] = useState(false);
+  const [commodityAutoPlay, setCommodityAutoPlay] = useState(false);
   
   const router = useRouter();
   const cryptoLoaderRef = useRef(null);
   const cryptoIntervalRef = useRef(null);
-  const equityIntervalRef = useRef(null); 
+  const equityIntervalRef = useRef(null);
+  const commodityIntervalRef = useRef(null); 
 
   const { darkMode } = useContext(ThemeContext);
 
@@ -654,6 +660,7 @@ const AssetSelector = () => {
   // Separate assets by type
   const cryptoAssets = filteredAssets.filter(asset => asset.type === 'crypto');
   const equityAssets = filteredAssets.filter(asset => asset.type === 'equity');
+  const commodityAssets = filteredAssets.filter(asset => asset.type === 'commodity');
   
   // Carousel logic
   const ITEMS_PER_VIEW = {
@@ -682,6 +689,7 @@ const AssetSelector = () => {
       const isMobile = window.innerWidth <= MOBILE_MAX_WIDTH;
       setCryptoAutoPlay(isMobile);
       setEquityAutoPlay(isMobile);
+      setCommodityAutoPlay(isMobile);
     };
 
     applyAutoPlaySetting();
@@ -723,6 +731,17 @@ const AssetSelector = () => {
     return () => clearInterval(equityIntervalRef.current);
   }, [equityAutoPlay, equityAssets.length, itemsPerView]);
   
+  useEffect(() => {
+    if (commodityAutoPlay && commodityAssets.length > itemsPerView) {
+      commodityIntervalRef.current = setInterval(() => {
+        setCommodityCurrentIndex(prev => 
+          prev >= commodityAssets.length - itemsPerView ? 0 : prev + 1
+        );
+      }, 4000); // Different timing for commodities
+    }
+    return () => clearInterval(commodityIntervalRef.current);
+  }, [commodityAutoPlay, commodityAssets.length, itemsPerView]);
+  
   // Carousel navigation functions
   const navigateCrypto = useCallback((direction) => {
     setCryptoCurrentIndex(prev => {
@@ -750,6 +769,20 @@ const AssetSelector = () => {
   
   const goToEquitySlide = useCallback((index) => {
     setEquityCurrentIndex(index);
+  }, []);
+  
+  const navigateCommodity = useCallback((direction) => {
+    setCommodityCurrentIndex(prev => {
+      if (direction === 'prev') {
+        return prev === 0 ? Math.max(0, commodityAssets.length - itemsPerView) : prev - 1;
+      } else {
+        return prev >= commodityAssets.length - itemsPerView ? 0 : prev + 1;
+      }
+    });
+  }, [commodityAssets.length, itemsPerView]);
+  
+  const goToCommoditySlide = useCallback((index) => {
+    setCommodityCurrentIndex(index);
   }, []);
 
   const handleAssetSelect = (asset) => {
@@ -782,6 +815,12 @@ const AssetSelector = () => {
       if (symbol === 'nvda') return 'linear-gradient(135deg, #76B900, #1A5200)';
       if (symbol === 'gld') return 'linear-gradient(135deg, #FFD700, #B8860B)';
       return 'linear-gradient(135deg, #3366cc, #1a3399)';
+    } else if (type === 'commodity') {
+      if (symbol === 'xau') return 'linear-gradient(135deg, #FFD700, #B8860B)';
+      if (symbol === 'crude') return 'linear-gradient(135deg, #2C1810, #8B4513)';
+      if (symbol === 'silver') return 'linear-gradient(135deg, #C0C0C0, #808080)';
+      if (symbol === 'gas') return 'linear-gradient(135deg, #4169E1, #1E90FF)';
+      return 'linear-gradient(135deg, #8B4513, #654321)';
     }
     return 'linear-gradient(135deg, #cc33ff, #9933cc)';
   };
@@ -817,6 +856,20 @@ const AssetSelector = () => {
         imageUrl = 'https://images.unsplash.com/photo-1610375461369-d613b564f4c4?w=1200&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Nnx8Z29sZHxlbnwwfHwwfHx8MA%3D%3D';
         // For production: imageUrl = '/images/assets/gold-bars.webp';
       }
+    } else if (type === 'commodity') {
+      if (symbol === 'xau') {
+        imageUrl = 'https://images.unsplash.com/photo-1610375461369-d613b564f4c4?w=1200&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Nnx8Z29sZHxlbnwwfHwwfHx8MA%3D%3D';
+        // For production: imageUrl = '/images/assets/gold-spot.webp';
+      } else if (symbol === 'crude') {
+        imageUrl = 'https://images.unsplash.com/photo-1615796153287-98eacf0abb13?auto=format&w=800&q=60';
+        // For production: imageUrl = '/images/assets/crude-oil.webp';
+      } else if (symbol === 'silver') {
+        imageUrl = 'https://images.unsplash.com/photo-1609792858289-1bb1c2ce8ead?auto=format&w=800&q=60';
+        // For production: imageUrl = '/images/assets/silver-bars.webp';
+      } else if (symbol === 'gas') {
+        imageUrl = 'https://images.unsplash.com/photo-1617704548623-340376564e68?auto=format&w=800&q=60';
+        // For production: imageUrl = '/images/assets/natural-gas.webp';
+      }
     } else if (type === 'mixed') {
       imageUrl = 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&w=800&q=60';
       // For production: imageUrl = '/images/assets/mixed-financial.webp';
@@ -851,6 +904,12 @@ const AssetSelector = () => {
       if (symbol === 'nvda') return <FaMicrochip />;
       if (symbol === 'gld') return <FaCoins />;
       return <FaChartLine />;
+    } else if (type === 'commodity') {
+      if (symbol === 'xau') return <FaCoins />;
+      if (symbol === 'crude') return <FaOilCan />;
+      if (symbol === 'silver') return <FaGem />;
+      if (symbol === 'gas') return <FaFire />;
+      return <FaCoins />;
     }
     return <FaChartLine />;
   };
@@ -868,6 +927,12 @@ const AssetSelector = () => {
       if (symbol === 'nvda') return '#76B900';
       if (symbol === 'gld') return '#FFD700';
       return '#3366cc';
+    } else if (type === 'commodity') {
+      if (symbol === 'xau') return '#FFD700';
+      if (symbol === 'crude') return '#8B4513';
+      if (symbol === 'silver') return '#C0C0C0';
+      if (symbol === 'gas') return '#4169E1';
+      return '#8B4513';
     }
     return '#cc33ff';
   };
@@ -877,6 +942,8 @@ const AssetSelector = () => {
       return `Challenge yourself with ${asset.name} price predictions across various timeframes.`;
     } else if (asset.type === 'equity') {
       return `Predict ${asset.name} stock trends and test your market analysis skills.`;
+    } else if (asset.type === 'commodity') {
+      return `Test your commodity market insights with ${asset.name} price movements.`;
     }
     return `Dive into a diverse asset mix with ${asset.name} and sharpen your forecasting abilities.`;
   };
@@ -1152,6 +1219,17 @@ const AssetSelector = () => {
           equityAutoPlay, 
           setEquityAutoPlay,
           'Equities'
+        )}
+        
+        {/* Commodity Assets Carousel */}
+        {renderCarousel(
+          commodityAssets, 
+          commodityCurrentIndex, 
+          navigateCommodity, 
+          goToCommoditySlide, 
+          commodityAutoPlay, 
+          setCommodityAutoPlay,
+          'Commodities'
         )}
       </div>
 
