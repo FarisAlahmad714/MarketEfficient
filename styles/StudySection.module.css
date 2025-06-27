@@ -368,7 +368,8 @@
 }
 
 /* Lesson content styling for better readability */
-.lessonContent .lessonIntro {
+.lessonContent .lessonIntro,
+:global(.lesson-body) .lesson-intro {
   background: var(--bg-secondary);
   border-radius: 12px;
   padding: 20px;
@@ -376,7 +377,40 @@
   border-left: 4px solid var(--accent-primary);
 }
 
-.lessonContent .lessonImage {
+/* Image styling for lesson content */
+:global(.lesson-body) .lesson-image {
+  width: 100%;
+  max-width: 600px;
+  height: auto;
+  border-radius: 8px;
+  margin: 20px auto;
+  display: block;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+:global(.lesson-body) .concept-image {
+  width: 100%;
+  max-width: 400px;
+  height: auto;
+  border-radius: 6px;
+  margin: 15px auto;
+  display: block;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+:global(.lesson-body) .fvg-image,
+:global(.lesson-body) .fvg-type .fvg-image {
+  width: 100%;
+  max-width: 450px;
+  height: auto;
+  border-radius: 6px;
+  margin: 15px auto;
+  display: block;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.lessonContent .lessonImage,
+:global(.lesson-body) .lessonImage {
   width: 100%;
   max-width: 700px;
   height: auto;
@@ -387,7 +421,8 @@
   transition: transform 0.3s ease;
 }
 
-.lessonContent .lessonImage:hover {
+.lessonContent .lessonImage:hover,
+:global(.lesson-body) .lessonImage:hover {
   transform: scale(1.02);
   cursor: pointer;
 }
@@ -659,7 +694,8 @@
   color: #F44336;
 }
 
-.lessonContent .fvgImage {
+.lessonContent .fvgImage,
+:global(.lesson-body) .fvgImage {
   width: 100%;
   max-width: 500px;
   height: auto;

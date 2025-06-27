@@ -178,12 +178,19 @@ function MyApp({ Component, pageProps }) {
         <meta name="twitter:description" content="Trading Smarter, Together." />
         <meta name="twitter:image" content="https://www.chartsense.trade/images/logo.webp" />
         
-        <link rel="manifest" href="/manifest.json" />
+        {/* Favicon Links */}
+        <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+        <link rel="icon" type="image/png" sizes="192x192" href="/android-chrome-192x192.png" />
+        <link rel="icon" type="image/png" sizes="512x512" href="/android-chrome-512x512.png" />
+        <link rel="manifest" href="/site.webmanifest" />
+        
         <meta name="theme-color" content="#000000" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="Chartsense" />
-        <link rel="apple-touch-icon" href="/images/logo.webp" />
       </Head>
       <AppContent Component={Component} pageProps={pageProps} />
       <div id="modal-root"></div>
