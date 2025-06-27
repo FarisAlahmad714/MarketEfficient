@@ -1,4 +1,4 @@
-const CACHE_NAME = 'chartsense-v1';
+const CACHE_NAME = 'chartsense-v2';
 const urlsToCache = [
   '/',
   '/manifest.json',
