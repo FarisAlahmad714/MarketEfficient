@@ -143,6 +143,7 @@ const ChartExam = ({ examType, assetType }) => {
       if (data.success) {
         setTimeRemaining(data.session.timeRemaining);
         setSessionStarted(true);
+        setIsTimerPaused(false); // Ensure timer starts unpaused for new sessions
         logger.log('Chart session started:', data.session);
       } else {
         console.error('Failed to start session:', data.message);
@@ -336,6 +337,9 @@ const ChartExam = ({ examType, assetType }) => {
       setResults(data);
       setShowResults(true);
       
+      // Stop the timer after successful submission to allow free analysis
+      setIsTimerPaused(true);
+      
     } catch (error) {
       console.error('Error validating drawings:', error);
       showError('Error validating your submission. Please try again.', 'Validation Error');
@@ -379,6 +383,9 @@ const ChartExam = ({ examType, assetType }) => {
     setShowResults(false);
     setResults(null);
     setDrawings([]);
+    
+    // Resume timer for the next chart/part
+    setIsTimerPaused(false);
     
     // Check if we need to go to part 2 or next chart
     if ((examType === 'fibonacci-retracement' || examType === 'fair-value-gaps') && 

@@ -27,7 +27,8 @@ const ResultsContainer = styled(motion.div)`
   position: relative;
   width: 100%;
   max-width: 600px;
-  max-height: 90vh;
+  max-height: 75vh;
+  min-height: 250px;
   background-color: ${props => props.$transparent 
     ? 'rgba(0, 0, 0, 0)'  
     : (props.$isDarkMode ? '#262626' : '#f5f5f5')};
@@ -35,7 +36,7 @@ const ResultsContainer = styled(motion.div)`
   box-shadow: ${props => props.$transparent 
     ? 'none' 
     : '0 10px 30px rgba(0, 0, 0, 0.3)'};
-  padding: 25px;
+  padding: 20px;
   overflow-y: auto;
   z-index: 100;
   transition: all 0.3s ease;
@@ -45,6 +46,22 @@ const ResultsContainer = styled(motion.div)`
   /* In transparent mode, this becomes invisible and stops pointer events */
   pointer-events: ${props => props.$transparent ? 'none' : 'auto'};
   visibility: ${props => props.$transparent ? 'hidden' : 'visible'};
+  
+  /* Ensure scrollable content fits properly */
+  display: flex;
+  flex-direction: column;
+  
+  /* Mobile responsiveness */
+  @media (max-height: 600px) {
+    max-height: 70vh;
+    padding: 12px;
+  }
+  
+  @media (max-width: 480px) {
+    max-width: 95vw;
+    max-height: 70vh;
+    padding: 12px;
+  }
 `;
 
 // Toggle button that remains visible even in transparent mode
@@ -149,9 +166,51 @@ const ContinueFloatingButton = styled(motion.button)`
   }
 `;
 
+const ViewResultsHeader = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  background-color: ${props => props.$isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)'};
+  border-radius: 8px;
+  border: 1px solid ${props => props.$isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'};
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background-color: ${props => props.$isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)'};
+    transform: translateY(-1px);
+  }
+  
+  &:active {
+    transform: translateY(0);
+  }
+`;
+
+const ViewResultsIcon = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: ${props => props.$isDarkMode ? '#3f51b5' : '#2196F3'};
+  color: white;
+  font-size: 16px;
+`;
+
+const ViewResultsText = styled.span`
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: ${props => props.$isDarkMode ? '#e0e0e0' : '#333'};
+`;
+
 const ResultsHeader = styled.div`
-  margin-bottom: 20px;
+  margin-bottom: 12px;
   padding-right: 30px; /* space for close button */
+  flex-shrink: 0;
 `;
 
 const ResultsTitle = styled.h3`
@@ -164,10 +223,11 @@ const ScoreSummary = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 15px;
-  padding: 15px;
+  margin-bottom: 10px;
+  padding: 10px;
   background-color: ${props => props.$isDarkMode ? 'rgba(0, 0, 0, 0.2)' : 'rgba(0, 0, 0, 0.05)'};
   border-radius: 10px;
+  flex-shrink: 0;
 `;
 
 const ScoreLabel = styled.span`
@@ -186,8 +246,9 @@ const ProgressBar = styled.div`
   height: 8px;
   background-color: ${props => props.$isDarkMode ? '#333' : '#ddd'};
   border-radius: 4px;
-  margin-bottom: 20px;
+  margin-bottom: 10px;
   overflow: hidden;
+  flex-shrink: 0;
 `;
 
 const ProgressFill = styled(motion.div)`
@@ -642,6 +703,15 @@ const ResultsPanel = ({ results, onContinue, examType, part, chartCount, isDarkM
         >
           {!transparent && <CloseButton $isDarkMode={isDarkMode} onClick={onContinue}><FaTimes /></CloseButton>}
           
+          {!transparent && (
+            <ViewResultsHeader $isDarkMode={isDarkMode} onClick={() => setTransparent(true)}>
+              <ViewResultsIcon $isDarkMode={isDarkMode}>
+                <FaEye />
+              </ViewResultsIcon>
+              <ViewResultsText $isDarkMode={isDarkMode}>View Results</ViewResultsText>
+            </ViewResultsHeader>
+          )}
+          
           <ResultsHeader>
             <ResultsTitle $isDarkMode={isDarkMode}>Analysis Results</ResultsTitle>
           </ResultsHeader>
@@ -671,12 +741,20 @@ const ResultsPanel = ({ results, onContinue, examType, part, chartCount, isDarkM
           
           <div style={{ 
             textAlign: 'center', 
-            marginBottom: '20px', 
+            marginBottom: '10px', 
             fontSize: '0.9rem', 
-            color: isDarkMode ? '#b0b0b0' : '#666' 
+            color: isDarkMode ? '#b0b0b0' : '#666',
+            flexShrink: 0
           }}>
             {scorePercentage.toFixed(1)}% Correct
           </div>
+          
+          {/* Scrollable content area */}
+          <div style={{ 
+            flex: 1, 
+            overflowY: 'auto',
+            paddingRight: '5px'
+          }}>
           
           {/* Correct Fibonacci Retracement Answer Section */}
           {examType === 'fibonacci-retracement' && results.expected && (
@@ -1019,12 +1097,18 @@ const ResultsPanel = ({ results, onContinue, examType, part, chartCount, isDarkM
             );
           })()}
           
+          </div>
+          
           {!transparent && (
             <ContinueButton 
               onClick={onContinue} 
               $isDarkMode={isDarkMode}
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
+              style={{ 
+                flexShrink: 0,
+                marginTop: '10px'
+              }}
             >
               {getContinueText()}
             </ContinueButton>

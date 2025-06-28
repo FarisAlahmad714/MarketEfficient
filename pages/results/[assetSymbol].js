@@ -5,6 +5,24 @@ import axios from 'axios';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import DOMPurify from 'isomorphic-dompurify';
+
+// Function to clean and format AI analysis
+const cleanAIAnalysis = (analysis) => {
+  if (!analysis) return '';
+  
+  // Remove any potential encoding issues
+  let cleaned = analysis
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'");
+  
+  // Ensure proper HTML structure
+  cleaned = cleaned.replace(/```html\s*/gi, '').replace(/```\s*$/, '');
+  
+  return cleaned;
+};
 import Confetti from 'react-confetti';
 import { ThemeContext } from '../../contexts/ThemeContext';
 import CryptoLoader from '../../components/CryptoLoader';
@@ -976,17 +994,6 @@ const Results = () => {
                       >
                         {ohlcData.length > 0 ? (
                           <>
-                            <div style={{ 
-                              marginBottom: '10px', 
-                              padding: '8px', 
-                              backgroundColor: darkMode ? '#1a1a1a' : '#f0f8ff',
-                              borderRadius: '4px',
-                              border: `1px solid ${darkMode ? '#333' : '#e0e0e0'}`,
-                              fontSize: '13px',
-                              color: darkMode ? '#b0b0b0' : '#666'
-                            }}>
-                              <strong>Chart Context:</strong> {ohlcData.length} candles of historical data ({answer.timeframe} timeframe)
-                            </div>
                             <CandlestickChart data={ohlcData} height={350} />
                             <div className={styles.lastCandleInfo} style={{ 
                               backgroundColor: darkMode ? '#1a2e1a' : '#e8f5e9', 
@@ -1095,7 +1102,7 @@ const Results = () => {
                       >
                         {outcomeData.length > 0 ? (
                           <>
-                            <CandlestickChart data={outcomeData} height={250} />
+                            <CandlestickChart data={outcomeData} height={350} />
                             <div style={{ 
                               textAlign: 'center', 
                               fontWeight: 'bold',
@@ -1303,13 +1310,18 @@ const Results = () => {
                         AI Trading Analysis
                       </h4>
                       <div 
-                        className="ai-analysis-content"
+                        className={styles.aiAnalysisContent}
                         style={{ 
                           color: darkMode ? '#e0e0e0' : '#1a1a1a',
                           lineHeight: '1.8',
                           fontSize: '16px'
                         }}
-                        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(answer.ai_analysis) }}
+                        dangerouslySetInnerHTML={{ 
+                          __html: DOMPurify.sanitize(cleanAIAnalysis(answer.ai_analysis), {
+                            ALLOWED_TAGS: ['h3', 'h4', 'p', 'ul', 'li', 'strong', 'em', 'br'],
+                            ALLOWED_ATTR: []
+                          })
+                        }}
                       />
                     </div>
                   ) : (
