@@ -242,10 +242,10 @@ const FairValueGaps = ({
   const [isMobile, setIsMobile] = useState(false);
 
   const colors = {
-    bullish: 'rgba(76, 175, 80, 0.3)',
-    bearish: 'rgba(244, 67, 54, 0.3)',
-    correctBullish: 'rgba(255, 152, 0, 0.6)',
-    correctBearish: 'rgba(244, 67, 54, 0.6)'
+    bullish: '#00E676', // Bright green for user drawings
+    bearish: '#FF1744', // Bright red for user drawings
+    correctBullish: 'rgba(255, 152, 0, 0.6)', // Orange for expected results
+    correctBearish: 'rgba(255, 152, 0, 0.6)' // Orange for expected results (same as bullish)
   };
 
   // Check for mobile screen size
@@ -324,6 +324,7 @@ const FairValueGaps = ({
         setStartPoint(null);
       }
     } else if (drawingMode === 'draw-hline') {
+      console.log('🔵 About to call drawHLine - drawingMode:', drawingMode);
       const fvgType = part === 1 ? 'bullish' : 'bearish';
       const newLine = drawHLine(nearestCandle.time, price, fvgType);
       
@@ -459,12 +460,17 @@ const FairValueGaps = ({
   };
 
 
-  // Draw rectangle on chart
+  // Draw rectangle on chart - now draws horizontal rays extending to 3rd candlestick
   const drawRectangle = (startTime, endTime, topPrice, bottomPrice, type = 'bullish') => {
     if (!chartRef.current || !candleSeriesRef.current) return null;
     
     const color = type === 'bullish' ? colors.bullish : colors.bearish;
     const [actualStartTime, actualEndTime] = startTime < endTime ? [startTime, endTime] : [endTime, startTime];
+    
+    // Calculate 3rd candlestick time - find next 3 candles from start time
+    const startIndex = chartData.findIndex(d => d.time === actualStartTime);
+    const thirdCandleIndex = Math.min(startIndex + 3, chartData.length - 1);
+    const thirdCandleTime = chartData[thirdCandleIndex]?.time || actualEndTime;
     
     const newMarkers = [
       {
@@ -473,13 +479,6 @@ const FairValueGaps = ({
         color: color,
         shape: 'square',
         text: type === 'bullish' ? 'B-FVG Start' : 'S-FVG Start'
-      },
-      {
-        time: actualEndTime,
-        position: 'inBar',
-        color: color,
-        shape: 'square',
-        text: type === 'bullish' ? 'B-FVG End' : 'S-FVG End'
       }
     ];
     
@@ -487,23 +486,35 @@ const FairValueGaps = ({
     const allMarkers = [...existingMarkers, ...newMarkers].sort((a, b) => a.time - b.time);
     candleSeriesRef.current.setMarkers(allMarkers);
     
-    const topLine = candleSeriesRef.current.createPriceLine({
-      price: topPrice,
+    // Create horizontal ray line series extending to 3rd candle
+    const topSeries = chartRef.current.addLineSeries({
       color: color,
       lineWidth: 2,
-      lineStyle: LineStyle.Solid,
-      axisLabelVisible: true,
-      title: `${type} FVG Top`
+      lineStyle: 0, // Solid
+      lastValueVisible: false,
+      priceLineVisible: false,
+      crosshairMarkerVisible: false
     });
     
-    const bottomLine = candleSeriesRef.current.createPriceLine({
-      price: bottomPrice,
+    const bottomSeries = chartRef.current.addLineSeries({
       color: color,
       lineWidth: 2,
-      lineStyle: LineStyle.Solid,
-      axisLabelVisible: true,
-      title: `${type} FVG Bottom`
+      lineStyle: 0, // Solid
+      lastValueVisible: false,
+      priceLineVisible: false,
+      crosshairMarkerVisible: false
     });
+    
+    // Set data for rays extending to 3rd candlestick
+    topSeries.setData([
+      { time: actualStartTime, value: topPrice },
+      { time: thirdCandleTime, value: topPrice }
+    ]);
+    
+    bottomSeries.setData([
+      { time: actualStartTime, value: bottomPrice },
+      { time: thirdCandleTime, value: bottomPrice }
+    ]);
     
     return {
       startTime: actualStartTime,
@@ -512,25 +523,46 @@ const FairValueGaps = ({
       bottomPrice: bottomPrice,
       type: type,
       markers: newMarkers,
-      lines: [topLine, bottomLine]
+      lines: [topSeries, bottomSeries],
+      isLineSeries: true
     };
   };
 
-  // Draw horizontal line on chart
+  // Draw horizontal line on chart - now draws horizontal ray extending to 3rd candlestick
   const drawHLine = (time, price, type = 'bullish') => {
+    console.log('🟢 drawHLine CALLED with:', { time, price, type });
     if (!chartRef.current || !candleSeriesRef.current) return null;
     
     const color = type === 'bullish' ? colors.bullish : colors.bearish;
-    const title = type === 'bullish' ? 'Bullish FVG' : 'Bearish FVG';
     
-    const hline = candleSeriesRef.current.createPriceLine({
-      price: price,
+    // Calculate 3rd candlestick time from clicked time
+    const startIndex = chartData.findIndex(d => d.time === time);
+    const thirdCandleIndex = Math.min(startIndex + 3, chartData.length - 1);
+    const thirdCandleTime = chartData[thirdCandleIndex]?.time || time;
+    
+    console.log('FVG DRAWING - NEW CODE:', {
+      clickedTime: time,
+      startIndex,
+      thirdCandleIndex,
+      thirdCandleTime,
+      message: 'Should draw ray to 3rd candle only'
+    });
+    
+    // Create horizontal ray line series extending to 3rd candle
+    const hlineSeries = chartRef.current.addLineSeries({
       color: color,
       lineWidth: 2,
-      lineStyle: LineStyle.Solid,
-      axisLabelVisible: true,
-      title: title
+      lineStyle: 0, // Solid
+      lastValueVisible: false,
+      priceLineVisible: false,
+      crosshairMarkerVisible: false
     });
+    
+    // Set data for ray extending to 3rd candlestick
+    hlineSeries.setData([
+      { time: time, value: price },
+      { time: thirdCandleTime, value: price }
+    ]);
     
     const marker = {
       time: time,
@@ -545,11 +577,12 @@ const FairValueGaps = ({
     candleSeriesRef.current.setMarkers(allMarkers);
     
     return {
-      line: hline,
+      line: hlineSeries,
       time: time,
       price: price,
       type: type,
-      marker: marker
+      marker: marker,
+      isLineSeries: true
     };
   };
 
@@ -597,40 +630,69 @@ const FairValueGaps = ({
           const allMarkers = [...existingMarkers, ...fvgMarkers].sort((a, b) => a.time - b.time);
           candleSeriesRef.current.setMarkers(allMarkers);
           
-          // Add horizontal lines that extend from FVG start time to right edge (like the reference code)
-          const rightEdge = Math.max(...chartData.map(d => d.time)) + 86400; // Add one day buffer
+          // Create FVG box within the 3-candle pattern instead of extending lines
+          // Calculate the end time based on the 3-candle pattern
+          const startIndex = chartData.findIndex(d => d.time === gap.startTime);
+          const endIndex = Math.min(startIndex + 2, chartData.length - 1); // 3rd candle (index + 2)
+          const endTime = chartData[endIndex]?.time || gap.startTime;
           
-          const topSeries = chartRef.current.addLineSeries({
-            color: color,
+          // Create FVG box with fill between boundaries using baseline area series
+          const transparentColor = 'rgba(255, 152, 0, 0.3)'; // Orange for both bullish and bearish expected results
+            
+          const fillSeries = chartRef.current.addBaselineSeries({
+            topFillColor1: transparentColor,
+            topFillColor2: transparentColor,
+            topLineColor: color,
+            bottomFillColor1: transparentColor,
+            bottomFillColor2: transparentColor,
+            bottomLineColor: color,
             lineWidth: 2,
-            lineStyle: 0, // Solid
+            baseValue: {
+              type: 'price',
+              price: gap.bottomPrice
+            },
             lastValueVisible: false,
             priceLineVisible: false,
             crosshairMarkerVisible: false
           });
           
-          const bottomSeries = chartRef.current.addLineSeries({
+          // Create data for the filled area between top and bottom prices
+          const fillData = [];
+          for (let i = startIndex; i <= endIndex; i++) {
+            if (chartData[i]) {
+              fillData.push({
+                time: chartData[i].time,
+                value: gap.topPrice
+              });
+            }
+          }
+          
+          fillSeries.setData(fillData);
+          
+          // Add bottom border line for clarity
+          const bottomBorderSeries = chartRef.current.addLineSeries({
             color: color,
             lineWidth: 2,
-            lineStyle: 0, // Solid
+            lineStyle: 0,
             lastValueVisible: false,
             priceLineVisible: false,
             crosshairMarkerVisible: false
           });
           
-          // Set data for lines extending from start time to right edge
-          topSeries.setData([
-            { time: gap.startTime, value: gap.topPrice },
-            { time: rightEdge, value: gap.topPrice }
-          ]);
+          const bottomData = [];
+          for (let i = startIndex; i <= endIndex; i++) {
+            if (chartData[i]) {
+              bottomData.push({
+                time: chartData[i].time,
+                value: gap.bottomPrice
+              });
+            }
+          }
           
-          bottomSeries.setData([
-            { time: gap.startTime, value: gap.bottomPrice },
-            { time: rightEdge, value: gap.bottomPrice }
-          ]);
+          bottomBorderSeries.setData(bottomData);
           
-          // Track these series for cleanup
-          newExpectedMarkers.push({ topSeries, bottomSeries, isLineSeries: true });
+          // Track series for cleanup
+          newExpectedMarkers.push({ fillSeries, bottomBorderSeries, isBaselineSeries: true });
           
         } catch (error) {
           console.error('Error drawing FVG markers:', error);
@@ -659,7 +721,7 @@ const FairValueGaps = ({
       });
       candleSeriesRef.current.setMarkers(filteredMarkers);
       
-      // Also remove line series
+      // Also remove line series and rectangle series
       expectedFVGMarkers.forEach(item => {
         if (item.isLineSeries && item.topSeries && item.bottomSeries) {
           try {
@@ -667,6 +729,14 @@ const FairValueGaps = ({
             chartRef.current.removeSeries(item.bottomSeries);
           } catch (error) {
             console.error('Error removing line series:', error);
+          }
+        }
+        if (item.isBaselineSeries && item.fillSeries && item.bottomBorderSeries) {
+          try {
+            chartRef.current.removeSeries(item.fillSeries);
+            chartRef.current.removeSeries(item.bottomBorderSeries);
+          } catch (error) {
+            console.error('Error removing baseline series:', error);
           }
         }
       });
@@ -683,7 +753,15 @@ const FairValueGaps = ({
       
       if (lastRect.lines) {
         lastRect.lines.forEach(line => {
-          candleSeriesRef.current.removePriceLine(line);
+          if (lastRect.isLineSeries) {
+            try {
+              chartRef.current.removeSeries(line);
+            } catch (error) {
+              console.error('Error removing line series:', error);
+            }
+          } else {
+            candleSeriesRef.current.removePriceLine(line);
+          }
         });
       }
       
@@ -704,7 +782,16 @@ const FairValueGaps = ({
       return true;
     } else if (hlines.length > 0) {
       const lastLine = hlines[hlines.length - 1];
-      candleSeriesRef.current.removePriceLine(lastLine.line);
+      
+      if (lastLine.isLineSeries) {
+        try {
+          chartRef.current.removeSeries(lastLine.line);
+        } catch (error) {
+          console.error('Error removing line series:', error);
+        }
+      } else {
+        candleSeriesRef.current.removePriceLine(lastLine.line);
+      }
       
       const currentMarkers = candleSeriesRef.current.markers() || [];
       const updatedMarkers = currentMarkers
@@ -731,14 +818,30 @@ const FairValueGaps = ({
     rectangles.forEach(rect => {
       if (rect.lines) {
         rect.lines.forEach(line => {
-          candleSeriesRef.current.removePriceLine(line);
+          if (rect.isLineSeries) {
+            try {
+              chartRef.current.removeSeries(line);
+            } catch (error) {
+              console.error('Error removing line series:', error);
+            }
+          } else {
+            candleSeriesRef.current.removePriceLine(line);
+          }
         });
       }
     });
     setRectangles([]);
     
     hlines.forEach(line => {
-      candleSeriesRef.current.removePriceLine(line.line);
+      if (line.isLineSeries) {
+        try {
+          chartRef.current.removeSeries(line.line);
+        } catch (error) {
+          console.error('Error removing line series:', error);
+        }
+      } else {
+        candleSeriesRef.current.removePriceLine(line.line);
+      }
     });
     setHlines([]);
     
