@@ -159,17 +159,34 @@ const assets = [
 ];
 
 /**
- * Generate a random date within a reasonable past range for data fetching
- * This helps randomize the data segments used in each test
+ * Generate a timeframe-aware random date for optimal recent data fetching
+ * Each timeframe gets the most recent data possible while maintaining complete outcome data
+ * @param {string} timeframe - The timeframe for the bias test
+ * @returns {Date} Random historical date appropriate for the timeframe
  */
-function getRandomHistoricalDate() {
+function getRandomHistoricalDate(timeframe = 'daily') {
   const now = new Date();
-  // Get a random date between 1 month and 2 years ago
-  const minMonthsAgo = 1;
-  const maxMonthsAgo = 24;
-  const randomMonthsAgo = Math.floor(Math.random() * (maxMonthsAgo - minMonthsAgo + 1)) + minMonthsAgo;
   
-  now.setMonth(now.getMonth() - randomMonthsAgo);
+  // Minimum days needed based on timeframe requirements
+  // This ensures we have complete outcome data while getting the most recent data possible
+  const minDaysNeeded = {
+    '4h': 7,      // 5 days for outcome period + 2 day buffer for data completeness
+    'daily': 25,  // ~3 weeks for outcome period + 4 day buffer
+    'weekly': 120, // ~4 months for outcome period + 2 week buffer  
+    'monthly': 400 // ~1 year for outcome period + ~1 month buffer
+  };
+  
+  // Use timeframe-specific minimum, fallback to 30 days for unknown timeframes
+  const minDays = minDaysNeeded[timeframe] || 30;
+  const maxDays = 730; // Keep maximum at 2 years for broader historical context
+  
+  // Generate random number of days within the appropriate range
+  const randomDays = Math.floor(Math.random() * (maxDays - minDays + 1)) + minDays;
+  
+  // Set the date by subtracting random days from now
+  now.setDate(now.getDate() - randomDays);
+  
+  logger.log(`Generated random historical date for ${timeframe} timeframe: ${now.toISOString()} (${randomDays} days ago, range: ${minDays}-${maxDays} days)`);
   return now;
 }
 
@@ -214,9 +231,9 @@ async function fetchSegmentedData(asset, timeframe, questionCount) {
                       ((questionCount - 1) * OVERLAP);
   
   try {
-    // Fetch a large dataset, starting from a random historical date
-    // This ensures we get different data segments each time
-    const randomHistoricalDate = getRandomHistoricalDate();
+    // Fetch a large dataset, starting from a timeframe-aware random historical date
+    // This ensures we get the most recent possible data while maintaining complete outcome data
+    const randomHistoricalDate = getRandomHistoricalDate(timeframe);
     logger.log(`Fetching ${totalCandles} candles for ${asset.symbol} at ${timeframe} timeframe, starting from ${randomHistoricalDate.toISOString()}`);
     
     // Use the random date as a seed for generating different data patterns

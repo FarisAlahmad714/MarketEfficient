@@ -9,31 +9,31 @@ const TimeframeModal = ({ assetName, onSelect, onClose }) => {
       id: 'random',
       name: 'Mixed Timeframes',
       description: 'Test across different timeframes',
-      icon: 'fa-random'
+      displayText: 'MIX'
     },
     {
       id: '4h',
       name: '4-Hour Charts',
       description: 'Short-term price action',
-      icon: 'fa-clock'
+      displayText: '4H'
     },
     {
       id: 'daily',
       name: 'Daily Charts',
       description: 'Standard daily price action',
-      icon: 'fa-calendar-day'
+      displayText: '1D'
     },
     {
       id: 'weekly',
       name: 'Weekly Charts',
       description: 'Medium-term price action',
-      icon: 'fa-calendar-week'
+      displayText: '1W'
     },
     {
       id: 'monthly',
       name: 'Monthly Charts',
       description: 'Long-term price action',
-      icon: 'fa-calendar-alt'
+      displayText: '1M'
     }
   ];
 
@@ -55,7 +55,7 @@ const TimeframeModal = ({ assetName, onSelect, onClose }) => {
         borderRadius: '12px',
         width: '90%',
         maxWidth: '800px',
-        maxHeight: '90vh',
+        maxHeight: '70vh',
         overflow: 'auto',
         boxShadow: darkMode ? '0 5px 25px rgba(0,0,0,0.5)' : '0 5px 25px rgba(0,0,0,0.25)',
         transition: 'all 0.3s ease'
@@ -141,14 +141,18 @@ const TimeframeModal = ({ assetName, onSelect, onClose }) => {
                 borderRadius: '50%',
                 margin: '0 auto 20px',
               }}>
-                <i 
-                  className={`fas ${timeframe.icon}`} 
+                <span
                   style={{ 
-                    fontSize: '28px', 
+                    fontSize: '14px', 
+                    fontWeight: '700',
                     color: '#2196F3',
+                    textAlign: 'center',
+                    letterSpacing: '0.5px',
                     filter: 'drop-shadow(0 2px 3px rgba(33, 150, 243, 0.3))'
                   }}
-                ></i>
+                >
+                  {timeframe.displayText}
+                </span>
               </div>
               <h3 style={{ 
                 margin: '0 0 12px 0', 

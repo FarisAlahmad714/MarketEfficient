@@ -8,7 +8,8 @@
       "Bash(grep:*)",
       "WebFetch(domain:twelvedata.com)",
       "Bash(rg:*)",
-      "WebFetch(domain:developer.x.com)"
+      "WebFetch(domain:developer.x.com)",
+      "Bash(node:*)"
     ],
     "deny": []
   }

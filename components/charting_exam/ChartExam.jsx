@@ -182,7 +182,13 @@ const ChartExam = ({ examType, assetType }) => {
   };
 
   // Fetch chart data with improved data processing
-  const fetchChartData = async () => {
+  const fetchChartData = async (forceRefresh = false) => {
+    // Prevent fetching new chart data during an active session unless explicitly forced
+    if (sessionStarted && timeRemaining > 0 && !forceRefresh) {
+      logger.log('Prevented chart refresh during active session');
+      return;
+    }
+    
     setLoading(true);
     setSessionStarted(false);
     try {
@@ -427,7 +433,7 @@ const ChartExam = ({ examType, assetType }) => {
       setPart(1);
       setTimeRemaining(null);
       setSessionStarted(false);
-      await fetchChartData();
+      await fetchChartData(true); // Force refresh for new chart
     }
   };
   
@@ -446,8 +452,9 @@ const handleDrawingsUpdate = (newDrawings) => {
   });
 };
 useEffect(() => {
-  // Only recreate chart when absolutely necessary
-  if (chartRef.current && chartData) {
+  // Only update chart data when chart is initially loading or when we explicitly need a new chart
+  // Prevent unwanted updates during active testing session
+  if (chartRef.current && chartData && chartData.length > 0 && !sessionStarted) {
     try {
       // Update data without recreating chart
       const chart = chartRef.current.getChart();
@@ -461,17 +468,21 @@ useEffect(() => {
         // Update data
         chart.series[0].setData(chartData, false);
         
-        // Restore view
-        chart.xAxis[0].setExtremes(
-          currentExtremes.xAxis.min,
-          currentExtremes.xAxis.max, 
-          false
-        );
-        chart.yAxis[0].setExtremes(
-          currentExtremes.yAxis.min,
-          currentExtremes.yAxis.max,
-          false
-        );
+        // Restore view only if we had valid extremes
+        if (currentExtremes.xAxis.min !== null && currentExtremes.xAxis.max !== null) {
+          chart.xAxis[0].setExtremes(
+            currentExtremes.xAxis.min,
+            currentExtremes.xAxis.max, 
+            false
+          );
+        }
+        if (currentExtremes.yAxis.min !== null && currentExtremes.yAxis.max !== null) {
+          chart.yAxis[0].setExtremes(
+            currentExtremes.yAxis.min,
+            currentExtremes.yAxis.max,
+            false
+          );
+        }
         
         chart.redraw(false);
       }
@@ -479,10 +490,10 @@ useEffect(() => {
       console.error("Error updating chart data:", error);
     }
   }
-}, [chartData]);
+}, [chartData, sessionStarted]);
   // Fetch initial chart data
   useEffect(() => {
-    fetchChartData();
+    fetchChartData(true); // Force refresh for initial load
   }, []);
   
   // Restart session when part changes (for fibonacci/fvg exams)
@@ -495,13 +506,15 @@ useEffect(() => {
   // Focus detection - pause timer when user switches tabs/browsers
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (document.hidden && sessionStarted && timeRemaining > 0) {
-        // User switched away from tab
+      if (document.hidden && sessionStarted && timeRemaining > 0 && !isTimerPaused) {
+        // User switched away from tab during active session
         setIsTimerPaused(true);
         setShowFocusWarning(true);
         setFocusWarningTime(60); // Reset to 60 seconds
+        logger.log('User left tab during active session - pausing timer');
       } else if (!document.hidden && showFocusWarning) {
         // User returned to tab - don't auto-resume, let them click button
+        logger.log('User returned to tab');
       }
     };
 
