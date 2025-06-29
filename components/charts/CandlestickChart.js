@@ -4,13 +4,183 @@ import dynamic from 'next/dynamic';
 import { ThemeContext } from '../../contexts/ThemeContext';
 import CryptoLoader from '../CryptoLoader';
 
+// Helper functions for news annotations
+const getSentimentColor = (sentiment, darkMode) => {
+  const colors = {
+    positive: darkMode ? '#4caf50' : '#2e7d32',
+    negative: darkMode ? '#f44336' : '#c62828',
+    neutral: darkMode ? '#ff9800' : '#f57c00'
+  };
+  return colors[sentiment] || colors.neutral;
+};
+
+const formatNewsDate = (dateString) => {
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+      timeZoneName: 'short'
+    });
+  } catch (e) {
+    return dateString;
+  }
+};
+
+const showNewsTooltip = (point, news, darkMode) => {
+  // Remove existing tooltip
+  hideNewsTooltip();
+  
+  const tooltip = document.createElement('div');
+  tooltip.id = 'news-tooltip';
+  tooltip.style.cssText = `
+    position: fixed;
+    z-index: 9999;
+    background: ${darkMode ? '#1a1a1a' : '#ffffff'};
+    color: ${darkMode ? '#e0e0e0' : '#333333'};
+    border: 2px solid ${getSentimentColor(news.sentiment, darkMode)};
+    border-radius: 12px;
+    padding: 16px;
+    max-width: 400px;
+    min-width: 280px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+    font-size: 14px;
+    line-height: 1.5;
+    left: ${Math.min(point.x + 15, window.innerWidth - 420)}px;
+    top: ${Math.max(point.y - 80, 10)}px;
+    pointer-events: auto;
+    cursor: pointer;
+    transform: translateY(-10px);
+    animation: slideIn 0.2s ease-out;
+  `;
+  
+  // Add CSS animation
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(-10px); }
+    }
+  `;
+  document.head.appendChild(style);
+  
+  const sentimentBadge = `<span style="
+    background: ${getSentimentColor(news.sentiment, darkMode)};
+    color: white;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  ">${news.sentiment}</span>`;
+  
+  const impactBadge = `<span style="
+    background: ${news.impact === 'high' ? '#ff5722' : news.impact === 'medium' ? '#ff9800' : '#4caf50'};
+    color: white;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: bold;
+    margin-left: 6px;
+    text-transform: uppercase;
+  ">${news.impact} IMPACT</span>`;
+  
+  tooltip.innerHTML = `
+    <div style="display: flex; align-items: flex-start; margin-bottom: 12px;">
+      <div style="font-size: 24px; margin-right: 8px;">📰</div>
+      <div style="flex: 1;">
+        <div style="font-weight: bold; font-size: 16px; margin-bottom: 8px; line-height: 1.3;">
+          ${news.headline}
+        </div>
+        <div style="font-size: 12px; color: ${darkMode ? '#b0b0b0' : '#666'}; margin-bottom: 8px;">
+          <strong>📅 ${formatNewsDate(news.date)}</strong>
+        </div>
+        <div style="margin-bottom: 10px;">
+          ${sentimentBadge}${impactBadge}
+        </div>
+      </div>
+    </div>
+    ${news.content ? `
+      <div style="
+        font-size: 13px; 
+        line-height: 1.4; 
+        margin-bottom: 10px;
+        padding: 8px;
+        background: ${darkMode ? '#2a2a2a' : '#f8f9fa'};
+        border-radius: 6px;
+        border-left: 3px solid ${getSentimentColor(news.sentiment, darkMode)};
+      ">
+        ${news.content}
+      </div>
+    ` : ''}
+    <div style="
+      font-size: 11px; 
+      color: ${darkMode ? '#888' : '#999'}; 
+      text-align: right;
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid ${darkMode ? '#333' : '#eee'};
+    ">
+      Source: <strong>${news.source}</strong>
+      ${news.url && news.url !== 'null' && news.url !== null && news.url.startsWith('http') ? 
+        ` • <a href="${news.url}" target="_blank" rel="noopener noreferrer" style="color: ${getSentimentColor(news.sentiment, darkMode)}; text-decoration: none;">View Original</a>` : 
+        ` • <span style="color: ${darkMode ? '#666' : '#999'}; font-style: italic;">Original link not available</span>`
+      }
+    </div>
+    <div style="
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      font-size: 16px;
+      color: ${darkMode ? '#666' : '#ccc'};
+      cursor: pointer;
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      background: ${darkMode ? '#333' : '#f0f0f0'};
+    " onclick="hideNewsTooltip()">×</div>
+  `;
+  
+  document.body.appendChild(tooltip);
+  
+  // Auto-hide after 10 seconds unless hovered
+  let autoHideTimeout = setTimeout(() => {
+    hideNewsTooltip();
+  }, 10000);
+  
+  tooltip.addEventListener('mouseenter', () => {
+    clearTimeout(autoHideTimeout);
+  });
+  
+  tooltip.addEventListener('mouseleave', () => {
+    autoHideTimeout = setTimeout(() => {
+      hideNewsTooltip();
+    }, 2000);
+  });
+};
+
+const hideNewsTooltip = () => {
+  const existing = document.getElementById('news-tooltip');
+  if (existing) {
+    existing.remove();
+  }
+};
+
 // The loading component stays exactly the same
 const LoadingChart = ({ height = 400 }) => {
   return <CryptoLoader height={`${height}px`} message="Loading chart data..." minDisplayTime={2000} />;
 };
 
 // The main chart component - this will be client-side only
-const CandlestickChartComponent = ({ data, height = 400, timeframe = 'daily' }) => {
+const CandlestickChartComponent = ({ data, height = 400, timeframe = 'daily', newsAnnotations = [] }) => {
   const { darkMode } = useContext(ThemeContext);
   const containerRef = React.useRef(null);
   const chartRef = React.useRef(null);
@@ -174,6 +344,71 @@ const CandlestickChartComponent = ({ data, height = 400, timeframe = 'daily' }) 
         
         // Set data and fit to view
         candlestickSeries.setData(formattedData);
+        
+        // Add news annotations if provided
+        if (newsAnnotations && newsAnnotations.length > 0) {
+          const markers = newsAnnotations.map(annotation => {
+            const annotationTime = Math.floor(new Date(annotation.date).getTime() / 1000);
+            
+            return {
+              time: annotationTime,
+              position: 'aboveBar',
+              color: getSentimentColor(annotation.news.sentiment, darkMode),
+              shape: 'circle',
+              text: '📰', // News emoji marker
+              size: 2, // Larger size for better visibility
+              id: `news_${annotationTime}`
+            };
+          });
+          
+          candlestickSeries.setMarkers(markers);
+          
+          // Add click handler for news markers
+          let newsTooltipTimeout;
+          
+          chartRef.current.subscribeCrosshairMove((param) => {
+            if (param.point && param.time) {
+              // Find if we're near a news marker
+              const hoveredAnnotation = newsAnnotations.find(annotation => {
+                const annotationTime = Math.floor(new Date(annotation.date).getTime() / 1000);
+                return Math.abs(param.time - annotationTime) < 7200; // Within 2 hours for better targeting
+              });
+              
+              if (hoveredAnnotation) {
+                // Clear any existing timeout
+                clearTimeout(newsTooltipTimeout);
+                
+                // Show tooltip with a slight delay to avoid flickering
+                newsTooltipTimeout = setTimeout(() => {
+                  showNewsTooltip(param.point, hoveredAnnotation.news, darkMode);
+                }, 100);
+              } else {
+                // Clear timeout and hide tooltip with a delay
+                clearTimeout(newsTooltipTimeout);
+                newsTooltipTimeout = setTimeout(() => {
+                  hideNewsTooltip();
+                }, 300);
+              }
+            }
+          });
+          
+          // Add click handler for persistent news display
+          chartRef.current.subscribeClick((param) => {
+            if (param.point && param.time) {
+              const clickedAnnotation = newsAnnotations.find(annotation => {
+                const annotationTime = Math.floor(new Date(annotation.date).getTime() / 1000);
+                return Math.abs(param.time - annotationTime) < 7200; // Within 2 hours
+              });
+              
+              if (clickedAnnotation) {
+                // Clear any timeouts for persistent display
+                clearTimeout(newsTooltipTimeout);
+                showNewsTooltip(param.point, clickedAnnotation.news, darkMode);
+              }
+            }
+          });
+        }
+        
         chartRef.current.timeScale().fitContent();
         
         // Handle window resize
@@ -206,7 +441,7 @@ const CandlestickChartComponent = ({ data, height = 400, timeframe = 'daily' }) 
         chartRef.current = null;
       }
     };
-  }, [data, height, darkMode, timeframe]); // Re-initialize when these props change
+  }, [data, height, darkMode, timeframe, newsAnnotations]); // Re-initialize when these props change
   
   return (
     <div 

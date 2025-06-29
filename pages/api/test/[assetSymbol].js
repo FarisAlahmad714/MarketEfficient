@@ -9,6 +9,7 @@ import { requireAuth } from '../../../middleware/auth';
 import { composeMiddleware } from '../../../lib/api-handler';
 import { processBiasTestAnalytics } from '../../../lib/biasTestAnalytics';
 import { filterContent } from '../../../lib/contentFilter';
+import xaiNewsService from '../../../lib/xai-news-service';
 
 // Store sessions in memory (in a real app, this would be a database)
 // Use global to persist across Next.js module reloads in development
@@ -310,6 +311,21 @@ function shuffleArray(array) {
     [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
   }
   return newArray;
+}
+
+/**
+ * Fetch news annotations for chart data
+ */
+async function fetchNewsAnnotations(assetSymbol, assetName, ohlcData) {
+  try {
+    logger.log(`Fetching news annotations for ${assetName} (${assetSymbol})`);
+    const annotations = await xaiNewsService.getNewsAnnotations(assetSymbol, assetName, ohlcData);
+    logger.log(`Retrieved ${annotations.length} news annotations for ${assetSymbol}`);
+    return annotations;
+  } catch (error) {
+    logger.error(`Error fetching news annotations for ${assetSymbol}:`, error);
+    return []; // Return empty array on error to not break the flow
+  }
 }
 
 /**
@@ -963,10 +979,41 @@ async function handler(req, res) {
     }
   }
   
-  // CRITICAL: Do not generate a new test if we already have results for this session
-  if (req.method === 'GET' && sessions[sessionId] && sessions[sessionId].answers) {
-    logger.log(`Session ${sessionId} already has results, returning those instead of generating new test`);
-    return res.status(200).json(sessions[sessionId]);
+  // CRITICAL: Do not generate a new test if we already have a test session OR results for this session
+  if (req.method === 'GET' && !forceNewSession) {
+    // Check for existing results
+    if (sessions[sessionId] && sessions[sessionId].answers) {
+      logger.log(`Session ${sessionId} already has results, returning those instead of generating new test`);
+      return res.status(200).json(sessions[sessionId]);
+    }
+    
+    // Check for existing test session (questions already generated)
+    const testSessionKey = sessionId + '_test';
+    if (sessions[testSessionKey] && sessions[testSessionKey].questions) {
+      logger.log(`Test session ${testSessionKey} already exists, returning existing questions to prevent chart refresh`);
+      
+      // Return the existing test data to client
+      const existingTestData = sessions[testSessionKey];
+      const clientTestData = {
+        asset_name: existingTestData.asset_name,
+        asset_symbol: existingTestData.asset_symbol,
+        session_id: sessionId,
+        selected_timeframe: existingTestData.selected_timeframe,
+        questions: existingTestData.questions.map(q => ({
+          id: q.id,
+          timeframe: q.timeframe,
+          asset_name: q.asset_name,
+          asset_symbol: q.asset_symbol,
+          date: q.date,
+          ohlc: q.ohlc,
+          ohlc_data: q.ohlc_data,
+          news_annotations: q.news_annotations || []
+        }))
+      };
+      
+      logger.log(`Returning existing test with ${clientTestData.questions.length} questions to prevent refresh`);
+      return res.status(200).json(clientTestData);
+    }
   }
   
   try {
@@ -1006,6 +1053,9 @@ async function handler(req, res) {
           const lastOutcomeCandle = outcomeData[outcomeData.length - 1];
           const correctAnswer = lastOutcomeCandle.close > lastSetupCandle.close ? 'Bullish' : 'Bearish';
           
+          // Fetch news annotations for this question's chart data
+          const newsAnnotations = await fetchNewsAnnotations(questionAsset.symbol, questionAsset.name, setupData);
+          
           questions.push({
             id: i + 1,
             timeframe: questionTimeframe,
@@ -1021,7 +1071,8 @@ async function handler(req, res) {
             },
             ohlc_data: setupData,
             correct_answer: correctAnswer,
-            outcome_data: outcomeData
+            outcome_data: outcomeData,
+            news_annotations: newsAnnotations
           });
         }
       }
@@ -1049,6 +1100,9 @@ async function handler(req, res) {
           const lastOutcomeCandle = outcomeData[outcomeData.length - 1];
           const correctAnswer = lastOutcomeCandle.close > lastSetupCandle.close ? 'Bullish' : 'Bearish';
           
+          // Fetch news annotations for this question's chart data
+          const newsAnnotations = await fetchNewsAnnotations(asset.symbol, asset.name, setupData);
+          
           questions.push({
             id: i + 1,
             timeframe: questionTimeframe,
@@ -1064,7 +1118,8 @@ async function handler(req, res) {
             },
             ohlc_data: setupData,
             correct_answer: correctAnswer,
-            outcome_data: outcomeData
+            outcome_data: outcomeData,
+            news_annotations: newsAnnotations
           });
         }
       }
@@ -1084,6 +1139,9 @@ async function handler(req, res) {
         const lastOutcomeCandle = outcomeData[outcomeData.length - 1];
         const correctAnswer = lastOutcomeCandle.close > lastSetupCandle.close ? 'Bullish' : 'Bearish';
         
+        // Fetch news annotations for this question's chart data
+        const newsAnnotations = await fetchNewsAnnotations(asset.symbol, asset.name, setupData);
+        
         questions.push({
           id: i + 1,
           timeframe: timeframe,
@@ -1099,7 +1157,8 @@ async function handler(req, res) {
           },
           ohlc_data: setupData,
           correct_answer: correctAnswer,
-          outcome_data: outcomeData
+          outcome_data: outcomeData,
+          news_annotations: newsAnnotations
         });
       }
     }
@@ -1135,7 +1194,8 @@ async function handler(req, res) {
         asset_symbol: q.asset_symbol,
         date: q.date,
         ohlc: q.ohlc,
-        ohlc_data: q.ohlc_data
+        ohlc_data: q.ohlc_data,
+        news_annotations: q.news_annotations || []
       }))
     };
     

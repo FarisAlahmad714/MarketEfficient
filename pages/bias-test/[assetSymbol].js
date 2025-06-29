@@ -42,7 +42,7 @@ const VolumeChart = dynamic(
 
 export default function AssetTestPage() {
   const router = useRouter();
-  const { assetSymbol, timeframe } = router.query;
+  const { assetSymbol, timeframe, session_id } = router.query;
   const [testData, setTestData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [chartsLoading, setChartsLoading] = useState(true);
@@ -56,6 +56,7 @@ export default function AssetTestPage() {
   const [confidenceLevels, setConfidenceLevels] = useState({}); // Track confidence per question
   const [contentWarnings, setContentWarnings] = useState({}); // Track content validation warnings
   const cryptoLoaderRef = useRef(null);
+  const isFetchingRef = useRef(false); // Prevent duplicate API calls
   const { darkMode } = useContext(ThemeContext);
   const { isOpen: modalOpen, modalProps, hideModal, showAlert, showError } = useModal();
 
@@ -200,11 +201,29 @@ export default function AssetTestPage() {
       return;
     }
 
+    // Don't refetch if we already have test data with the same session
+    if (testData && testData.session_id && session_id && testData.session_id === session_id) {
+      console.log('Skipping refetch - already have test data for this session');
+      return;
+    }
+
+    // Prevent duplicate API calls
+    if (isFetchingRef.current) {
+      console.log('Already fetching test data, skipping duplicate request');
+      return;
+    }
+
     const fetchTestData = async () => {
       try {
+        isFetchingRef.current = true;
         setLoading(true);
         setChartsLoading(true);
-        const response = await axios.get(`/api/test/${assetSymbol}?timeframe=${timeframe}`);
+        // Include session_id if available to get existing test data
+        const params = new URLSearchParams({ timeframe });
+        if (session_id) {
+          params.append('session_id', session_id);
+        }
+        const response = await axios.get(`/api/test/${assetSymbol}?${params.toString()}`);
         setTestData(response.data);
         // Initialize userAnswers and reasoningInputs with empty values
         const initialAnswers = {};
@@ -239,11 +258,13 @@ export default function AssetTestPage() {
         setError('Failed to load test data. Please try again later.');
         setLoading(false);
         setChartsLoading(false);
+      } finally {
+        isFetchingRef.current = false;
       }
     };
 
     fetchTestData();
-  }, [assetSymbol, timeframe]);
+  }, [assetSymbol, timeframe, session_id]);
 
   const handleAnswerSelect = async (questionId, prediction) => {
     setUserAnswers(prev => ({
@@ -529,6 +550,7 @@ export default function AssetTestPage() {
           color: darkMode ? '#b0b0b0' : '#555'
         }}>
           For each chart below, analyze the price pattern and predict if the market will be Bullish or Bearish after the last candle shown.
+          Look for news markers (📰) on the charts - hover over them to see relevant news events that occurred during that time period.
           Provide your reasoning for each prediction. After submitting, you'll receive an AI analysis of your trading decisions.
         </p>
         
@@ -657,6 +679,19 @@ export default function AssetTestPage() {
                       color: darkMode ? '#b0b0b0' : '#666'
                     }}>
                       <strong>📈 Chart Analysis Context:</strong> {question.ohlc_data.length} candles of historical data for comprehensive market analysis
+                      {question.news_annotations && question.news_annotations.length > 0 && (
+                        <span style={{ 
+                          marginLeft: '10px',
+                          padding: '2px 6px',
+                          backgroundColor: darkMode ? '#2e4132' : '#e8f5e9',
+                          color: darkMode ? '#81c784' : '#2e7d32',
+                          borderRadius: '4px',
+                          fontSize: '12px',
+                          fontWeight: 'bold'
+                        }}>
+                          📰 {question.news_annotations.length} News Event{question.news_annotations.length !== 1 ? 's' : ''} Available
+                        </span>
+                      )}
                     </div>
                     <div>
                       {/* Main price chart */}
@@ -664,6 +699,7 @@ export default function AssetTestPage() {
                         data={question.ohlc_data} 
                         height={450}
                         timeframe={question.timeframe || timeframe || 'daily'}
+                        newsAnnotations={question.news_annotations || []}
                       />
                       
                       {/* Separate volume chart */}
