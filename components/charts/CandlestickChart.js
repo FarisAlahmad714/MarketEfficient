@@ -32,48 +32,97 @@ const formatNewsDate = (dateString) => {
 };
 
 const showNewsTooltip = (point, news, darkMode) => {
-  // Remove existing tooltip
-  hideNewsTooltip();
+  // FIRST: Remove ALL existing tooltips and clear any global handlers
+  const existingTooltips = document.querySelectorAll('#news-tooltip, [id^="news-tooltip"]');
+  existingTooltips.forEach(tooltip => {
+    if (tooltip.parentNode) {
+      tooltip.remove();
+    }
+  });
+  
+  // Make sure global function is available as backup
+  if (typeof window !== 'undefined') {
+    window.hideNewsTooltip = () => {
+      const existing = document.getElementById('news-tooltip');
+      if (existing && existing.parentNode) {
+        existing.remove();
+      }
+    };
+  }
   
   const tooltip = document.createElement('div');
   tooltip.id = 'news-tooltip';
+  
+  // Check if mobile device
+  const isMobile = window.innerWidth <= 768;
+  const isVerySmall = window.innerWidth <= 480;
+  
+  // Calculate position for mobile-friendly display
+  let left, top, maxWidth, width;
+  
+  if (isMobile) {
+    // On mobile, use full width with margins and center vertically
+    left = 10;
+    top = Math.max(20, Math.min(point.y - 150, window.innerHeight - 400));
+    maxWidth = window.innerWidth - 20;
+    width = 'calc(100vw - 20px)';
+  } else {
+    // Desktop positioning
+    left = Math.min(point.x + 15, window.innerWidth - 420);
+    top = Math.max(point.y - 80, 10);
+    maxWidth = 400;
+    width = 'auto';
+  }
+  
   tooltip.style.cssText = `
     position: fixed;
-    z-index: 9999;
+    z-index: 10000;
     background: ${darkMode ? '#1a1a1a' : '#ffffff'};
     color: ${darkMode ? '#e0e0e0' : '#333333'};
     border: 2px solid ${getSentimentColor(news.sentiment, darkMode)};
-    border-radius: 12px;
-    padding: 16px;
-    max-width: 400px;
-    min-width: 280px;
+    border-radius: ${isMobile ? '8px' : '12px'};
+    padding: ${isVerySmall ? '10px' : isMobile ? '12px' : '16px'};
+    max-width: ${maxWidth}px;
+    width: ${width};
     box-shadow: 0 8px 24px rgba(0,0,0,0.3);
-    font-size: 14px;
-    line-height: 1.5;
-    left: ${Math.min(point.x + 15, window.innerWidth - 420)}px;
-    top: ${Math.max(point.y - 80, 10)}px;
+    font-size: ${isVerySmall ? '12px' : isMobile ? '13px' : '14px'};
+    line-height: 1.4;
+    left: ${left}px;
+    top: ${top}px;
     pointer-events: auto;
-    cursor: pointer;
-    transform: translateY(-10px);
+    transform: translateY(-5px);
     animation: slideIn 0.2s ease-out;
+    box-sizing: border-box;
+    overflow: hidden;
   `;
   
-  // Add CSS animation
-  const style = document.createElement('style');
-  style.textContent = `
-    @keyframes slideIn {
-      from { opacity: 0; transform: translateY(-20px); }
-      to { opacity: 1; transform: translateY(-10px); }
-    }
-  `;
-  document.head.appendChild(style);
+  // Add CSS animation if not already added
+  if (!document.getElementById('news-tooltip-styles')) {
+    const style = document.createElement('style');
+    style.id = 'news-tooltip-styles';
+    style.textContent = `
+      @keyframes slideIn {
+        from { opacity: 0; transform: translateY(-15px); }
+        to { opacity: 1; transform: translateY(-5px); }
+      }
+      #news-close-button:hover {
+        background: ${darkMode ? '#555' : '#d0d0d0'} !important;
+        transform: scale(1.02) !important;
+      }
+      #news-close-button:active {
+        background: ${darkMode ? '#666' : '#c0c0c0'} !important;
+        transform: scale(0.98) !important;
+      }
+    `;
+    document.head.appendChild(style);
+  }
   
   const sentimentBadge = `<span style="
     background: ${getSentimentColor(news.sentiment, darkMode)};
     color: white;
     padding: 4px 8px;
     border-radius: 6px;
-    font-size: 11px;
+    font-size: ${isMobile ? '10px' : '11px'};
     font-weight: bold;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -84,7 +133,7 @@ const showNewsTooltip = (point, news, darkMode) => {
     color: white;
     padding: 4px 8px;
     border-radius: 6px;
-    font-size: 11px;
+    font-size: ${isMobile ? '10px' : '11px'};
     font-weight: bold;
     margin-left: 6px;
     text-transform: uppercase;
@@ -92,87 +141,307 @@ const showNewsTooltip = (point, news, darkMode) => {
   
   tooltip.innerHTML = `
     <div style="display: flex; align-items: flex-start; margin-bottom: 12px;">
-      <div style="font-size: 24px; margin-right: 8px;">📰</div>
-      <div style="flex: 1;">
-        <div style="font-weight: bold; font-size: 16px; margin-bottom: 8px; line-height: 1.3;">
+      <div style="font-size: ${isVerySmall ? '18px' : isMobile ? '20px' : '24px'}; margin-right: 8px; flex-shrink: 0;">📰</div>
+      <div style="flex: 1; min-width: 0;">
+        <div style="font-weight: bold; font-size: ${isVerySmall ? '13px' : isMobile ? '14px' : '16px'}; margin-bottom: 8px; line-height: 1.3; word-wrap: break-word;">
           ${news.headline}
         </div>
-        <div style="font-size: 12px; color: ${darkMode ? '#b0b0b0' : '#666'}; margin-bottom: 8px;">
+        <div style="font-size: ${isVerySmall ? '10px' : isMobile ? '11px' : '12px'}; color: ${darkMode ? '#b0b0b0' : '#666'}; margin-bottom: 8px;">
           <strong>📅 ${formatNewsDate(news.date)}</strong>
         </div>
-        <div style="margin-bottom: 10px;">
+        <div style="margin-bottom: 10px; display: flex; flex-wrap: wrap; gap: 4px;">
           ${sentimentBadge}${impactBadge}
         </div>
       </div>
     </div>
     ${news.content ? `
       <div style="
-        font-size: 13px; 
+        font-size: ${isVerySmall ? '11px' : isMobile ? '12px' : '13px'}; 
         line-height: 1.4; 
         margin-bottom: 10px;
         padding: 8px;
         background: ${darkMode ? '#2a2a2a' : '#f8f9fa'};
         border-radius: 6px;
         border-left: 3px solid ${getSentimentColor(news.sentiment, darkMode)};
+        word-wrap: break-word;
+        overflow-wrap: break-word;
       ">
         ${news.content}
       </div>
     ` : ''}
     <div style="
-      font-size: 11px; 
+      font-size: ${isVerySmall ? '9px' : isMobile ? '10px' : '11px'}; 
       color: ${darkMode ? '#888' : '#999'}; 
-      text-align: right;
+      text-align: ${isMobile ? 'left' : 'right'};
       margin-top: 8px;
       padding-top: 8px;
       border-top: 1px solid ${darkMode ? '#333' : '#eee'};
+      word-wrap: break-word;
+      margin-bottom: 15px;
     ">
       Source: <strong>${news.source}</strong>
       ${news.url && news.url !== 'null' && news.url !== null && news.url.startsWith('http') ? 
-        ` • <a href="${news.url}" target="_blank" rel="noopener noreferrer" style="color: ${getSentimentColor(news.sentiment, darkMode)}; text-decoration: none;">View Original</a>` : 
-        ` • <span style="color: ${darkMode ? '#666' : '#999'}; font-style: italic;">Original link not available</span>`
+        `<br><a href="${news.url}" target="_blank" rel="noopener noreferrer" style="color: ${getSentimentColor(news.sentiment, darkMode)}; text-decoration: none;">View Original →</a>` : 
+        `<br><span style="color: ${darkMode ? '#666' : '#999'}; font-style: italic;">Original link not available</span>`
       }
     </div>
-    <div style="
-      position: absolute;
-      top: 8px;
-      right: 8px;
-      font-size: 16px;
-      color: ${darkMode ? '#666' : '#ccc'};
-      cursor: pointer;
-      width: 20px;
-      height: 20px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 50%;
-      background: ${darkMode ? '#333' : '#f0f0f0'};
-    " onclick="hideNewsTooltip()">×</div>
+    <div style="text-align: center; margin-top: 15px;">
+      <button id="news-close-button" style="
+        background: ${darkMode ? '#444' : '#e0e0e0'};
+        color: ${darkMode ? '#fff' : '#333'};
+        border: 2px solid ${darkMode ? '#666' : '#ccc'};
+        border-radius: ${isMobile ? '8px' : '6px'};
+        padding: ${isMobile ? '12px 24px' : '8px 16px'};
+        font-size: ${isMobile ? '16px' : '14px'};
+        font-weight: bold;
+        cursor: pointer;
+        min-width: ${isMobile ? '120px' : '80px'};
+        transition: all 0.2s ease;
+        -webkit-tap-highlight-color: transparent;
+        touch-action: manipulation;
+      ">
+        Close
+      </button>
+    </div>
   `;
   
   document.body.appendChild(tooltip);
   
-  // Auto-hide after 10 seconds unless hovered
+  // Enhanced mobile-friendly event handling with new Close button
+  const closeBtn = tooltip.querySelector('#news-close-button');
+  let isClosing = false;
+  
+  const closeTooltip = () => {
+    if (isClosing) return;
+    isClosing = true;
+    
+    // Add visual feedback on mobile
+    if (isMobile && closeBtn) {
+      closeBtn.style.background = darkMode ? '#ff2222' : '#ff4444';
+      closeBtn.style.transform = 'scale(0.7)';
+      closeBtn.style.color = 'white';
+      
+      // Haptic feedback if available
+      if (navigator.vibrate) {
+        navigator.vibrate(50);
+      }
+    }
+    
+    // Direct call instead of relying on global function
+    const existing = document.getElementById('news-tooltip');
+    if (existing) {
+      // Clear any existing timeout
+      if (existing._autoHideTimeout) {
+        clearTimeout(existing._autoHideTimeout);
+        existing._autoHideTimeout = null;
+      }
+      
+      // Run cleanup function if it exists
+      if (existing._cleanup) {
+        existing._cleanup();
+      }
+      
+      // Add fade out animation
+      existing.style.opacity = '0';
+      existing.style.transform = 'translateY(-15px)';
+      
+      // Remove after animation
+      setTimeout(() => {
+        if (existing.parentNode) {
+          existing.remove();
+        }
+      }, 150);
+    }
+  };
+  
+  if (closeBtn) {
+    // Add visual press feedback for Close button
+    const addPressedState = () => {
+      closeBtn.style.background = darkMode ? '#666' : '#ccc';
+      closeBtn.style.transform = 'scale(0.95)';
+      closeBtn.style.borderColor = darkMode ? '#888' : '#aaa';
+    };
+    
+    const removePressedState = () => {
+      closeBtn.style.background = darkMode ? '#444' : '#e0e0e0';
+      closeBtn.style.transform = 'scale(1)';
+      closeBtn.style.borderColor = darkMode ? '#666' : '#ccc';
+    };
+    
+    // Multiple event types for maximum compatibility
+    closeBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      closeTooltip();
+    });
+    
+    closeBtn.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      addPressedState();
+    });
+    
+    closeBtn.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      closeTooltip();
+    });
+    
+    closeBtn.addEventListener('touchcancel', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      removePressedState();
+    });
+    
+    // Fallback for stubborn cases
+    closeBtn.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      addPressedState();
+    });
+    
+    closeBtn.addEventListener('mouseup', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      closeTooltip();
+    });
+  }
+  
+  // Enhanced click outside to close functionality
+  let clickOutsideHandler;
+  const setupClickOutside = () => {
+    clickOutsideHandler = (e) => {
+      // Don't close if clicking on the close button (handled above)
+      if (closeBtn && closeBtn.contains(e.target)) {
+        return;
+      }
+      
+      // Close if clicking outside the tooltip
+      if (!tooltip.contains(e.target)) {
+        closeTooltip();
+        cleanup();
+      }
+    };
+    
+    document.addEventListener('click', clickOutsideHandler, true);
+    document.addEventListener('touchend', clickOutsideHandler, true);
+  };
+  
+  const cleanup = () => {
+    if (clickOutsideHandler) {
+      document.removeEventListener('click', clickOutsideHandler, true);
+      document.removeEventListener('touchend', clickOutsideHandler, true);
+      clickOutsideHandler = null;
+    }
+  };
+  
+  // Delay adding click outside listener to prevent immediate closing
+  setTimeout(setupClickOutside, 200);
+  
+  // Auto-hide functionality with longer time on mobile
   let autoHideTimeout = setTimeout(() => {
-    hideNewsTooltip();
-  }, 10000);
+    closeTooltip();
+    cleanup();
+  }, isMobile ? 20000 : 12000);
   
-  tooltip.addEventListener('mouseenter', () => {
-    clearTimeout(autoHideTimeout);
-  });
+  // Pause auto-hide on interaction
+  const pauseAutoHide = () => {
+    if (autoHideTimeout) {
+      clearTimeout(autoHideTimeout);
+      autoHideTimeout = null;
+    }
+  };
   
-  tooltip.addEventListener('mouseleave', () => {
-    autoHideTimeout = setTimeout(() => {
-      hideNewsTooltip();
-    }, 2000);
-  });
+  const resumeAutoHide = () => {
+    if (!autoHideTimeout) {
+      autoHideTimeout = setTimeout(() => {
+        closeTooltip();
+        cleanup();
+      }, 3000);
+    }
+  };
+  
+  // Event listeners for pausing auto-hide
+  tooltip.addEventListener('mouseenter', pauseAutoHide);
+  tooltip.addEventListener('touchstart', pauseAutoHide);
+  tooltip.addEventListener('mouseleave', resumeAutoHide);
+  
+  // Store references for cleanup
+  tooltip._autoHideTimeout = autoHideTimeout;
+  tooltip._cleanup = cleanup;
 };
 
+// Make hideNewsTooltip globally accessible
 const hideNewsTooltip = () => {
   const existing = document.getElementById('news-tooltip');
   if (existing) {
-    existing.remove();
+    // Clear any existing timeout
+    if (existing._autoHideTimeout) {
+      clearTimeout(existing._autoHideTimeout);
+      existing._autoHideTimeout = null;
+    }
+    
+    // Run cleanup function if it exists
+    if (existing._cleanup) {
+      existing._cleanup();
+    }
+    
+    // Add fade out animation
+    existing.style.opacity = '0';
+    existing.style.transform = 'translateY(-15px)';
+    
+    // Remove after animation
+    setTimeout(() => {
+      if (existing.parentNode) {
+        existing.remove();
+      }
+    }, 150);
   }
 };
+
+// Make function globally accessible for inline handlers - ROBUST VERSION
+if (typeof window !== 'undefined') {
+  // Create a robust global function that always works
+  window.hideNewsTooltip = function() {
+    try {
+      // Find and remove ALL news tooltips
+      const tooltips = document.querySelectorAll('#news-tooltip, [id^="news-tooltip"], .news-tooltip');
+      tooltips.forEach(tooltip => {
+        if (tooltip.parentNode) {
+          // Clear any timeouts
+          if (tooltip._autoHideTimeout) {
+            clearTimeout(tooltip._autoHideTimeout);
+          }
+          // Run cleanup
+          if (tooltip._cleanup) {
+            tooltip._cleanup();
+          }
+          // Remove immediately
+          tooltip.remove();
+        }
+      });
+      
+      // Also call the local function if it exists
+      if (typeof hideNewsTooltip === 'function') {
+        hideNewsTooltip();
+      }
+    } catch (error) {
+      console.error('Error in global hideNewsTooltip:', error);
+      // Fallback: just remove any element with news-tooltip id
+      const fallback = document.getElementById('news-tooltip');
+      if (fallback && fallback.parentNode) {
+        fallback.remove();
+      }
+    }
+  };
+  
+  // Double-check it's available
+  if (!window.hideNewsTooltip) {
+    console.error('CRITICAL: Failed to register hideNewsTooltip globally');
+  } else {
+    console.log('Global hideNewsTooltip successfully registered');
+  }
+}
 
 // The loading component stays exactly the same
 const LoadingChart = ({ height = 400 }) => {
@@ -307,10 +576,10 @@ const CandlestickChartComponent = ({ data, height = 400, timeframe = 'daily', ne
               
               // Validate the timestamp is reasonable (not in the future, not too old)
               const now = Math.floor(Date.now() / 1000);
-              const oneYearAgo = now - (365 * 24 * 60 * 60);
-              const oneYearFromNow = now + (365 * 24 * 60 * 60);
+              const threeYearsAgo = now - (3 * 365 * 24 * 60 * 60); // 3 years ago
+              const oneMonthFromNow = now + (30 * 24 * 60 * 60); // 1 month in future
               
-              if (timeValue < oneYearAgo || timeValue > oneYearFromNow) {
+              if (timeValue < threeYearsAgo || timeValue > oneMonthFromNow) {
                 console.warn('Timestamp seems out of reasonable range:', item.date, timeValue);
               }
               
@@ -347,6 +616,8 @@ const CandlestickChartComponent = ({ data, height = 400, timeframe = 'daily', ne
         
         // Add news annotations if provided
         if (newsAnnotations && newsAnnotations.length > 0) {
+          const isMobile = window.innerWidth <= 768;
+          
           const markers = newsAnnotations.map(annotation => {
             const annotationTime = Math.floor(new Date(annotation.date).getTime() / 1000);
             
@@ -356,54 +627,67 @@ const CandlestickChartComponent = ({ data, height = 400, timeframe = 'daily', ne
               color: getSentimentColor(annotation.news.sentiment, darkMode),
               shape: 'circle',
               text: '📰', // News emoji marker
-              size: 2, // Larger size for better visibility
+              size: isMobile ? 4 : 3, // Much larger size for better visibility since no hover
               id: `news_${annotationTime}`
             };
           });
           
           candlestickSeries.setMarkers(markers);
           
-          // Add click handler for news markers
+          // Add handlers for news markers
           let newsTooltipTimeout;
+          let lastHoveredAnnotation = null;
           
+          // Enhanced hover detection for better mobile support
           chartRef.current.subscribeCrosshairMove((param) => {
             if (param.point && param.time) {
-              // Find if we're near a news marker
+              // Find if we're near a news marker - increased tolerance for mobile
+              const tolerance = isMobile ? 14400 : 7200; // 4 hours on mobile, 2 hours on desktop
               const hoveredAnnotation = newsAnnotations.find(annotation => {
                 const annotationTime = Math.floor(new Date(annotation.date).getTime() / 1000);
-                return Math.abs(param.time - annotationTime) < 7200; // Within 2 hours for better targeting
+                return Math.abs(param.time - annotationTime) < tolerance;
               });
               
-              if (hoveredAnnotation) {
+              // Only show tooltip if we're hovering a different annotation or first time
+              if (hoveredAnnotation && hoveredAnnotation !== lastHoveredAnnotation) {
+                lastHoveredAnnotation = hoveredAnnotation;
+                
                 // Clear any existing timeout
                 clearTimeout(newsTooltipTimeout);
                 
                 // Show tooltip with a slight delay to avoid flickering
                 newsTooltipTimeout = setTimeout(() => {
                   showNewsTooltip(param.point, hoveredAnnotation.news, darkMode);
-                }, 100);
-              } else {
-                // Clear timeout and hide tooltip with a delay
+                }, isMobile ? 200 : 100);
+              } else if (!hoveredAnnotation && lastHoveredAnnotation) {
+                // Clear when moving away from annotation
+                lastHoveredAnnotation = null;
                 clearTimeout(newsTooltipTimeout);
                 newsTooltipTimeout = setTimeout(() => {
                   hideNewsTooltip();
-                }, 300);
+                }, isMobile ? 500 : 300);
               }
             }
           });
           
-          // Add click handler for persistent news display
+          // Enhanced click handler for news display
           chartRef.current.subscribeClick((param) => {
             if (param.point && param.time) {
+              const tolerance = isMobile ? 14400 : 7200; // Same increased tolerance for clicks
               const clickedAnnotation = newsAnnotations.find(annotation => {
                 const annotationTime = Math.floor(new Date(annotation.date).getTime() / 1000);
-                return Math.abs(param.time - annotationTime) < 7200; // Within 2 hours
+                return Math.abs(param.time - annotationTime) < tolerance;
               });
               
               if (clickedAnnotation) {
                 // Clear any timeouts for persistent display
                 clearTimeout(newsTooltipTimeout);
+                lastHoveredAnnotation = clickedAnnotation;
                 showNewsTooltip(param.point, clickedAnnotation.news, darkMode);
+              } else {
+                // Click outside of news markers closes tooltip
+                hideNewsTooltip();
+                lastHoveredAnnotation = null;
               }
             }
           });

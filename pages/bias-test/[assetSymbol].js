@@ -824,7 +824,6 @@ export default function AssetTestPage() {
                   transition: 'all 0.2s ease'
                 }}
               >
-                <i className="fas fa-chart-line" style={{ marginRight: '8px' }}></i>
                 Bullish
               </button>
               
@@ -847,7 +846,6 @@ export default function AssetTestPage() {
                   transition: 'all 0.2s ease'
                 }}
               >
-                <i className="fas fa-chart-line fa-flip-vertical" style={{ marginRight: '8px' }}></i>
                 Bearish
               </button>
             </div>
