@@ -48,6 +48,8 @@ export default function AssetTestPage() {
   const [chartsLoading, setChartsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [userAnswers, setUserAnswers] = useState({});
+  const [newsLoading, setNewsLoading] = useState(false);
+  const [newsProgress, setNewsProgress] = useState({ completed: 0, total: 0 });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [reasoningInputs, setReasoningInputs] = useState({}); // Store reasoning inputs
   const [validationError, setValidationError] = useState(""); // For validation messages
@@ -224,6 +226,8 @@ export default function AssetTestPage() {
           params.append('session_id', session_id);
         }
         const response = await axios.get(`/api/test/${assetSymbol}?${params.toString()}`);
+        console.log('Received test data:', response.data);
+        console.log('Questions news_loading status:', response.data.questions.map(q => ({ id: q.id, news_loading: q.news_loading, news_count: q.news_annotations?.length || 0 })));
         setTestData(response.data);
         // Initialize userAnswers and reasoningInputs with empty values
         const initialAnswers = {};
@@ -265,6 +269,90 @@ export default function AssetTestPage() {
 
     fetchTestData();
   }, [assetSymbol, timeframe, session_id]);
+
+  // Progressive news loading useEffect
+  useEffect(() => {
+    console.log('News loading useEffect triggered. TestData:', testData?.session_id);
+    if (!testData || !testData.session_id) {
+      console.log('No test data or session ID, skipping news loading');
+      return;
+    }
+
+    // Check if any questions have news loading flag
+    const hasNewsLoading = testData.questions.some(q => q.news_loading);
+    console.log('Questions with news_loading flag:', testData.questions.filter(q => q.news_loading).length);
+    if (!hasNewsLoading) {
+      console.log('No questions have news_loading flag, skipping polling');
+      return;
+    }
+
+    setNewsLoading(true);
+    setNewsProgress({ completed: 0, total: testData.questions.length });
+
+    let pollInterval;
+    
+    const pollNewsStatus = async () => {
+      try {
+        console.log(`Polling news status for session: ${testData.session_id}`);
+        const response = await axios.get(`/api/test/news-status/${testData.session_id}`);
+        const newsStatus = response.data;
+        console.log('News status response:', newsStatus);
+
+        // Update progress
+        setNewsProgress({
+          completed: newsStatus.completed_questions,
+          total: newsStatus.total_questions
+        });
+
+        // If we have updated questions with news, update the test data
+        if (newsStatus.updated_questions && newsStatus.updated_questions.length > 0) {
+          setTestData(prevTestData => {
+            const updatedQuestions = [...prevTestData.questions];
+            
+            // Update questions that have new news data
+            newsStatus.updated_questions.forEach(updatedQuestion => {
+              const questionIndex = updatedQuestions.findIndex(q => q.id === updatedQuestion.id);
+              if (questionIndex !== -1) {
+                updatedQuestions[questionIndex] = {
+                  ...updatedQuestions[questionIndex],
+                  news_annotations: updatedQuestion.news_annotations,
+                  news_loading: false
+                };
+              }
+            });
+
+            return {
+              ...prevTestData,
+              questions: updatedQuestions
+            };
+          });
+        }
+
+        // Stop polling when all news is loaded
+        if (newsStatus.all_complete) {
+          setNewsLoading(false);
+          clearInterval(pollInterval);
+          console.log('News loading completed for all questions');
+        }
+
+      } catch (error) {
+        console.error('Error polling news status:', error);
+        // Continue polling on error - don't break the process
+      }
+    };
+
+    // Start polling every 2 seconds
+    pollInterval = setInterval(pollNewsStatus, 2000);
+    
+    // Initial poll
+    pollNewsStatus();
+
+    // Cleanup on unmount or when testData changes
+    return () => {
+      if (pollInterval) clearInterval(pollInterval);
+    };
+
+  }, [testData?.session_id]);
 
   const handleAnswerSelect = async (questionId, prediction) => {
     setUserAnswers(prev => ({
@@ -690,6 +778,31 @@ export default function AssetTestPage() {
                           fontWeight: 'bold'
                         }}>
                           📰 {question.news_annotations.length} News Event{question.news_annotations.length !== 1 ? 's' : ''} Available
+                        </span>
+                      )}
+                      {question.news_loading && (
+                        <span style={{ 
+                          marginLeft: '10px',
+                          padding: '2px 6px',
+                          backgroundColor: darkMode ? '#2d3748' : '#fff3cd',
+                          color: darkMode ? '#fbbf24' : '#856404',
+                          borderRadius: '4px',
+                          fontSize: '12px',
+                          fontWeight: 'bold',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}>
+                          <span style={{ 
+                            display: 'inline-block',
+                            width: '8px',
+                            height: '8px',
+                            border: '1px solid currentColor',
+                            borderTop: '1px solid transparent',
+                            borderRadius: '50%',
+                            animation: 'spin 1s linear infinite'
+                          }}></span>
+                          🔄 Loading news...
                         </span>
                       )}
                     </div>

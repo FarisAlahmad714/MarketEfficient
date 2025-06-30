@@ -185,30 +185,33 @@ const showNewsTooltip = (point, news, darkMode) => {
         `<br><span style="color: ${darkMode ? '#666' : '#999'}; font-style: italic;">Original link not available</span>`
       }
     </div>
+    ${isMobile ? `
     <div style="text-align: center; margin-top: 15px;">
       <button id="news-close-button" style="
-        background: ${darkMode ? '#444' : '#e0e0e0'};
-        color: ${darkMode ? '#fff' : '#333'};
-        border: 2px solid ${darkMode ? '#666' : '#ccc'};
-        border-radius: ${isMobile ? '8px' : '6px'};
-        padding: ${isMobile ? '12px 24px' : '8px 16px'};
-        font-size: ${isMobile ? '16px' : '14px'};
+        background: ${getSentimentColor(news.sentiment, darkMode)};
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 12px 24px;
+        font-size: 16px;
         font-weight: bold;
         cursor: pointer;
-        min-width: ${isMobile ? '120px' : '80px'};
+        min-width: 120px;
         transition: all 0.2s ease;
         -webkit-tap-highlight-color: transparent;
         touch-action: manipulation;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
       ">
-        Close
+        ✕ Close
       </button>
     </div>
+    ` : ''}
   `;
   
   document.body.appendChild(tooltip);
   
-  // Enhanced mobile-friendly event handling with new Close button
-  const closeBtn = tooltip.querySelector('#news-close-button');
+  // Enhanced mobile-friendly event handling with Close button (mobile only)
+  const closeBtn = isMobile ? tooltip.querySelector('#news-close-button') : null;
   let isClosing = false;
   
   const closeTooltip = () => {
@@ -618,78 +621,155 @@ const CandlestickChartComponent = ({ data, height = 400, timeframe = 'daily', ne
         if (newsAnnotations && newsAnnotations.length > 0) {
           const isMobile = window.innerWidth <= 768;
           
-          const markers = newsAnnotations.map(annotation => {
-            const annotationTime = Math.floor(new Date(annotation.date).getTime() / 1000);
+          // Create custom HTML overlay for news markers with gold glimmer effect
+          const createCustomNewsMarkers = () => {
+            // Remove any existing custom markers
+            const existingMarkers = containerRef.current.querySelectorAll('.custom-news-marker');
+            existingMarkers.forEach(marker => marker.remove());
             
-            return {
-              time: annotationTime,
-              position: 'aboveBar',
-              color: getSentimentColor(annotation.news.sentiment, darkMode),
-              shape: 'circle',
-              text: '📰', // News emoji marker
-              size: isMobile ? 4 : 3, // Much larger size for better visibility since no hover
-              id: `news_${annotationTime}`
-            };
-          });
-          
-          candlestickSeries.setMarkers(markers);
-          
-          // Add handlers for news markers
-          let newsTooltipTimeout;
-          let lastHoveredAnnotation = null;
-          
-          // Enhanced hover detection for better mobile support
-          chartRef.current.subscribeCrosshairMove((param) => {
-            if (param.point && param.time) {
-              // Find if we're near a news marker - increased tolerance for mobile
-              const tolerance = isMobile ? 14400 : 7200; // 4 hours on mobile, 2 hours on desktop
-              const hoveredAnnotation = newsAnnotations.find(annotation => {
-                const annotationTime = Math.floor(new Date(annotation.date).getTime() / 1000);
-                return Math.abs(param.time - annotationTime) < tolerance;
+            newsAnnotations.forEach(annotation => {
+              const annotationTime = Math.floor(new Date(annotation.date).getTime() / 1000);
+              
+              // Get the pixel position for this time on the chart
+              const xCoordinate = chartRef.current.timeScale().timeToCoordinate(annotationTime);
+              if (xCoordinate === null) return;
+              
+              // Find the corresponding price data to get the high value for positioning
+              // Increase tolerance based on timeframe for better matching
+              const timeframeTolerance = {
+                '4h': 7200,    // 2 hours
+                'daily': 43200,  // 12 hours  
+                'weekly': 259200, // 3 days
+                'monthly': 1209600 // 2 weeks
+              };
+              const tolerance = timeframeTolerance[timeframe] || 43200;
+              
+              const priceData = formattedData.find(item => Math.abs(item.time - annotationTime) < tolerance);
+              if (!priceData) {
+                // Fallback: find the closest candle
+                const sortedData = formattedData.map(item => ({
+                  ...item,
+                  timeDiff: Math.abs(item.time - annotationTime)
+                })).sort((a, b) => a.timeDiff - b.timeDiff);
+                
+                if (sortedData.length === 0) return;
+                const closestData = sortedData[0];
+                const yCoordinate = candlestickSeries.priceToCoordinate(closestData.high);
+                if (yCoordinate === null) return;
+                
+                // Use closest data for positioning
+                createMarkerElement(xCoordinate, yCoordinate, annotation);
+                return;
+              }
+              
+              // Get the Y coordinate for the high price of the candle + some offset
+              const yCoordinate = candlestickSeries.priceToCoordinate(priceData.high);
+              if (yCoordinate === null) return;
+              
+              createMarkerElement(xCoordinate, yCoordinate, annotation);
+            });
+            
+            // Helper function to create marker element
+            function createMarkerElement(xCoordinate, yCoordinate, annotation) {
+              // Create custom emoji marker
+              const markerElement = document.createElement('div');
+              markerElement.className = 'custom-news-marker';
+              markerElement.innerHTML = '📰';
+              markerElement.style.cssText = `
+                position: absolute;
+                top: ${yCoordinate - 35}px;
+                left: ${xCoordinate - 12}px;
+                font-size: ${isMobile ? '24px' : '20px'};
+                cursor: pointer;
+                z-index: 1000;
+                pointer-events: auto;
+                animation: goldGlimmer 3s ease-in-out infinite;
+                filter: drop-shadow(0 0 4px #ffd700) drop-shadow(0 0 8px #ffed4e);
+                transition: all 0.3s ease;
+              `;
+              
+              // Add hover effect
+              markerElement.addEventListener('mouseenter', () => {
+                markerElement.style.animation = 'goldGlimmer 0.8s ease-in-out infinite';
+                markerElement.style.transform = 'scale(1.3)';
+                markerElement.style.filter = 'drop-shadow(0 0 8px #ffd700) drop-shadow(0 0 16px #ffed4e) drop-shadow(0 0 24px #fff)';
               });
               
-              // Only show tooltip if we're hovering a different annotation or first time
-              if (hoveredAnnotation && hoveredAnnotation !== lastHoveredAnnotation) {
-                lastHoveredAnnotation = hoveredAnnotation;
-                
-                // Clear any existing timeout
-                clearTimeout(newsTooltipTimeout);
-                
-                // Show tooltip with a slight delay to avoid flickering
-                newsTooltipTimeout = setTimeout(() => {
-                  showNewsTooltip(param.point, hoveredAnnotation.news, darkMode);
-                }, isMobile ? 200 : 100);
-              } else if (!hoveredAnnotation && lastHoveredAnnotation) {
-                // Clear when moving away from annotation
-                lastHoveredAnnotation = null;
-                clearTimeout(newsTooltipTimeout);
-                newsTooltipTimeout = setTimeout(() => {
-                  hideNewsTooltip();
-                }, isMobile ? 500 : 300);
-              }
-            }
-          });
-          
-          // Enhanced click handler for news display
-          chartRef.current.subscribeClick((param) => {
-            if (param.point && param.time) {
-              const tolerance = isMobile ? 14400 : 7200; // Same increased tolerance for clicks
-              const clickedAnnotation = newsAnnotations.find(annotation => {
-                const annotationTime = Math.floor(new Date(annotation.date).getTime() / 1000);
-                return Math.abs(param.time - annotationTime) < tolerance;
+              markerElement.addEventListener('mouseleave', () => {
+                markerElement.style.animation = 'goldGlimmer 3s ease-in-out infinite';
+                markerElement.style.transform = 'scale(1)';
+                markerElement.style.filter = 'drop-shadow(0 0 4px #ffd700) drop-shadow(0 0 8px #ffed4e)';
               });
               
-              if (clickedAnnotation) {
-                // Clear any timeouts for persistent display
-                clearTimeout(newsTooltipTimeout);
-                lastHoveredAnnotation = clickedAnnotation;
-                showNewsTooltip(param.point, clickedAnnotation.news, darkMode);
-              } else {
-                // Click outside of news markers closes tooltip
-                hideNewsTooltip();
-                lastHoveredAnnotation = null;
-              }
+              // Add click handler
+              markerElement.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const rect = containerRef.current.getBoundingClientRect();
+                const point = { x: rect.left + xCoordinate, y: rect.top + yCoordinate - 35 };
+                showNewsTooltip(point, annotation.news, darkMode);
+              });
+              
+              containerRef.current.appendChild(markerElement);
             }
+          };
+          
+          // Add gold glimmer CSS animation
+          if (!document.getElementById('gold-glimmer-styles')) {
+            const glimmerStyle = document.createElement('style');
+            glimmerStyle.id = 'gold-glimmer-styles';
+            glimmerStyle.textContent = `
+              @keyframes goldGlimmer {
+                0%, 100% { 
+                  text-shadow: 
+                    0 0 5px #ffd700,
+                    0 0 10px #ffd700,
+                    0 0 15px #ffd700,
+                    0 0 20px #ffd700;
+                  transform: scale(1);
+                }
+                25% {
+                  text-shadow: 
+                    0 0 8px #ffed4e,
+                    0 0 16px #ffed4e,
+                    0 0 24px #ffed4e,
+                    0 0 32px #fff;
+                  transform: scale(1.05);
+                }
+                50% { 
+                  text-shadow: 
+                    0 0 10px #fff700,
+                    0 0 20px #fff700,
+                    0 0 30px #fff700,
+                    0 0 40px #fff,
+                    0 0 50px #fff;
+                  transform: scale(1.1);
+                }
+                75% {
+                  text-shadow: 
+                    0 0 8px #ffed4e,
+                    0 0 16px #ffed4e,
+                    0 0 24px #ffed4e,
+                    0 0 32px #fff;
+                  transform: scale(1.05);
+                }
+              }
+              
+              .custom-news-marker {
+                user-select: none;
+                -webkit-user-select: none;
+                -moz-user-select: none;
+                -ms-user-select: none;
+              }
+            `;
+            document.head.appendChild(glimmerStyle);
+          }
+          
+          // Create the custom markers
+          setTimeout(createCustomNewsMarkers, 100);
+          
+          // Update marker positions when chart is scrolled/zoomed
+          chartRef.current.timeScale().subscribeVisibleTimeRangeChange(() => {
+            setTimeout(createCustomNewsMarkers, 50);
           });
         }
         

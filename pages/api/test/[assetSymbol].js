@@ -1053,9 +1053,7 @@ async function handler(req, res) {
           const lastOutcomeCandle = outcomeData[outcomeData.length - 1];
           const correctAnswer = lastOutcomeCandle.close > lastSetupCandle.close ? 'Bullish' : 'Bearish';
           
-          // Fetch news annotations for this question's chart data
-          const newsAnnotations = await fetchNewsAnnotations(questionAsset.symbol, questionAsset.name, setupData);
-          
+          // Store question without news annotations for now
           questions.push({
             id: i + 1,
             timeframe: questionTimeframe,
@@ -1072,7 +1070,8 @@ async function handler(req, res) {
             ohlc_data: setupData,
             correct_answer: correctAnswer,
             outcome_data: outcomeData,
-            news_annotations: newsAnnotations
+            news_annotations: [], // Will be populated by background fetching
+            news_loading: true // Flag to indicate news is being loaded
           });
         }
       }
@@ -1100,9 +1099,7 @@ async function handler(req, res) {
           const lastOutcomeCandle = outcomeData[outcomeData.length - 1];
           const correctAnswer = lastOutcomeCandle.close > lastSetupCandle.close ? 'Bullish' : 'Bearish';
           
-          // Fetch news annotations for this question's chart data
-          const newsAnnotations = await fetchNewsAnnotations(asset.symbol, asset.name, setupData);
-          
+          // Store question without news annotations for now
           questions.push({
             id: i + 1,
             timeframe: questionTimeframe,
@@ -1119,7 +1116,8 @@ async function handler(req, res) {
             ohlc_data: setupData,
             correct_answer: correctAnswer,
             outcome_data: outcomeData,
-            news_annotations: newsAnnotations
+            news_annotations: [], // Will be populated by background fetching
+            news_loading: true // Flag to indicate news is being loaded
           });
         }
       }
@@ -1139,9 +1137,7 @@ async function handler(req, res) {
         const lastOutcomeCandle = outcomeData[outcomeData.length - 1];
         const correctAnswer = lastOutcomeCandle.close > lastSetupCandle.close ? 'Bullish' : 'Bearish';
         
-        // Fetch news annotations for this question's chart data
-        const newsAnnotations = await fetchNewsAnnotations(asset.symbol, asset.name, setupData);
-        
+        // Store question without news annotations for now
         questions.push({
           id: i + 1,
           timeframe: timeframe,
@@ -1158,12 +1154,13 @@ async function handler(req, res) {
           ohlc_data: setupData,
           correct_answer: correctAnswer,
           outcome_data: outcomeData,
-          news_annotations: newsAnnotations
+          news_annotations: [], // Will be populated by background fetching
+          news_loading: true // Flag to indicate news is being loaded
         });
       }
     }
     
-    // Create test session
+    // Create test session first (for fast loading)
     const testData = {
       asset_name: assetSymbol === 'random' ? 'Random Mix' : asset.name,
       asset_symbol: asset.symbol,
@@ -1177,30 +1174,76 @@ async function handler(req, res) {
     const testSessionKey = sessionId + '_test';
     sessions[testSessionKey] = testData;
     logger.log(`Stored test session with key: ${testSessionKey}`);
+    
+    // Start background news fetching (non-blocking)
+    // This will update the stored session data as news becomes available
+    setImmediate(async () => {
+      try {
+        logger.log(`Starting concurrent news fetching for session ${sessionId}`);
+        
+        // Create all news fetching promises with retry logic
+        const newsPromises = questions.map(async (question, index) => {
+          const fetchWithRetry = async (retryCount = 0) => {
+            try {
+              const newsAnnotations = await Promise.race([
+                fetchNewsAnnotations(question.asset_symbol, question.asset_name, question.ohlc_data),
+                new Promise((_, reject) => 
+                  setTimeout(() => reject(new Error('News fetch timeout')), 15000) // 15 second timeout
+                )
+              ]);
+              return newsAnnotations;
+            } catch (error) {
+              if (retryCount < 2) { // Retry up to 2 times
+                logger.log(`Retrying news fetch for question ${question.id}, attempt ${retryCount + 2}`);
+                await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds before retry
+                return fetchWithRetry(retryCount + 1);
+              }
+              throw error;
+            }
+          };
+
+          try {
+            const newsAnnotations = await fetchWithRetry();
+            
+            // Update the question in the stored session
+            if (sessions[testSessionKey]) {
+              sessions[testSessionKey].questions[index].news_annotations = newsAnnotations;
+              sessions[testSessionKey].questions[index].news_loading = false;
+              logger.log(`News loaded for question ${index + 1} in session ${sessionId}`);
+            }
+            
+            return { questionId: question.id, success: true, newsAnnotations };
+          } catch (error) {
+            logger.error(`Failed to fetch news for question ${question.id}:`, error);
+            
+            // Update with empty news and mark as completed (graceful fallback)
+            if (sessions[testSessionKey]) {
+              sessions[testSessionKey].questions[index].news_annotations = [];
+              sessions[testSessionKey].questions[index].news_loading = false;
+            }
+            
+            return { questionId: question.id, success: false, error: error.message };
+          }
+        });
+        
+        // Wait for all news fetching to complete (or timeout)
+        const results = await Promise.allSettled(newsPromises);
+        const successCount = results.filter(r => r.status === 'fulfilled' && r.value.success).length;
+        
+        logger.log(`News fetching completed for session ${sessionId}: ${successCount}/${questions.length} successful`);
+        
+      } catch (error) {
+        logger.error(`Error in background news fetching for session ${sessionId}:`, error);
+      }
+    });
     logger.log(`Total sessions after storing: ${Object.keys(sessions).length}`);
+    logger.log(`Sending test with ${questions.length} questions to client`);
+    questions.forEach((q, i) => {
+      logger.log(`Question ${i + 1} news_loading: ${q.news_loading}, news count: ${q.news_annotations?.length || 0}`);
+    });
     
-    // Test session stored in memory - database backup removed to avoid validation issues
-    
-    // Send only necessary data to client (remove correct answers and outcome data)
-    const clientTestData = {
-      asset_name: assetSymbol === 'random' ? 'Random Mix' : asset.name,
-      asset_symbol: asset.symbol,
-      session_id: sessionId,
-      selected_timeframe: assetSymbol === 'random' ? 'mixed' : timeframe,
-      questions: questions.map(q => ({
-        id: q.id,
-        timeframe: q.timeframe,
-        asset_name: q.asset_name,
-        asset_symbol: q.asset_symbol,
-        date: q.date,
-        ohlc: q.ohlc,
-        ohlc_data: q.ohlc_data,
-        news_annotations: q.news_annotations || []
-      }))
-    };
-    
-    logger.log(`Sending test with ${clientTestData.questions.length} questions to client`);
-    res.status(200).json(clientTestData);
+    // Send testData to client immediately (with news_loading flags set to true)
+    return res.status(200).json(testData);
   } catch (error) {
     console.error('Error generating test:', error);
     
