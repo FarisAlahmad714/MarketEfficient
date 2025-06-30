@@ -316,6 +316,14 @@ const FeatureCard = ({ darkMode, icon, title, description, link, linkText, color
   );
 };
 
+// Export getStaticProps to ensure server-side rendering of meta tags
+export async function getStaticProps() {
+  return {
+    props: {},
+    revalidate: 3600 // Revalidate every hour
+  };
+}
+
 export default function HomePage() {
   const { darkMode } = useContext(ThemeContext);
   const { isAuthenticated, user } = useContext(AuthContext);
