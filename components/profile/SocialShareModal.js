@@ -12,12 +12,54 @@ const SocialShareModal = ({
   const [shareText, setShareText] = useState('');
   const [copySuccess, setCopySuccess] = useState(false);
   const [selectedPlatforms, setSelectedPlatforms] = useState([]);
+  const [shareUrl, setShareUrl] = useState('');
+  const [isCreatingShare, setIsCreatingShare] = useState(false);
 
   useEffect(() => {
     if (shareData && isOpen) {
-      generateShareText();
+      if (shareData.type !== 'profile') {
+        createShareableLink();
+      } else {
+        generateShareText();
+      }
     }
   }, [shareData, isOpen]);
+
+  const createShareableLink = async () => {
+    if (!shareData || shareData.type === 'profile') return;
+    
+    setIsCreatingShare(true);
+    try {
+      const response = await fetch('/api/share/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          type: shareData.type,
+          data: shareData
+        })
+      });
+
+      if (response.ok) {
+        const { shareUrl: newShareUrl } = await response.json();
+        setShareUrl(newShareUrl);
+        generateShareText(newShareUrl);
+      } else {
+        console.error('Failed to create shareable link');
+        // Fallback to profile URL
+        setShareUrl(profileUrl);
+        generateShareText(profileUrl);
+      }
+    } catch (error) {
+      console.error('Error creating shareable link:', error);
+      // Fallback to profile URL
+      setShareUrl(profileUrl);
+      generateShareText(profileUrl);
+    } finally {
+      setIsCreatingShare(false);
+    }
+  };
 
   const getBaseText = (shareData) => {
     if (!shareData) return '';
@@ -35,12 +77,13 @@ const SocialShareModal = ({
     return '';
   };
 
-  const generateShareText = () => {
+  const generateShareText = (customUrl = null) => {
     if (!shareData) return;
 
     const baseText = getBaseText(shareData);
     const hashtags = '';
-    const profileLink = profileUrl ? `\n\n${profileUrl}` : '';
+    const linkToUse = customUrl || shareUrl || profileUrl;
+    const profileLink = linkToUse ? `\n\n${linkToUse}` : '';
     
     setShareText(baseText + hashtags + profileLink);
   };
@@ -49,10 +92,11 @@ const SocialShareModal = ({
     if (!shareData) return shareText;
 
     const baseText = getBaseText(shareData);
+    const linkToUse = shareUrl || profileUrl;
     
     if (platform === 'twitter') {
       const hashtags = '';
-      const profileLink = profileUrl ? `\n\n${profileUrl}` : '';
+      const profileLink = linkToUse ? `\n\n${linkToUse}` : '';
       return baseText + hashtags + profileLink;
       
     } else if (platform === 'linkedin') {
@@ -64,7 +108,8 @@ const SocialShareModal = ({
       } else {
         linkedinText = baseText;
       }
-      return linkedinText + (profileUrl ? `\n\nView my profile: ${profileUrl}` : '');
+      const linkText = shareData.type === 'profile' ? 'View my profile:' : 'Check it out:';
+      return linkedinText + (linkToUse ? `\n\n${linkText} ${linkToUse}` : '');
       
     } else if (platform === 'instagram') {
       return baseText;
@@ -163,8 +208,27 @@ const SocialShareModal = ({
           </button>
         </div>
 
+        {/* Loading State */}
+        {isCreatingShare && (
+          <div style={{
+            backgroundColor: darkMode ? '#262626' : '#f9f9f9',
+            borderRadius: '12px',
+            padding: '20px',
+            marginBottom: '25px',
+            border: '1px solid #2196F3',
+            textAlign: 'center'
+          }}>
+            <div style={{
+              color: darkMode ? '#e0e0e0' : '#333',
+              marginBottom: '10px'
+            }}>
+              🔗 Creating shareable link...
+            </div>
+          </div>
+        )}
+
         {/* Preview Section */}
-        {shareData && (
+        {shareData && !isCreatingShare && (
           <div style={{
             backgroundColor: darkMode ? '#262626' : '#f9f9f9',
             borderRadius: '12px',
@@ -178,6 +242,18 @@ const SocialShareModal = ({
               marginBottom: '10px'
             }}>
               Share Preview
+              {shareUrl && shareData.type !== 'profile' && (
+                <span style={{
+                  marginLeft: '10px',
+                  fontSize: '12px',
+                  color: '#4CAF50',
+                  backgroundColor: darkMode ? 'rgba(76, 175, 80, 0.2)' : 'rgba(76, 175, 80, 0.1)',
+                  padding: '2px 8px',
+                  borderRadius: '4px'
+                }}>
+                  ✓ Public Link Created
+                </span>
+              )}
             </h4>
             
             {shareData.type === 'achievement' && (
