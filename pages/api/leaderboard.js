@@ -95,7 +95,13 @@ async function leaderboardHandler(req, res) {
   const userIds = results.map(result => result._id);
   const users = await User.find(
     { _id: { $in: userIds } },
-    { name: 1, email: 1, profileImageGcsPath: 1 } // Include profile image path
+    { 
+      name: 1, 
+      email: 1, 
+      username: 1,
+      profileImageGcsPath: 1, 
+      profileVisibility: 1 
+    }
   );
   
   // Create a map of userId to user data for quick lookup
@@ -114,6 +120,8 @@ async function leaderboardHandler(req, res) {
         rank: index + 1,
         userId: result._id,
         name: userData.name,
+        username: userData.username,
+        profileVisibility: userData.profileVisibility || 'public',
         // Mask email for privacy
         email: userData.email ? `${userData.email.split('@')[0].substring(0, 3)}***@${userData.email.split('@')[1]}` : null,
         score: parseFloat(result.bestScore.toFixed(1)),

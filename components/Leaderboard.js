@@ -1,5 +1,6 @@
 // components/Leaderboard.js
 import React, { useState, useEffect, useContext, useRef } from 'react';
+import { useRouter } from 'next/router';
 import { ThemeContext } from '../contexts/ThemeContext';
 import { AuthContext } from '../contexts/AuthContext';
 import { Trophy, Award, Medal, User, Calendar, Activity } from 'lucide-react';
@@ -20,6 +21,7 @@ const Leaderboard = () => {
 
   const { darkMode } = useContext(ThemeContext);
   const { isAuthenticated, user } = useContext(AuthContext);
+  const router = useRouter();
   const cryptoLoaderRef = useRef(null);
 
   // Fetch profile images for leaderboard users
@@ -117,6 +119,12 @@ const Leaderboard = () => {
 
   const isCurrentUser = (userId) => {
     return isAuthenticated && user && user.id === userId;
+  };
+
+  const handleProfileClick = (entry) => {
+    if (entry.username) {
+      router.push(`/u/${entry.username}`);
+    }
   };
 
   return (
@@ -336,7 +344,30 @@ const Leaderboard = () => {
                           fontWeight: isCurrentUser(entry.userId) ? '600' : 'normal',
                         }}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div 
+                          className={`leaderboard-profile-row ${entry.username ? 'clickable' : ''}`}
+                          style={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: '12px',
+                            cursor: entry.username ? 'pointer' : 'default',
+                            borderRadius: '8px',
+                            padding: '4px 8px',
+                            margin: '-4px -8px',
+                            transition: 'all 0.2s ease',
+                          }}
+                          onClick={() => handleProfileClick(entry)}
+                          onMouseEnter={(e) => {
+                            if (entry.username) {
+                              e.currentTarget.style.backgroundColor = darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)';
+                              e.currentTarget.style.transform = 'translateY(-1px)';
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'transparent';
+                            e.currentTarget.style.transform = 'translateY(0)';
+                          }}
+                        >
                           <ProfileAvatar
                             imageUrl={imageUrls[entry.userId]}
                             name={entry.name}
@@ -344,13 +375,30 @@ const Leaderboard = () => {
                             borderRadius="50%"
                             fallbackColor={generateUserColor(entry.name)}
                             textSize="1rem"
+                            className="profile-avatar"
+                            style={{
+                              border: entry.username ? '2px solid transparent' : 'none',
+                              transition: 'border-color 0.2s ease',
+                            }}
                           />
                           <div>
                             <div style={{ 
                               fontWeight: isCurrentUser(entry.userId) ? '600' : '500',
-                              fontSize: '15px'
+                              fontSize: '15px',
+                              color: entry.username ? 
+                                (darkMode ? '#90CAF9' : '#1976D2') : 
+                                (darkMode ? '#e0e0e0' : '#333')
                             }}>
                               {entry.name}
+                              {entry.username && (
+                                <div style={{
+                                  fontSize: '12px',
+                                  color: darkMode ? '#888' : '#666',
+                                  fontWeight: 'normal'
+                                }}>
+                                  @{entry.username}
+                                </div>
+                              )}
                             </div>
                           </div>
                           {isCurrentUser(entry.userId) && (
@@ -368,6 +416,18 @@ const Leaderboard = () => {
                             >
                               You
                             </span>
+                          )}
+                          {entry.username && (
+                            <div
+                              style={{
+                                marginLeft: 'auto',
+                                opacity: 0.6,
+                                fontSize: '12px',
+                                color: darkMode ? '#888' : '#666',
+                              }}
+                            >
+                              👁️
+                            </div>
                           )}
                         </div>
                       </td>
@@ -418,6 +478,19 @@ const Leaderboard = () => {
                 </tbody>
               </table>
               <style jsx global>{`
+                .leaderboard-profile-row {
+                  transition: all 0.2s ease;
+                }
+                
+                .leaderboard-profile-row:hover .profile-avatar {
+                  border-color: #2196F3 !important;
+                  box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
+                }
+                
+                .leaderboard-profile-row.clickable:hover {
+                  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                }
+                
                 @media (max-width: 600px) {
                   table {
                     width: 100%;
@@ -452,27 +525,29 @@ const Leaderboard = () => {
                     width: auto;
                     min-width: 80px;
                   }
-                  td:nth-child(2) > div {
-                    flex-wrap: wrap !important;
-                    gap: 2px !important;
+                  .leaderboard-profile-row {
+                    padding: 2px 4px !important;
+                    margin: -2px -4px !important;
                   }
-                  td:nth-child(2) > div > div:nth-child(1) {
-                    width: 20px !important;
-                    height: 20px !important;
-                    font-size: 0.65rem !important;
+                  .leaderboard-profile-row > div:first-child {
+                    width: 25px !important;
+                    height: 25px !important;
                   }
-                  td:nth-child(2) > div > div:nth-child(2) {
+                  .leaderboard-profile-row > div:nth-child(2) {
                     max-width: 70px;
                     overflow: hidden;
                     text-overflow: ellipsis;
                     white-space: nowrap;
                   }
-                  td:nth-child(2) > div > div:nth-child(2) > div:last-child {
+                  .leaderboard-profile-row > div:nth-child(2) > div:last-child {
                     display: none !important;
                   }
-                  td:nth-child(2) > div > span {
+                  .leaderboard-profile-row > span {
                     padding: 1px 4px !important;
                     font-size: 0.65rem !important;
+                  }
+                  .leaderboard-profile-row > div:last-child {
+                    display: none !important;
                   }
                 }
               `}</style>

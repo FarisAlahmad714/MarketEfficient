@@ -249,15 +249,30 @@ const ChartExamIntro = () => {
 
   // Touch handlers for mobile swipe
   const handleTouchStart = (e) => {
+    // Don't handle touch if it's on a button or interactive element
+    if (e.target.tagName === 'BUTTON' || e.target.closest('button')) {
+      return;
+    }
+    
     setTouchStart(e.targetTouches[0].clientX);
     setIsPlaying(false); // Pause during touch
   };
 
   const handleTouchMove = (e) => {
+    // Don't handle touch if it's on a button or interactive element
+    if (e.target.tagName === 'BUTTON' || e.target.closest('button')) {
+      return;
+    }
+    
     setTouchEnd(e.targetTouches[0].clientX);
   };
 
-  const handleTouchEnd = () => {
+  const handleTouchEnd = (e) => {
+    // Don't handle touch if it's on a button or interactive element
+    if (e.target.tagName === 'BUTTON' || e.target.closest('button')) {
+      return;
+    }
+    
     if (!touchStart || !touchEnd) return;
     
     const distance = touchStart - touchEnd;
@@ -455,7 +470,17 @@ const ChartExamIntro = () => {
                         justifyContent: 'center'
                       }}>
                         <button
-                          onClick={() => handleExamStart(exam.id)}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleExamStart(exam.id);
+                          }}
+                          onTouchEnd={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            // Additional touch end handler for mobile reliability
+                            handleExamStart(exam.id);
+                          }}
                           style={{
                             padding: '10px 20px',
                             backgroundColor: '#2196F3',
@@ -468,7 +493,9 @@ const ChartExamIntro = () => {
                             transition: 'all 0.3s ease',
                             touchAction: 'manipulation',
                             transform: 'scale(1)',
-                            boxShadow: '0 2px 8px rgba(33, 150, 243, 0.3)'
+                            boxShadow: '0 2px 8px rgba(33, 150, 243, 0.3)',
+                            WebkitTapHighlightColor: 'transparent',
+                            userSelect: 'none'
                           }}
                           onMouseEnter={(e) => {
                             e.target.style.transform = 'scale(1.05)';

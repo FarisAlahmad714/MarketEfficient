@@ -22,6 +22,8 @@ const ProfileHeader = ({
   const [loading, setLoading] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState(null);
+  const [leaderboardRank, setLeaderboardRank] = useState(null);
+  const [rankLoading, setRankLoading] = useState(false);
 
   const [formData, setFormData] = useState({
     username: profile?.username || '',
@@ -35,6 +37,25 @@ const ProfileHeader = ({
     profileVisibility: 'public', // All profiles are public
     shareResults: true // All users share results
   });
+
+  // Fetch leaderboard rank
+  const fetchLeaderboardRank = async () => {
+    if (!profile?.username) return;
+    
+    try {
+      setRankLoading(true);
+      const response = await fetch(`/api/leaderboard/user-rank?username=${profile.username}&testType=all&period=month`);
+      
+      if (response.ok) {
+        const rankData = await response.json();
+        setLeaderboardRank(rankData);
+      }
+    } catch (error) {
+      console.error('Error fetching leaderboard rank:', error);
+    } finally {
+      setRankLoading(false);
+    }
+  };
 
   // Sync form data when profile prop changes
   React.useEffect(() => {
@@ -56,6 +77,9 @@ const ProfileHeader = ({
       // Always update the profile image when profile prop changes
       console.log('Setting profile image from prop:', profile.profileImageUrl);
       setProfileImage(profile.profileImageUrl || '');
+      
+      // Fetch leaderboard rank
+      fetchLeaderboardRank();
     }
   }, [profile]);
 
@@ -424,13 +448,76 @@ const ProfileHeader = ({
           </div>
           
           {profile?.username && (
-            <p style={{
-              color: darkMode ? '#b0b0b0' : '#666',
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '15px',
               margin: '0 0 15px 0',
-              fontSize: '16px'
+              flexWrap: 'wrap'
             }}>
-              @{profile.username}
-            </p>
+              <p style={{
+                color: darkMode ? '#b0b0b0' : '#666',
+                margin: 0,
+                fontSize: '16px'
+              }}>
+                @{profile.username}
+              </p>
+              
+              {/* Leaderboard Badge */}
+              {leaderboardRank && leaderboardRank.rank && (
+                <div 
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    backgroundColor: leaderboardRank.rankBadge?.color || '#2196F3',
+                    color: 'white',
+                    padding: '6px 12px',
+                    borderRadius: '20px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                    border: '2px solid rgba(255,255,255,0.2)',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    position: 'relative',
+                    '@media (max-width: 600px)': {
+                      fontSize: '12px',
+                      padding: '4px 8px'
+                    }
+                  }}
+                  title={`Ranked #${leaderboardRank.rank} (Top ${leaderboardRank.percentile}%) • Score: ${leaderboardRank.userScore}% • Tests: ${leaderboardRank.testsTaken}`}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.25)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
+                  }}
+                  onClick={() => router.push('/#leaderboard')}
+                >
+                  <span style={{ fontSize: '16px' }}>
+                    {leaderboardRank.rankBadge?.icon || '🏆'}
+                  </span>
+                  <span>
+                    #{leaderboardRank.rank} • {leaderboardRank.rankBadge?.label || `Rank ${leaderboardRank.rank}`}
+                  </span>
+                </div>
+              )}
+              
+              {rankLoading && (
+                <div style={{
+                  padding: '6px 12px',
+                  backgroundColor: darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
+                  borderRadius: '20px',
+                  fontSize: '14px',
+                  color: darkMode ? '#888' : '#666'
+                }}>
+                  Loading rank...
+                </div>
+              )}
+            </div>
           )}
 
           {profile?.bio && (
