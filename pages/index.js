@@ -1,5 +1,6 @@
 // pages/index.js
 import Link from 'next/link';
+import Head from 'next/head';
 import React, { useEffect, useContext, useState } from 'react';
 import { ThemeContext } from '../contexts/ThemeContext';
 import { AuthContext } from '../contexts/AuthContext';
@@ -326,6 +327,27 @@ export default function HomePage() {
 
   return (
     <TrackedPage>
+    <Head>
+      <title>ChartSense - Trading Smarter, Together</title>
+      <meta name="description" content="Master trading psychology, technical analysis, and market knowledge with AI-powered tools. Join thousands of traders improving their skills on ChartSense." />
+      
+      {/* Open Graph / Facebook */}
+      <meta property="og:url" content="https://chartsense.trade" />
+      <meta property="og:type" content="website" />
+      <meta property="og:title" content="ChartSense - Trading Smarter, Together" />
+      <meta property="og:description" content="Master trading psychology, technical analysis, and market knowledge with AI-powered tools. Join thousands of traders improving their skills on ChartSense." />
+      <meta property="og:image" content="https://www.chartsense.trade/images/banner.png?v=2" />
+      <meta property="og:image:width" content="1024" />
+      <meta property="og:image:height" content="1024" />
+      <meta property="og:site_name" content="ChartSense" />
+      
+      {/* Twitter */}
+      <meta name="twitter:card" content="summary_large_image" />
+      <meta name="twitter:site" content="@chartsense" />
+      <meta name="twitter:title" content="ChartSense - Trading Smarter, Together" />
+      <meta name="twitter:description" content="Master trading psychology, technical analysis, and market knowledge with AI-powered tools. Join thousands of traders improving their skills on ChartSense." />
+      <meta name="twitter:image" content="https://www.chartsense.trade/images/banner.png?v=2" />
+    </Head>
     <div style={{
       maxWidth: '1440px',
       margin: '0 auto',

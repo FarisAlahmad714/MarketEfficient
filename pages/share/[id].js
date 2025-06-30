@@ -12,8 +12,12 @@ const SharePage = ({ shareData: initialShareData, shareId }) => {
   // Use server-side data, no need for client-side fetching
   const shareData = initialShareData;
   const id = shareId;
-  const loading = false;
+  const loading = !shareData; // Only show loading if no data
   const error = null;
+
+  // Debug logging
+  console.log('SharePage props:', { shareData, shareId });
+  console.log('Loading state:', loading);
 
   const getShareUrl = () => {
     const domain = process.env.NODE_ENV === 'production' ? 'https://chartsense.trade' : (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000');
@@ -23,29 +27,39 @@ const SharePage = ({ shareData: initialShareData, shareId }) => {
   const getMetaTitle = () => {
     if (!shareData) return 'Shared Achievement - ChartSense';
     
-    if (shareData.type === 'achievement') {
-      return `${shareData.username} earned "${shareData.title}" - ChartSense`;
-    } else if (shareData.type === 'test_result') {
-      return `${shareData.username} scored ${shareData.percentage}% on ${shareData.testType} - ChartSense`;
-    } else if (shareData.type === 'trading_highlight') {
-      const returnText = shareData.return > 0 ? `+${shareData.return.toFixed(1)}%` : `${shareData.return.toFixed(1)}%`;
-      return `${shareData.username}'s ${shareData.symbol} trade: ${returnText} - ChartSense`;
+    try {
+      if (shareData.type === 'achievement') {
+        return `${shareData.username} earned "${shareData.title}" - ChartSense`;
+      } else if (shareData.type === 'test_result') {
+        return `${shareData.username} scored ${shareData.percentage}% on ${shareData.testType} - ChartSense`;
+      } else if (shareData.type === 'trading_highlight') {
+        const returnText = shareData.return > 0 ? `+${shareData.return.toFixed(1)}%` : `${shareData.return.toFixed(1)}%`;
+        return `${shareData.username}'s ${shareData.symbol} trade: ${returnText} - ChartSense`;
+      }
+      return 'Shared Achievement - ChartSense';
+    } catch (error) {
+      console.error('Error generating meta title:', error);
+      return 'Shared Achievement - ChartSense';
     }
-    return 'Shared Achievement - ChartSense';
   };
 
   const getMetaDescription = () => {
     if (!shareData) return 'Check out this achievement on ChartSense!';
     
-    if (shareData.type === 'achievement') {
-      return `${shareData.username} earned "${shareData.title}" on MarketEfficient! ${shareData.description}`;
-    } else if (shareData.type === 'test_result') {
-      return `${shareData.username} scored ${shareData.percentage}% on ${shareData.testType}. Score: ${shareData.score}/${shareData.totalPoints}`;
-    } else if (shareData.type === 'trading_highlight') {
-      const returnText = shareData.return > 0 ? `+${shareData.return.toFixed(1)}%` : `${shareData.return.toFixed(1)}%`;
-      return `${shareData.username} achieved ${returnText} return on ${shareData.symbol} trade on MarketEfficient!`;
+    try {
+      if (shareData.type === 'achievement') {
+        return `${shareData.username} earned "${shareData.title}" on MarketEfficient! ${shareData.description}`;
+      } else if (shareData.type === 'test_result') {
+        return `${shareData.username} scored ${shareData.percentage}% on ${shareData.testType}. Score: ${shareData.score}/${shareData.totalPoints}`;
+      } else if (shareData.type === 'trading_highlight') {
+        const returnText = shareData.return > 0 ? `+${shareData.return.toFixed(1)}%` : `${shareData.return.toFixed(1)}%`;
+        return `${shareData.username} achieved ${returnText} return on ${shareData.symbol} trade on MarketEfficient!`;
+      }
+      return 'Check out this achievement on ChartSense!';
+    } catch (error) {
+      console.error('Error generating meta description:', error);
+      return 'Check out this achievement on ChartSense!';
     }
-    return 'Check out this achievement on ChartSense!';
   };
 
   const getScoreColor = (score) => {
