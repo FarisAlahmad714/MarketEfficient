@@ -23,9 +23,29 @@ async function getProfileImageHandler(req, res) {
 
   } catch (error) {
     console.error('Error getting profile image:', error);
-    return res.status(500).json({ 
-      error: 'Failed to get profile image.',
-      details: error.message 
+    console.error('User ID:', userId);
+    console.error('GCS Path:', user?.profileImageGcsPath);
+    
+    // Provide specific error messages based on error type
+    let errorMessage = 'Failed to get profile image';
+    let statusCode = 500;
+    
+    if (error.message.includes('File not found')) {
+      errorMessage = 'Profile image file not found in storage';
+      statusCode = 404;
+    } else if (error.message.includes('Permission denied') || error.code === 403) {
+      errorMessage = 'Storage access permission denied';
+      statusCode = 403;
+    } else if (error.message.includes('not initialized')) {
+      errorMessage = 'Storage service not properly configured';
+      statusCode = 500;
+    }
+    
+    return res.status(statusCode).json({ 
+      error: errorMessage,
+      details: error.message,
+      userId: userId,
+      gcsPath: user?.profileImageGcsPath
     });
   }
 }

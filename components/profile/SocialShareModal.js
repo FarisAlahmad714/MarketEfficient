@@ -39,7 +39,7 @@ const SocialShareModal = ({
     if (!shareData) return;
 
     const baseText = getBaseText(shareData);
-    const hashtags = '\n\n#TradingSkills #MarketAnalysis';
+    const hashtags = '';
     const profileLink = profileUrl ? `\n\n${profileUrl}` : '';
     
     setShareText(baseText + hashtags + profileLink);
@@ -51,23 +51,23 @@ const SocialShareModal = ({
     const baseText = getBaseText(shareData);
     
     if (platform === 'twitter') {
-      const hashtags = '\n\n#TradingSkills #MarketAnalysis';
+      const hashtags = '';
       const profileLink = profileUrl ? `\n\n${profileUrl}` : '';
       return baseText + hashtags + profileLink;
       
     } else if (platform === 'linkedin') {
       let linkedinText = '';
       if (shareData.type === 'achievement') {
-        linkedinText = `Excited to share that I've earned the "${shareData.title}" achievement on MarketEfficient! ${shareData.description}\n\nContinuing to develop my trading and market analysis skills through structured learning and practice.\n\n#TradingEducation #ProfessionalDevelopment #MarketAnalysis`;
+        linkedinText = `Excited to share that I've earned the "${shareData.title}" achievement on MarketEfficient! ${shareData.description}\n\nContinuing to develop my trading and market analysis skills through structured learning and practice.`;
       } else if (shareData.type === 'test_result') {
-        linkedinText = `Achieved ${shareData.percentage}% on a ${shareData.testType} assessment on MarketEfficient. Continuing to sharpen my market analysis skills through systematic testing and learning.\n\n#TradingEducation #MarketAnalysis #SkillDevelopment`;
+        linkedinText = `Achieved ${shareData.percentage}% on a ${shareData.testType} assessment on MarketEfficient. Continuing to sharpen my market analysis skills through systematic testing and learning.`;
       } else {
-        linkedinText = baseText + '\n\n#TradingEducation #ProfessionalDevelopment #MarketAnalysis';
+        linkedinText = baseText;
       }
       return linkedinText + (profileUrl ? `\n\nView my profile: ${profileUrl}` : '');
       
     } else if (platform === 'instagram') {
-      return baseText + '\n\n📸 #TradingJourney #MarketLearning #FinanceEducation #TradingLife';
+      return baseText;
     }
 
     return shareText;

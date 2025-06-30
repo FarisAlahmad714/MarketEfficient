@@ -6,6 +6,7 @@ import SandboxTrade from '../../../models/SandboxTrade';
 import SandboxPortfolio from '../../../models/SandboxPortfolio';
 import dbConnect from '../../../lib/database';
 import { getSignedUrlForImage } from '../../../lib/gcs-service';
+import { generateGoalsForPeriod, getCurrentTimeInfo } from '../../../lib/goal-service';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -561,11 +562,11 @@ async function getGoalAchievements(userId) {
     // Get current time info
     const timeInfo = getCurrentTimeInfo();
     
-    // Generate current week and month goals using the same logic as dashboard
-    const weeklyGoals = generateGoalsForPeriod('week', userMetrics, timeInfo);
-    const monthlyGoals = generateGoalsForPeriod('month', userMetrics, timeInfo);
+    // Generate current dashboard goals using the shared goal service
+    const weeklyGoals = generateGoalsForPeriod('week', userMetrics);
+    const monthlyGoals = generateGoalsForPeriod('month', userMetrics);
     
-    // Convert completed goals to achievements
+    // Convert completed goals to achievements (ONLY completed ones)
     const goalAchievements = [];
     
     // Process weekly goals
@@ -582,22 +583,6 @@ async function getGoalAchievements(userId) {
           period: 'week',
           daysRemaining: timeInfo.daysRemainingInWeek,
           earned: true
-        });
-      } else {
-        // Add as available but not earned
-        goalAchievements.push({
-          id: `weekly_${goal.id}`,
-          title: goal.title,
-          description: goal.description,
-          icon: getGoalIcon(goal.id),
-          color: goal.color,
-          rarity: 'goal',
-          period: 'week',
-          target: goal.target,
-          current: goal.current,
-          progress: goal.percentage,
-          daysRemaining: timeInfo.daysRemainingInWeek,
-          earned: false
         });
       }
     });
@@ -616,22 +601,6 @@ async function getGoalAchievements(userId) {
           period: 'month',
           daysRemaining: timeInfo.daysRemainingInMonth,
           earned: true
-        });
-      } else {
-        // Add as available but not earned
-        goalAchievements.push({
-          id: `monthly_${goal.id}`,
-          title: goal.title,
-          description: goal.description,
-          icon: getGoalIcon(goal.id),
-          color: goal.color,
-          rarity: 'goal',
-          period: 'month',
-          target: goal.target,
-          current: goal.current,
-          progress: goal.percentage,
-          daysRemaining: timeInfo.daysRemainingInMonth,
-          earned: false
         });
       }
     });
@@ -691,163 +660,34 @@ async function getUserMetrics(userId) {
 }
 
 // Helper function to get current time info (copied from dashboard logic)
-function getCurrentTimeInfo() {
-  const now = new Date();
-  const currentYear = now.getFullYear();
-  const currentMonth = now.getMonth();
-  const currentDate = now.getDate();
-  
-  // Calculate week number (ISO week - starts on Monday)
-  const startOfYear = new Date(currentYear, 0, 1);
-  const days = Math.floor((now - startOfYear) / (24 * 60 * 60 * 1000));
-  const weekNumber = Math.ceil((days + startOfYear.getDay() + 1) / 7);
-  
-  // Calculate days remaining in week (Sunday is the end of week)
-  const dayOfWeek = now.getDay(); // 0 is Sunday, 6 is Saturday
-  const daysRemainingInWeek = dayOfWeek === 0 ? 0 : 7 - dayOfWeek;
-  
-  // Calculate days remaining in month
-  const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-  const daysRemainingInMonth = lastDayOfMonth - currentDate;
-  
-  // Calculate days remaining in year
-  const lastDayOfYear = new Date(currentYear, 11, 31);
-  const diffTime = Math.abs(lastDayOfYear - now);
-  const daysRemainingInYear = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  
-  // Format names
-  const monthNames = ["January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December"];
-  
-  return {
-    weekNumber,
-    currentMonth: monthNames[currentMonth],
-    currentMonthNumber: currentMonth + 1,
-    currentYear,
-    daysRemainingInWeek,
-    daysRemainingInMonth,
-    daysRemainingInYear,
-    formattedWeek: `Week ${weekNumber} of ${currentYear}`,
-    formattedMonth: `${monthNames[currentMonth]} ${currentYear}`,
-    formattedYear: `${currentYear}`
-  };
-}
+// getCurrentTimeInfo is now provided by the shared goal service
 
-// Helper function to generate goals using dashboard logic
-function generateGoalsForPeriod(period, metrics, timeInfo) {
-  // Seeded random function for deterministic goals
-  const seededRandom = (seed) => {
-    const x = Math.sin(seed) * 10000;
-    return x - Math.floor(x);
-  };
-  
-  // Calculate period seed for deterministic goals
-  let periodSeed;
-  if (period === 'week') {
-    periodSeed = timeInfo.weekNumber + timeInfo.currentYear * 100;
-  } else if (period === 'month') {
-    periodSeed = timeInfo.currentMonthNumber + timeInfo.currentYear * 100;
-  } else {
-    periodSeed = timeInfo.currentYear;
-  }
-  
-  const goals = [];
-  
-  // Get user level
-  const getCurrentLevel = () => {
-    const avgScore = metrics?.summary?.averageScore || 0;
-    if (avgScore >= 85) return 'expert';
-    if (avgScore >= 70) return 'advanced';
-    if (avgScore >= 55) return 'intermediate';
-    if (avgScore >= 40) return 'beginner';
-    return 'novice';
-  };
-  
-  const userLevel = getCurrentLevel();
-  
-  // Calculate percentage and completion message
-  const calculatePercentage = (current, target) => {
-    return Math.min((current / target) * 100, 100);
-  };
-  
-  const getCompletionMessage = (current, target) => {
-    if (current >= target) {
-      return 'Goal completed! 🎉';
-    } else {
-      const remaining = target - current;
-      if (isNaN(remaining)) return 'Start working toward this goal';
-      if (remaining === 1) return '1 more to reach your goal';
-      return `${remaining} more to reach your goal`;
-    }
-  };
-  
-  // 1. TESTS COMPLETION GOAL
-  let testsTarget;
-  if (period === 'week') {
-    const baseTarget = 5;
-    const levelMultipliers = {
-      novice: 1,
-      beginner: 1.2,
-      intermediate: 1.4,
-      advanced: 1.6,
-      expert: 2
-    };
-    testsTarget = Math.round(baseTarget * levelMultipliers[userLevel]);
-    testsTarget = Math.max(testsTarget, 3);
-  } else if (period === 'month') {
-    testsTarget = Math.round(20 + seededRandom(periodSeed) * 10);
-  } else {
-    testsTarget = Math.round(100 + seededRandom(periodSeed) * 50);
-  }
-  
-  const testsCompleted = metrics?.summary?.totalTests || 0;
-  
-  goals.push({
-    id: 'tests-goal',
-    title: `Complete ${testsTarget} Tests`,
-    description: `Goal to complete at least ${testsTarget} trading tests this ${period}`,
-    current: testsCompleted,
-    target: testsTarget,
-    percentage: calculatePercentage(testsCompleted, testsTarget),
-    message: getCompletionMessage(testsCompleted, testsTarget),
-    color: '#2196F3'
-  });
-  
-  // 2. SCORE IMPROVEMENT GOAL
-  let scoreTarget;
-  if (period === 'week') {
-    scoreTarget = Math.round(60 + seededRandom(periodSeed * 2) * 10);
-  } else if (period === 'month') {
-    scoreTarget = Math.round(70 + seededRandom(periodSeed * 2) * 10);
-  } else {
-    scoreTarget = Math.round(80 + seededRandom(periodSeed * 2) * 10);
-  }
-  
-  const currentScore = metrics?.summary?.averageScore || 0;
-  
-  goals.push({
-    id: 'score-goal',
-    title: `Reach ${scoreTarget}% Average Score`,
-    description: `Goal to achieve an average score of at least ${scoreTarget}% across all your trading tests this ${period}`,
-    current: currentScore,
-    target: scoreTarget,
-    percentage: calculatePercentage(currentScore, scoreTarget),
-    message: currentScore >= scoreTarget 
-      ? 'Goal completed! 🎉' 
-      : `${(scoreTarget - currentScore).toFixed(1)}% improvement needed`,
-    color: '#4CAF50'
-  });
-  
-  return goals;
-}
+// Goals are now generated using the shared goal service
 
 // Helper function to get goal icon based on goal ID
 function getGoalIcon(goalId) {
   const iconMap = {
+    'volume_basic': '📝',
+    'volume_daily': '🗓️',
+    'score_improvement': '🎯',
+    'score_streak': '🔥',
+    'skill_mastery': '🧙‍♂️',
+    'skill_focus': '🎨',
+    'perfect_challenge': '💎',
+    'speed_challenge': '⚡',
+    'weak_area_focus': '📈',
+    'comeback_challenge': '🔄',
+    'variety_explorer': '🌟',
+    'new_territory': '🗺️',
+    'efficiency_master': '⚙️',
+    'knowledge_synthesis': '🧩',
+    'leaderboard_climb': '🏆',
+    'milestone_hunter': '🎖️',
+    // Legacy support
     'tests-goal': '📝',
     'score-goal': '🎯',
-    'focus-type-goal': '🎨',
-    'diversity-goal': '🌟'
+    'bias-goal': '🧠',
+    'perfect-goal': '💎'
   };
   return iconMap[goalId] || '🏆';
 }

@@ -38,7 +38,7 @@ const nextConfig = {
                 "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; " +
                 "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; " +
                 "img-src 'self' data: https: blob:; " +
-                "connect-src 'self' https://api.coingecko.com https://www.alphavantage.co https://firebase.googleapis.com https://firebaseinstallations.googleapis.com https://www.google-analytics.com https://o4509453821804544.ingest.us.sentry.io https://*.sentry.io; " +
+                "connect-src 'self' https://api.coingecko.com https://www.alphavantage.co https://firebase.googleapis.com https://firebaseinstallations.googleapis.com https://www.google-analytics.com https://o4509453821804544.ingest.us.sentry.io https://*.sentry.io https://storage.googleapis.com; " +
                 "frame-ancestors 'none'; " +
                 "base-uri 'self'; " +
                 "form-action 'self'; " +
@@ -48,7 +48,7 @@ const nextConfig = {
                 "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; " +
                 "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; " +
                 "img-src 'self' data: https: blob:; " +
-                "connect-src 'self' https://api.coingecko.com https://www.alphavantage.co https://firebase.googleapis.com https://firebaseinstallations.googleapis.com https://www.google-analytics.com https://o4509453821804544.ingest.us.sentry.io https://*.sentry.io; " +
+                "connect-src 'self' https://api.coingecko.com https://www.alphavantage.co https://firebase.googleapis.com https://firebaseinstallations.googleapis.com https://www.google-analytics.com https://o4509453821804544.ingest.us.sentry.io https://*.sentry.io https://storage.googleapis.com; " +
                 "frame-ancestors 'none'; " +
                 "base-uri 'self'; " +
                 "form-action 'self'; " +

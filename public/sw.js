@@ -13,6 +13,11 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
+  // Skip service worker for Google Cloud Storage image requests
+  if (event.request.url.includes('storage.googleapis.com')) {
+    return;
+  }
+  
   event.respondWith(
     caches.match(event.request)
       .then((response) => {

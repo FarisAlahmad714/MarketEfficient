@@ -6,7 +6,7 @@ const AchievementGrid = ({
   achievements = [], 
   darkMode = false, 
   isOwnProfile = false,
-  onShareAchievement = null 
+  onShareAchievement = null
 }) => {
   const [selectedAchievement, setSelectedAchievement] = useState(null);
 

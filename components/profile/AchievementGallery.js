@@ -8,17 +8,69 @@ const AchievementGallery = ({
   darkMode = false, 
   isOwnProfile = false,
   onShareAchievement = null,
-  type = 'lifetime' // 'lifetime' or 'goals'
+  type = 'lifetime', // 'lifetime' or 'goals'
+  userMetrics = null // User metrics for goal generation
 }) => {
   const [selectedAchievement, setSelectedAchievement] = useState(null);
   const [filter, setFilter] = useState('all'); // 'all', 'earned', 'unearned'
+  const [timeframe, setTimeframe] = useState('week'); // 'week', 'month', 'year' for goals
+
+  // Generate mock goals for different timeframes (simplified approach)
+  const generateTimeframeGoals = (period) => {
+    const baseGoals = [
+      {
+        id: `${period}_tests`,
+        title: `Complete ${period === 'week' ? '5' : period === 'month' ? '20' : '100'} Tests`,
+        description: `Complete tests this ${period}`,
+        icon: '📝',
+        color: '#2196F3',
+        rarity: 'goal',
+        period: period
+      },
+      {
+        id: `${period}_score`,
+        title: `Reach ${period === 'week' ? '70' : period === 'month' ? '75' : '80'}% Average Score`,
+        description: `Achieve average score this ${period}`,
+        icon: '🎯',
+        color: '#FF6B35',
+        rarity: 'goal',
+        period: period
+      },
+      {
+        id: `${period}_bias`,
+        title: `Complete ${period === 'week' ? '3' : period === 'month' ? '8' : '20'} Bias Tests`,
+        description: `Complete bias tests this ${period}`,
+        icon: '🧠',
+        color: '#9B59B6',
+        rarity: 'goal',
+        period: period
+      }
+    ];
+
+    if (period === 'week') {
+      baseGoals.push({
+        id: 'week_perfect',
+        title: 'Get 1 Perfect Score',
+        description: 'Achieve a perfect score this week',
+        icon: '💎',
+        color: '#FFD700',
+        rarity: 'goal',
+        period: 'week'
+      });
+    }
+
+    return baseGoals;
+  };
 
   // Create a map of earned achievements by ID
   const earnedAchievementIds = new Set(achievements.map(a => a.id));
 
+  // For goals type, generate goals for timeframe; for lifetime, use availableAchievements
+  const baseAchievements = type === 'goals' ? generateTimeframeGoals(timeframe) : availableAchievements;
+
   // Merge available achievements with earned status
-  const allAchievements = availableAchievements.map(available => {
-    const earned = achievements.find(a => a.id === available.id);
+  const allAchievements = baseAchievements.map(available => {
+    const earned = achievements.find(a => a.id.includes(available.id.split('_')[1]) || a.id === available.id);
     return {
       ...available,
       earned: !!earned,
@@ -87,6 +139,81 @@ const AchievementGallery = ({
   return (
     <>
       <div style={{ marginBottom: '20px' }}>
+        {/* Timeframe Selector (Goals Only) */}
+        {type === 'goals' && (
+          <>
+            <div style={{
+              display: 'flex',
+              gap: '10px',
+              marginBottom: '15px',
+              justifyContent: 'center',
+              flexWrap: 'wrap'
+            }}>
+              {['week', 'month', 'year'].map(period => (
+                <button
+                  key={period}
+                  onClick={() => setTimeframe(period)}
+                  style={{
+                    backgroundColor: timeframe === period ? '#4CAF50' : (darkMode ? '#333' : '#f5f5f5'),
+                    color: timeframe === period ? 'white' : (darkMode ? '#e0e0e0' : '#333'),
+                    border: 'none',
+                    borderRadius: '20px',
+                    padding: '10px 20px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    textTransform: 'capitalize',
+                    transition: 'all 0.2s ease',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '5px'
+                  }}
+                >
+                  <FaCalendarAlt size={12} />
+                  {period === 'week' ? 'This Week' : period === 'month' ? 'This Month' : 'This Year'}
+                </button>
+              ))}
+            </div>
+            
+            {/* Days Remaining Display */}
+            <div style={{
+              textAlign: 'center',
+              marginBottom: '20px',
+              padding: '8px 16px',
+              backgroundColor: darkMode ? 'rgba(33, 150, 243, 0.2)' : 'rgba(33, 150, 243, 0.1)',
+              borderRadius: '20px',
+              color: '#2196F3',
+              fontSize: '14px',
+              fontWeight: '500',
+              display: 'inline-block',
+              margin: '0 auto 20px auto'
+            }}>
+              <FaCalendarAlt size={12} style={{ marginRight: '6px' }} />
+              {(() => {
+                const now = new Date();
+                if (timeframe === 'week') {
+                  const daysRemaining = 7 - now.getDay();
+                  return daysRemaining === 0 ? 'Last day of the week' : 
+                         daysRemaining === 1 ? '1 day remaining' : 
+                         `${daysRemaining} days remaining`;
+                } else if (timeframe === 'month') {
+                  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+                  const daysRemaining = lastDay - now.getDate();
+                  return daysRemaining === 0 ? 'Last day of the month' : 
+                         daysRemaining === 1 ? '1 day remaining' : 
+                         `${daysRemaining} days remaining`;
+                } else {
+                  const lastDay = new Date(now.getFullYear(), 11, 31);
+                  const daysRemaining = Math.ceil((lastDay - now) / (1000 * 60 * 60 * 24));
+                  return daysRemaining === 0 ? 'Last day of the year' : 
+                         daysRemaining === 1 ? '1 day remaining' : 
+                         `${daysRemaining} days remaining`;
+                }
+              })()}
+            </div>
+          </>
+        )}
+
         {/* Filter Buttons */}
         <div style={{
           display: 'flex',

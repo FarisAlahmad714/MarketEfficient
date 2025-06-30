@@ -16,6 +16,7 @@ const DashboardCharts = dynamic(() => import('../components/dashboard/DashboardC
 import TrackedPage from '../components/TrackedPage';
 import logging from '../lib/logger'; // Import your logging utility
 import storage from '../lib/storage';
+import { generateGoalsForPeriod, getRemainingTimeText } from '../lib/goal-service';
 
 // Info tooltip component
 const InfoTooltip = ({ text, darkMode, position = 'top' }) => {
@@ -727,7 +728,7 @@ if (data && data.summary && data.summary.testsByType) {
                   fontSize: '0.9rem'
                 }}>
                   <Clock size={16} style={{ marginRight: '6px' }} />
-                  {getRemainingTimeText(timeInfo, goalTimeframe)}
+                  {getRemainingTimeText(goalTimeframe)}
                 </div>
                 
                 <div style={{ display: 'flex', gap: '10px' }}>
@@ -782,7 +783,7 @@ if (data && data.summary && data.summary.testsByType) {
               gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
               gap: '20px'
             }}>
-              {getGoalsByPeriod(goalTimeframe, metrics, darkMode).map((goal) => (
+              {generateGoalsForPeriod(goalTimeframe, metrics).map((goal) => (
                 <div
                   key={goal.id}
                   style={{
@@ -1055,257 +1056,9 @@ const seededRandom = (seed) => {
   return x - Math.floor(x);
 };
 
-/**
- * Generates a set of goals based on the current period, user metrics, and seed
- */
-const getGoalsByPeriod = (period, metrics, darkMode) => {
-  // Get base seed values from current time periods
-  const timeInfo = getTimeInfo();
-  
-  // Different seeds for different periods
-  let periodSeed;
-  if (period === 'week') {
-    periodSeed = timeInfo.weekNumber + timeInfo.currentYear * 100;
-  } else if (period === 'month') {
-    periodSeed = timeInfo.currentMonthNumber + timeInfo.currentYear * 100;
-  } else {
-    periodSeed = timeInfo.currentYear;
-  }
-  
-  // Initialize goals array
-  const goals = [];
-  
-  // Get the user's current level based on average score
-  const getCurrentLevel = () => {
-    const avgScore = metrics?.summary?.averageScore || 0;
-    if (avgScore >= 85) return 'expert';
-    if (avgScore >= 70) return 'advanced';
-    if (avgScore >= 55) return 'intermediate';
-    if (avgScore >= 40) return 'beginner';
-    return 'novice';
-  };
-  
-  const userLevel = getCurrentLevel();
-  const hasTestData = metrics?.summary?.totalTests > 0;
-  
-  // Calculate percentage of goal completed
-  const calculatePercentage = (current, target) => {
-    return Math.min((current / target) * 100, 100);
-  };
-  
-  // Determine completion status message
-  const getCompletionMessage = (current, target) => {
-    if (current >= target) {
-      return 'Goal completed! 🎉';
-    } else {
-      const remaining = target - current;
-      if (isNaN(remaining)) return 'Start working toward this goal';
-      if (remaining === 1) return '1 more to reach your goal';
-      return `${remaining} more to reach your goal`;
-    }
-  };
-  
-  // 1. TESTS COMPLETION GOAL
-  let testsTarget;
-  if (period === 'week') {
-    // Weekly test targets (scale with user level)
-    const baseTarget = 5;
-    const levelMultipliers = {
-      novice: 1,
-      beginner: 1.2,
-      intermediate: 1.4,
-      advanced: 1.6,
-      expert: 2
-    };
-    testsTarget = Math.round(baseTarget * levelMultipliers[userLevel]);
-    testsTarget = Math.max(testsTarget, 3); // Minimum 3 tests per week
-  } else if (period === 'month') {
-    // Monthly test targets
-    testsTarget = Math.round(20 + seededRandom(periodSeed) * 10);
-  } else {
-    // Yearly test targets
-    testsTarget = Math.round(100 + seededRandom(periodSeed) * 50);
-  }
-  
-  // Only count tests from the current period
-  const testsCompleted = metrics?.summary?.totalTests || 0;
-  
-  goals.push({
-    id: 'tests-goal',
-    title: `Complete ${testsTarget} Tests`,
-    description: `Goal to complete at least ${testsTarget} trading tests this ${period}`,
-    current: testsCompleted,
-    target: testsTarget,
-    percentage: calculatePercentage(testsCompleted, testsTarget),
-    message: getCompletionMessage(testsCompleted, testsTarget),
-    color: '#2196F3' // Blue
-  });
-  
-  // 2. SCORE IMPROVEMENT GOAL
-  let scoreTarget;
-  if (period === 'week') {
-    // Weekly score targets (more achievable)
-    scoreTarget = Math.round(60 + seededRandom(periodSeed * 2) * 10);
-  } else if (period === 'month') {
-    // Monthly score targets (more challenging)
-    scoreTarget = Math.round(70 + seededRandom(periodSeed * 2) * 10);
-  } else {
-    // Yearly score targets (very challenging)
-    scoreTarget = Math.round(80 + seededRandom(periodSeed * 2) * 10);
-  }
-  
-  // Current score from metrics
-  const currentScore = metrics?.summary?.averageScore || 0;
-  
-  goals.push({
-    id: 'score-goal',
-    title: `Reach ${scoreTarget}% Average Score`,
-    description: `Goal to achieve an average score of at least ${scoreTarget}% across all your trading tests this ${period}`,
-    current: currentScore,
-    target: scoreTarget,
-    percentage: calculatePercentage(currentScore, scoreTarget),
-    message: currentScore >= scoreTarget 
-      ? 'Goal completed! 🎉' 
-      : `${(scoreTarget - currentScore).toFixed(1)}% improvement needed`,
-    color: getScoreColor(currentScore, darkMode)
-  });
-  
-  // 3. TEST TYPE DIVERSITY GOAL 
-  // For weekly, focus on specific test types
-  if (period === 'week') {
-    // Select a random test type to focus on
-    const testTypes = ['bias-test', 'chart-exam', 'swing-analysis', 'fibonacci-retracement', 'fair-value-gaps'];
-    const randomIndex = Math.floor(seededRandom(periodSeed * 3) * testTypes.length);
-    const focusTestType = testTypes[randomIndex];
-    const formattedType = formatTestType(focusTestType);
-    
-    const typesCompleted = metrics?.summary?.testsByType?.[focusTestType]?.count || 0;
-    const typeTarget = Math.round(3 + seededRandom(periodSeed * 3) * 2);
-    
-    goals.push({
-      id: 'focus-type-goal',
-      title: `Complete ${typeTarget} ${formattedType}s`,
-      description: `Focus on ${formattedType} this week to develop expertise in this specific area`,
-      current: typesCompleted,
-      target: typeTarget,
-      percentage: calculatePercentage(typesCompleted, typeTarget),
-      message: getCompletionMessage(typesCompleted, typeTarget),
-      color: '#9C27B0' // Purple
-    });
-  } else {
-    // For monthly and yearly, focus on diversity
-    let diversityTarget;
-    if (period === 'month') {
-      diversityTarget = 5; // All test types in a month
-    } else {
-      diversityTarget = 5; // All test types in a year
-    }
-    
-    // Count unique test types taken
-    const uniqueTypesTaken = Object.keys(metrics?.summary?.testsByType || {}).length;
-    
-    goals.push({
-      id: 'diversity-goal',
-      title: 'Try All Test Types',
-      description: `Goal to try all ${diversityTarget} test types to develop well-rounded trading skills`,
-      current: uniqueTypesTaken,
-      target: diversityTarget,
-      percentage: calculatePercentage(uniqueTypesTaken, diversityTarget),
-      message: getCompletionMessage(uniqueTypesTaken, diversityTarget),
-      color: '#9C27B0' // Purple
-    });
-  }
-  
-  // 4. PERIOD-SPECIFIC GOAL
-  if (period === 'week') {
-    // Weekly - Perfect Score Challenge
-    const perfectScores = hasTestData ? Math.floor(seededRandom(periodSeed * 5) * 2) : 0;
-    
-    goals.push({
-      id: 'perfect-score-goal',
-      title: 'Get 1 Perfect Score',
-      description: 'Goal to achieve a 100% score on at least one test this week',
-      current: perfectScores,
-      target: 1,
-      percentage: calculatePercentage(perfectScores, 1),
-      message: perfectScores >= 1 
-        ? 'Goal completed! 🎉' 
-        : 'Achieve a perfect score on any test',
-      color: '#E91E63' // Pink
-    });
-  } else if (period === 'month') {
-    // Monthly - Improvement Goal
-    // This would ideally compare to previous month's average
-    const previousAvg = hasTestData ? (currentScore - (5 + seededRandom(periodSeed) * 10)) : 0;
-    const improvementTarget = 5; // 5% improvement
-    const improvement = currentScore - previousAvg;
-    
-    goals.push({
-      id: 'improvement-goal',
-      title: `Improve by ${improvementTarget}%`,
-      description: 'Goal to improve your average score by 5% compared to last month',
-      current: improvement,
-      target: improvementTarget,
-      percentage: calculatePercentage(improvement, improvementTarget),
-      message: improvement >= improvementTarget 
-        ? 'Goal completed! 🎉' 
-        : `${(improvementTarget - improvement).toFixed(1)}% more improvement needed`,
-      color: '#00BCD4' // Cyan
-    });
-  } else {
-    // Yearly - Mastery Goal
-    // Choose a random test type to master
-    const testTypes = ['bias-test', 'chart-exam', 'swing-analysis', 'fibonacci-retracement', 'fair-value-gaps'];
-    const randomIndex = Math.floor(seededRandom(periodSeed * 4) * testTypes.length);
-    const masteryType = testTypes[randomIndex];
-    const formattedMasteryType = formatTestType(masteryType);
-    
-    // Get average score for that type (or a placeholder)
-    const typeScore = metrics?.summary?.testsByType?.[masteryType]?.averageScore || 0;
-    const masteryTarget = 90; // 90% mastery
-    
-    goals.push({
-      id: 'mastery-goal',
-      title: `${formattedMasteryType} Mastery`,
-      description: `Goal to achieve mastery level (${masteryTarget}%+) in ${formattedMasteryType}s this year`,
-      current: typeScore,
-      target: masteryTarget,
-      percentage: calculatePercentage(typeScore, masteryTarget),
-      message: typeScore >= masteryTarget 
-        ? 'Goal completed! 🎉' 
-        : `${(masteryTarget - typeScore).toFixed(1)}% more to achieve mastery`,
-      color: '#673AB7' // Deep Purple
-    });
-  }
-    
-  return goals;
-};
+// Goals are now generated using the shared goal service
 
 
-// Get remaining time text based on active timeframe
-const getRemainingTimeText = (timeInfo, activeTimeframe) => {
-  if (activeTimeframe === 'week') {
-    const days = timeInfo.daysRemainingInWeek;
-    return days === 0 
-      ? 'Last day of the week' 
-      : days === 1 
-        ? '1 day remaining'
-        : `${days} days remaining`;
-  } else if (activeTimeframe === 'month') {
-    const days = timeInfo.daysRemainingInMonth;
-    return days === 0 
-      ? 'Last day of the month' 
-      : days === 1 
-        ? '1 day remaining'
-        : `${days} days remaining`;
-  } else {
-    const days = timeInfo.daysRemainingInYear;
-    return days === 0 
-      ? 'Last day of the year' 
-      : days === 1 
-        ? '1 day remaining'
-        : `${days} days remaining`;
-  }
-};
+// Time remaining text is now provided by the shared goal service
 
 export default Dashboard;

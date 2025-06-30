@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import Image from 'next/image';
 
 const ProfileAvatar = ({ 
@@ -43,7 +43,9 @@ const ProfileAvatar = ({
     ...style
   };
 
-  if (imageUrl) {
+  const [imageError, setImageError] = useState(false);
+
+  if (imageUrl && !imageError) {
     return (
       <div className={className} style={avatarStyle}>
         <Image
@@ -57,8 +59,8 @@ const ProfileAvatar = ({
           }}
           sizes={`${size}px`}
           onError={(e) => {
-            // Hide the image if it fails to load
-            e.target.style.display = 'none';
+            console.log(`ProfileAvatar: Image failed to load for ${name}: ${imageUrl}`);
+            setImageError(true);
           }}
         />
         {/* Fallback in case image fails to load */}

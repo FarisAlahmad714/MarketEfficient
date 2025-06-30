@@ -45,9 +45,28 @@ export default async function handler(req, res) {
 
   } catch (error) {
     logger.error('Error generating signed URL:', error);
-    return res.status(500).json({ 
-      error: 'Failed to generate signed URL',
-      details: error.message 
+    logger.error('GCS Path:', gcsPath);
+    logger.error('User ID:', userId);
+    
+    // Provide specific error messages based on error type
+    let errorMessage = 'Failed to generate signed URL';
+    let statusCode = 500;
+    
+    if (error.message.includes('File not found')) {
+      errorMessage = 'Profile image not found';
+      statusCode = 404;
+    } else if (error.message.includes('Permission denied') || error.code === 403) {
+      errorMessage = 'Storage access permission denied';
+      statusCode = 403;
+    } else if (error.message.includes('not initialized')) {
+      errorMessage = 'Storage service not properly configured';
+      statusCode = 500;
+    }
+    
+    return res.status(statusCode).json({ 
+      error: errorMessage,
+      details: error.message,
+      gcsPath: gcsPath 
     });
   }
 }

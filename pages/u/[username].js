@@ -216,7 +216,7 @@ const PublicProfilePage = () => {
         <meta property="og:site_name" content="MarketEfficient" />
         
         {/* Open Graph image */}
-        <meta property="og:image" content="https://www.chartsense.trade/images/logo.webp" />
+        <meta property="og:image" content="https://www.chartsense.trade/images/banner.png" />
         <meta property="og:image:width" content="1024" />
         <meta property="og:image:height" content="1024" />
         <meta property="og:image:alt" content={`${profile.name}'s MarketEfficient trading profile`} />
@@ -226,7 +226,7 @@ const PublicProfilePage = () => {
         <meta name="twitter:site" content="@chartsense" />
         <meta name="twitter:title" content={`${profile.name} (@${profile.username}) - MarketEfficient`} />
         <meta name="twitter:description" content={profile.bio || `Check out ${profile.name}'s trading performance on MarketEfficient!`} />
-        <meta name="twitter:image" content="https://www.chartsense.trade/images/logo.webp" />
+        <meta name="twitter:image" content="https://www.chartsense.trade/images/banner.png" />
       </Head>
 
       <div style={{
@@ -362,19 +362,7 @@ const PublicProfilePage = () => {
                 margin: 0
               }}>
                 🎯 Recent Goal Completions
-                <span style={{
-                  fontSize: '14px',
-                  color: darkMode ? '#888' : '#666',
-                  fontWeight: '400',
-                  padding: '4px 8px',
-                  backgroundColor: darkMode ? 'rgba(33, 150, 243, 0.2)' : 'rgba(33, 150, 243, 0.1)',
-                  borderRadius: '12px'
-                }}>
-                  {profile.achievements?.goals?.length > 0 && profile.achievements.goals[0].daysRemaining !== undefined
-                    ? `${profile.achievements.goals[0].daysRemaining} days remaining`
-                    : 'This Period'
-                  }
-                </span>
+                
               </h3>
               <button
                 onClick={() => setShowGoalAchievementsModal(true)}
@@ -636,6 +624,7 @@ const PublicProfilePage = () => {
               isOwnProfile={isOwnProfile}
               onShareAchievement={handleShareAchievement}
               type="goals"
+              userMetrics={profile?.stats}
             />
           </div>
         </div>

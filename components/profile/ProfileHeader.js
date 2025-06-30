@@ -1,10 +1,12 @@
 // components/profile/ProfileHeader.js
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { useRouter } from 'next/router';
+import Image from 'next/image';
 import { AuthContext } from '../../contexts/AuthContext';
 import { ThemeContext } from '../../contexts/ThemeContext';
-import { FaUser, FaCamera, FaTwitter, FaLinkedin, FaInstagram, FaShare, FaCog, FaCalendarAlt, FaEye, FaEyeSlash, FaEdit } from 'react-icons/fa';
+import { FaUser, FaCamera, FaTwitter, FaLinkedin, FaInstagram, FaShare, FaCog, FaCalendarAlt, FaEye, FaEyeSlash, FaEdit, FaTrophy } from 'react-icons/fa';
 import storage from '../../lib/storage';
+import BadgeModal from '../BadgeModal';
 
 const ProfileHeader = ({ 
   profile, 
@@ -18,7 +20,9 @@ const ProfileHeader = ({
   const router = useRouter();
   
   const [showSettings, setShowSettings] = useState(false);
+  const [showBadgeModal, setShowBadgeModal] = useState(false);
   const [profileImage, setProfileImage] = useState(profile?.profileImageUrl || '');
+  const [imageError, setImageError] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState(null);
@@ -37,6 +41,18 @@ const ProfileHeader = ({
     profileVisibility: 'public', // All profiles are public
     shareResults: true // All users share results
   });
+
+  // Update profile image when profile prop changes
+  useEffect(() => {
+    if (profile?.profileImageUrl && profile.profileImageUrl !== profileImage) {
+      // Add cache-busting parameter to ensure fresh load
+      const imageUrl = profile.profileImageUrl.includes('?') 
+        ? `${profile.profileImageUrl}&v=${Date.now()}`
+        : `${profile.profileImageUrl}?v=${Date.now()}`;
+      setProfileImage(imageUrl);
+      setImageError(false); // Reset error state when new URL is provided
+    }
+  }, [profile?.profileImageUrl]);
 
   // Fetch leaderboard rank
   const fetchLeaderboardRank = async () => {
@@ -307,17 +323,26 @@ const ProfileHeader = ({
           border: `3px solid ${darkMode ? '#555' : '#e0e0e0'}`,
           flexShrink: 0
         }}>
-          {profileImage ? (
-            <img 
-              src={profileImage} 
+          {profileImage && !imageError ? (
+            <Image
+              src={profileImage}
               alt={profile?.name || 'Profile'}
+              fill
               style={{ 
-                width: '100%', 
-                height: '100%', 
                 objectFit: 'cover', 
-                borderRadius: '50%',
-                display: 'block'
-              }} 
+                borderRadius: '50%'
+              }}
+              sizes="120px"
+              onError={(e) => {
+                console.log('Profile image failed to load:', profileImage);
+                setImageError(true);
+                // Hide the broken image
+                e.target.style.display = 'none';
+              }}
+              onLoad={() => {
+                setImageError(false);
+              }}
+              priority={isOwnProfile}
             />
           ) : (
             <FaUser size={50} color={darkMode ? '#666' : '#999'} />
@@ -381,50 +406,72 @@ const ProfileHeader = ({
               {profile?.name || 'Your Name'}
             </h1>
             
-            {isOwnProfile && showActionButtons && (
-              <>
-                <button
-                  onClick={() => router.push('/profile')}
-                  style={{
-                    backgroundColor: 'transparent',
-                    border: `1px solid ${darkMode ? '#555' : '#ddd'}`,
-                    borderRadius: '6px',
-                    padding: '8px 12px',
-                    color: darkMode ? '#e0e0e0' : '#333',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '5px'
-                  }}
-                >
-                  <FaCog size={14} />
-                  Settings
-                </button>
-                
-                <button
-                  onClick={async () => {
-                    if (!showSettings) {
-                      await generateUsernameIfMissing();
-                    }
-                    setShowSettings(!showSettings);
-                  }}
-                  style={{
-                    backgroundColor: 'transparent',
-                    border: `1px solid ${darkMode ? '#555' : '#ddd'}`,
-                    borderRadius: '6px',
-                    padding: '8px 12px',
-                    color: darkMode ? '#e0e0e0' : '#333',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '5px'
-                  }}
-                >
-                  <FaEdit size={14} />
-                  Edit
-                </button>
-              </>
-            )}
+            {/* Action Buttons */}
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              {/* View Badges Button - Available for everyone */}
+              <button
+                onClick={() => setShowBadgeModal(true)}
+                style={{
+                  backgroundColor: 'transparent',
+                  border: `1px solid ${darkMode ? '#555' : '#ddd'}`,
+                  borderRadius: '6px',
+                  padding: '8px 12px',
+                  color: darkMode ? '#e0e0e0' : '#333',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px'
+                }}
+              >
+                <FaTrophy size={14} />
+                View Badges
+              </button>
+
+              {isOwnProfile && showActionButtons && (
+                <>
+                  <button
+                    onClick={() => router.push('/profile')}
+                    style={{
+                      backgroundColor: 'transparent',
+                      border: `1px solid ${darkMode ? '#555' : '#ddd'}`,
+                      borderRadius: '6px',
+                      padding: '8px 12px',
+                      color: darkMode ? '#e0e0e0' : '#333',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '5px'
+                    }}
+                  >
+                    <FaCog size={14} />
+                    Settings
+                  </button>
+                  
+                  <button
+                    onClick={async () => {
+                      if (!showSettings) {
+                        await generateUsernameIfMissing();
+                      }
+                      setShowSettings(!showSettings);
+                    }}
+                    style={{
+                      backgroundColor: 'transparent',
+                      border: `1px solid ${darkMode ? '#555' : '#ddd'}`,
+                      borderRadius: '6px',
+                      padding: '8px 12px',
+                      color: darkMode ? '#e0e0e0' : '#333',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '5px'
+                    }}
+                  >
+                    <FaEdit size={14} />
+                    Edit
+                  </button>
+                </>
+              )}
+            </div>
             
             {onShare && (
               <button
@@ -841,6 +888,14 @@ const ProfileHeader = ({
           </div>
         </div>
       )}
+
+      {/* Badge Modal */}
+      <BadgeModal
+        isOpen={showBadgeModal}
+        onClose={() => setShowBadgeModal(false)}
+        userBadges={profile?.achievements || []}
+        isOwnProfile={isOwnProfile}
+      />
     </div>
   );
 };
