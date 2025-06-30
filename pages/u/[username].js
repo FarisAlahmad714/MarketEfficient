@@ -216,7 +216,7 @@ const PublicProfilePage = () => {
         <meta property="og:site_name" content="MarketEfficient" />
         
         {/* Open Graph image */}
-        <meta property="og:image" content="https://www.chartsense.trade/images/banner.png" />
+        <meta property="og:image" content="https://www.chartsense.trade/images/banner.png?v=2" />
         <meta property="og:image:width" content="1024" />
         <meta property="og:image:height" content="1024" />
         <meta property="og:image:alt" content={`${profile.name}'s MarketEfficient trading profile`} />
@@ -226,7 +226,7 @@ const PublicProfilePage = () => {
         <meta name="twitter:site" content="@chartsense" />
         <meta name="twitter:title" content={`${profile.name} (@${profile.username}) - MarketEfficient`} />
         <meta name="twitter:description" content={profile.bio || `Check out ${profile.name}'s trading performance on MarketEfficient!`} />
-        <meta name="twitter:image" content="https://www.chartsense.trade/images/banner.png" />
+        <meta name="twitter:image" content="https://www.chartsense.trade/images/banner.png?v=2" />
       </Head>
 
       <div style={{

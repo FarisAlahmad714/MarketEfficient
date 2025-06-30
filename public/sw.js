@@ -1,8 +1,8 @@
-const CACHE_NAME = 'chartsense-v2';
+const CACHE_NAME = 'chartsense-v3';
 const urlsToCache = [
   '/',
   '/manifest.json',
-  '/images/logo.webp'
+  '/images/banner.png'
 ];
 
 self.addEventListener('install', (event) => {

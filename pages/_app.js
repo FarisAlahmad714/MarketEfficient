@@ -169,7 +169,7 @@ function MyApp({ Component, pageProps }) {
         <meta property="og:type" content="website" />
         <meta property="og:title" content="ChartSense" />
         <meta property="og:description" content="Trading Smarter, Together." />
-        <meta property="og:image" content="https://www.chartsense.trade/images/banner.png" />
+        <meta property="og:image" content="https://www.chartsense.trade/images/banner.png?v=2" />
         <meta property="og:image:width" content="1024" />
         <meta property="og:image:height" content="1024" />
         <meta property="og:site_name" content="ChartSense" />
@@ -179,7 +179,7 @@ function MyApp({ Component, pageProps }) {
         <meta name="twitter:site" content="@chartsense" />
         <meta name="twitter:title" content="ChartSense" />
         <meta name="twitter:description" content="Trading Smarter, Together." />
-        <meta name="twitter:image" content="https://www.chartsense.trade/images/banner.png" />
+        <meta name="twitter:image" content="https://www.chartsense.trade/images/banner.png?v=2" />
         
         {/* Favicon Links */}
         <link rel="icon" type="image/x-icon" href="/favicon.ico" />
