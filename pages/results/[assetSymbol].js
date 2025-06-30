@@ -1306,7 +1306,10 @@ const Results = () => {
                         fontSize: '20px',
                         fontWeight: '600'
                       }}>
-                        <i className="fas fa-brain" style={{ marginRight: '12px', fontSize: '24px' }}></i>
+                        <i className="fas fa-brain" style={{ 
+                          marginRight: '12px', 
+                          fontSize: window.innerWidth <= 768 ? '18px' : '24px' 
+                        }}></i>
                         AI Trading Analysis
                       </h4>
                       <div 

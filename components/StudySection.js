@@ -884,13 +884,63 @@ const StudySection = () => {
             text-align: center;
           }
 
+          .difficulty-icon {
+            width: 60px;
+            height: 60px;
+            font-size: 1.5rem;
+          }
+
           .benefits-grid {
             grid-template-columns: 1fr;
             padding: 0 20px;
           }
 
+          .benefit-icon {
+            width: 70px;
+            height: 70px;
+            font-size: 1.8rem;
+            margin-bottom: 20px;
+          }
+
           .study-benefits {
             padding: 40px 20px;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .study-header h1 {
+            font-size: 2rem;
+          }
+
+          .study-header p {
+            font-size: 1.1rem;
+          }
+
+          .difficulty-icon {
+            width: 50px;
+            height: 50px;
+            font-size: 1.3rem;
+          }
+
+          .benefit-icon {
+            width: 60px;
+            height: 60px;
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+          }
+
+          .topic-icon {
+            width: 48px;
+            height: 48px;
+            font-size: 1.3rem;
+          }
+
+          .benefits-grid {
+            padding: 0 15px;
+          }
+
+          .study-benefits {
+            padding: 30px 15px;
           }
         }
       `}</style>
