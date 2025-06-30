@@ -1,6 +1,6 @@
 // components/profile/SocialShareModal.js
 import React, { useState, useEffect } from 'react';
-import { FaTwitter, FaLinkedin, FaInstagram, FaCopy, FaTimes, FaShare } from 'react-icons/fa';
+import { FaTwitter, FaLinkedin, FaInstagram, FaFacebook, FaCopy, FaTimes, FaShare } from 'react-icons/fa';
 
 const SocialShareModal = ({ 
   isOpen = false,
@@ -124,6 +124,10 @@ const SocialShareModal = ({
     
     if (platform === 'twitter') {
       window.open(`https://twitter.com/intent/tweet?text=${encodedText}`, '_blank', 'width=600,height=400');
+    } else if (platform === 'facebook') {
+      const linkToUse = shareUrl || profileUrl;
+      const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(linkToUse)}`;
+      window.open(facebookUrl, '_blank', 'width=600,height=400');
     } else if (platform === 'linkedin') {
       const linkedinText = getPlatformSpecificText('linkedin');
       copyToClipboard(linkedinText);
@@ -332,30 +336,72 @@ const SocialShareModal = ({
 
         {/* Platform Buttons */}
         <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-          gap: '12px',
-          marginBottom: '25px'
+          display: 'flex',
+          justifyContent: 'center',
+          gap: '16px',
+          marginBottom: '25px',
+          flexWrap: 'wrap'
         }}>
           <button
             onClick={() => shareToSocial('twitter')}
             style={{
-              backgroundColor: '#1DA1F2',
+              backgroundColor: '#000000',
               color: 'white',
               border: 'none',
-              borderRadius: '8px',
-              padding: '12px 16px',
+              borderRadius: '50%',
+              width: '48px',
+              height: '48px',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              gap: '8px',
-              fontSize: '14px',
-              fontWeight: '500',
-              transition: 'all 0.2s ease'
+              justifyContent: 'center',
+              transition: 'all 0.3s ease',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+              position: 'relative'
             }}
+            onMouseEnter={(e) => {
+              e.target.style.transform = 'scale(1.1)';
+              e.target.style.boxShadow = '0 6px 20px rgba(0, 0, 0, 0.6)';
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.transform = 'scale(1)';
+              e.target.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.4)';
+            }}
+            title="Share on X"
           >
-            <FaTwitter />
-            X / Twitter
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+            </svg>
+          </button>
+          
+          <button
+            onClick={() => shareToSocial('facebook')}
+            style={{
+              backgroundColor: '#1877F2',
+              color: 'white',
+              border: 'none',
+              borderRadius: '50%',
+              width: '48px',
+              height: '48px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'all 0.3s ease',
+              boxShadow: '0 4px 12px rgba(24, 119, 242, 0.4)',
+              position: 'relative'
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.transform = 'scale(1.1)';
+              e.target.style.boxShadow = '0 6px 20px rgba(24, 119, 242, 0.6)';
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.transform = 'scale(1)';
+              e.target.style.boxShadow = '0 4px 12px rgba(24, 119, 242, 0.4)';
+            }}
+            title="Share on Facebook"
+          >
+            <FaFacebook size={18} />
           </button>
           
           <button
@@ -364,19 +410,28 @@ const SocialShareModal = ({
               backgroundColor: '#0077B5',
               color: 'white',
               border: 'none',
-              borderRadius: '8px',
-              padding: '12px 16px',
+              borderRadius: '50%',
+              width: '48px',
+              height: '48px',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              gap: '8px',
-              fontSize: '14px',
-              fontWeight: '500',
-              transition: 'all 0.2s ease'
+              justifyContent: 'center',
+              transition: 'all 0.3s ease',
+              boxShadow: '0 4px 12px rgba(0, 119, 181, 0.4)',
+              position: 'relative'
             }}
+            onMouseEnter={(e) => {
+              e.target.style.transform = 'scale(1.1)';
+              e.target.style.boxShadow = '0 6px 20px rgba(0, 119, 181, 0.6)';
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.transform = 'scale(1)';
+              e.target.style.boxShadow = '0 4px 12px rgba(0, 119, 181, 0.4)';
+            }}
+            title="Share on LinkedIn"
           >
-            <FaLinkedin />
-            LinkedIn
+            <FaLinkedin size={18} />
           </button>
           
           <button
@@ -385,19 +440,28 @@ const SocialShareModal = ({
               background: 'linear-gradient(45deg, #E4405F, #F77737, #FFDC80)',
               color: 'white',
               border: 'none',
-              borderRadius: '8px',
-              padding: '12px 16px',
+              borderRadius: '50%',
+              width: '48px',
+              height: '48px',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              gap: '8px',
-              fontSize: '14px',
-              fontWeight: '500',
-              transition: 'all 0.2s ease'
+              justifyContent: 'center',
+              transition: 'all 0.3s ease',
+              boxShadow: '0 4px 12px rgba(228, 64, 95, 0.4)',
+              position: 'relative'
             }}
+            onMouseEnter={(e) => {
+              e.target.style.transform = 'scale(1.1)';
+              e.target.style.boxShadow = '0 6px 20px rgba(228, 64, 95, 0.6)';
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.transform = 'scale(1)';
+              e.target.style.boxShadow = '0 4px 12px rgba(228, 64, 95, 0.4)';
+            }}
+            title="Share on Instagram"
           >
-            <FaInstagram />
-            Instagram
+            <FaInstagram size={18} />
           </button>
         </div>
 
