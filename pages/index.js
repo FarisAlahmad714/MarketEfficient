@@ -15,7 +15,7 @@ import heroStyles from '../styles/Hero.module.css';
 const FeatureCard = ({ darkMode, icon, title, description, link, linkText, color, accentColor, benefits, videoTitle }) => {
   const IconComponent = icon;
   const videoRef = React.useRef(null);
-  const [isMobile, setIsMobile] = React.useState(false);
+  const [isMobile, setIsMobile] = React.useState(true); // Default to mobile
 
   React.useEffect(() => {
     setIsMobile(window.innerWidth <= 768);
