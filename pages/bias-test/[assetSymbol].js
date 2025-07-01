@@ -51,6 +51,9 @@ export default function AssetTestPage() {
   const [newsLoading, setNewsLoading] = useState(false);
   const [newsProgress, setNewsProgress] = useState({ completed: 0, total: 0 });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showFocusWarning, setShowFocusWarning] = useState(false);
+  const [warningCountdown, setWarningCountdown] = useState(60);
+  const [isKickedOut, setIsKickedOut] = useState(false);
   const [reasoningInputs, setReasoningInputs] = useState({}); // Store reasoning inputs
   const [validationError, setValidationError] = useState(""); // For validation messages
   const [showVolume, setShowVolume] = useState(true); // State to toggle volume display
@@ -354,6 +357,137 @@ export default function AssetTestPage() {
 
   }, [testData?.session_id]);
 
+  // Focus detection for test integrity
+  useEffect(() => {
+    if (!testData || isSubmitting || isKickedOut) return;
+
+    let countdownInterval;
+
+    // Create audio context for sound alerts
+    const playWarningSound = () => {
+      try {
+        // Create AudioContext for beeping sound
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        
+        // Create a more urgent warning sound pattern
+        const playBeep = (frequency, duration, delay = 0) => {
+          setTimeout(() => {
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
+            oscillator.type = 'sine';
+            
+            gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+            gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.01);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + duration);
+          }, delay);
+        };
+        
+        // Play urgent beep pattern (high-low-high)
+        playBeep(800, 0.2, 0);    // High beep
+        playBeep(400, 0.2, 250);  // Low beep  
+        playBeep(800, 0.3, 500);  // High beep (longer)
+        
+      } catch (error) {
+        console.log('Audio not supported or blocked:', error);
+        // Fallback: try to vibrate on mobile
+        if (navigator.vibrate) {
+          navigator.vibrate([200, 100, 200, 100, 400]);
+        }
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden || document.visibilityState === 'hidden') {
+        // User left the tab - show warning modal with countdown and play sound
+        setShowFocusWarning(true);
+        setWarningCountdown(60);
+        playWarningSound();
+        
+        countdownInterval = setInterval(() => {
+          setWarningCountdown(prev => {
+            if (prev <= 1) {
+              // Time's up - kick them out
+              clearInterval(countdownInterval);
+              setIsKickedOut(true);
+              setShowFocusWarning(false);
+              return 0;
+            }
+            // Play sound every 10 seconds as reminder
+            if (prev % 10 === 0 && prev > 1) {
+              playWarningSound();
+            }
+            return prev - 1;
+          });
+        }, 1000);
+      } else if (!document.hidden && document.visibilityState === 'visible') {
+        // User came back - clear countdown but keep modal until they click continue
+        if (countdownInterval) {
+          clearInterval(countdownInterval);
+          countdownInterval = null;
+        }
+      }
+    };
+
+    const handleWindowBlur = () => {
+      // User switched to another window/app
+      if (!document.hidden) {
+        setShowFocusWarning(true);
+        setWarningCountdown(60);
+        playWarningSound();
+        
+        countdownInterval = setInterval(() => {
+          setWarningCountdown(prev => {
+            if (prev <= 1) {
+              clearInterval(countdownInterval);
+              setIsKickedOut(true);
+              setShowFocusWarning(false);
+              return 0;
+            }
+            // Play sound every 10 seconds as reminder
+            if (prev % 10 === 0 && prev > 1) {
+              playWarningSound();
+            }
+            return prev - 1;
+          });
+        }, 1000);
+      }
+    };
+
+    const handleWindowFocus = () => {
+      // User came back to window - clear countdown
+      if (countdownInterval) {
+        clearInterval(countdownInterval);
+        countdownInterval = null;
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('blur', handleWindowBlur);
+    window.addEventListener('focus', handleWindowFocus);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('blur', handleWindowBlur);
+      window.removeEventListener('focus', handleWindowFocus);
+      if (countdownInterval) {
+        clearInterval(countdownInterval);
+      }
+    };
+  }, [testData, isSubmitting, isKickedOut]);
+
+  const handleContinueTest = () => {
+    setShowFocusWarning(false);
+    setWarningCountdown(60);
+  };
+
   const handleAnswerSelect = async (questionId, prediction) => {
     setUserAnswers(prev => ({
       ...prev,
@@ -598,6 +732,62 @@ export default function AssetTestPage() {
     question.ohlc_data && 
     question.ohlc_data.some(candle => candle.volume > 0)
   );
+
+  // Show kicked out screen
+  if (isKickedOut) {
+    return (
+      <div style={{ 
+        minHeight: '100vh', 
+        backgroundColor: darkMode ? '#1a1a1a' : '#f5f5f5', 
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '20px'
+      }}>
+        <div style={{
+          backgroundColor: darkMode ? '#2d1b1b' : '#ffebee',
+          border: `2px solid ${darkMode ? '#d32f2f' : '#e57373'}`,
+          borderRadius: '12px',
+          padding: '40px',
+          textAlign: 'center',
+          maxWidth: '500px',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.3)'
+        }}>
+          <div style={{ fontSize: '60px', marginBottom: '20px' }}>⚠️</div>
+          <h2 style={{ 
+            color: darkMode ? '#ff5252' : '#d32f2f',
+            marginBottom: '20px',
+            fontSize: '24px'
+          }}>
+            Test Session Terminated
+          </h2>
+          <p style={{ 
+            color: darkMode ? '#e0e0e0' : '#333',
+            marginBottom: '30px',
+            lineHeight: '1.6'
+          }}>
+            Your test session has been terminated due to leaving the test environment. 
+            For test integrity, switching tabs or windows is not permitted during the bias test.
+          </p>
+          <Link
+            href="/bias-test"
+            style={{
+              display: 'inline-block',
+              padding: '12px 24px',
+              backgroundColor: darkMode ? '#1976d2' : '#2196F3',
+              color: 'white',
+              textDecoration: 'none',
+              borderRadius: '8px',
+              fontWeight: 'bold',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            Start New Test
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{
@@ -1090,6 +1280,77 @@ export default function AssetTestPage() {
         onClose={hideModal}
         {...modalProps}
       />
+
+      {/* Focus Warning Modal */}
+      {showFocusWarning && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10000,
+          padding: '20px'
+        }}>
+          <div style={{
+            backgroundColor: darkMode ? '#1e1e1e' : '#ffffff',
+            border: `3px solid ${darkMode ? '#ff9800' : '#ff6f00'}`,
+            borderRadius: '16px',
+            padding: '40px',
+            textAlign: 'center',
+            maxWidth: '500px',
+            boxShadow: '0 12px 32px rgba(0,0,0,0.5)'
+          }}>
+            <div style={{ fontSize: '80px', marginBottom: '20px' }}>⚠️</div>
+            <h2 style={{ 
+              color: darkMode ? '#ff9800' : '#ff6f00',
+              marginBottom: '20px',
+              fontSize: '28px',
+              fontWeight: 'bold'
+            }}>
+              Return to Test!
+            </h2>
+            <p style={{ 
+              color: darkMode ? '#e0e0e0' : '#333',
+              marginBottom: '30px',
+              lineHeight: '1.6',
+              fontSize: '18px'
+            }}>
+              You have left the test environment. Please return to the test immediately.
+            </p>
+            <div style={{
+              fontSize: '48px',
+              fontWeight: 'bold',
+              color: darkMode ? '#ff5252' : '#d32f2f',
+              marginBottom: '30px',
+              fontFamily: 'monospace'
+            }}>
+              {warningCountdown}s
+            </div>
+            <button
+              onClick={handleContinueTest}
+              style={{
+                padding: '16px 32px',
+                backgroundColor: darkMode ? '#4caf50' : '#2e7d32',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '18px',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              Continue Test
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

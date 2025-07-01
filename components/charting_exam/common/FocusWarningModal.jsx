@@ -75,11 +75,55 @@ const FocusWarningModal = ({
 }) => {
   const [timeLeft, setTimeLeft] = useState(warningSeconds);
 
+  // Create audio context for sound alerts
+  const playWarningSound = () => {
+    try {
+      // Create AudioContext for beeping sound
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      
+      // Create a more urgent warning sound pattern
+      const playBeep = (frequency, duration, delay = 0) => {
+        setTimeout(() => {
+          const oscillator = audioContext.createOscillator();
+          const gainNode = audioContext.createGain();
+          
+          oscillator.connect(gainNode);
+          gainNode.connect(audioContext.destination);
+          
+          oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
+          oscillator.type = 'sine';
+          
+          gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+          gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.01);
+          gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+          
+          oscillator.start(audioContext.currentTime);
+          oscillator.stop(audioContext.currentTime + duration);
+        }, delay);
+      };
+      
+      // Play urgent beep pattern (high-low-high)
+      playBeep(800, 0.2, 0);    // High beep
+      playBeep(400, 0.2, 250);  // Low beep  
+      playBeep(800, 0.3, 500);  // High beep (longer)
+      
+    } catch (error) {
+      console.log('Audio not supported or blocked:', error);
+      // Fallback: try to vibrate on mobile
+      if (navigator.vibrate) {
+        navigator.vibrate([200, 100, 200, 100, 400]);
+      }
+    }
+  };
+
   useEffect(() => {
     if (!isVisible) {
       setTimeLeft(warningSeconds);
       return;
     }
+
+    // Play sound when modal first appears
+    playWarningSound();
 
     if (timeLeft <= 0) {
       onTimeout?.();
@@ -91,6 +135,10 @@ const FocusWarningModal = ({
         if (prev <= 1) {
           onTimeout?.();
           return 0;
+        }
+        // Play sound every 10 seconds as reminder
+        if (prev % 10 === 0 && prev > 1) {
+          playWarningSound();
         }
         return prev - 1;
       });
