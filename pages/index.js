@@ -14,6 +14,24 @@ import heroStyles from '../styles/Hero.module.css';
 // Enhanced FeatureCard Component with Clean Design
 const FeatureCard = ({ darkMode, icon, title, description, link, linkText, color, accentColor, benefits, videoTitle }) => {
   const IconComponent = icon;
+  const videoRef = React.useRef(null);
+  const [isMobile, setIsMobile] = React.useState(false);
+
+  React.useEffect(() => {
+    setIsMobile(window.innerWidth <= 768);
+  }, []);
+
+  const handleMouseEnter = () => {
+    if (!isMobile && videoRef.current) {
+      videoRef.current.play().catch(() => {});
+    }
+  };
+
+  const handleMouseLeave = () => {
+    if (!isMobile && videoRef.current) {
+      videoRef.current.pause();
+    }
+  };
   
   return (
     <motion.div
@@ -21,6 +39,8 @@ const FeatureCard = ({ darkMode, icon, title, description, link, linkText, color
       whileInView={{ opacity: 1, y: 0, rotateX: 0 }}
       transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
       viewport={{ once: true }}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
       style={{
         background: darkMode
           ? `linear-gradient(145deg, rgba(15, 15, 15, 0.95), rgba(25, 25, 25, 0.9)), radial-gradient(circle at 30% 30%, ${color}15, transparent 70%)`
@@ -80,11 +100,10 @@ const FeatureCard = ({ darkMode, icon, title, description, link, linkText, color
       {/* Content Container */}
       <div style={{ padding: 'clamp(20px, 4vw, 30px)', display: 'flex', flexDirection: 'column', height: '100%', position: 'relative', zIndex: 2 }}>
         
-        {/* Clean Video Section */}
+        {/* Actual Video Section */}
         <motion.div
           whileHover={{ scale: 1.02 }}
           style={{
-            background: `linear-gradient(135deg, rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.6))`,
             borderRadius: '20px',
             padding: '0',
             marginBottom: '25px',
@@ -92,57 +111,46 @@ const FeatureCard = ({ darkMode, icon, title, description, link, linkText, color
             position: 'relative',
             overflow: 'hidden',
             minHeight: '120px',
-            cursor: 'pointer',
             backdropFilter: 'blur(10px)',
           }}
         >
+          <video
+            ref={videoRef}
+            autoPlay={isMobile}
+            muted
+            loop
+            playsInline
+            preload="auto"
+            style={{
+              width: '100%',
+              height: '120px',
+              objectFit: 'cover',
+              borderRadius: '18px',
+            }}
+          >
+            <source src={`/videos/${getVideoFile(title)}.mp4`} type="video/mp4" />
+            Your browser does not support the video tag.
+          </video>
+          
+          {/* Video Title Overlay */}
           <div style={{
-            background: `linear-gradient(45deg, ${color}40, ${accentColor}60)`,
-            height: '100%',
-            position: 'relative',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
+            position: 'absolute',
+            bottom: '12px',
+            left: '12px',
+            right: '12px',
+            background: 'rgba(0, 0, 0, 0.8)',
+            borderRadius: '8px',
+            padding: '8px 12px',
+            backdropFilter: 'blur(10px)',
           }}>
-            {/* Play Button */}
-            <motion.div
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.95 }}
-              style={{
-                background: 'rgba(255, 255, 255, 0.15)',
-                borderRadius: '50%',
-                width: '60px',
-                height: '60px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                backdropFilter: 'blur(20px)',
-                border: '2px solid rgba(255, 255, 255, 0.3)',
-              }}
-            >
-              <Play size={24} color="#FFFFFF" fill="#FFFFFF" />
-            </motion.div>
-
-            {/* Video Title */}
-            <div style={{
-              position: 'absolute',
-              bottom: '12px',
-              left: '12px',
-              right: '12px',
-              background: 'rgba(0, 0, 0, 0.8)',
-              borderRadius: '8px',
-              padding: '8px 12px',
-              backdropFilter: 'blur(10px)',
+            <span style={{
+              color: '#FFFFFF',
+              fontSize: '13px',
+              fontWeight: 600,
+              lineHeight: 1.2,
             }}>
-              <span style={{
-                color: '#FFFFFF',
-                fontSize: '13px',
-                fontWeight: 600,
-                lineHeight: 1.2,
-              }}>
-                {videoTitle}
-              </span>
-            </div>
+              {videoTitle}
+            </span>
           </div>
         </motion.div>
 
@@ -323,6 +331,18 @@ export async function getStaticProps() {
     revalidate: 3600 // Revalidate every hour
   };
 }
+
+// Helper function to map feature titles to video files
+const getVideoFile = (title) => {
+  const videoMap = {
+    'Comprehensive Study Hub': 'EARTH',
+    'AI-Powered Bias Test': 'FIRE', 
+    'Hands-On Charting Exams': 'RAIN',
+    'Comprehensive Analytics Hub': 'SNOW',
+    'Sandbox Trading Environment': 'DNA'
+  };
+  return videoMap[title] || 'EARTH';
+};
 
 export default function HomePage() {
   const { darkMode } = useContext(ThemeContext);
