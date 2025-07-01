@@ -44,10 +44,53 @@ const CountdownTimer = ({
 }) => {
   const [timeLeft, setTimeLeft] = useState(timeRemaining);
   const [isExpiring, setIsExpiring] = useState(false);
+  const [hasPlayed1MinuteSound, setHasPlayed1MinuteSound] = useState(false);
+  const [hasPlayed30SecondSound, setHasPlayed30SecondSound] = useState(false);
 
   useEffect(() => {
     setTimeLeft(timeRemaining);
+    setHasPlayed1MinuteSound(false); // Reset 1 minute sound when time resets
+    setHasPlayed30SecondSound(false); // Reset 30 second sound when time resets
   }, [timeRemaining]);
+
+  // Sound notification function
+  const playWarningSound = () => {
+    try {
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      
+      const playBeep = (frequency, duration, delay = 0) => {
+        setTimeout(() => {
+          const oscillator = audioContext.createOscillator();
+          const gainNode = audioContext.createGain();
+          
+          oscillator.connect(gainNode);
+          gainNode.connect(audioContext.destination);
+          
+          oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
+          oscillator.type = 'sine';
+          
+          gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+          gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.01);
+          gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+          
+          oscillator.start(audioContext.currentTime);
+          oscillator.stop(audioContext.currentTime + duration);
+        }, delay);
+      };
+      
+      // Play warning sound pattern (three beeps)
+      playBeep(800, 0.2, 0);    // High beep
+      playBeep(800, 0.2, 300);  // High beep
+      playBeep(800, 0.3, 600);  // High beep (longer)
+      
+    } catch (error) {
+      console.log('Audio not supported, trying vibration fallback');
+      // Fallback: try to vibrate on mobile
+      if (navigator.vibrate) {
+        navigator.vibrate([200, 100, 200, 100, 400]);
+      }
+    }
+  };
 
   useEffect(() => {
     if (timeLeft <= 0) {
@@ -63,6 +106,18 @@ const CountdownTimer = ({
     // Set expiring warning at 30 seconds
     setIsExpiring(timeLeft <= 30);
 
+    // Play warning sound at 1 minute (60 seconds) remaining
+    if (timeLeft === 60 && !hasPlayed1MinuteSound && !isPaused) {
+      playWarningSound();
+      setHasPlayed1MinuteSound(true);
+    }
+
+    // Play warning sound at 30 seconds remaining
+    if (timeLeft === 30 && !hasPlayed30SecondSound && !isPaused) {
+      playWarningSound();
+      setHasPlayed30SecondSound(true);
+    }
+
     const timer = setInterval(() => {
       setTimeLeft(prev => {
         if (prev <= 1) {
@@ -74,7 +129,7 @@ const CountdownTimer = ({
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [timeLeft, onTimeExpired, isPaused]);
+  }, [timeLeft, onTimeExpired, isPaused, hasPlayed1MinuteSound, hasPlayed30SecondSound]);
 
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
