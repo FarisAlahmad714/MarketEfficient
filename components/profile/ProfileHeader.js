@@ -626,6 +626,246 @@ const ProfileHeader = ({
             </div>
           )}
 
+          {/* Pokemon-Style Badge Showcase */}
+          {(() => {
+            console.log('ProfileHeader: earnedBadges:', profile?.earnedBadges);
+            return profile?.earnedBadges && profile.earnedBadges.length > 0;
+          })() && (
+            <div style={{
+              background: darkMode 
+                ? 'linear-gradient(135deg, rgba(25, 30, 45, 0.95) 0%, rgba(35, 40, 55, 0.95) 100%)'
+                : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.95) 100%)',
+              border: `2px solid ${darkMode ? 'rgba(255, 215, 0, 0.3)' : 'rgba(255, 215, 0, 0.4)'}`,
+              borderRadius: '16px',
+              padding: '16px 20px',
+              marginBottom: '15px',
+              backdropFilter: 'blur(10px)',
+              boxShadow: darkMode 
+                ? '0 8px 25px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 215, 0, 0.2)'
+                : '0 8px 25px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 215, 0, 0.3)',
+              position: 'relative',
+              overflow: 'hidden'
+            }}>
+              {/* Animated background effect */}
+              <div style={{
+                position: 'absolute',
+                top: 0,
+                left: '-100%',
+                width: '100%',
+                height: '100%',
+                background: 'linear-gradient(90deg, transparent 0%, rgba(255, 215, 0, 0.1) 50%, transparent 100%)',
+                animation: 'badgeShimmer 3s ease-in-out infinite'
+              }} />
+              
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '15px',
+                flexWrap: 'wrap',
+                position: 'relative',
+                zIndex: 2
+              }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}>
+                  <FaTrophy 
+                    size={18} 
+                    style={{ 
+                      color: '#FFD700',
+                      filter: 'drop-shadow(0 0 8px rgba(255, 215, 0, 0.5))'
+                    }} 
+                  />
+                  <span style={{
+                    color: darkMode ? '#FFD700' : '#B8860B',
+                    fontWeight: '700',
+                    fontSize: '16px',
+                    textShadow: darkMode ? '0 0 8px rgba(255, 215, 0, 0.5)' : '0 1px 2px rgba(0, 0, 0, 0.2)'
+                  }}>
+                    Badge Collection
+                  </span>
+                  <span style={{
+                    background: 'linear-gradient(135deg, #3b82f6 0%, #6366f1 100%)',
+                    color: 'white',
+                    fontSize: '12px',
+                    fontWeight: '700',
+                    padding: '2px 8px',
+                    borderRadius: '10px',
+                    minWidth: '20px',
+                    textAlign: 'center'
+                  }}>
+                    {profile.earnedBadges.length}
+                  </span>
+                </div>
+                
+                <div style={{
+                  display: 'flex',
+                  gap: '8px',
+                  flexWrap: 'wrap'
+                }}>
+                  {profile.earnedBadges.slice(0, 6).map((badge, index) => {
+                    const getRarityGlow = (rarity) => {
+                      switch (rarity) {
+                        case 'mythic':
+                          return '0 0 15px rgba(231, 76, 60, 0.8), 0 0 30px rgba(231, 76, 60, 0.4)';
+                        case 'legendary':
+                          return '0 0 12px rgba(255, 215, 0, 0.8), 0 0 24px rgba(255, 215, 0, 0.4)';
+                        case 'epic':
+                          return '0 0 10px rgba(155, 89, 182, 0.6)';
+                        case 'rare':
+                          return '0 0 8px rgba(52, 152, 219, 0.5)';
+                        default:
+                          return 'none';
+                      }
+                    };
+
+                    const getRarityBorder = (rarity) => {
+                      switch (rarity) {
+                        case 'mythic':
+                          return '3px solid #E74C3C';
+                        case 'legendary':
+                          return '3px solid #FFD700';
+                        case 'epic':
+                          return '2px solid #9B59B6';
+                        case 'rare':
+                          return '2px solid #3498DB';
+                        default:
+                          return '2px solid #BDC3C7';
+                      }
+                    };
+
+                    return (
+                      <div
+                        key={badge.id || index}
+                        style={{
+                          position: 'relative',
+                          width: '42px',
+                          height: '42px',
+                          borderRadius: '50%',
+                          background: `radial-gradient(circle at 30% 30%, ${badge.color || '#FFD700'}, color-mix(in srgb, ${badge.color || '#FFD700'} 70%, black))`,
+                          border: getRarityBorder(badge.rarity),
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                          boxShadow: `${getRarityGlow(badge.rarity)}, inset 0 2px 4px rgba(255, 255, 255, 0.3), inset 0 -2px 4px rgba(0, 0, 0, 0.2)`,
+                          opacity: 0,
+                          animation: `badgeAppear 0.6s ease-out ${index * 0.1}s forwards`,
+                          '@media (hover: hover)': {
+                            ':hover': {
+                              transform: 'scale(1.15) rotateZ(10deg)',
+                              zIndex: 10
+                            }
+                          }
+                        }}
+                        title={`${badge.title} - ${badge.description}`}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = 'scale(1.15) rotateZ(10deg)';
+                          e.currentTarget.style.zIndex = '10';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'scale(1) rotateZ(0deg)';
+                          e.currentTarget.style.zIndex = '1';
+                        }}
+                      >
+                        <div style={{
+                          fontSize: '18px',
+                          filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3))',
+                          position: 'relative',
+                          zIndex: 3
+                        }}>
+                          {badge.icon}
+                        </div>
+                        
+                        {/* Legendary sparkle effect */}
+                        {badge.rarity === 'legendary' && (
+                          <div style={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            pointerEvents: 'none'
+                          }}>
+                            {['✨'].map((sparkle, sparkleIndex) => (
+                              <div
+                                key={sparkleIndex}
+                                style={{
+                                  position: 'absolute',
+                                  fontSize: '8px',
+                                  color: '#FFD700',
+                                  animation: `sparkle 2s ease-in-out infinite`,
+                                  animationDelay: `${sparkleIndex * 0.7}s`,
+                                  top: sparkleIndex === 0 ? '2px' : sparkleIndex === 1 ? 'auto' : '50%',
+                                  right: sparkleIndex === 0 ? '2px' : sparkleIndex === 1 ? '2px' : 'auto',
+                                  bottom: sparkleIndex === 1 ? '2px' : 'auto',
+                                  left: sparkleIndex === 2 ? '2px' : 'auto',
+                                  transform: sparkleIndex === 2 ? 'translateY(-50%)' : 'none'
+                                }}
+                              >
+                                {sparkle}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        
+                        {/* Mythic flame effect */}
+                        {badge.rarity === 'mythic' && (
+                          <div style={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            pointerEvents: 'none'
+                          }}>
+                            {['🔥', '🔥'].map((flame, flameIndex) => (
+                              <div
+                                key={flameIndex}
+                                style={{
+                                  position: 'absolute',
+                                  fontSize: '8px',
+                                  animation: `flameFlicker 1.5s ease-in-out infinite`,
+                                  animationDelay: `${flameIndex * 0.5}s`,
+                                  top: flameIndex === 0 ? '-2px' : 'auto',
+                                  bottom: flameIndex === 1 ? '-2px' : 'auto',
+                                  left: '50%',
+                                  transform: 'translateX(-50%)'
+                                }}
+                              >
+                                {flame}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                  
+                  {profile.earnedBadges.length > 6 && (
+                    <div style={{
+                      width: '42px',
+                      height: '42px',
+                      borderRadius: '50%',
+                      background: darkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+                      border: `2px dashed ${darkMode ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.3)'}`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: darkMode ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.5)',
+                      fontSize: '12px',
+                      fontWeight: 'bold'
+                    }}>
+                      +{profile.earnedBadges.length - 6}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Member Since / Profile Status */}
           <div style={{
             display: 'flex',
@@ -897,6 +1137,47 @@ const ProfileHeader = ({
         isOwnProfile={isOwnProfile}
         profileUrl={getProfileUrl()}
       />
+
+      {/* Pokemon Badge Animations */}
+      <style jsx>{`
+        @keyframes badgeShimmer {
+          0%, 100% { left: -100%; opacity: 0; }
+          50% { left: 100%; opacity: 1; }
+        }
+
+        @keyframes badgeAppear {
+          from {
+            opacity: 0;
+            transform: scale(0.3) rotateY(180deg);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1) rotateY(0deg);
+          }
+        }
+
+        @keyframes sparkle {
+          0%, 100% {
+            opacity: 0.8;
+            transform: scale(1);
+          }
+          50% {
+            opacity: 1;
+            transform: scale(1.2);
+          }
+        }
+
+        @keyframes flameFlicker {
+          0%, 100% {
+            opacity: 0.8;
+            transform: scale(1);
+          }
+          50% {
+            opacity: 1;
+            transform: scale(1.3);
+          }
+        }
+      `}</style>
     </div>
   );
 };

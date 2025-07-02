@@ -37,10 +37,17 @@ export default async function handler(req, res) {
       results.weeklyMetrics = await runWeeklyMetrics();
     }
     
-    // 1st of month - Monthly Metrics  
+    // 1st of month - Monthly Metrics + Quarterly Sandbox Deposits
     if (dayOfMonth === 1) {
       console.log('Running monthly metrics...');
       results.monthlyMetrics = await runMonthlyMetrics();
+      
+      // Check if this is a quarter start month (Jan=0, Apr=3, Jul=6, Oct=9)
+      const currentMonth = today.getMonth();
+      if ([0, 3, 6, 9].includes(currentMonth)) {
+        console.log('Running quarterly sandbox deposit notifications...');
+        results.sandboxDeposits = await runQuarterlySandboxDeposits();
+      }
     }
     
     // Monday (1) - Inactive Reminders
@@ -234,4 +241,88 @@ function getNextScheduledTasks(currentDay, currentDate) {
   tasks.push(`Monthly Metrics: in ${daysUntilFirstOfMonth} days (1st of month)`);
   
   return tasks;
+}
+
+async function runQuarterlySandboxDeposits() {
+  try {
+    const SandboxPortfolio = require('../../../models/SandboxPortfolio');
+    const SandboxTransaction = require('../../../models/SandboxTransaction');
+    const { sendSandboxDepositNotification } = require('../../../lib/email-service');
+    
+    // Find all users with sandbox portfolios
+    const portfolios = await SandboxPortfolio.find({}).populate('userId');
+    
+    let successCount = 0;
+    let errorCount = 0;
+    let depositCount = 0;
+    const errors = [];
+    
+    for (const portfolio of portfolios) {
+      try {
+        const user = portfolio.userId;
+        if (!user || !user.isVerified || user.notifications?.email === false) {
+          continue;
+        }
+        
+        // Check if quarterly top-up is due
+        if (portfolio.isTopUpDue()) {
+          // Perform the deposit
+          portfolio.performQuarterlyTopUp();
+          await portfolio.save();
+          depositCount++;
+          
+          // Create transaction record for trading history
+          await SandboxTransaction.create({
+            userId: user._id,
+            type: 'deposit',
+            amount: 10000,
+            description: 'ChartSense Quarterly Deposit',
+            balanceBefore: portfolio.balance - 10000,
+            balanceAfter: portfolio.balance,
+            metadata: {
+              topUpCount: portfolio.topUpCount,
+              quarter: Math.floor(new Date().getMonth() / 3) + 1,
+              year: new Date().getFullYear()
+            }
+          });
+          
+          // Send email notification
+          await sendSandboxDepositNotification(user, {
+            amount: 10000,
+            newBalance: portfolio.balance,
+            quarter: Math.floor(new Date().getMonth() / 3) + 1,
+            year: new Date().getFullYear()
+          });
+          
+          console.log(`Processed quarterly deposit for ${user.email}`);
+        }
+        
+        successCount++;
+        
+        // Small delay to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+      } catch (error) {
+        console.error(`Error processing quarterly deposit for portfolio ${portfolio._id}:`, error);
+        errorCount++;
+        errors.push({ portfolioId: portfolio._id, error: error.message });
+      }
+    }
+    
+    return {
+      type: 'quarterly-sandbox-deposits',
+      totalPortfolios: portfolios.length,
+      successCount,
+      errorCount,
+      depositsProcessed: depositCount,
+      errors: errors.slice(0, 3)
+    };
+    
+  } catch (error) {
+    console.error('Quarterly sandbox deposits error:', error);
+    return {
+      type: 'quarterly-sandbox-deposits',
+      error: error.message
+    };
+  }
 }

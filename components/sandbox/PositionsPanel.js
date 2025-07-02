@@ -230,6 +230,29 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
   const openPositions = portfolioData?.openPositions || [];
   const pendingOrders = portfolioData?.pendingOrders || [];
   const recentTrades = portfolioData?.recentTrades || [];
+  const transactions = portfolioData?.transactions || [];
+
+  // Combine trades and transactions for unified history
+  const allHistoryItems = [
+    ...recentTrades.map(trade => ({
+      ...trade,
+      itemType: 'trade',
+      date: trade.exitTime,
+      displayTitle: trade.symbol,
+      displaySubtitle: `${trade.side.toUpperCase()} ${trade.leverage > 1 ? `${trade.leverage}x` : ''}`,
+      displayAmount: trade.realizedPnL,
+      displayAmountFormatted: `${trade.realizedPnL >= 0 ? '+' : ''}${formatCurrency(trade.realizedPnL || 0)} SENSES`
+    })),
+    ...transactions.map(tx => ({
+      ...tx,
+      itemType: 'transaction',
+      date: tx.createdAt,
+      displayTitle: tx.description,
+      displaySubtitle: tx.category,
+      displayAmount: tx.amount,
+      displayAmountFormatted: tx.formattedAmount + ' SENSES'
+    }))
+  ].sort((a, b) => new Date(b.date) - new Date(a.date));
 
   return (
     <div className={`positions-panel ${darkMode ? 'dark' : 'light'}`}>
@@ -251,7 +274,7 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
             className={`tab-button ${activeTab === 'history' ? 'active' : ''}`}
             onClick={() => setActiveTab('history')}
           >
-            📊 Trade History ({recentTrades.length})
+            📊 History ({allHistoryItems.length})
           </button>
           <button 
             className={`tab-button ${activeTab === 'performance' ? 'active' : ''}`}
@@ -856,91 +879,125 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
 
         {activeTab === 'history' && (
           <div className="history-content">
-            {recentTrades.length === 0 ? (
+            {allHistoryItems.length === 0 ? (
               <div className="empty-state">
                 <div className="empty-icon">📊</div>
-                <h3>No Trade History</h3>
-                <p>Your completed trades will appear here</p>
+                <h3>No History</h3>
+                <p>Your trades and transactions will appear here</p>
               </div>
             ) : (
               <div className="history-list">
-                {recentTrades.map((trade) => (
-                  <div key={trade.id} className="history-card">
+                {allHistoryItems.map((item) => (
+                  <div key={item.id} className={`history-card ${item.itemType}`}>
                     <div className="history-header">
-                      <div className="trade-info">
-                        <span className="symbol">{trade.symbol}</span>
-                        <span className={`side ${trade.side}`}>
-                          {trade.side === 'long' ? <FaArrowUp /> : <FaArrowDown />}
-                          {trade.side.toUpperCase()}
-                          {trade.leverage > 1 && ` ${trade.leverage}x`}
+                      <div className="item-info">
+                        <span className="item-title">{item.displayTitle}</span>
+                        <span className={`item-subtitle ${item.itemType === 'trade' ? item.side : 'transaction'}`}>
+                          {item.itemType === 'trade' ? (
+                            <>
+                              {item.side === 'long' ? <FaArrowUp /> : <FaArrowDown />}
+                              {item.displaySubtitle}
+                            </>
+                          ) : (
+                            <>
+                              {item.type === 'deposit' ? '💰' : item.type === 'fee' ? '💸' : '📊'}
+                              {item.displaySubtitle}
+                            </>
+                          )}
                         </span>
-                        <span className="quantity">{trade.quantity?.toFixed(6) || '0'} units</span>
+                        {item.itemType === 'trade' && (
+                          <span className="quantity">{item.quantity?.toFixed(6) || '0'} units</span>
+                        )}
                       </div>
                       
                       <div 
-                        className="trade-result"
-                        style={{ color: getPerformanceColor(trade.realizedPnL || 0) }}
+                        className="item-result"
+                        style={{ color: getPerformanceColor(item.displayAmount || 0) }}
                       >
-                        <div className="pnl-amount">
-                          {trade.realizedPnL >= 0 ? '+' : ''}{formatCurrency(trade.realizedPnL || 0)} SENSES
+                        <div className="amount">
+                          {item.displayAmountFormatted}
                         </div>
-                        <div className="result-percentage">
-                          {(() => {
-                            // Calculate percentage based on available data
-                            let percentage = 0;
-                            
-                            if (trade.marginUsed && trade.marginUsed > 0) {
-                              // Use margin as base for leveraged trades
-                              percentage = (trade.realizedPnL / trade.marginUsed) * 100;
-                            } else if (trade.entryPrice && trade.exitPrice && trade.quantity) {
-                              // Fallback: calculate based on price movement
-                              const priceChange = trade.exitPrice - trade.entryPrice;
-                              const priceChangePercent = (priceChange / trade.entryPrice) * 100;
-                              
-                              // Adjust for position side and leverage
-                              if (trade.side === 'short') {
-                                percentage = -priceChangePercent * (trade.leverage || 1);
-                              } else {
-                                percentage = priceChangePercent * (trade.leverage || 1);
+                        {item.itemType === 'trade' && (
+                          <div className="result-percentage">
+                            {(() => {
+                              let percentage = 0;
+                              if (item.marginUsed && item.marginUsed > 0) {
+                                percentage = (item.realizedPnL / item.marginUsed) * 100;
                               }
-                            }
-                            
-                            return `(${formatPercentage(percentage)})`;
-                          })()}
-                        </div>
+                              return `(${formatPercentage(percentage)})`;
+                            })()}
+                          </div>
+                        )}
                       </div>
                     </div>
 
                     <div className="history-details">
                       <div className="detail-grid">
-                        <div className="detail-item">
-                          <span className="label">Entry:</span>
-                          <span className="value">{trade.entryPrice?.toFixed(2)} SENSES</span>
-                        </div>
-                        <div className="detail-item">
-                          <span className="label">Exit:</span>
-                          <span className="value">{trade.exitPrice?.toFixed(2)} SENSES</span>
-                        </div>
-                        <div className="detail-item">
-                          <span className="label">Duration:</span>
-                          <span className="value">{trade.duration}</span>
-                        </div>
-                        <div className="detail-item">
-                          <span className="label">Margin:</span>
-                          <span className="value">{formatCurrency(trade.marginUsed || 0)} SENSES</span>
-                        </div>
-                        <div className="detail-item">
-                          <span className="label">Fees:</span>
-                          <span className="value" style={{ color: '#ff4757' }}>
-                            -{formatCurrency(trade.fees?.total || 0)} SENSES
-                          </span>
-                        </div>
-                        <div className="detail-item">
-                          <span className="label">Date:</span>
-                          <span className="value">
-                            {formatTradeDate(trade.exitTime)}
-                          </span>
-                        </div>
+                        {item.itemType === 'trade' ? (
+                          <>
+                            <div className="detail-item">
+                              <span className="label">Entry:</span>
+                              <span className="value">{item.entryPrice?.toFixed(2)} SENSES</span>
+                            </div>
+                            <div className="detail-item">
+                              <span className="label">Exit:</span>
+                              <span className="value">{item.exitPrice?.toFixed(2)} SENSES</span>
+                            </div>
+                            <div className="detail-item">
+                              <span className="label">Duration:</span>
+                              <span className="value">{item.duration}</span>
+                            </div>
+                            <div className="detail-item">
+                              <span className="label">Margin:</span>
+                              <span className="value">{formatCurrency(item.marginUsed || 0)} SENSES</span>
+                            </div>
+                            <div className="detail-item">
+                              <span className="label">Fees:</span>
+                              <span className="value" style={{ color: '#ff4757' }}>
+                                -{formatCurrency(item.fees?.total || 0)} SENSES
+                              </span>
+                            </div>
+                            <div className="detail-item">
+                              <span className="label">Date:</span>
+                              <span className="value">
+                                {formatTradeDate(item.exitTime)}
+                              </span>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="detail-item">
+                              <span className="label">Type:</span>
+                              <span className="value">{item.category}</span>
+                            </div>
+                            <div className="detail-item">
+                              <span className="label">Amount:</span>
+                              <span className="value" style={{ color: getPerformanceColor(item.amount) }}>
+                                {item.displayAmountFormatted}
+                              </span>
+                            </div>
+                            <div className="detail-item">
+                              <span className="label">Balance Before:</span>
+                              <span className="value">{formatCurrency(item.balanceBefore)} SENSES</span>
+                            </div>
+                            <div className="detail-item">
+                              <span className="label">Balance After:</span>
+                              <span className="value">{formatCurrency(item.balanceAfter)} SENSES</span>
+                            </div>
+                            <div className="detail-item">
+                              <span className="label">Date:</span>
+                              <span className="value">
+                                {formatTradeDate(item.createdAt)}
+                              </span>
+                            </div>
+                            {item.metadata?.quarter && (
+                              <div className="detail-item">
+                                <span className="label">Period:</span>
+                                <span className="value">Q{item.metadata.quarter} {item.metadata.year}</span>
+                              </div>
+                            )}
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>

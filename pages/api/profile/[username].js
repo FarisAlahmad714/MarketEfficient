@@ -7,6 +7,7 @@ import SandboxPortfolio from '../../../models/SandboxPortfolio';
 import dbConnect from '../../../lib/database';
 import { getSignedUrlForImage } from '../../../lib/gcs-service';
 import { generateGoalsForPeriod, getCurrentTimeInfo } from '../../../lib/goal-service';
+import { getBadgeObjectsFromIds } from '../../../lib/badge-service';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -110,17 +111,8 @@ export default async function handler(req, res) {
         console.error('Error fetching trading stats:', error);
       }
 
-      // Get user's earned badges from badge service
-      let lifetimeAchievements = [];
-      try {
-        const badgeService = await import('../../../lib/badge-service');
-        lifetimeAchievements = await badgeService.default.generateUserAchievements(user._id);
-        console.log(`[PROFILE API] User ${username} earned badges from badge service: ${lifetimeAchievements.length}`);
-      } catch (error) {
-        console.error('[PROFILE API] Error loading badge service, falling back to legacy achievements:', error);
-        // Fallback to original achievement generation
-        lifetimeAchievements = generateAchievements(testResults, tradingStats);
-      }
+      // Generate lifetime achievements based on test results and trading performance
+      const lifetimeAchievements = generateAchievements(testResults, tradingStats);
       
       // Get goal-based achievements from dashboard API
       const goalAchievements = await getGoalAchievements(user._id);
@@ -169,6 +161,14 @@ export default async function handler(req, res) {
       }))
     };
 
+    // Get full badge objects from badge IDs
+    let earnedBadgeObjects = [];
+    try {
+      earnedBadgeObjects = await getBadgeObjectsFromIds(user._id, user.earnedBadges || []);
+    } catch (error) {
+      console.error('Error getting badge objects:', error);
+    }
+
     const publicProfile = {
       username: user.username,
       name: user.name,
@@ -188,7 +188,8 @@ export default async function handler(req, res) {
       testsByType: testsByType, // Add organized test data
       tradingStats: tradingStats,
       achievements: achievements,
-      earnedBadges: user.earnedBadges || [] // Add earned badges for BadgeModal
+      earnedBadges: user.earnedBadges || [], // Badge IDs for BadgeModal
+      earnedBadgeObjects: earnedBadgeObjects // Full badge objects for ProfileHeader
     };
 
     res.status(200).json(publicProfile);
@@ -216,145 +217,53 @@ function formatTestType(type) {
 // Helper function to generate achievements based on performance
 function generateAchievements(testResults, tradingStats) {
   const achievements = [];
+  
+  // Get all available lifetime achievements for reference
+  const timeInfo = getCurrentTimeInfo();
+  const availableLifetimeAchievements = getAllAvailableAchievements(timeInfo).lifetime;
 
   if (testResults.length === 0) return achievements;
 
   // Test-based achievements
   const totalTests = testResults.length;
   const averageScore = testResults.reduce((sum, test) => sum + (test.score / test.totalPoints) * 100, 0) / totalTests;
-
-  // Score achievements
-  if (averageScore >= 90) {
-    achievements.push({
-      id: 'expert_analyst',
-      title: 'Expert Analyst',
-      description: '90%+ average score',
-      icon: '🎯',
-      color: '#FFD700',
-      rarity: 'legendary'
-    });
-  } else if (averageScore >= 80) {
-    achievements.push({
-      id: 'skilled_trader',
-      title: 'Skilled Trader',
-      description: '80%+ average score',
-      icon: '⭐',
-      color: '#4CAF50',
-      rarity: 'rare'
-    });
-  } else if (averageScore >= 70) {
-    achievements.push({
-      id: 'proficient_analyzer',
-      title: 'Proficient Analyzer',
-      description: '70%+ average score',
-      icon: '📈',
-      color: '#2196F3',
-      rarity: 'common'
-    });
-  }
-
-  // Volume achievements
-  if (totalTests >= 50) {
-    achievements.push({
-      id: 'test_veteran',
-      title: 'Test Veteran',
-      description: '50+ tests completed',
-      icon: '🏆',
-      color: '#9C27B0',
-      rarity: 'rare'
-    });
-  } else if (totalTests >= 20) {
-    achievements.push({
-      id: 'active_learner',
-      title: 'Active Learner',
-      description: '20+ tests completed',
-      icon: '📚',
-      color: '#FF9800',
-      rarity: 'common'
-    });
-  } else if (totalTests >= 10) {
-    achievements.push({
-      id: 'getting_started',
-      title: 'Getting Started',
-      description: '10+ tests completed',
-      icon: '🌱',
-      color: '#4CAF50',
-      rarity: 'common'
-    });
-  }
-
-  // Test type diversity
-  const testTypes = [...new Set(testResults.map(test => test.testType))];
-  if (testTypes.length >= 3) {
-    achievements.push({
-      id: 'well_rounded',
-      title: 'Well Rounded',
-      description: 'Completed multiple test types',
-      icon: '🎨',
-      color: '#E91E63',
-      rarity: 'common'
-    });
-  }
-
-  // Perfect scores
   const perfectScores = testResults.filter(test => test.score === test.totalPoints).length;
-  if (perfectScores >= 5) {
-    achievements.push({
-      id: 'perfectionist',
-      title: 'Perfectionist',
-      description: '5+ perfect scores',
-      icon: '💎',
-      color: '#00BCD4',
-      rarity: 'legendary'
-    });
-  } else if (perfectScores >= 1) {
-    achievements.push({
-      id: 'perfect_score',
-      title: 'Perfect Score',
-      description: 'Achieved 100% on a test',
-      icon: '✨',
-      color: '#FFEB3B',
-      rarity: 'rare'
-    });
-  }
+  const testTypes = [...new Set(testResults.map(test => test.testType))];
 
-  // Trading achievements (if available)
-  if (tradingStats && tradingStats.totalTrades > 0) {
-    if (tradingStats.winRate >= 70) {
+  // Check against available lifetime achievements ONLY
+  availableLifetimeAchievements.forEach(achievement => {
+    let earned = false;
+    
+    if (achievement.type === 'tests_completed') {
+      earned = totalTests >= achievement.requirement;
+    } else if (achievement.type === 'average_score') {
+      earned = averageScore >= achievement.requirement;
+    } else if (achievement.type === 'perfect_scores') {
+      earned = perfectScores >= achievement.requirement;
+    } else if (achievement.type === 'test_types') {
+      earned = testTypes.length >= achievement.requirement;
+    } else if (achievement.type === 'win_rate' && tradingStats) {
+      earned = tradingStats.winRate >= achievement.requirement;
+    } else if (achievement.type === 'portfolio_return' && tradingStats) {
+      earned = tradingStats.totalReturn >= achievement.requirement;
+    } else if (achievement.type === 'total_trades' && tradingStats) {
+      earned = tradingStats.totalTrades >= achievement.requirement;
+    }
+    
+    if (earned) {
       achievements.push({
-        id: 'profitable_trader',
-        title: 'Profitable Trader',
-        description: '70%+ win rate',
-        icon: '💰',
-        color: '#4CAF50',
-        rarity: 'rare'
+        id: achievement.id,
+        title: achievement.title,
+        description: achievement.description,
+        icon: achievement.icon,
+        color: achievement.color,
+        rarity: achievement.rarity,
+        completedAt: new Date() // You might want to track actual completion dates
       });
     }
+  });
 
-    if (tradingStats.totalReturn > 50) {
-      achievements.push({
-        id: 'portfolio_growth',
-        title: 'Portfolio Growth',
-        description: '50%+ portfolio return',
-        icon: '📊',
-        color: '#2196F3',
-        rarity: 'rare'
-      });
-    }
-
-    if (tradingStats.totalTrades >= 100) {
-      achievements.push({
-        id: 'active_trader',
-        title: 'Active Trader',
-        description: '100+ trades executed',
-        icon: '⚡',
-        color: '#FF5722',
-        rarity: 'common'
-      });
-    }
-  }
-
-  return achievements.slice(0, 6); // Limit to top 6 achievements
+  return achievements;
 }
 
 // Helper function to get all available achievements (both earned and unearned)

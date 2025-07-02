@@ -81,6 +81,13 @@ async function portfolioHandler(req, res) {
     .limit(20)
     .select('symbol side entryPrice exitPrice realizedPnL leverage entryTime exitTime duration pnlPercentage marginUsed quantity fees');
     
+    // Get transaction history (deposits, fees, etc.)
+    const SandboxTransaction = require('../../../models/SandboxTransaction');
+    const transactions = await SandboxTransaction.find({ userId })
+      .sort({ createdAt: -1 })
+      .limit(20)
+      .lean();
+    
     // Calculate total unrealized P&L from open positions with real-time prices
     const priceSimulator = getPriceSimulator();
     let totalUnrealizedPnL = 0;
@@ -220,6 +227,23 @@ async function portfolioHandler(req, res) {
         duration: trade.duration,
         entryTime: trade.entryTime,
         exitTime: trade.exitTime
+      })),
+      
+      // Transaction History
+      transactions: transactions.map(tx => ({
+        id: tx._id,
+        type: tx.type,
+        amount: tx.amount,
+        description: tx.description,
+        balanceBefore: tx.balanceBefore,
+        balanceAfter: tx.balanceAfter,
+        createdAt: tx.createdAt,
+        metadata: tx.metadata,
+        formattedAmount: tx.amount >= 0 ? `+${tx.amount.toLocaleString()}` : `${tx.amount.toLocaleString()}`,
+        category: tx.type === 'deposit' ? 'Deposit' : 
+                  tx.type === 'withdrawal' ? 'Withdrawal' :
+                  tx.type === 'trade_profit' || tx.type === 'trade_loss' ? 'Trading' :
+                  tx.type === 'fee' ? 'Fee' : 'Other'
       })),
       
       // Risk Management

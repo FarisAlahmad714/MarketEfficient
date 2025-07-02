@@ -23,6 +23,7 @@ const ProfilePage = () => {
   const [billingHistory, setBillingHistory] = useState([]);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState(null);
+  const [earnedBadgeObjects, setEarnedBadgeObjects] = useState([]);
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
     newPassword: '',
@@ -93,11 +94,44 @@ const ProfilePage = () => {
       
       // Fetch profile image
       await fetchProfileImage();
+      
+      // Fetch full badge objects
+      await fetchBadgeObjects();
     } catch (err) {
       console.error('Error fetching user data:', err);
       setSaveError('Failed to load subscription data');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchBadgeObjects = async () => {
+    if (!user?.earnedBadges || user.earnedBadges.length === 0) {
+      setEarnedBadgeObjects([]);
+      return;
+    }
+    
+    try {
+      const token = await storage.getItem('auth_token');
+      if (!token) return;
+      
+      const response = await fetch('/api/badge/get-badge-objects', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          badgeIds: user.earnedBadges
+        })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setEarnedBadgeObjects(data.badges || []);
+      }
+    } catch (error) {
+      console.error('Error fetching badge objects:', error);
     }
   };
 
@@ -570,6 +604,7 @@ const ProfilePage = () => {
             socialLinks: user?.socialLinks || { twitter: '', linkedin: '', instagram: '' },
             profileVisibility: 'public', // All profiles are public
             shareResults: true, // All users share results
+            earnedBadges: earnedBadgeObjects, // Use full badge objects
             stats: {
               memberSince: user?.createdAt
             }
