@@ -154,7 +154,7 @@ const EmailCampaignModal = ({ campaignType, targetUsers, darkMode, onClose, onSu
         borderRadius: '12px',
         width: '90%',
         maxWidth: '600px',
-        maxHeight: '90vh',
+        maxHeight: '75vh',
         overflow: 'hidden',
         boxShadow: darkMode ? '0 20px 60px rgba(0,0,0,0.5)' : '0 20px 60px rgba(0,0,0,0.2)'
       }}>

@@ -326,17 +326,24 @@ const ChartExam = ({ examType, assetType }) => {
         setTimeRemaining(data.timeRemaining);
       }
       
-      // Update scores
+      // Update scores - FIXED: Store totalExpectedPoints for accurate percentage calculation
       if (examType === 'swing-analysis') {
-        setScores([...scores, data.score]);
+        setScores([...scores, { 
+          score: data.score, 
+          totalPoints: data.totalExpectedPoints 
+        }]);
       } else if (examType === 'fibonacci-retracement' || examType === 'fair-value-gaps') {
         if (part === 1) {
           // Start new score entry
-          setScores([...scores, { part1: data.score }]);
+          setScores([...scores, { 
+            part1: data.score,
+            part1TotalPoints: data.totalExpectedPoints
+          }]);
         } else {
           // Update last score entry
           const updatedScores = [...scores];
           updatedScores[updatedScores.length - 1].part2 = data.score;
+          updatedScores[updatedScores.length - 1].part2TotalPoints = data.totalExpectedPoints;
           setScores(updatedScores);
         }
       }
@@ -420,20 +427,19 @@ const ChartExam = ({ examType, assetType }) => {
       
       // Check if we've completed all charts
       if (chartCount >= 5) {
-        // Calculate total score
-        const totalScore = scores.reduce((sum, score) => {
-          if (typeof score === 'number') {
-            return sum + score;
+        // Calculate total score - FIXED: Use actual stored totalPoints
+        const { totalScore, totalPossible } = scores.reduce((acc, scoreItem) => {
+          if (examType === 'swing-analysis') {
+            // New format: { score: X, totalPoints: Y }
+            acc.totalScore += (scoreItem.score || 0);
+            acc.totalPossible += (scoreItem.totalPoints || 10); // Fallback for safety
           } else {
-            return sum + (score.part1 || 0) + (score.part2 || 0);
+            // Fibonacci/FVG format: { part1: X, part1TotalPoints: Y, part2: Z, part2TotalPoints: W }
+            acc.totalScore += (scoreItem.part1 || 0) + (scoreItem.part2 || 0);
+            acc.totalPossible += (scoreItem.part1TotalPoints || 2) + (scoreItem.part2TotalPoints || 2); // Fallback for safety
           }
-        }, 0);
-        
-        const totalPossible = scores.length * (
-          examType === 'swing-analysis' ? 10 : 
-          examType === 'fibonacci-retracement' ? 4 : 
-          examType === 'fair-value-gaps' ? 10 : 0
-        );
+          return acc;
+        }, { totalScore: 0, totalPossible: 0 });
         
         // Instead of alert, save results and redirect
         await saveResultsAndRedirect(scores, examType);

@@ -280,8 +280,10 @@ const AchievementGrid = ({
             style={{
               backgroundColor: darkMode ? '#1e1e1e' : 'white',
               borderRadius: '16px',
-              padding: '40px',
+              padding: '30px',
               maxWidth: '500px',
+              maxHeight: '75vh',
+              overflowY: 'auto',
               width: '90%',
               textAlign: 'center',
               position: 'relative',

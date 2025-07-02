@@ -16,10 +16,12 @@ const ModalOverlay = styled.div`
 
 const ModalContent = styled.div`
   background: ${props => props.$isDarkMode ? '#1e1e1e' : 'white'};
-  padding: 30px;
+  padding: 20px;
   border-radius: 12px;
   text-align: center;
   max-width: 500px;
+  max-height: 75vh;
+  overflow-y: auto;
   border: 3px solid #d32f2f;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
 `;

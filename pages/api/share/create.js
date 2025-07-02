@@ -43,7 +43,7 @@ export default async function handler(req, res) {
     }
 
     // Validate type
-    const validTypes = ['achievement', 'test_result', 'trading_highlight', 'profile'];
+    const validTypes = ['achievement', 'badge', 'test_result', 'trading_highlight', 'profile'];
     if (!validTypes.includes(type)) {
       return res.status(400).json({ error: 'Invalid share type' });
     }

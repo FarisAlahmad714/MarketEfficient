@@ -82,6 +82,18 @@ async function handler(req, res) {
     await testResult.save();
   logger.log(`Fibonacci test result saved, score: ${validationResult.score}/${validationResult.totalExpectedPoints}`);
     
+    // Check for new badges after saving test result
+    try {
+      const { checkAndNotifyNewBadges } = await import('../../../lib/badge-service');
+      const badgeResult = await checkAndNotifyNewBadges(userId);
+      if (badgeResult.success && badgeResult.newBadges > 0) {
+        logger.log(`User ${userId} earned ${badgeResult.newBadges} new badges:`, badgeResult.badges);
+      }
+    } catch (badgeError) {
+      logger.error('Error checking for new badges:', badgeError);
+      // Don't fail the main request if badge checking fails
+    }
+    
     // Record submission for analytics
     recordSubmission(timeValidation.session.sessionKey || `${userId}_fibonacci_${chartCount}_${part}`, {
       score: validationResult.score,

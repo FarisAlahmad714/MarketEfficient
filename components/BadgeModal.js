@@ -1,12 +1,30 @@
 // components/BadgeModal.js
 import React, { useState, useContext, useEffect } from 'react';
 import { ThemeContext } from '../contexts/ThemeContext';
-import { X, Trophy, Lock, Star } from 'lucide-react';
+import { X, Trophy, Lock, Star, Share2 } from 'lucide-react';
+import SocialShareModal from './profile/SocialShareModal';
 
-const BadgeModal = ({ isOpen, onClose, userBadges = [], isOwnProfile = false }) => {
+const BadgeModal = ({ isOpen, onClose, userBadges = [], isOwnProfile = false, profileUrl = '' }) => {
   const { darkMode } = useContext(ThemeContext);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedRarity, setSelectedRarity] = useState('all');
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [shareData, setShareData] = useState(null);
+  
+  // Share badge functionality using SocialShareModal
+  const shareBadge = (badge) => {
+    setShareData({
+      type: 'badge',
+      id: badge.id,
+      title: badge.title,
+      description: badge.description,
+      rarity: badge.rarity,
+      icon: badge.icon,
+      color: badge.color,
+      category: badge.category
+    });
+    setShowShareModal(true);
+  };
 
   // All possible badges in the system
   const allBadges = [
@@ -367,38 +385,47 @@ const BadgeModal = ({ isOpen, onClose, userBadges = [], isOwnProfile = false }) 
     return categoryMatch && rarityMatch;
   });
 
-  const earnedBadgeIds = Array.isArray(userBadges) ? userBadges.map(badge => badge.id) : [];
+  // Handle both array of strings (earnedBadges) and array of objects (achievements)
+  const earnedBadgeIds = Array.isArray(userBadges) 
+    ? userBadges.map(badge => typeof badge === 'string' ? badge : badge.id)
+    : [];
   const earnedCount = earnedBadgeIds.length;
   const totalCount = allBadges.length;
 
   if (!isOpen) return null;
 
   return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.8)',
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      zIndex: 1000,
-      padding: '20px'
-    }}>
-      <div style={{
-        backgroundColor: darkMode ? '#1e1e1e' : 'white',
-        borderRadius: '16px',
-        width: '100%',
-        maxWidth: '1200px',
-        maxHeight: '90vh',
-        overflow: 'hidden',
-        boxShadow: darkMode ? '0 20px 60px rgba(0,0,0,0.8)' : '0 20px 60px rgba(0,0,0,0.3)'
+    <div 
+      onClick={onClose}
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 1000,
+        padding: '10px',
+        overflowY: 'auto'
       }}>
+      <div 
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          backgroundColor: darkMode ? '#1e1e1e' : 'white',
+          borderRadius: '16px',
+          width: '100%',
+          maxWidth: '1000px',
+          maxHeight: '75vh',
+          overflow: 'hidden',
+          boxShadow: darkMode ? '0 20px 60px rgba(0,0,0,0.8)' : '0 20px 60px rgba(0,0,0,0.3)',
+          margin: 'auto'
+        }}>
         {/* Header */}
         <div style={{
-          padding: '25px 30px',
+          padding: '16px 20px',
           borderBottom: `1px solid ${darkMode ? '#333' : '#eee'}`,
           display: 'flex',
           justifyContent: 'space-between',
@@ -410,14 +437,14 @@ const BadgeModal = ({ isOpen, onClose, userBadges = [], isOwnProfile = false }) 
               <h2 style={{
                 color: darkMode ? '#e0e0e0' : '#333',
                 margin: 0,
-                fontSize: '24px'
+                fontSize: '18px'
               }}>
                 Badge Collection
               </h2>
               <p style={{
                 color: darkMode ? '#888' : '#666',
-                margin: '5px 0 0 0',
-                fontSize: '14px'
+                margin: '2px 0 0 0',
+                fontSize: '11px'
               }}>
                 {earnedCount} of {totalCount} badges earned
                 {isOwnProfile && (
@@ -444,21 +471,21 @@ const BadgeModal = ({ isOpen, onClose, userBadges = [], isOwnProfile = false }) 
 
         {/* Filters */}
         <div style={{
-          padding: '20px 30px',
+          padding: '8px 20px',
           borderBottom: `1px solid ${darkMode ? '#333' : '#eee'}`,
           display: 'flex',
-          gap: '20px',
+          gap: '12px',
           flexWrap: 'wrap',
           alignItems: 'center'
         }}>
           {/* Category Filter */}
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
             {categories.map(category => (
               <button
                 key={category.id}
                 onClick={() => setSelectedCategory(category.id)}
                 style={{
-                  padding: '8px 12px',
+                  padding: '4px 8px',
                   backgroundColor: selectedCategory === category.id ? '#2196F3' : darkMode ? '#333' : '#f5f5f5',
                   color: selectedCategory === category.id ? 'white' : darkMode ? '#e0e0e0' : '#333',
                   border: 'none',
@@ -503,13 +530,14 @@ const BadgeModal = ({ isOpen, onClose, userBadges = [], isOwnProfile = false }) 
         {/* Badge Grid */}
         <div style={{
           padding: '20px',
-          maxHeight: '60vh',
-          overflowY: 'auto'
+          maxHeight: 'calc(75vh - 180px)',
+          overflowY: 'auto',
+          scrollBehavior: 'smooth'
         }}>
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-            gap: '16px'
+            gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
+            gap: '12px'
           }}>
             {filteredBadges.map(badge => {
               const isEarned = earnedBadgeIds.includes(badge.id);
@@ -520,7 +548,7 @@ const BadgeModal = ({ isOpen, onClose, userBadges = [], isOwnProfile = false }) 
                   style={{
                     backgroundColor: darkMode ? '#262626' : '#f9f9f9',
                     borderRadius: '12px',
-                    padding: '20px',
+                    padding: '16px',
                     border: isEarned ? `2px solid ${badge.color}` : `2px solid ${darkMode ? '#333' : '#e0e0e0'}`,
                     opacity: isEarned ? 1 : 0.6,
                     position: 'relative',
@@ -584,15 +612,57 @@ const BadgeModal = ({ isOpen, onClose, userBadges = [], isOwnProfile = false }) 
                     {badge.description}
                   </p>
 
-                  {/* Requirement */}
-                  <p style={{
-                    color: darkMode ? '#888' : '#999',
-                    margin: 0,
-                    fontSize: '12px',
-                    fontStyle: 'italic'
+                  {/* Requirement/Share Section */}
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginTop: '8px'
                   }}>
-                    {isEarned ? '✅ Earned!' : `Requirement: ${badge.requirement}`}
-                  </p>
+                    <p style={{
+                      color: darkMode ? '#888' : '#999',
+                      margin: 0,
+                      fontSize: '12px',
+                      fontStyle: 'italic'
+                    }}>
+                      {isEarned ? '✅ Earned!' : `Requirement: ${badge.requirement}`}
+                    </p>
+                    
+                    {/* Share Button - Only show for earned badges */}
+                    {isEarned && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          shareBadge(badge);
+                        }}
+                        style={{
+                          background: 'transparent',
+                          border: `1px solid ${badge.color}`,
+                          borderRadius: '4px',
+                          padding: '4px 6px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          color: badge.color,
+                          fontSize: '10px',
+                          transition: 'all 0.2s ease'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.target.style.backgroundColor = badge.color;
+                          e.target.style.color = 'white';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.target.style.backgroundColor = 'transparent';
+                          e.target.style.color = badge.color;
+                        }}
+                        title="Share this badge"
+                      >
+                        <Share2 size={10} />
+                        Share
+                      </button>
+                    )}
+                  </div>
                 </div>
               );
             })}
@@ -609,6 +679,15 @@ const BadgeModal = ({ isOpen, onClose, userBadges = [], isOwnProfile = false }) 
           )}
         </div>
       </div>
+      
+      {/* Social Share Modal */}
+      <SocialShareModal
+        isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        shareData={shareData}
+        darkMode={darkMode}
+        profileUrl={profileUrl}
+      />
     </div>
   );
 };

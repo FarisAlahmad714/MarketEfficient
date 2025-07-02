@@ -30,6 +30,8 @@ const SharePage = ({ shareData: initialShareData, shareId }) => {
     try {
       if (shareData.type === 'achievement') {
         return `${shareData.username} earned "${shareData.title}" - ChartSense`;
+      } else if (shareData.type === 'badge') {
+        return `${shareData.username} earned the "${shareData.title}" badge - ChartSense`;
       } else if (shareData.type === 'test_result') {
         return `${shareData.username} scored ${shareData.percentage}% on ${shareData.testType} - ChartSense`;
       } else if (shareData.type === 'trading_highlight') {
@@ -49,6 +51,8 @@ const SharePage = ({ shareData: initialShareData, shareId }) => {
     try {
       if (shareData.type === 'achievement') {
         return `${shareData.username} earned "${shareData.title}" on MarketEfficient! ${shareData.description}`;
+      } else if (shareData.type === 'badge') {
+        return `${shareData.username} earned the "${shareData.title}" badge on MarketEfficient! ${shareData.description} (${shareData.rarity} rarity)`;
       } else if (shareData.type === 'test_result') {
         return `${shareData.username} scored ${shareData.percentage}% on ${shareData.testType}. Score: ${shareData.score}/${shareData.totalPoints}`;
       } else if (shareData.type === 'trading_highlight') {
@@ -164,7 +168,11 @@ const SharePage = ({ shareData: initialShareData, shareId }) => {
         <meta property="og:type" content="article" />
         <meta property="og:url" content={getShareUrl()} />
         <meta property="og:site_name" content="ChartSense" />
-        <meta property="og:image" content="https://www.chartsense.trade/images/banner.png?v=2" />
+        <meta property="og:image" content={
+          shareData?.type === 'badge' 
+            ? `${process.env.NODE_ENV === 'production' ? 'https://chartsense.trade' : 'http://localhost:3000'}/api/og/share-badge?title=${encodeURIComponent(shareData.title || '')}&description=${encodeURIComponent(shareData.description || '')}&username=${encodeURIComponent(shareData.username || '')}&icon=${encodeURIComponent(shareData.icon || '🏆')}&color=${encodeURIComponent(shareData.color || '#2196F3')}&rarity=${encodeURIComponent(shareData.rarity || 'Badge')}`
+            : "https://www.chartsense.trade/images/banner.png?v=2"
+        } />
         <meta property="og:image:width" content="1024" />
         <meta property="og:image:height" content="1024" />
         <meta property="og:image:alt" content={getMetaTitle()} />
@@ -174,7 +182,11 @@ const SharePage = ({ shareData: initialShareData, shareId }) => {
         <meta name="twitter:site" content="@chartsense" />
         <meta name="twitter:title" content={getMetaTitle()} />
         <meta name="twitter:description" content={getMetaDescription()} />
-        <meta name="twitter:image" content="https://www.chartsense.trade/images/banner.png?v=2" />
+        <meta name="twitter:image" content={
+          shareData?.type === 'badge' 
+            ? `${process.env.NODE_ENV === 'production' ? 'https://chartsense.trade' : 'http://localhost:3000'}/api/og/share-badge?title=${encodeURIComponent(shareData.title || '')}&description=${encodeURIComponent(shareData.description || '')}&username=${encodeURIComponent(shareData.username || '')}&icon=${encodeURIComponent(shareData.icon || '🏆')}&color=${encodeURIComponent(shareData.color || '#2196F3')}&rarity=${encodeURIComponent(shareData.rarity || 'Badge')}`
+            : "https://www.chartsense.trade/images/banner.png?v=2"
+        } />
       </Head>
 
       <div style={{
@@ -208,8 +220,10 @@ const SharePage = ({ shareData: initialShareData, shareId }) => {
             backgroundColor: darkMode ? '#1e1e1e' : 'white',
             borderRadius: '16px',
             padding: '30px',
-            boxShadow: darkMode ? '0 8px 24px rgba(0,0,0,0.4)' : '0 8px 24px rgba(0,0,0,0.15)',
-            border: '2px solid #2196F3',
+            boxShadow: shareData.type === 'badge' 
+              ? `0 8px 24px rgba(0,0,0,0.3), 0 0 30px ${shareData.color || '#2196F3'}40`
+              : (darkMode ? '0 8px 24px rgba(0,0,0,0.4)' : '0 8px 24px rgba(0,0,0,0.15)'),
+            border: `2px solid ${shareData.type === 'badge' ? (shareData.color || '#2196F3') : '#2196F3'}`,
             marginBottom: '30px'
           }}>
             {/* User Info */}
@@ -276,6 +290,62 @@ const SharePage = ({ shareData: initialShareData, shareId }) => {
                 }}>
                   {shareData.description}
                 </p>
+              </div>
+            )}
+
+            {shareData.type === 'badge' && (
+              <div style={{
+                textAlign: 'center',
+                padding: '20px 0'
+              }}>
+                <div style={{ fontSize: '60px', marginBottom: '15px' }}>
+                  {shareData.icon || '🏆'}
+                </div>
+                <h2 style={{
+                  color: shareData.color || (darkMode ? '#e0e0e0' : '#333'),
+                  marginBottom: '10px',
+                  fontSize: '28px',
+                  fontWeight: 'bold'
+                }}>
+                  {shareData.title}
+                </h2>
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  gap: '8px',
+                  marginBottom: '15px'
+                }}>
+                  <span style={{
+                    fontSize: '12px',
+                    padding: '4px 12px',
+                    borderRadius: '6px',
+                    backgroundColor: shareData.color || '#2196F3',
+                    color: 'white',
+                    textTransform: 'uppercase',
+                    fontWeight: '600',
+                    letterSpacing: '1px'
+                  }}>
+                    ⭐ {shareData.rarity || 'Badge'}
+                  </span>
+                </div>
+                <p style={{
+                  color: darkMode ? '#b0b0b0' : '#666',
+                  fontSize: '16px',
+                  lineHeight: '1.5',
+                  marginBottom: '20px'
+                }}>
+                  {shareData.description}
+                </p>
+                <div style={{
+                  backgroundColor: darkMode ? '#262626' : '#f9f9f9',
+                  borderRadius: '8px',
+                  padding: '15px',
+                  fontSize: '14px',
+                  color: darkMode ? '#888' : '#666'
+                }}>
+                  🎯 This badge represents dedication and skill in trading education
+                </div>
               </div>
             )}
 

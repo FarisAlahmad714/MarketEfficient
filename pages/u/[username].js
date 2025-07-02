@@ -584,10 +584,10 @@ const PublicProfilePage = () => {
           <div style={{
             backgroundColor: darkMode ? '#1e1e1e' : 'white',
             borderRadius: '16px',
-            padding: '30px',
+            padding: '25px',
             maxWidth: '1000px',
             width: '100%',
-            maxHeight: '90vh',
+            maxHeight: '75vh',
             overflowY: 'auto',
             position: 'relative'
           }}>
@@ -648,10 +648,10 @@ const PublicProfilePage = () => {
           <div style={{
             backgroundColor: darkMode ? '#1e1e1e' : 'white',
             borderRadius: '16px',
-            padding: '30px',
+            padding: '25px',
             maxWidth: '1000px',
             width: '100%',
-            maxHeight: '90vh',
+            maxHeight: '75vh',
             overflowY: 'auto',
             position: 'relative'
           }}>

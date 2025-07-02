@@ -66,6 +66,8 @@ const SocialShareModal = ({
 
     if (shareData.type === 'achievement') {
       return `🏆 Earned "${shareData.title}" on MarketEfficient! ${shareData.description}`;
+    } else if (shareData.type === 'badge') {
+      return `🏆 Earned the "${shareData.title}" badge on MarketEfficient! ${shareData.description}`;
     } else if (shareData.type === 'test_result') {
       return `📊 Scored ${shareData.percentage}% on ${shareData.testType} 🎯`;
     } else if (shareData.type === 'trading_highlight') {
@@ -103,6 +105,8 @@ const SocialShareModal = ({
       let linkedinText = '';
       if (shareData.type === 'achievement') {
         linkedinText = `Excited to share that I've earned the "${shareData.title}" achievement on MarketEfficient! ${shareData.description}\n\nContinuing to develop my trading and market analysis skills through structured learning and practice.`;
+      } else if (shareData.type === 'badge') {
+        linkedinText = `Proud to share that I've earned the "${shareData.title}" badge on MarketEfficient! ${shareData.description}\n\nThis ${shareData.rarity} badge represents my commitment to mastering trading skills and market psychology.`;
       } else if (shareData.type === 'test_result') {
         linkedinText = `Achieved ${shareData.percentage}% on a ${shareData.testType} assessment on MarketEfficient. Continuing to sharpen my market analysis skills through systematic testing and learning.`;
       } else {
@@ -169,10 +173,10 @@ const SocialShareModal = ({
       <div style={{
         backgroundColor: darkMode ? '#1e1e1e' : 'white',
         borderRadius: '16px',
-        padding: '30px',
+        padding: '20px',
         maxWidth: '500px',
         width: '100%',
-        maxHeight: '90vh',
+        maxHeight: '75vh',
         overflowY: 'auto',
         position: 'relative'
       }}>

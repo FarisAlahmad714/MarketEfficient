@@ -25,7 +25,7 @@ export default async function handler(req, res) {
     // Find user by username - all profiles are now public
     const user = await User.findOne({ 
       username: username.toLowerCase()
-    }).select('username name bio profileImageUrl profileImageGcsPath socialLinks shareResults createdAt');
+    }).select('username name bio profileImageUrl profileImageGcsPath socialLinks shareResults createdAt earnedBadges');
 
     if (!user) {
       return res.status(404).json({ error: 'Profile not found' });
@@ -110,8 +110,17 @@ export default async function handler(req, res) {
         console.error('Error fetching trading stats:', error);
       }
 
-      // Generate lifetime achievements based on test results and trading performance
-      const lifetimeAchievements = generateAchievements(testResults, tradingStats);
+      // Get user's earned badges from badge service
+      let lifetimeAchievements = [];
+      try {
+        const badgeService = await import('../../../lib/badge-service');
+        lifetimeAchievements = await badgeService.default.generateUserAchievements(user._id);
+        console.log(`[PROFILE API] User ${username} earned badges from badge service: ${lifetimeAchievements.length}`);
+      } catch (error) {
+        console.error('[PROFILE API] Error loading badge service, falling back to legacy achievements:', error);
+        // Fallback to original achievement generation
+        lifetimeAchievements = generateAchievements(testResults, tradingStats);
+      }
       
       // Get goal-based achievements from dashboard API
       const goalAchievements = await getGoalAchievements(user._id);
@@ -178,7 +187,8 @@ export default async function handler(req, res) {
       })),
       testsByType: testsByType, // Add organized test data
       tradingStats: tradingStats,
-      achievements: achievements
+      achievements: achievements,
+      earnedBadges: user.earnedBadges || [] // Add earned badges for BadgeModal
     };
 
     res.status(200).json(publicProfile);

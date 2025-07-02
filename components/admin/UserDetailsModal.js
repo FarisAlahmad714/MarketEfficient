@@ -178,7 +178,7 @@ const UserDetailsModal = ({ user, darkMode, onClose, onUpdate }) => {
         borderRadius: '12px',
         maxWidth: '900px',
         width: '100%',
-        maxHeight: '90vh',
+        maxHeight: '75vh',
         overflow: 'auto',
         boxShadow: '0 10px 40px rgba(0,0,0,0.3)'
       }}>

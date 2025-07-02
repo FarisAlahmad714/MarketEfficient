@@ -8,6 +8,7 @@ import { detectFairValueGaps } from './utils/fvg-detection';
 import TestResults from '../../../models/TestResults';
 import logger from '../../../lib/logger';
 import { validateTimeWindow, recordSubmission, endChartSession } from '../../../lib/timeWindow';
+import { validateChartExamResult, logValidationIssues } from '../../../lib/chart-exam-validation';
 async function validateFvgHandler(req, res) {
   // User is already authenticated via middleware
   const userId = req.user.id;
@@ -55,8 +56,8 @@ async function validateFvgHandler(req, res) {
   // Validate user drawings against expected gaps
   const validationResult = validateFairValueGaps(drawings, expectedGaps, chartData, gapType, chartTimeframe);
   
-  // Save test result to database
-  const testResult = new TestResults({
+  // Validate result data before saving
+  const resultData = {
     userId: userId,
     testType: 'chart-exam',
     subType: 'fair-value-gaps',
@@ -70,8 +71,16 @@ async function validateFvgHandler(req, res) {
       timeframe: chartTimeframe
     },
     completedAt: new Date()
-  });
-  
+  };
+
+  const validation = validateChartExamResult(resultData);
+  if (!validation.valid) {
+    logValidationIssues('fair-value-gaps', resultData, validation.errors);
+    // Continue with sanitized data but log the issues
+  }
+
+  // Save test result to database (use sanitized data if validation found issues)
+  const testResult = new TestResults(validation.valid ? resultData : validation.sanitized);
   await testResult.save();
   logger.log(`FVG test result saved, score: ${validationResult.score}/${validationResult.totalExpectedPoints}`);
   
@@ -83,6 +92,18 @@ async function validateFvgHandler(req, res) {
     timeSpent: timeValidation.timeSpent,
     part: part
   });
+  
+  // Check for new badges after saving test result
+  try {
+    const { checkAndNotifyNewBadges } = await import('../../../lib/badge-service');
+    const badgeResult = await checkAndNotifyNewBadges(userId);
+    if (badgeResult.success && badgeResult.newBadges > 0) {
+      logger.log(`User ${userId} earned ${badgeResult.newBadges} new badges:`, badgeResult.badges);
+    }
+  } catch (badgeError) {
+    logger.error('Error checking for new badges:', badgeError);
+    // Don't fail the main request if badge checking fails
+  }
   
   // End session and collect analytics
   console.log(`Ending chart session for user ${userId}, exam: fvg, chart: ${chartCount}, part: ${part}`);

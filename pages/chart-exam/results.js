@@ -425,15 +425,46 @@ const ChartExamResults = () => {
   let totalScore = 0;
   let totalPossible = 0;
   
+  // FIXED: Use actual stored totalPoints instead of hardcoded values
   if (currentExamType === 'swing-analysis') {
-    totalScore = scoresArray.reduce((sum, scoreItem) => sum + (typeof scoreItem === 'number' ? scoreItem : 0), 0);
-    totalPossible = scoresArray.length * 10; // Assuming 10 points per swing analysis chart
+    // Handle both old format (numbers) and new format (objects with score/totalPoints)
+    totalScore = scoresArray.reduce((sum, scoreItem) => {
+      if (typeof scoreItem === 'number') {
+        // Old format - just the score
+        return sum + scoreItem;
+      } else {
+        // New format - object with score and totalPoints
+        return sum + (scoreItem.score || 0);
+      }
+    }, 0);
+    
+    totalPossible = scoresArray.reduce((sum, scoreItem) => {
+      if (typeof scoreItem === 'number') {
+        // Old format - fallback to hardcoded
+        return sum + 10;
+      } else {
+        // New format - use stored totalPoints
+        return sum + (scoreItem.totalPoints || 10);
+      }
+    }, 0);
+    
   } else if (currentExamType === 'fibonacci-retracement') {
+    // For fibonacci, each part is worth up to 2 points
     totalScore = scoresArray.reduce((sum, scoreItem) => sum + (scoreItem.part1 || 0) + (scoreItem.part2 || 0), 0);
-    totalPossible = scoresArray.length * 4; // 2 for part1, 2 for part2
+    totalPossible = scoresArray.reduce((sum, scoreItem) => {
+      const part1Total = scoreItem.part1TotalPoints || 2; // Fibonacci default
+      const part2Total = scoreItem.part2TotalPoints || 2; // Fibonacci default
+      return sum + part1Total + part2Total;
+    }, 0);
+    
   } else if (currentExamType === 'fair-value-gaps') {
+    // For FVG, use actual stored totalPoints from each part
     totalScore = scoresArray.reduce((sum, scoreItem) => sum + (scoreItem.part1 || 0) + (scoreItem.part2 || 0), 0);
-    totalPossible = scoresArray.length * 10; // Assuming 5 for part1, 5 for part2 (example)
+    totalPossible = scoresArray.reduce((sum, scoreItem) => {
+      const part1Total = scoreItem.part1TotalPoints || 5; // Default fallback
+      const part2Total = scoreItem.part2TotalPoints || 5; // Default fallback
+      return sum + part1Total + part2Total;
+    }, 0);
   }
 
   const scorePercentage = totalPossible > 0 ? (totalScore / totalPossible) * 100 : 0;
@@ -489,11 +520,11 @@ const ChartExamResults = () => {
                   <PartScore isDarkMode={darkMode}>
                     <PartTitle isDarkMode={darkMode}>Swing Points</PartTitle>
                     <PartResult 
-                      score={typeof scoreItem === 'number' ? scoreItem : 0} 
-                      total={10} // Assuming 10 points for swing analysis
+                      score={typeof scoreItem === 'number' ? scoreItem : (scoreItem.score || 0)} 
+                      total={typeof scoreItem === 'number' ? 10 : (scoreItem.totalPoints || 10)}
                       isDarkMode={darkMode}
                     >
-                      {typeof scoreItem === 'number' ? scoreItem : 0} / 10
+                      {typeof scoreItem === 'number' ? scoreItem : (scoreItem.score || 0)} / {typeof scoreItem === 'number' ? 10 : (scoreItem.totalPoints || 10)}
                     </PartResult>
                   </PartScore>
                 ) : (currentExamType === 'fibonacci-retracement' || currentExamType === 'fair-value-gaps') ? (
@@ -502,20 +533,20 @@ const ChartExamResults = () => {
                       <PartTitle isDarkMode={darkMode}>Part 1</PartTitle>
                       <PartResult 
                         score={scoreItem.part1 || 0} 
-                        total={currentExamType === 'fibonacci-retracement' ? 2 : 5} // Example totals
+                        total={scoreItem.part1TotalPoints || (currentExamType === 'fibonacci-retracement' ? 2 : 5)}
                         isDarkMode={darkMode}
                       >
-                        {scoreItem.part1 || 0} / {currentExamType === 'fibonacci-retracement' ? 2 : 5}
+                        {scoreItem.part1 || 0} / {scoreItem.part1TotalPoints || (currentExamType === 'fibonacci-retracement' ? 2 : 5)}
                       </PartResult>
                     </PartScore>
                     <PartScore isDarkMode={darkMode}>
                       <PartTitle isDarkMode={darkMode}>Part 2</PartTitle>
                       <PartResult 
                         score={scoreItem.part2 || 0} 
-                        total={currentExamType === 'fibonacci-retracement' ? 2 : 5} // Example totals
+                        total={scoreItem.part2TotalPoints || (currentExamType === 'fibonacci-retracement' ? 2 : 5)}
                         isDarkMode={darkMode}
                       >
-                        {scoreItem.part2 || 0} / {currentExamType === 'fibonacci-retracement' ? 2 : 5}
+                        {scoreItem.part2 || 0} / {scoreItem.part2TotalPoints || (currentExamType === 'fibonacci-retracement' ? 2 : 5)}
                       </PartResult>
                     </PartScore>
                   </>

@@ -893,8 +893,9 @@ const ProfileHeader = ({
       <BadgeModal
         isOpen={showBadgeModal}
         onClose={() => setShowBadgeModal(false)}
-        userBadges={profile?.achievements || []}
+        userBadges={profile?.earnedBadges || []}
         isOwnProfile={isOwnProfile}
+        profileUrl={getProfileUrl()}
       />
     </div>
   );

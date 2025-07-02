@@ -11,7 +11,7 @@ const sharedContentSchema = new mongoose.Schema({
   type: {
     type: String,
     required: true,
-    enum: ['achievement', 'test_result', 'trading_highlight', 'profile']
+    enum: ['achievement', 'badge', 'test_result', 'trading_highlight', 'profile']
   },
   username: {
     type: String,
