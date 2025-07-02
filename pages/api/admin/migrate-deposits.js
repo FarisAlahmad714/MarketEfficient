@@ -1,5 +1,5 @@
+import { authenticate } from '../../../middleware/auth';
 import connectDB from '../../../lib/database';
-import { requireAdmin } from '../../../lib/auth-middleware';
 import { migrateHistoricalDeposits, dryRunMigration } from '../../../scripts/migrate-sandbox-deposits';
 
 export default async function handler(req, res) {
@@ -7,11 +7,11 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  try {
-    // Require admin authentication
-    await requireAdmin(req, res);
-    
-    await connectDB();
+  // Apply authentication middleware (admin only)
+  return new Promise((resolve) => {
+    authenticate({ adminOnly: true })(req, res, async () => {
+      try {
+        await connectDB();
     
     const { action = 'migrate', dryRun = false } = req.body;
     
@@ -44,22 +44,25 @@ export default async function handler(req, res) {
         }
       });
       
-    } else {
-      return res.status(400).json({
-        error: 'Invalid action',
-        message: 'Action must be "preview" or "migrate"'
-      });
-    }
-    
-  } catch (error) {
-    console.error('❌ Migration API error:', error);
-    
-    return res.status(500).json({
-      error: 'Migration failed',
-      message: error.message,
-      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        } else {
+          return res.status(400).json({
+            error: 'Invalid action',
+            message: 'Action must be "preview" or "migrate"'
+          });
+        }
+        
+      } catch (error) {
+        console.error('❌ Migration API error:', error);
+        
+        return res.status(500).json({
+          error: 'Migration failed',
+          message: error.message,
+          details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        });
+      }
+      resolve();
     });
-  }
+  });
 }
 
 // Increase timeout for long-running migration

@@ -1,5 +1,5 @@
 // pages/api/badge/get-badge-objects.js
-import { verifyToken } from '../../../lib/auth';
+import { verifyToken } from '../../../middleware/auth';
 import { getBadgeObjectsFromIds } from '../../../lib/badge-service';
 
 export default async function handler(req, res) {

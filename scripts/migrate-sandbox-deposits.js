@@ -28,10 +28,7 @@ const connectDB = async () => {
       throw new Error('MONGODB_URI environment variable is not set. Check your .env.local file.');
     }
     
-    await mongoose.connect(process.env.MONGODB_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
+    await mongoose.connect(process.env.MONGODB_URI);
     console.log('✅ MongoDB connected for migration');
   } catch (error) {
     console.error('❌ MongoDB connection failed:', error);

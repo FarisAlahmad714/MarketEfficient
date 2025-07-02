@@ -55,8 +55,7 @@ const SandboxTransactionSchema = new mongoose.Schema({
   status: {
     type: String,
     enum: ['pending', 'completed', 'failed', 'cancelled'],
-    default: 'completed',
-    index: true
+    default: 'completed'
   }
 }, {
   timestamps: true,
