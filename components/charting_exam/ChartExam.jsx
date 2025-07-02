@@ -119,6 +119,7 @@ const ChartExam = ({ examType, assetType }) => {
   const [isTimerPaused, setIsTimerPaused] = useState(false);
   const [showFocusWarning, setShowFocusWarning] = useState(false);
   const [focusWarningTime, setFocusWarningTime] = useState(60);
+  const [isTransitioning, setIsTransitioning] = useState(false);
   const chartRef = useRef(null);
   const { isOpen: modalOpen, modalProps, hideModal, showAlert, showError } = useModal();
   // Start a new chart session
@@ -155,6 +156,8 @@ const ChartExam = ({ examType, assetType }) => {
 
   // Handle time expiry
   const handleTimeExpired = async () => {
+    if (isTransitioning) return; // Prevent multiple calls
+    
     setTimeRemaining(0);
     showAlert('Time expired! Moving to next chart...', 'Time Expired', 'warning');
     setTimeout(async () => {
@@ -165,6 +168,8 @@ const ChartExam = ({ examType, assetType }) => {
 
   // Handle focus warning timeout (reset exam)
   const handleFocusTimeout = async () => {
+    if (isTransitioning) return; // Prevent multiple calls
+    
     setShowFocusWarning(false);
     setIsTimerPaused(false);
     showAlert('You were away too long! Exam progress has been reset. Moving to next chart...', 'Focus Lost', 'warning');
@@ -184,8 +189,8 @@ const ChartExam = ({ examType, assetType }) => {
   // Fetch chart data with improved data processing
   const fetchChartData = async (forceRefresh = false) => {
     // Prevent fetching new chart data during an active session unless explicitly forced
-    if (sessionStarted && timeRemaining > 0 && !forceRefresh) {
-      logger.log('Prevented chart refresh during active session');
+    if ((sessionStarted && timeRemaining > 0 && !forceRefresh) || (loading && !forceRefresh)) {
+      logger.log('Prevented chart refresh during active session or loading');
       return;
     }
     
@@ -386,6 +391,12 @@ const ChartExam = ({ examType, assetType }) => {
   
   // Continue to next part or chart
   const continueExam = async () => {
+    // Prevent multiple calls while already transitioning
+    if (loading || isTransitioning) {
+      return;
+    }
+    
+    setIsTransitioning(true);
     setShowResults(false);
     setResults(null);
     setDrawings([]);
@@ -400,6 +411,7 @@ const ChartExam = ({ examType, assetType }) => {
       setPart(2);
       setTimeRemaining(null);
       setSessionStarted(false);
+      setIsTransitioning(false);
       // Session will be restarted automatically when part state updates
     } else {
       // Finish the current chart
@@ -425,6 +437,7 @@ const ChartExam = ({ examType, assetType }) => {
         
         // Instead of alert, save results and redirect
         await saveResultsAndRedirect(scores, examType);
+        setIsTransitioning(false);
         return;
       }
       
@@ -434,6 +447,7 @@ const ChartExam = ({ examType, assetType }) => {
       setTimeRemaining(null);
       setSessionStarted(false);
       await fetchChartData(true); // Force refresh for new chart
+      setIsTransitioning(false);
     }
   };
   
@@ -498,10 +512,10 @@ useEffect(() => {
   
   // Restart session when part changes (for fibonacci/fvg exams)
   useEffect(() => {
-    if (!loading && chartData.length > 0 && !sessionStarted) {
+    if (!loading && chartData.length > 0 && !sessionStarted && timeRemaining === null && !isTransitioning) {
       startChartSession();
     }
-  }, [part, loading, chartData, sessionStarted]);
+  }, [part, loading, sessionStarted, isTransitioning]);
   
   // Focus detection - pause timer when user switches tabs/browsers
   useEffect(() => {
