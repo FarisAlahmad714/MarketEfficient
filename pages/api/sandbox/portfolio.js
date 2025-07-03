@@ -285,16 +285,16 @@ async function portfolioHandler(req, res) {
 // Helper function to get real market prices (same as close-trade.js)
 async function getCurrentMarketPrice(symbol) {
   try {
-    const TWELVEDATA_API_KEY = process.env.TWELVE_DATA_API_KEY;
+    const TWELVE_DATA_API_KEY = process.env.TWELVE_DATA_API_KEY;
     
-    if (!TWELVEDATA_API_KEY) {
+    if (!TWELVE_DATA_API_KEY) {
       throw new Error('Twelvedata API key not configured');
     }
     
     // Convert symbol to API format (BTC -> BTC/USD)
     const { getAPISymbol } = require('../../../lib/sandbox-constants');
     const apiSymbol = getAPISymbol(symbol);
-    const url = `https://api.twelvedata.com/price?symbol=${apiSymbol}&apikey=${TWELVEDATA_API_KEY}`;
+    const url = `https://api.twelvedata.com/price?symbol=${apiSymbol}&apikey=${TWELVE_DATA_API_KEY}`;
     
     const response = await fetch(url);
     

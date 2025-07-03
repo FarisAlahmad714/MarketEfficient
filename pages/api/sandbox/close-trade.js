@@ -238,14 +238,14 @@ async function closeTradeHandler(req, res) {
 async function getCurrentMarketPrice(symbol) {
   try {
     // Try real API first with correct env var name
-    const TWELVEDATA_API_KEY = process.env.TWELVE_DATA_API_KEY || '';
+    const TWELVE_DATA_API_KEY = process.env.TWELVE_DATA_API_KEY || '';
     
-    if (TWELVEDATA_API_KEY) {
+    if (TWELVE_DATA_API_KEY) {
       try {
         // Convert symbol to API format (BTC -> BTC/USD)
         const { getAPISymbol } = require('../../../lib/sandbox-constants');
         const apiSymbol = getAPISymbol(symbol);
-        const url = `https://api.twelvedata.com/price?symbol=${apiSymbol}&apikey=${TWELVEDATA_API_KEY}`;
+        const url = `https://api.twelvedata.com/price?symbol=${apiSymbol}&apikey=${TWELVE_DATA_API_KEY}`;
         
         const response = await fetch(url);
         

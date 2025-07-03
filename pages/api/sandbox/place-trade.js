@@ -7,6 +7,7 @@ import SandboxPortfolio from '../../../models/SandboxPortfolio';
 import SandboxTrade from '../../../models/SandboxTrade';
 import { getPriceSimulator } from '../../../lib/priceSimulation';
 import { validateTradeRequest } from '../../../lib/trading-validation';
+import { validateAndDetectBias } from '../../../lib/sandbox-bias-detection.js';
 import { 
   logTradingError, 
   handleMarketDataError, 
@@ -107,7 +108,7 @@ async function placeTradeHandler(req, res) {
       console.log(`Top-up completed. New balance: ${portfolio.balance} SENSES`);
     }
 
-    // Validate pre-trade analysis
+    // Enhanced pre-trade analysis validation with bias detection
     if (!preTradeAnalysis || !preTradeAnalysis.entryReason) {
       const error = new TradingError(
         'Pre-trade analysis required',
@@ -122,18 +123,26 @@ async function placeTradeHandler(req, res) {
       });
     }
 
-    const analysisErrors = validatePreTradeAnalysis(preTradeAnalysis);
-    if (analysisErrors.length > 0) {
+    const biasAnalysis = validateAndDetectBias(preTradeAnalysis);
+    if (!biasAnalysis.isValid) {
       const error = new TradingError(
-        `Invalid pre-trade analysis: ${analysisErrors.join(', ')}`,
-        'INVALID_ANALYSIS',
+        `Analysis validation failed: ${biasAnalysis.errors ? biasAnalysis.errors.join(', ') : 'Bias detection blocked trade'}`,
+        biasAnalysis.code || 'BIAS_DETECTION_FAILED',
         'medium',
-        { userId, analysisErrors }
+        { 
+          userId, 
+          biasAnalysis,
+          blockers: biasAnalysis.blockers || []
+        }
       );
-      await logTradingError(error, userId, 'place_trade_analysis');
+      await logTradingError(error, userId, 'place_trade_bias_analysis');
+      
       return res.status(400).json({ 
-        error: 'Invalid pre-trade analysis',
-        message: analysisErrors.join('. ')
+        error: 'Analysis validation failed',
+        message: biasAnalysis.errors ? biasAnalysis.errors.join('. ') : 'Severe trading biases detected.',
+        biasDetection: biasAnalysis.biasDetection,
+        blockers: biasAnalysis.blockers,
+        code: biasAnalysis.code
       });
     }
 
@@ -170,7 +179,7 @@ async function placeTradeHandler(req, res) {
           { 
             symbol: validatedData.symbol, 
             originalError: error.message,
-            apiKeyConfigured: !!process.env.TWELVEDATA_API_KEY
+            apiKeyConfigured: !!process.env.TWELVE_DATA_API_KEY
           }
         ),
         userId,
@@ -182,7 +191,7 @@ async function placeTradeHandler(req, res) {
         error: 'Real-time price unavailable',
         message: `Cannot execute trade for ${validatedData.symbol}. Real market data is required for trading. Please check API configuration and try again.`,
         technicalDetails: {
-          apiKeyConfigured: !!process.env.TWELVEDATA_API_KEY,
+          apiKeyConfigured: !!process.env.TWELVE_DATA_API_KEY,
           symbol: validatedData.symbol,
           apiSymbol: getAPISymbol ? getAPISymbol(validatedData.symbol) : 'unknown'
         }
@@ -370,6 +379,12 @@ async function placeTradeHandler(req, res) {
         total: entryFee
       },
       preTradeAnalysis,
+      biasAnalysisResults: {
+        qualityScore: biasAnalysis.biasDetection.qualityScore,
+        technicalFactors: biasAnalysis.biasDetection.technicalFactors,
+        detectedBiases: biasAnalysis.warnings || [],
+        tradingRelevance: biasAnalysis.biasDetection.tradingRelevance
+      },
       entryTime: new Date()
     };
 
@@ -469,6 +484,12 @@ async function placeTradeHandler(req, res) {
       portfolio: {
         balance: portfolio.balance,
         availableMargin: portfolio.balance - usedMargin - marginRequired
+      },
+      biasAnalysis: {
+        qualityScore: biasAnalysis.biasDetection.qualityScore,
+        warnings: biasAnalysis.warnings || [],
+        tradingRelevance: biasAnalysis.biasDetection.tradingRelevance,
+        technicalFactorsUsed: biasAnalysis.biasDetection.technicalFactors.length
       }
     };
 
@@ -483,47 +504,12 @@ async function placeTradeHandler(req, res) {
   }
 }
 
-function validatePreTradeAnalysis(analysis) {
-  const errors = [];
-  
-  // Only require entry reason for simplified trading experience
-  if (!analysis.entryReason || analysis.entryReason.length < 10) {
-    errors.push('Entry reason must be at least 10 characters');
-  }
-  
-  // Optional fields - validate only if provided
-  if (analysis.technicalAnalysis && analysis.technicalAnalysis.length < 10) {
-    errors.push('Technical analysis must be at least 10 characters');
-  }
-  
-  if (analysis.riskManagement && analysis.riskManagement.length < 10) {
-    errors.push('Risk management plan must be at least 10 characters');
-  }
-  
-  if (analysis.biasCheck && analysis.biasCheck.length < 10) {
-    errors.push('Bias check must be at least 10 characters');
-  }
-  
-  if (analysis.confidenceLevel && (analysis.confidenceLevel < 1 || analysis.confidenceLevel > 10)) {
-    errors.push('Confidence level must be between 1 and 10');
-  }
-  
-  if (analysis.expectedHoldTime && !['minutes', 'hours', 'days', 'weeks'].includes(analysis.expectedHoldTime)) {
-    errors.push('Expected hold time must be valid');
-  }
-  
-  if (analysis.emotionalState && !['calm', 'excited', 'fearful', 'confident', 'uncertain'].includes(analysis.emotionalState)) {
-    errors.push('Emotional state must be valid');
-  }
-  
-  return errors;
-}
 
 async function getCurrentMarketPrice(symbol) {
   try {
-    const TWELVEDATA_API_KEY = process.env.TWELVE_DATA_API_KEY;
+    const TWELVE_DATA_API_KEY = process.env.TWELVE_DATA_API_KEY;
     
-    if (!TWELVEDATA_API_KEY) {
+    if (!TWELVE_DATA_API_KEY) {
       console.log(`Using simulated price for trade: ${symbol}`);
       const priceSimulator = getPriceSimulator();
       return priceSimulator.getPrice(symbol);
@@ -532,7 +518,7 @@ async function getCurrentMarketPrice(symbol) {
     // Convert symbol to API format (BTC -> BTC/USD)
     const { getAPISymbol } = require('../../../lib/sandbox-constants');
     const apiSymbol = getAPISymbol(symbol);
-    const url = `https://api.twelvedata.com/price?symbol=${apiSymbol}&apikey=${TWELVEDATA_API_KEY}`;
+    const url = `https://api.twelvedata.com/price?symbol=${apiSymbol}&apikey=${TWELVE_DATA_API_KEY}`;
     
     const response = await fetch(url);
     

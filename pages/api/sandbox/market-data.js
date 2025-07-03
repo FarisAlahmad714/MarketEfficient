@@ -160,9 +160,9 @@ async function marketDataHandler(req, res) {
 }
 
 async function fetchTwelvedataRealTime(symbols) {
-  const TWELVEDATA_API_KEY = process.env.TWELVE_DATA_API_KEY;
+  const TWELVE_DATA_API_KEY = process.env.TWELVE_DATA_API_KEY;
   
-  if (!TWELVEDATA_API_KEY) {
+  if (!TWELVE_DATA_API_KEY) {
     throw new Error('Twelvedata API key not configured');
   }
   
@@ -176,7 +176,7 @@ async function fetchTwelvedataRealTime(symbols) {
     const symbolString = batch.join(',');
     
     try {
-      const url = `https://api.twelvedata.com/price?symbol=${symbolString}&apikey=${TWELVEDATA_API_KEY}`;
+      const url = `https://api.twelvedata.com/price?symbol=${symbolString}&apikey=${TWELVE_DATA_API_KEY}`;
       
       const response = await fetch(url, {
         method: 'GET',
@@ -244,14 +244,14 @@ async function fetchTwelvedataRealTime(symbols) {
 
 // Get historical data for charts (separate endpoint functionality)
 async function getHistoricalData(symbol, interval = '1h', outputsize = 100) {
-  const TWELVEDATA_API_KEY = process.env.TWELVE_DATA_API_KEY;
+  const TWELVE_DATA_API_KEY = process.env.TWELVE_DATA_API_KEY;
   
-  if (!TWELVEDATA_API_KEY) {
+  if (!TWELVE_DATA_API_KEY) {
     throw new Error('Twelvedata API key not configured');
   }
   
   try {
-    const url = `https://api.twelvedata.com/time_series?symbol=${symbol}&interval=${interval}&outputsize=${outputsize}&apikey=${TWELVEDATA_API_KEY}`;
+    const url = `https://api.twelvedata.com/time_series?symbol=${symbol}&interval=${interval}&outputsize=${outputsize}&apikey=${TWELVE_DATA_API_KEY}`;
     console.log(`Twelve Data API URL: ${url}`);
     
     const response = await fetch(url);

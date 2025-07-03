@@ -16,7 +16,7 @@ const app = next({ dev });
 const handle = app.getRequestHandler();
 
 // Import functions dynamically to handle ES6 modules
-let connectDB, User, sendMetricsEmail, sendInactiveUserReminder, getUserMetrics, getInactiveUsers, marketDataWS;
+let connectDB, User, sendMetricsEmail, sendInactiveUserReminder, getUserMetrics, getInactiveUsers, marketDataWS, stopLossMonitor, fundingFeeManager;
 
 async function initializeModules() {
   try {
@@ -32,6 +32,12 @@ async function initializeModules() {
     // Import WebSocket server using CommonJS require
     const wsModule = require('./lib/websocket-server.js');
     marketDataWS = wsModule.marketDataWS;
+    
+    // Import stop loss monitor
+    stopLossMonitor = require('./lib/sandbox-stop-loss-monitor.js');
+    
+    // Import funding fee manager
+    fundingFeeManager = require('./lib/sandbox-funding-fees.js');
     
     logger.log('✅ All modules loaded successfully');
   } catch (error) {
@@ -205,6 +211,23 @@ app.prepare().then(async () => {
         timezone: "America/New_York"
       });
 
+      // 💰 FUNDING FEES - Every 8 hours at 00:00, 08:00, 16:00 UTC
+      cron.schedule('0 0,8,16 * * *', async () => {
+        logger.log('💰 Starting funding fee processing at', new Date().toISOString());
+        
+        try {
+          if (fundingFeeManager) {
+            const result = await fundingFeeManager.processFundingFees();
+            logger.log(`💰 Funding fees processed: ${result.processed} trades, ${result.totalFees.toFixed(6)} SENSES total`);
+          }
+        } catch (error) {
+          console.error('❌ Error in funding fee processing:', error);
+        }
+      }, {
+        scheduled: true,
+        timezone: "UTC"
+      });
+
       // 🧪 TEST CRON JOB - Every minute (for testing only - remove in production)
       if (process.env.NODE_ENV === 'development' && process.env.ENABLE_TEST_CRON === 'true') {
         cron.schedule('* * * * *', async () => {
@@ -217,6 +240,13 @@ app.prepare().then(async () => {
       logger.log('📅 Weekly metrics: Sundays at 9:00 AM');
       logger.log('📅 Monthly metrics: 1st of month at 9:00 AM');
       logger.log('📅 Inactive reminders: Mondays at 10:00 AM');
+      logger.log('💰 Funding fees: Every 8 hours (00:00, 08:00, 16:00 UTC)');
+      
+      // Start sandbox stop loss monitor
+      if (stopLossMonitor) {
+        await stopLossMonitor.start();
+        logger.log('🎯 Sandbox stop loss monitor started');
+      }
       
     } catch (error) {
       console.error('❌ Error initializing cron jobs:', error);

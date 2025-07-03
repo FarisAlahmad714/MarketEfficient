@@ -114,6 +114,7 @@ const SandboxTradeSchema = new mongoose.Schema({
   fees: {
     entry: { type: Number, default: 0 },
     exit: { type: Number, default: 0 },
+    funding: { type: Number, default: 0 },
     total: { type: Number, default: 0 }
   },
   
@@ -223,11 +224,35 @@ const SandboxTradeSchema = new mongoose.Schema({
     default: null
   },
   
+  lastFundingTime: {
+    type: Date,
+    default: null // Track when funding fees were last applied
+  },
+  
   // Market Data Context
   marketContext: {
     trend: { type: String, enum: ['bullish', 'bearish', 'sideways'], default: null },
     volatility: { type: String, enum: ['low', 'medium', 'high'], default: null },
     timeframe: { type: String, default: '1h' }
+  },
+  
+  // Bias Analysis Results
+  biasAnalysisResults: {
+    qualityScore: { type: Number, default: null },
+    technicalFactors: [{ type: String }],
+    detectedBiases: [{ 
+      type: { type: String },
+      severity: { type: String },
+      message: { type: String },
+      suggestion: { type: String }
+    }],
+    tradingRelevance: { type: Number, default: null }
+  },
+  
+  // Automatic execution flag
+  isAutomaticClose: {
+    type: Boolean,
+    default: false
   }
 }, {
   timestamps: true,

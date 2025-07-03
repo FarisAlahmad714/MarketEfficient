@@ -416,9 +416,17 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
                                     {rawPnL >= 0 ? '+' : ''}{rawPnL.toFixed(2)} SENSES
                                   </span>
                                 </div>
+                                {position.fees?.funding > 0 && (
+                                  <div className="pnl-line">
+                                    <span>Funding Fees:</span>
+                                    <span style={{ color: '#ff4757' }}>
+                                      -{(position.fees.funding || 0).toFixed(4)} SENSES
+                                    </span>
+                                  </div>
+                                )}
                                 {estimatedFees !== 0 && (
                                   <div className="pnl-line">
-                                    <span>Est. Fees:</span>
+                                    <span>Trading Fees:</span>
                                     <span style={{ color: '#ff4757' }}>
                                       -{Math.abs(estimatedFees).toFixed(2)} SENSES
                                     </span>
@@ -494,6 +502,39 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
                         }
                         return null;
                       })()}
+                      
+                      {/* Funding Fee Info for Leveraged Positions */}
+                      {position.leverage > 1 && (
+                        <div className="detail-row">
+                          <span className="detail-label">
+                            Funding Fee Rate:
+                            <span 
+                              className="info-icon" 
+                              title="Leveraged positions are charged 0.01% every 8 hours (0.03% daily) to simulate real trading costs"
+                              style={{ 
+                                marginLeft: '4px', 
+                                cursor: 'help',
+                                color: '#ffa502',
+                                fontSize: '0.7rem'
+                              }}
+                            >
+                              ⓘ
+                            </span>
+                          </span>
+                          <span className="detail-value" style={{ color: '#ffa502' }}>
+                            0.01% / 8h
+                            {position.fees?.funding > 0 && (
+                              <span style={{ 
+                                marginLeft: '8px', 
+                                fontSize: '0.75rem',
+                                color: '#ff4757'
+                              }}>
+                                (Paid: {(position.fees.funding || 0).toFixed(4)} SENSES)
+                              </span>
+                            )}
+                          </span>
+                        </div>
+                      )}
                     </div>
 
                     <div className="position-performance">
