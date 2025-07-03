@@ -2,7 +2,6 @@
 import { createApiHandler } from '../../../lib/api-handler';
 import { requireAuth } from '../../../middleware/auth';
 import { sanitizeInput, sanitizeAssetSymbol, sanitizeObjectId } from '../../../middleware/sanitization';
-import { withCsrfProtect } from '../../../middleware/csrf';
 import TestResults from '../../../models/TestResults';
 import { processBiasTestAnalytics } from '../../../lib/biasTestAnalytics';
 import logger from '../../../lib/logger';
@@ -285,6 +284,6 @@ async function saveResultsHandler(req, res) {
 // Export the wrapped handler
 import { composeMiddleware } from '../../../lib/api-handler';
 export default createApiHandler(
-  composeMiddleware(requireAuth, withCsrfProtect, saveResultsHandler),
+  composeMiddleware(requireAuth, saveResultsHandler),
   { methods: ['POST'] }
 );
