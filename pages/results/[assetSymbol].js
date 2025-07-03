@@ -25,6 +25,7 @@ const cleanAIAnalysis = (analysis) => {
 };
 import Confetti from 'react-confetti';
 import { ThemeContext } from '../../contexts/ThemeContext';
+import { AuthContext } from '../../contexts/AuthContext';
 import CryptoLoader from '../../components/CryptoLoader';
 import TrackedPage from '../../components/TrackedPage';
 import storage from '../../lib/storage';
@@ -38,6 +39,7 @@ const CandlestickChart = dynamic(
 
 const Results = () => {
   const { darkMode } = useContext(ThemeContext);
+  const { user } = useContext(AuthContext);
   const router = useRouter();
   const [results, setResults] = useState(null);
   const [error, setError] = useState(null);
@@ -429,6 +431,72 @@ const Results = () => {
     // Force a new test by using a random query parameter
     // Include original timeframe parameter to preserve user's selection
     router.push(`/bias-test/${assetSymbol}?timeframe=${originalTimeframe}&random=${Math.random()}`);
+  };
+
+  const handleShareToProfile = async () => {
+    const score = results.score || 0;
+    const total = results.total || 0;
+    const percentage = total > 0 ? Math.round((score / total) * 100) : 0;
+    
+    const shareData = {
+      type: 'test_result',
+      testType: `${results.asset_name} Bias Test`,
+      assetName: results.asset_name,
+      score: score,
+      totalPoints: total,
+      percentage: percentage,
+      timeframe: results.answers?.[0]?.timeframe || 'Unknown',
+      questionsCount: results.answers?.length || 0,
+      correctAnswers: score,
+      sessionId: router.query.session_id,
+      userReasoning: results.answers?.map(a => a.user_reasoning).filter(Boolean),
+      aiAnalysis: results.answers?.map(a => a.ai_analysis).filter(Boolean),
+      detailedAnswers: results.answers
+    };
+
+    try {
+      const token = await storage.getItem('auth_token');
+      console.log('Sharing bias test data:', shareData);
+      const response = await fetch('/api/share/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          type: 'test_result',
+          data: shareData
+        })
+      });
+
+      if (response.ok) {
+        // Show success message
+        const successDiv = document.createElement('div');
+        successDiv.style.cssText = `
+          position: fixed;
+          top: 20px;
+          right: 20px;
+          background: #4CAF50;
+          color: white;
+          padding: 12px 20px;
+          border-radius: 8px;
+          z-index: 10000;
+          font-weight: 600;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        `;
+        successDiv.textContent = '✅ Shared to your profile!';
+        document.body.appendChild(successDiv);
+        
+        setTimeout(() => {
+          document.body.removeChild(successDiv);
+        }, 3000);
+      } else {
+        throw new Error('Failed to share');
+      }
+    } catch (error) {
+      console.error('Error sharing to profile:', error);
+      alert('Failed to share to profile. Please try again.');
+    }
   };
 
   // Show fancy crypto loader while loading
@@ -1365,6 +1433,34 @@ const Results = () => {
             className={`${styles.button} ${styles.secondaryButton}`}
           >
             Take Another Test
+          </button>
+          <button 
+            onClick={handleShareToProfile}
+            className={`${styles.button} ${styles.shareButton}`}
+            style={{
+              backgroundColor: '#4CAF50',
+              color: 'white',
+              border: 'none',
+              padding: '12px 24px',
+              borderRadius: '8px',
+              fontSize: '16px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              transition: 'all 0.3s ease',
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.backgroundColor = '#45a049';
+              e.target.style.transform = 'translateY(-2px)';
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.backgroundColor = '#4CAF50';
+              e.target.style.transform = 'translateY(0)';
+            }}
+          >
+            📝 Share to Profile
           </button>
           <Link 
             href="/bias-test"

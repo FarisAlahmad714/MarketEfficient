@@ -52,10 +52,10 @@ async function portfolioHandler(req, res) {
       });
     }
     
-    // Check if quarterly top-up is due and apply automatically  
-    if (portfolio.isTopUpDue()) {
+    // Check if quarterly top-up is due and apply automatically (ONLY for unlocked sandbox)
+    if (portfolio.unlocked && portfolio.isTopUpDue()) {
       console.log(`Quarterly top-up due for user ${userId}, adding 10,000 SENSES`);
-      portfolio.performQuarterlyTopUp();
+      await portfolio.performQuarterlyTopUp();
       await portfolio.save();
       console.log(`Top-up completed. New balance: ${portfolio.balance} SENSES`);
     }
@@ -249,7 +249,7 @@ async function portfolioHandler(req, res) {
       // Risk Management
       riskLimits: {
         maxPositionSize: portfolio.maxPositionSize,
-        maxLeverage: portfolio.maxLeverage,
+        // maxLeverage removed - now using asset-specific leverage from sandbox-constants.js
         dailyLossLimit: portfolio.dailyLossLimit,
         availableMargin: portfolio.balance - openTrades.reduce((sum, trade) => sum + trade.marginUsed, 0)
       },

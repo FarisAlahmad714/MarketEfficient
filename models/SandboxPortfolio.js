@@ -138,10 +138,7 @@ const SandboxPortfolioSchema = new mongoose.Schema({
     default: 0.25 // 25% of portfolio per trade max
   },
   
-  maxLeverage: {
-    type: Number,
-    default: 3 // 3x maximum leverage
-  },
+  // maxLeverage removed - now using asset-specific leverage limits from sandbox-constants.js
   
   dailyLossLimit: {
     type: Number,
@@ -175,14 +172,17 @@ SandboxPortfolioSchema.virtual('currentValue').get(function() {
   return this.balance;
 });
 
-// Virtual for total P&L
+// Virtual for total P&L (excluding quarterly deposits)
 SandboxPortfolioSchema.virtual('totalPnL').get(function() {
-  return this.currentValue - this.initialBalance;
+  const totalQuarterlyDeposits = this.topUpCount * 10000;
+  return this.currentValue - this.initialBalance - totalQuarterlyDeposits;
 });
 
-// Virtual for total P&L percentage
+// Virtual for total P&L percentage (excluding quarterly deposits)
 SandboxPortfolioSchema.virtual('totalPnLPercentage').get(function() {
-  return ((this.currentValue - this.initialBalance) / this.initialBalance) * 100;
+  const totalQuarterlyDeposits = this.topUpCount * 10000;
+  const adjustedCurrentValue = this.currentValue - totalQuarterlyDeposits;
+  return ((adjustedCurrentValue - this.initialBalance) / this.initialBalance) * 100;
 });
 
 // Virtual for unlock eligibility check
@@ -237,7 +237,13 @@ SandboxPortfolioSchema.methods.isTopUpDue = function() {
 };
 
 // Method to perform quarterly balance top-up (PRESERVES ALL PROGRESS)
-SandboxPortfolioSchema.methods.performQuarterlyTopUp = function() {
+SandboxPortfolioSchema.methods.performQuarterlyTopUp = async function() {
+  const mongoose = require('mongoose');
+  const SandboxTransaction = mongoose.model('SandboxTransaction');
+  
+  // Record balance before top-up
+  const balanceBefore = this.balance;
+  
   // Add 10,000 SENSES to current balance (no reset!)
   this.balance += 10000;
   this.topUpCount += 1;
@@ -254,6 +260,29 @@ SandboxPortfolioSchema.methods.performQuarterlyTopUp = function() {
   // Update high water mark if needed
   if (this.balance > this.highWaterMark) {
     this.highWaterMark = this.balance;
+  }
+  
+  // Create transaction record for the quarterly deposit
+  try {
+    const transaction = new SandboxTransaction({
+      userId: this.userId,
+      type: 'deposit',
+      amount: 10000,
+      description: `Quarterly Balance Top-up #${this.topUpCount}`,
+      balanceBefore: balanceBefore,
+      balanceAfter: this.balance,
+      metadata: {
+        topUpNumber: this.topUpCount,
+        quarterlyDeposit: true,
+        period: `Q${Math.floor(now.getMonth() / 3) + 1} ${now.getFullYear()}`
+      }
+    });
+    
+    await transaction.save();
+    console.log(`Quarterly deposit transaction created: ${balanceBefore} -> ${this.balance} SENSES`);
+  } catch (error) {
+    console.error('Error creating quarterly deposit transaction:', error);
+    // Don't throw error to prevent blocking the top-up process
   }
 };
 

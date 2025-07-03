@@ -75,6 +75,12 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('Error creating shared content:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      body: req.body,
+      user: user ? { id: user._id, username: user.username } : 'No user'
+    });
+    res.status(500).json({ error: 'Internal server error', details: error.message });
   }
 }

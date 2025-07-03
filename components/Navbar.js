@@ -4,7 +4,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/router';
 import { BiHomeAlt } from 'react-icons/bi';
 import { TbScale, TbChartLine } from 'react-icons/tb';
-import { FaTachometerAlt, FaSun, FaMoon, FaChevronDown, FaUserCog, FaUserShield, FaSignOutAlt, FaCommentDots, FaGraduationCap, FaLock, FaChartLine as FaChartTradingLine, FaUser } from 'react-icons/fa';
+import { FaTachometerAlt, FaSun, FaMoon, FaChevronDown, FaUserCog, FaUserShield, FaSignOutAlt, FaCommentDots, FaGraduationCap, FaLock, FaChartLine as FaChartTradingLine, FaUser, FaNewspaper } from 'react-icons/fa';
 import { RiExchangeLine } from 'react-icons/ri';
 import { HiMenuAlt3, HiX } from 'react-icons/hi';
 import { AuthContext } from '../contexts/AuthContext';
@@ -478,6 +478,16 @@ const Navbar = () => {
                         <span className="item-subtitle">View your performance</span>
                       </div>
                     </Link>
+
+                    <Link href="/feed" className="dropdown-item" onClick={() => setShowUserMenu(false)}>
+                      <div className="item-icon">
+                        <FaNewspaper />
+                      </div>
+                      <div className="item-content">
+                        <span className="item-title">Social Feed</span>
+                        <span className="item-subtitle">See updates from traders you follow</span>
+                      </div>
+                    </Link>
                     
                     {!user?.isAdmin && (
   <>
@@ -619,6 +629,13 @@ const Navbar = () => {
                 <FaTachometerAlt className="mobile-icon" />
                 <span>Dashboard</span>
               </Link>
+
+              {isAuthenticated && (
+                <Link href="/feed" className={`mobile-link mobile-link-7 ${router.pathname.includes('/feed') ? 'active' : ''}`} onClick={() => setMobileMenuOpen(false)}>
+                  <FaNewspaper className="mobile-icon" />
+                  <span>Social Feed</span>
+                </Link>
+              )}
               
               {isAuthenticated && (
                 <Link 

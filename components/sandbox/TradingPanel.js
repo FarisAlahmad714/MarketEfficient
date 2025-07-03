@@ -3,6 +3,7 @@ import { ThemeContext } from '../../contexts/ThemeContext';
 import { FaLongArrowAltUp, FaLongArrowAltDown, FaExclamationTriangle, FaBrain, FaChartLine, FaShieldAlt } from 'react-icons/fa';
 import storage from '../../lib/storage';
 import { formatSandboxPrice, formatSandboxCurrency } from '../../lib/sandbox-utils';
+import { getMaxLeverage, getAssetInfo } from '../../lib/sandbox-constants';
 
 const TradingPanel = ({ selectedAsset, marketData, portfolioData, onTradeSuccess, onUserInteracting }) => {
   const { darkMode } = useContext(ThemeContext);
@@ -91,6 +92,14 @@ const TradingPanel = ({ selectedAsset, marketData, portfolioData, onTradeSuccess
       setLimitPrice(currentPrice.toFixed(2));
     }
   }, [orderType, currentPrice]);
+  
+  // Reset leverage when asset changes if current leverage exceeds new asset's limit
+  useEffect(() => {
+    const maxLeverageForAsset = getMaxLeverage(selectedAsset);
+    if (leverage > maxLeverageForAsset) {
+      setLeverage(maxLeverageForAsset);
+    }
+  }, [selectedAsset]);
 
   // Only auto-fill limit price, don't mess with quantity
 
@@ -109,8 +118,9 @@ const TradingPanel = ({ selectedAsset, marketData, portfolioData, onTradeSuccess
       errors.push('Limit price must be greater than 0');
     }
     
-    if (leverage > (portfolioData?.riskLimits?.maxLeverage || 3)) {
-      errors.push(`Maximum leverage is ${portfolioData?.riskLimits?.maxLeverage || 3}x`);
+    const maxLeverageForAsset = getMaxLeverage(selectedAsset);
+    if (leverage > maxLeverageForAsset) {
+      errors.push(`Maximum leverage for ${selectedAsset} is ${maxLeverageForAsset}x`);
     }
     
     // Position size limit (25% of portfolio) - except for admins
@@ -374,19 +384,29 @@ const TradingPanel = ({ selectedAsset, marketData, portfolioData, onTradeSuccess
 
         {/* Leverage */}
         <div className="form-section">
-          <label>Leverage: {leverage}x</label>
+          <label>
+            Leverage: {leverage}x
+            <span className="asset-leverage-info" style={{ 
+              marginLeft: '8px', 
+              fontSize: '0.8rem', 
+              color: '#666',
+              fontWeight: 'normal'
+            }}>
+              (Max for {selectedAsset}: {getMaxLeverage(selectedAsset)}x)
+            </span>
+          </label>
           <input
             type="range"
             min="1"
-            max={portfolioData?.riskLimits?.maxLeverage || 3}
+            max={getMaxLeverage(selectedAsset)}
             value={leverage}
             onChange={(e) => setLeverage(parseInt(e.target.value))}
             className="leverage-slider"
           />
           <div className="leverage-labels">
             <span>1x</span>
-            <span>2x</span>
-            <span>{portfolioData?.riskLimits?.maxLeverage || 3}x</span>
+            {getMaxLeverage(selectedAsset) > 2 && <span>{Math.floor(getMaxLeverage(selectedAsset) / 2)}x</span>}
+            <span>{getMaxLeverage(selectedAsset)}x</span>
           </div>
           
           {/* Leverage Fee Warning */}

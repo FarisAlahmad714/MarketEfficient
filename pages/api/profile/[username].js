@@ -170,6 +170,7 @@ export default async function handler(req, res) {
     }
 
     const publicProfile = {
+      _id: user._id,
       username: user.username,
       name: user.name,
       bio: user.bio,

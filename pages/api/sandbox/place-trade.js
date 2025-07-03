@@ -100,10 +100,10 @@ async function placeTradeHandler(req, res) {
       });
     }
 
-    // Check if quarterly top-up is due and apply it automatically
+    // Check if quarterly top-up is due and apply it automatically (sandbox already validated as unlocked)
     if (portfolio.isTopUpDue()) {
       console.log(`Quarterly top-up due for user ${userId}, adding 10,000 SENSES`);
-      portfolio.performQuarterlyTopUp();
+      await portfolio.performQuarterlyTopUp();
       await portfolio.save();
       console.log(`Top-up completed. New balance: ${portfolio.balance} SENSES`);
     }
@@ -318,19 +318,22 @@ async function placeTradeHandler(req, res) {
       }
     }
 
-    // Validate leverage
-    if (validatedData.leverage > portfolio.maxLeverage) {
+    // Validate asset-specific leverage
+    const { getMaxLeverage } = require('../../../lib/sandbox-constants');
+    const maxLeverageForAsset = getMaxLeverage(validatedData.symbol);
+    
+    if (validatedData.leverage > maxLeverageForAsset) {
       const error = new TradingError(
-        `Leverage too high: ${validatedData.leverage}x exceeds maximum ${portfolio.maxLeverage}x`,
+        `Leverage too high: ${validatedData.leverage}x exceeds maximum ${maxLeverageForAsset}x for ${validatedData.symbol}`,
         'LEVERAGE_EXCEEDED',
         'medium',
-        { requestedLeverage: validatedData.leverage, maxLeverage: portfolio.maxLeverage }
+        { requestedLeverage: validatedData.leverage, maxLeverage: maxLeverageForAsset, symbol: validatedData.symbol }
       );
       await logTradingError(error, userId, 'place_trade_leverage');
       
       return res.status(400).json({ 
         error: 'Leverage too high',
-        message: `Maximum leverage is ${portfolio.maxLeverage}x` 
+        message: `Maximum leverage for ${validatedData.symbol} is ${maxLeverageForAsset}x` 
       });
     }
 

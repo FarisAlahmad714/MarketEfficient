@@ -11,6 +11,7 @@ import AchievementGrid from '../../components/profile/AchievementGrid';
 import AchievementGallery from '../../components/profile/AchievementGallery';
 import TestResultsCards from '../../components/profile/TestResultsCards';
 import TradingHighlights from '../../components/profile/TradingHighlights';
+import SharedContent from '../../components/profile/SharedContent';
 import SocialShareModal from '../../components/profile/SocialShareModal';
 
 const PublicProfilePage = () => {
@@ -26,6 +27,7 @@ const PublicProfilePage = () => {
   const [shareData, setShareData] = useState(null);
   const [showGoalAchievementsModal, setShowGoalAchievementsModal] = useState(false);
   const [showLifetimeAchievementsModal, setShowLifetimeAchievementsModal] = useState(false);
+  const [activeTab, setActiveTab] = useState('achievements');
 
   useEffect(() => {
     if (username) {
@@ -346,7 +348,62 @@ const PublicProfilePage = () => {
           )}
         </div>
 
-        {/* Goal Achievements Section */}
+        {/* Tab Navigation */}
+        <div style={{
+          borderBottom: `1px solid ${darkMode ? '#333' : '#e0e0e0'}`,
+          marginBottom: '30px'
+        }}>
+          <div style={{
+            display: 'flex',
+            gap: '0px'
+          }}>
+            <button
+              onClick={() => setActiveTab('achievements')}
+              style={{
+                backgroundColor: 'transparent',
+                border: 'none',
+                padding: '16px 24px',
+                fontSize: '16px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                color: activeTab === 'achievements' 
+                  ? '#2196F3' 
+                  : (darkMode ? '#888' : '#666'),
+                borderBottom: activeTab === 'achievements' 
+                  ? '3px solid #2196F3' 
+                  : '3px solid transparent',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              🏆 Achievements & Progress
+            </button>
+            <button
+              onClick={() => setActiveTab('shared')}
+              style={{
+                backgroundColor: 'transparent',
+                border: 'none',
+                padding: '16px 24px',
+                fontSize: '16px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                color: activeTab === 'shared' 
+                  ? '#2196F3' 
+                  : (darkMode ? '#888' : '#666'),
+                borderBottom: activeTab === 'shared' 
+                  ? '3px solid #2196F3' 
+                  : '3px solid transparent',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              📝 Shared by {isOwnProfile ? 'You' : profile.name}
+            </button>
+          </div>
+        </div>
+
+        {/* Achievements Tab Content */}
+        {activeTab === 'achievements' && (
+          <>
+            {/* Goal Achievements Section */}
         {profile.achievements?.goals && profile.achievements.goals.length > 0 && (
           <div style={{ marginBottom: '30px' }}>
             <div style={{
@@ -529,6 +586,18 @@ const PublicProfilePage = () => {
             isOwnProfile={isOwnProfile}
             onShareResult={handleShareResult}
           />
+        )}
+          </>
+        )}
+
+        {/* Shared Content Tab */}
+        {activeTab === 'shared' && (
+          <div style={{ marginBottom: '30px' }}>
+            <SharedContent 
+              username={profile.username}
+              isOwnProfile={isOwnProfile}
+            />
+          </div>
         )}
 
         {/* No Public Data Message */}

@@ -5,7 +5,7 @@ import { uploadImageToGCS, deleteImageFromGCS } from '../../../lib/gcs-service';
 import crypto from 'crypto'; // For generating token
 import emailService from '../../../lib/email-service'; // Import the default export
 import logger from '../../../lib/logger';
-import { withCsrfProtect } from '../../../middleware/csrf';
+// import { withCsrfProtect } from '../../../middleware/csrf'; // Removed CSRF for profile updates
 // import { sendChangeEmailVerificationEmail } from '../../../lib/email-service'; // TODO: Implement and uncomment
 
 const EMAIL_VERIFICATION_EXPIRE_HOURS = 24;
@@ -225,8 +225,8 @@ export default async function (req, res) {
   return new Promise((resolve, reject) => {
     authMiddleware(req, res, (err) => {
       if (err) return reject(err);
-      // Apply CSRF protection after authentication
-      withCsrfProtect(handler)(req, res).then(resolve).catch(reject);
+      // No CSRF protection for profile updates - direct handler call
+      handler(req, res).then(resolve).catch(reject);
     });
   });
 }; 

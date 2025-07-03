@@ -4,9 +4,10 @@ import { useRouter } from 'next/router';
 import Image from 'next/image';
 import { AuthContext } from '../../contexts/AuthContext';
 import { ThemeContext } from '../../contexts/ThemeContext';
-import { FaUser, FaCamera, FaTwitter, FaLinkedin, FaInstagram, FaShare, FaCog, FaCalendarAlt, FaEye, FaEyeSlash, FaEdit, FaTrophy } from 'react-icons/fa';
+import { FaUser, FaCamera, FaTwitter, FaLinkedin, FaInstagram, FaShare, FaCog, FaCalendarAlt, FaEye, FaEyeSlash, FaEdit, FaTrophy, FaUserPlus, FaUserMinus } from 'react-icons/fa';
 import storage from '../../lib/storage';
 import BadgeModal from '../BadgeModal';
+import FollowModal from './FollowModal';
 
 const ProfileHeader = ({ 
   profile, 
@@ -28,6 +29,15 @@ const ProfileHeader = ({
   const [saveError, setSaveError] = useState(null);
   const [leaderboardRank, setLeaderboardRank] = useState(null);
   const [rankLoading, setRankLoading] = useState(false);
+  const [followStatus, setFollowStatus] = useState({
+    isFollowing: false,
+    followerCount: 0,
+    followingCount: 0,
+    isOwnProfile: false
+  });
+  const [followLoading, setFollowLoading] = useState(false);
+  const [showFollowModal, setShowFollowModal] = useState(false);
+  const [followModalType, setFollowModalType] = useState('followers');
 
   const [formData, setFormData] = useState({
     username: profile?.username || '',
@@ -73,6 +83,22 @@ const ProfileHeader = ({
     }
   };
 
+  // Fetch follow status
+  const fetchFollowStatus = async () => {
+    if (!profile?._id) return;
+    
+    try {
+      const response = await fetch(`/api/follow/status?targetUserId=${profile._id}`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        setFollowStatus(data);
+      }
+    } catch (error) {
+      console.error('Error fetching follow status:', error);
+    }
+  };
+
   // Sync form data when profile prop changes
   React.useEffect(() => {
     console.log('ProfileHeader received profile:', profile);
@@ -94,8 +120,9 @@ const ProfileHeader = ({
       console.log('Setting profile image from prop:', profile.profileImageUrl);
       setProfileImage(profile.profileImageUrl || '');
       
-      // Fetch leaderboard rank
+      // Fetch leaderboard rank and follow status
       fetchLeaderboardRank();
+      fetchFollowStatus();
     }
   }, [profile]);
 
@@ -267,6 +294,79 @@ const ProfileHeader = ({
       return `${domain}/u/${formData.username}`;
     }
     return null;
+  };
+
+  const handleFollowToggle = async () => {
+    console.log('Follow button clicked!');
+    console.log('User:', user);
+    console.log('Profile:', profile);
+    console.log('Profile._id:', profile?._id);
+    
+    if (!user || !profile?._id) {
+      console.log('Missing user or profile._id, returning early');
+      return;
+    }
+    
+    setFollowLoading(true);
+    try {
+      const token = await storage.getItem('auth_token');
+      const action = followStatus.isFollowing ? 'unfollow' : 'follow';
+      
+      const response = await fetch(`/api/follow/${action}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          targetUserId: profile._id
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        
+        // Update local state
+        setFollowStatus(prev => ({
+          ...prev,
+          isFollowing: data.isFollowing,
+          followerCount: data.isFollowing 
+            ? prev.followerCount + 1 
+            : prev.followerCount - 1
+        }));
+
+        // Show success message
+        const successDiv = document.createElement('div');
+        successDiv.style.cssText = `
+          position: fixed;
+          top: 20px;
+          right: 20px;
+          background: #4CAF50;
+          color: white;
+          padding: 12px 20px;
+          border-radius: 8px;
+          z-index: 10000;
+          font-weight: 600;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        `;
+        successDiv.textContent = data.message;
+        document.body.appendChild(successDiv);
+        
+        setTimeout(() => {
+          if (document.body.contains(successDiv)) {
+            document.body.removeChild(successDiv);
+          }
+        }, 3000);
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update follow status');
+      }
+    } catch (error) {
+      console.error('Error toggling follow:', error);
+      alert(error.message || 'Failed to update follow status. Please try again.');
+    } finally {
+      setFollowLoading(false);
+    }
   };
 
   return (
@@ -471,6 +571,41 @@ const ProfileHeader = ({
                   </button>
                 </>
               )}
+
+              {/* Follow Button - show only for other users' profiles */}
+              {!isOwnProfile && user && (
+                <button
+                  onClick={handleFollowToggle}
+                  disabled={followLoading}
+                  style={{
+                    backgroundColor: followStatus.isFollowing ? 'transparent' : '#2196F3',
+                    border: `1px solid ${followStatus.isFollowing ? (darkMode ? '#555' : '#ddd') : '#2196F3'}`,
+                    borderRadius: '6px',
+                    padding: '8px 12px',
+                    color: followStatus.isFollowing ? (darkMode ? '#e0e0e0' : '#333') : 'white',
+                    cursor: followLoading ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    opacity: followLoading ? 0.7 : 1,
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  {followLoading ? (
+                    '...'
+                  ) : followStatus.isFollowing ? (
+                    <>
+                      <FaUserMinus size={14} />
+                      Unfollow
+                    </>
+                  ) : (
+                    <>
+                      <FaUserPlus size={14} />
+                      Follow
+                    </>
+                  )}
+                </button>
+              )}
             </div>
             
             {onShare && (
@@ -509,6 +644,62 @@ const ProfileHeader = ({
               }}>
                 @{profile.username}
               </p>
+
+              {/* Follower/Following Counts */}
+              <div style={{
+                display: 'flex',
+                gap: '15px',
+                fontSize: '14px'
+              }}>
+                <button
+                  onClick={() => {
+                    setFollowModalType('followers');
+                    setShowFollowModal(true);
+                  }}
+                  style={{
+                    backgroundColor: 'transparent',
+                    border: 'none',
+                    padding: '0',
+                    color: darkMode ? '#b0b0b0' : '#666',
+                    cursor: 'pointer',
+                    transition: 'color 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.color = '#2196F3';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.color = darkMode ? '#b0b0b0' : '#666';
+                  }}
+                >
+                  <span style={{ fontWeight: '600', color: darkMode ? '#e0e0e0' : '#333' }}>
+                    {followStatus.followerCount}
+                  </span> followers
+                </button>
+                <button
+                  onClick={() => {
+                    setFollowModalType('following');
+                    setShowFollowModal(true);
+                  }}
+                  style={{
+                    backgroundColor: 'transparent',
+                    border: 'none',
+                    padding: '0',
+                    color: darkMode ? '#b0b0b0' : '#666',
+                    cursor: 'pointer',
+                    transition: 'color 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.color = '#2196F3';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.color = darkMode ? '#b0b0b0' : '#666';
+                  }}
+                >
+                  <span style={{ fontWeight: '600', color: darkMode ? '#e0e0e0' : '#333' }}>
+                    {followStatus.followingCount}
+                  </span> following
+                </button>
+              </div>
               
               {/* Leaderboard Badge */}
               {leaderboardRank && leaderboardRank.rank && (
@@ -1136,6 +1327,15 @@ const ProfileHeader = ({
         userBadges={profile?.earnedBadges || []}
         isOwnProfile={isOwnProfile}
         profileUrl={getProfileUrl()}
+      />
+
+      {/* Follow Modal */}
+      <FollowModal
+        isOpen={showFollowModal}
+        onClose={() => setShowFollowModal(false)}
+        targetUserId={profile?._id}
+        initialType={followModalType}
+        username={profile?.username}
       />
 
       {/* Pokemon Badge Animations */}

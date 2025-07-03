@@ -1,10 +1,14 @@
 import React, { useState, useContext } from 'react';
 import { ThemeContext } from '../../contexts/ThemeContext';
-import { FaEye, FaTimesCircle, FaEdit, FaArrowUp, FaArrowDown, FaClock, FaShieldAlt } from 'react-icons/fa';
+import { AuthContext } from '../../contexts/AuthContext';
+import { FaEye, FaTimesCircle, FaEdit, FaArrowUp, FaArrowDown, FaClock, FaShieldAlt, FaShare } from 'react-icons/fa';
+import SocialShareModal from '../profile/SocialShareModal';
 import storage from '../../lib/storage';
+import { getMaxLeverage } from '../../lib/sandbox-constants';
 
 const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
   const { darkMode } = useContext(ThemeContext);
+  const { user } = useContext(AuthContext);
   const [activeTab, setActiveTab] = useState('open');
   const [editingPosition, setEditingPosition] = useState(null);
   const [closingPosition, setClosingPosition] = useState(null);
@@ -15,6 +19,8 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [orderToCancel, setOrderToCancel] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [shareData, setShareData] = useState(null);
 
   const formatCurrency = (amount) => {
     if (amount === null || amount === undefined || isNaN(amount)) {
@@ -224,6 +230,110 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
       alert('Failed to update position: ' + error.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleShareTrade = (trade) => {
+    const returnPercentage = trade.marginUsed && trade.marginUsed > 0 
+      ? (trade.realizedPnL / trade.marginUsed) * 100 
+      : 0;
+    
+    const shareData = {
+      type: 'trading_highlight',
+      symbol: trade.symbol,
+      side: trade.side,
+      leverage: trade.leverage,
+      entryPrice: trade.entryPrice,
+      exitPrice: trade.exitPrice,
+      return: returnPercentage,
+      pnl: trade.realizedPnL,
+      duration: trade.duration,
+      quantity: trade.quantity,
+      marginUsed: trade.marginUsed,
+      fees: trade.fees?.total || 0,
+      entryReason: trade.preTradeAnalysis?.entryReason || '',
+      confidenceLevel: trade.preTradeAnalysis?.confidenceLevel || 0,
+      tradeId: trade.id,
+      exitTime: trade.exitTime
+    };
+    
+    setShareData(shareData);
+    setShowShareModal(true);
+  };
+
+  const handleShareToProfile = async (trade) => {
+    const returnPercentage = trade.marginUsed && trade.marginUsed > 0 
+      ? (trade.realizedPnL / trade.marginUsed) * 100 
+      : 0;
+    
+    const shareData = {
+      type: 'trading_highlight',
+      symbol: trade.symbol,
+      side: trade.side,
+      leverage: trade.leverage,
+      entryPrice: trade.entryPrice,
+      exitPrice: trade.exitPrice,
+      return: returnPercentage,
+      pnl: trade.realizedPnL,
+      duration: trade.duration,
+      quantity: trade.quantity,
+      marginUsed: trade.marginUsed,
+      fees: trade.fees?.total || 0,
+      entryReason: trade.preTradeAnalysis?.entryReason || '',
+      technicalAnalysis: trade.preTradeAnalysis?.technicalAnalysis || '',
+      riskManagement: trade.preTradeAnalysis?.riskManagement || '',
+      biasCheck: trade.preTradeAnalysis?.biasCheck || '',
+      confidenceLevel: trade.preTradeAnalysis?.confidenceLevel || 0,
+      expectedHoldTime: trade.preTradeAnalysis?.expectedHoldTime || '',
+      emotionalState: trade.preTradeAnalysis?.emotionalState || '',
+      postTradeAnalysis: trade.postTradeAnalysis || {},
+      tradeId: trade.id,
+      exitTime: trade.exitTime,
+      entryTime: trade.entryTime
+    };
+
+    try {
+      const token = await storage.getItem('auth_token');
+      console.log('Sharing trade data:', shareData);
+      const response = await fetch('/api/share/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          type: 'trading_highlight',
+          data: shareData
+        })
+      });
+
+      if (response.ok) {
+        // Show success message
+        const successDiv = document.createElement('div');
+        successDiv.style.cssText = `
+          position: fixed;
+          top: 20px;
+          right: 20px;
+          background: #4CAF50;
+          color: white;
+          padding: 12px 20px;
+          border-radius: 8px;
+          z-index: 10000;
+          font-weight: 600;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        `;
+        successDiv.textContent = '✅ Trade shared to your profile!';
+        document.body.appendChild(successDiv);
+        
+        setTimeout(() => {
+          document.body.removeChild(successDiv);
+        }, 3000);
+      } else {
+        throw new Error('Failed to share');
+      }
+    } catch (error) {
+      console.error('Error sharing trade to profile:', error);
+      alert('Failed to share trade to profile. Please try again.');
     }
   };
 
@@ -509,16 +619,20 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
                           <span className="detail-label">
                             Funding Fee Rate:
                             <span 
-                              className="info-icon" 
-                              title="Leveraged positions are charged 0.01% every 8 hours (0.03% daily) to simulate real trading costs"
+                              className="funding-fee-tooltip" 
                               style={{ 
                                 marginLeft: '4px', 
                                 cursor: 'help',
                                 color: '#ffa502',
-                                fontSize: '0.7rem'
+                                fontSize: '0.7rem',
+                                position: 'relative',
+                                display: 'inline-block'
                               }}
                             >
                               ⓘ
+                              <span className="tooltip-text">
+                                Leveraged positions are charged 0.01% every 8 hours (0.03% daily) to simulate real trading costs
+                              </span>
                             </span>
                           </span>
                           <span className="detail-value" style={{ color: '#ffa502' }}>
@@ -951,22 +1065,88 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
                         )}
                       </div>
                       
-                      <div 
-                        className="item-result"
-                        style={{ color: getPerformanceColor(item.displayAmount || 0) }}
-                      >
-                        <div className="amount">
-                          {item.displayAmountFormatted}
+                      <div className="item-actions">
+                        <div 
+                          className="item-result"
+                          style={{ color: getPerformanceColor(item.displayAmount || 0) }}
+                        >
+                          <div className="amount">
+                            {item.displayAmountFormatted}
+                          </div>
+                          {item.itemType === 'trade' && (
+                            <div className="result-percentage">
+                              {(() => {
+                                let percentage = 0;
+                                if (item.marginUsed && item.marginUsed > 0) {
+                                  percentage = (item.realizedPnL / item.marginUsed) * 100;
+                                }
+                                return `(${formatPercentage(percentage)})`;
+                              })()}
+                            </div>
+                          )}
                         </div>
+                        
                         {item.itemType === 'trade' && (
-                          <div className="result-percentage">
-                            {(() => {
-                              let percentage = 0;
-                              if (item.marginUsed && item.marginUsed > 0) {
-                                percentage = (item.realizedPnL / item.marginUsed) * 100;
-                              }
-                              return `(${formatPercentage(percentage)})`;
-                            })()}
+                          <div style={{ display: 'flex', gap: '8px', marginLeft: '12px' }}>
+                            <button
+                              onClick={() => handleShareTrade(item)}
+                              className="share-trade-button"
+                              style={{
+                                backgroundColor: '#4CAF50',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '6px',
+                                padding: '6px 12px',
+                                fontSize: '12px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                transition: 'all 0.2s ease',
+                              }}
+                              onMouseEnter={(e) => {
+                                e.target.style.backgroundColor = '#45a049';
+                                e.target.style.transform = 'scale(1.05)';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.target.style.backgroundColor = '#4CAF50';
+                                e.target.style.transform = 'scale(1)';
+                              }}
+                              title="Share this trade externally"
+                            >
+                              <FaShare size={10} />
+                              Share
+                            </button>
+                            
+                            <button
+                              onClick={() => handleShareToProfile(item)}
+                              className="share-to-profile-button"
+                              style={{
+                                backgroundColor: '#2196F3',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '6px',
+                                padding: '6px 12px',
+                                fontSize: '12px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                transition: 'all 0.2s ease',
+                              }}
+                              onMouseEnter={(e) => {
+                                e.target.style.backgroundColor = '#1976D2';
+                                e.target.style.transform = 'scale(1.05)';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.target.style.backgroundColor = '#2196F3';
+                                e.target.style.transform = 'scale(1)';
+                              }}
+                              title="Share to your profile"
+                            >
+                              📝
+                              Profile
+                            </button>
                           </div>
                         )}
                       </div>
@@ -2587,7 +2767,54 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
         .legend-color.loss {
           background: #ef4444;
         }
+        
+        /* Funding Fee Tooltip Styles */
+        .funding-fee-tooltip .tooltip-text {
+          visibility: hidden;
+          width: 280px;
+          background-color: rgba(0, 0, 0, 0.9);
+          color: #fff;
+          text-align: center;
+          border-radius: 6px;
+          padding: 8px 12px;
+          position: absolute;
+          z-index: 1000;
+          bottom: 125%;
+          left: 50%;
+          margin-left: -140px;
+          font-size: 0.75rem;
+          font-weight: 500;
+          line-height: 1.4;
+          opacity: 0;
+          transition: opacity 0.3s;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        
+        .funding-fee-tooltip .tooltip-text::after {
+          content: "";
+          position: absolute;
+          top: 100%;
+          left: 50%;
+          margin-left: -5px;
+          border-width: 5px;
+          border-style: solid;
+          border-color: rgba(0, 0, 0, 0.9) transparent transparent transparent;
+        }
+        
+        .funding-fee-tooltip:hover .tooltip-text {
+          visibility: visible;
+          opacity: 1;
+        }
       `}</style>
+
+      {/* Share Modal */}
+      <SocialShareModal
+        isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        shareData={shareData}
+        darkMode={darkMode}
+        profileUrl={`${typeof window !== 'undefined' ? window.location.origin : ''}/u/${user?.username || 'unknown'}`}
+      />
     </div>
   );
 };
