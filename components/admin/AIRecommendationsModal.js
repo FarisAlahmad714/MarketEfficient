@@ -2,6 +2,15 @@ import { useState, useEffect } from 'react';
 import CryptoLoader from '../CryptoLoader';
 import storage from '../../lib/storage';
 
+const getFlagEmoji = (countryCode) => {
+  const flags = {
+    'US': '🇺🇸', 'CA': '🇨🇦', 'GB': '🇬🇧', 'DE': '🇩🇪', 'FR': '🇫🇷', 'IT': '🇮🇹',
+    'ES': '🇪🇸', 'NL': '🇳🇱', 'AU': '🇦🇺', 'JP': '🇯🇵', 'KR': '🇰🇷', 'CN': '🇨🇳',
+    'IN': '🇮🇳', 'BR': '🇧🇷', 'MX': '🇲🇽', 'RU': '🇷🇺', 'SG': '🇸🇬', 'CH': '🇨🇭'
+  };
+  return flags[countryCode] || '🌍';
+};
+
 const AIRecommendationsModal = ({ recommendation, darkMode, onClose, onEmailCampaign }) => {
   const [detailData, setDetailData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -26,8 +35,8 @@ const AIRecommendationsModal = ({ recommendation, darkMode, onClose, onEmailCamp
         case 'revenue_change':
           endpoint = '/api/admin/recommendations/revenue-details';
           break;
-        case 'timezone_analysis':
-          endpoint = '/api/admin/recommendations/timezone-analysis';
+        case 'geographic_analysis':
+          endpoint = '/api/admin/recommendations/geographic-analysis';
           break;
         default:
           throw new Error('Unknown recommendation type');
@@ -266,7 +275,7 @@ const AIRecommendationsModal = ({ recommendation, darkMode, onClose, onEmailCamp
     );
   };
 
-  const renderTimezoneAnalysisContent = () => {
+  const renderGeographicAnalysisContent = () => {
     if (!detailData) return null;
 
     return (
@@ -287,17 +296,43 @@ const AIRecommendationsModal = ({ recommendation, darkMode, onClose, onEmailCamp
               Overview
             </button>
             <button
-              onClick={() => setActiveTab('timezones')}
+              onClick={() => setActiveTab('countries')}
               style={{
                 padding: '8px 16px',
-                backgroundColor: activeTab === 'timezones' ? '#2196F3' : 'transparent',
-                color: activeTab === 'timezones' ? 'white' : (darkMode ? '#e0e0e0' : '#333'),
-                border: `1px solid ${activeTab === 'timezones' ? '#2196F3' : (darkMode ? '#444' : '#ddd')}`,
+                backgroundColor: activeTab === 'countries' ? '#2196F3' : 'transparent',
+                color: activeTab === 'countries' ? 'white' : (darkMode ? '#e0e0e0' : '#333'),
+                border: `1px solid ${activeTab === 'countries' ? '#2196F3' : (darkMode ? '#444' : '#ddd')}`,
                 borderRadius: '4px',
                 cursor: 'pointer'
               }}
             >
-              Timezone Data
+              Top Markets
+            </button>
+            <button
+              onClick={() => setActiveTab('regions')}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: activeTab === 'regions' ? '#2196F3' : 'transparent',
+                color: activeTab === 'regions' ? 'white' : (darkMode ? '#e0e0e0' : '#333'),
+                border: `1px solid ${activeTab === 'regions' ? '#2196F3' : (darkMode ? '#444' : '#ddd')}`,
+                borderRadius: '4px',
+                cursor: 'pointer'
+              }}
+            >
+              Regional Data
+            </button>
+            <button
+              onClick={() => setActiveTab('insights')}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: activeTab === 'insights' ? '#2196F3' : 'transparent',
+                color: activeTab === 'insights' ? 'white' : (darkMode ? '#e0e0e0' : '#333'),
+                border: `1px solid ${activeTab === 'insights' ? '#2196F3' : (darkMode ? '#444' : '#ddd')}`,
+                borderRadius: '4px',
+                cursor: 'pointer'
+              }}
+            >
+              Business Insights
             </button>
           </div>
         </div>
@@ -312,10 +347,10 @@ const AIRecommendationsModal = ({ recommendation, darkMode, onClose, onEmailCamp
                 textAlign: 'center'
               }}>
                 <div style={{ fontSize: '24px', fontWeight: '600', color: '#4CAF50' }}>
-                  {detailData.topTimezone?.name || 'UTC'}
+                  {detailData.summary?.topMarket?.country || 'N/A'}
                 </div>
                 <div style={{ fontSize: '14px', color: darkMode ? '#b0b0b0' : '#666' }}>
-                  Top Timezone
+                  Top Market
                 </div>
               </div>
               <div style={{
@@ -325,10 +360,10 @@ const AIRecommendationsModal = ({ recommendation, darkMode, onClose, onEmailCamp
                 textAlign: 'center'
               }}>
                 <div style={{ fontSize: '24px', fontWeight: '600', color: '#2196F3' }}>
-                  {detailData.topTimezone?.userCount || 0}
+                  {detailData.summary?.totalCountries || 0}
                 </div>
                 <div style={{ fontSize: '14px', color: darkMode ? '#b0b0b0' : '#666' }}>
-                  Users in Top Zone
+                  Countries
                 </div>
               </div>
               <div style={{
@@ -338,10 +373,23 @@ const AIRecommendationsModal = ({ recommendation, darkMode, onClose, onEmailCamp
                 textAlign: 'center'
               }}>
                 <div style={{ fontSize: '24px', fontWeight: '600', color: '#FF9800' }}>
-                  {detailData.topTimezone?.avgTestsPerUser || 0}
+                  {detailData.summary?.totalUsers || 0}
                 </div>
                 <div style={{ fontSize: '14px', color: darkMode ? '#b0b0b0' : '#666' }}>
-                  Avg Tests Per User
+                  Total Users
+                </div>
+              </div>
+              <div style={{
+                padding: '16px',
+                backgroundColor: darkMode ? '#2a2a2a' : '#f8f9fa',
+                borderRadius: '8px',
+                textAlign: 'center'
+              }}>
+                <div style={{ fontSize: '24px', fontWeight: '600', color: '#9C27B0' }}>
+                  {detailData.summary?.totalRegions || 0}
+                </div>
+                <div style={{ fontSize: '14px', color: darkMode ? '#b0b0b0' : '#666' }}>
+                  Regions
                 </div>
               </div>
             </div>
@@ -351,18 +399,21 @@ const AIRecommendationsModal = ({ recommendation, darkMode, onClose, onEmailCamp
               backgroundColor: darkMode ? '#2a2a2a' : '#f8f9fa',
               borderRadius: '8px'
             }}>
-              <h4 style={{ color: darkMode ? '#e0e0e0' : '#333', marginBottom: '10px' }}>Timezone-Based Insights</h4>
+              <h4 style={{ color: darkMode ? '#e0e0e0' : '#333', marginBottom: '10px' }}>Geographic Distribution Overview</h4>
               <p style={{ color: darkMode ? '#b0b0b0' : '#666', marginBottom: '10px' }}>
-                Users in <strong>{detailData.topTimezone?.name}</strong> show the highest engagement with an average of {detailData.topTimezone?.avgTestsPerUser} tests per user.
+                Your user base spans <strong>{detailData.summary?.totalCountries || 0} countries</strong> across <strong>{detailData.summary?.totalRegions || 0} major regions</strong>.
+                {detailData.summary?.topMarket && (
+                  <span> <strong>{detailData.summary.topMarket.country}</strong> is your largest market with {detailData.summary.topMarket.percentage}% of users.</span>
+                )}
               </p>
               <p style={{ color: darkMode ? '#b0b0b0' : '#666' }}>
-                Consider scheduling educational content and market analysis during peak hours for this timezone to maximize engagement.
+                Use this data to guide product localization, regulatory compliance, and market expansion strategies.
               </p>
             </div>
           </div>
         )}
 
-        {activeTab === 'timezones' && (
+        {activeTab === 'countries' && (
           <div style={{ overflowX: 'auto' }}>
             <table style={{
               width: '100%',
@@ -373,46 +424,147 @@ const AIRecommendationsModal = ({ recommendation, darkMode, onClose, onEmailCamp
             }}>
               <thead>
                 <tr style={{ backgroundColor: darkMode ? '#2a2a2a' : '#f5f5f5' }}>
-                  <th style={{ padding: '12px', textAlign: 'left', color: darkMode ? '#e0e0e0' : '#333' }}>Timezone</th>
+                  <th style={{ padding: '12px', textAlign: 'left', color: darkMode ? '#e0e0e0' : '#333' }}>Rank</th>
+                  <th style={{ padding: '12px', textAlign: 'left', color: darkMode ? '#e0e0e0' : '#333' }}>Country</th>
                   <th style={{ padding: '12px', textAlign: 'center', color: darkMode ? '#e0e0e0' : '#333' }}>Users</th>
-                  <th style={{ padding: '12px', textAlign: 'center', color: darkMode ? '#e0e0e0' : '#333' }}>Total Tests</th>
-                  <th style={{ padding: '12px', textAlign: 'center', color: darkMode ? '#e0e0e0' : '#333' }}>Avg Tests/User</th>
-                  <th style={{ padding: '12px', textAlign: 'center', color: darkMode ? '#e0e0e0' : '#333' }}>Engagement Score</th>
+                  <th style={{ padding: '12px', textAlign: 'center', color: darkMode ? '#e0e0e0' : '#333' }}>Share</th>
+                  <th style={{ padding: '12px', textAlign: 'center', color: darkMode ? '#e0e0e0' : '#333' }}>Growth Trend</th>
+                  <th style={{ padding: '12px', textAlign: 'center', color: darkMode ? '#e0e0e0' : '#333' }}>Market Penetration</th>
                 </tr>
               </thead>
               <tbody>
-                {detailData.timezoneStats?.map((tz, index) => (
+                {detailData.topMarkets?.map((market, index) => (
                   <tr key={index} style={{ 
                     borderBottom: `1px solid ${darkMode ? '#333' : '#eee'}`,
                     backgroundColor: index % 2 === 0 ? 'transparent' : (darkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)')
                   }}>
-                    <td style={{ padding: '12px', color: darkMode ? '#e0e0e0' : '#333' }}>{tz.timezone}</td>
-                    <td style={{ padding: '12px', textAlign: 'center', color: darkMode ? '#e0e0e0' : '#333' }}>{tz.userCount}</td>
-                    <td style={{ padding: '12px', textAlign: 'center', color: darkMode ? '#e0e0e0' : '#333' }}>{tz.totalTests}</td>
-                    <td style={{ padding: '12px', textAlign: 'center', color: darkMode ? '#e0e0e0' : '#333' }}>
-                      {tz.avgTestsPerUser.toFixed(1)}
+                    <td style={{ padding: '12px', color: darkMode ? '#e0e0e0' : '#333', fontWeight: '600' }}>#{market.rank}</td>
+                    <td style={{ padding: '12px', color: darkMode ? '#e0e0e0' : '#333' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '16px' }}>{getFlagEmoji(market.countryCode)}</span>
+                        {market.country}
+                      </div>
+                    </td>
+                    <td style={{ padding: '12px', textAlign: 'center', color: darkMode ? '#e0e0e0' : '#333' }}>{market.userCount}</td>
+                    <td style={{ padding: '12px', textAlign: 'center', color: darkMode ? '#e0e0e0' : '#333' }}>{market.percentage}%</td>
+                    <td style={{ padding: '12px', textAlign: 'center' }}>
+                      <span style={{
+                        padding: '4px 8px',
+                        borderRadius: '12px',
+                        fontSize: '12px',
+                        backgroundColor: market.growthTrend === 'High Growth' ? '#4CAF50' : 
+                                       market.growthTrend === 'Growing' ? '#FF9800' : 
+                                       market.growthTrend === 'Moderate Growth' ? '#2196F3' : '#757575',
+                        color: 'white'
+                      }}>
+                        {market.growthTrend}
+                      </span>
                     </td>
                     <td style={{ padding: '12px', textAlign: 'center' }}>
-                      <div style={{
-                        width: '60px',
-                        height: '8px',
-                        backgroundColor: darkMode ? '#333' : '#ddd',
-                        borderRadius: '4px',
-                        margin: '0 auto',
-                        position: 'relative'
+                      <span style={{
+                        padding: '4px 8px',
+                        borderRadius: '12px',
+                        fontSize: '12px',
+                        backgroundColor: market.marketPenetration === 'High' ? '#4CAF50' : 
+                                       market.marketPenetration === 'Medium' ? '#FF9800' : '#F44336',
+                        color: 'white'
                       }}>
-                        <div style={{
-                          width: `${Math.min(100, (tz.avgTestsPerUser / 10) * 100)}%`,
-                          height: '100%',
-                          backgroundColor: '#4CAF50',
-                          borderRadius: '4px'
-                        }}></div>
-                      </div>
+                        {market.marketPenetration}
+                      </span>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {activeTab === 'regions' && (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{
+              width: '100%',
+              borderCollapse: 'collapse',
+              backgroundColor: darkMode ? '#1e1e1e' : 'white',
+              borderRadius: '8px',
+              overflow: 'hidden'
+            }}>
+              <thead>
+                <tr style={{ backgroundColor: darkMode ? '#2a2a2a' : '#f5f5f5' }}>
+                  <th style={{ padding: '12px', textAlign: 'left', color: darkMode ? '#e0e0e0' : '#333' }}>Region</th>
+                  <th style={{ padding: '12px', textAlign: 'center', color: darkMode ? '#e0e0e0' : '#333' }}>Users</th>
+                  <th style={{ padding: '12px', textAlign: 'left', color: darkMode ? '#e0e0e0' : '#333' }}>Top Country</th>
+                  <th style={{ padding: '12px', textAlign: 'center', color: darkMode ? '#e0e0e0' : '#333' }}>Countries</th>
+                </tr>
+              </thead>
+              <tbody>
+                {detailData.regionalDistribution?.map((region, index) => (
+                  <tr key={index} style={{ 
+                    borderBottom: `1px solid ${darkMode ? '#333' : '#eee'}`,
+                    backgroundColor: index % 2 === 0 ? 'transparent' : (darkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)')
+                  }}>
+                    <td style={{ padding: '12px', color: darkMode ? '#e0e0e0' : '#333', fontWeight: '600' }}>{region.region}</td>
+                    <td style={{ padding: '12px', textAlign: 'center', color: darkMode ? '#e0e0e0' : '#333' }}>{region.userCount}</td>
+                    <td style={{ padding: '12px', color: darkMode ? '#e0e0e0' : '#333' }}>
+                      {region.topCountry.name} ({region.topCountry.userCount})
+                    </td>
+                    <td style={{ padding: '12px', textAlign: 'center', color: darkMode ? '#e0e0e0' : '#333' }}>{region.countries.length}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {activeTab === 'insights' && (
+          <div>
+            {detailData.businessInsights?.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {detailData.businessInsights.map((insight, index) => (
+                  <div key={index} style={{
+                    padding: '16px',
+                    backgroundColor: darkMode ? '#2a2a2a' : '#f8f9fa',
+                    borderRadius: '8px',
+                    borderLeft: `4px solid ${insight.priority === 'high' ? '#F44336' : insight.priority === 'medium' ? '#FF9800' : '#4CAF50'}`
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                      <span style={{
+                        padding: '2px 6px',
+                        borderRadius: '4px',
+                        fontSize: '10px',
+                        fontWeight: '600',
+                        backgroundColor: insight.priority === 'high' ? '#F44336' : insight.priority === 'medium' ? '#FF9800' : '#4CAF50',
+                        color: 'white'
+                      }}>
+                        {insight.priority.toUpperCase()}
+                      </span>
+                      <h4 style={{ color: darkMode ? '#e0e0e0' : '#333', margin: 0 }}>{insight.title}</h4>
+                    </div>
+                    <p style={{ color: darkMode ? '#b0b0b0' : '#666', marginBottom: '12px' }}>
+                      {insight.description}
+                    </p>
+                    <div style={{ marginTop: '12px' }}>
+                      <h5 style={{ color: darkMode ? '#e0e0e0' : '#333', marginBottom: '8px' }}>Recommended Actions:</h5>
+                      <ul style={{ margin: 0, paddingLeft: '20px' }}>
+                        {insight.actionItems.map((action, actionIndex) => (
+                          <li key={actionIndex} style={{ color: darkMode ? '#b0b0b0' : '#666', marginBottom: '4px' }}>
+                            {action}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{
+                padding: '40px',
+                textAlign: 'center',
+                color: darkMode ? '#b0b0b0' : '#666'
+              }}>
+                <p>No specific business insights available yet.</p>
+                <p>Insights will appear as your user base grows and geographic patterns emerge.</p>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -511,8 +663,8 @@ const AIRecommendationsModal = ({ recommendation, darkMode, onClose, onEmailCamp
     switch (recommendation.type) {
       case 'inactive_users':
         return renderInactiveUsersContent();
-      case 'timezone_analysis':
-        return renderTimezoneAnalysisContent();
+      case 'geographic_analysis':
+        return renderGeographicAnalysisContent();
       case 'revenue_change':
         return renderRevenueContent();
       default:

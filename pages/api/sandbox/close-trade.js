@@ -238,7 +238,7 @@ async function closeTradeHandler(req, res) {
 async function getCurrentMarketPrice(symbol) {
   try {
     // Try real API first with correct env var name
-    const TWELVEDATA_API_KEY = process.env.TWELVE_DATA_API_KEY || '08f0aa1220414f6ba782aaae2cd515e3';
+    const TWELVEDATA_API_KEY = process.env.TWELVE_DATA_API_KEY || '';
     
     if (TWELVEDATA_API_KEY) {
       try {

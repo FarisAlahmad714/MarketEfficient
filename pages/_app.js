@@ -5,7 +5,9 @@ import { useEffect, useState, useContext } from 'react';
 import { AuthProvider, AuthContext } from '../contexts/AuthContext';
 import { useRouter } from 'next/router';
 import CryptoLoader from '../components/CryptoLoader';
-import TrackedPage from "../components/TrackedPage";  
+import TrackedPage from "../components/TrackedPage";
+import { getTimezone } from '../lib/timezone';
+import axios from 'axios';  
 // Define which routes require authentication
 const protectedRoutes = [
   '/bias-test', 
@@ -44,6 +46,13 @@ function AppContent({ Component, pageProps }) {
       document.head.appendChild(script);
     }
 
+    // Setup axios interceptor to automatically send timezone with all requests
+    const timezone = getTimezone();
+    const interceptor = axios.interceptors.request.use((config) => {
+      config.headers['x-timezone'] = timezone;
+      return config;
+    });
+
     // Register service worker for PWA
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js')
@@ -54,6 +63,11 @@ function AppContent({ Component, pageProps }) {
           console.log('SW registration failed: ', registrationError);
         });
     }
+
+    // Cleanup interceptor on unmount
+    return () => {
+      axios.interceptors.request.eject(interceptor);
+    };
   }, []);
   
   // Listen for route changes to check authentication

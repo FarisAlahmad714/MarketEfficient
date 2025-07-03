@@ -1,7 +1,7 @@
 // pages/api/crypto-prices.js
 import axios from 'axios';
 
-const ALPHA_VANTAGE_API_KEY = process.env.ALPHA_VANTAGE_API_KEY || 'QRL7874F7OJAGJHY';
+const ALPHA_VANTAGE_API_KEY = process.env.ALPHA_VANTAGE_API_KEY || '';
 
 // Cache to prevent hitting rate limits - MUCH LONGER for simple display
 let priceCache = {
@@ -77,7 +77,7 @@ export default async function handler(req, res) {
     // Fetch stock data from TwelveData (BATCH ALL STOCKS IN 1 CALL)
     let stockData = [];
     const stocks = ['AAPL', 'GLD', 'TSLA', 'NVDA'];
-    const TWELVE_DATA_API_KEY = process.env.TWELVE_DATA_API_KEY || '08f0aa1220414f6ba782aaae2cd515e3';
+    const TWELVE_DATA_API_KEY = process.env.TWELVE_DATA_API_KEY || '';
     
     try {
       // Use TwelveData batch endpoint - fetch all stocks in 1 API call

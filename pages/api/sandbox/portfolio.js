@@ -285,7 +285,7 @@ async function portfolioHandler(req, res) {
 // Helper function to get real market prices (same as close-trade.js)
 async function getCurrentMarketPrice(symbol) {
   try {
-    const TWELVEDATA_API_KEY = process.env.TWELVE_DATA_API_KEY || '08f0aa1220414f6ba782aaae2cd515e3';
+    const TWELVEDATA_API_KEY = process.env.TWELVE_DATA_API_KEY;
     
     if (!TWELVEDATA_API_KEY) {
       throw new Error('Twelvedata API key not configured');

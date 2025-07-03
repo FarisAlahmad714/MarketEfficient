@@ -152,6 +152,44 @@ export const authenticate = (options = {}) => {
         }
       }
 
+      // Update timezone and location data for existing users
+      if (!user.timezone || user.timezone === 'UTC' || !user.country) {
+        try {
+          const timezone = req.headers['x-timezone'];
+          let needsUpdate = false;
+          
+          // Update timezone if header present and different
+          if (timezone && timezone !== 'UTC' && (!user.timezone || user.timezone === 'UTC')) {
+            user.timezone = timezone;
+            needsUpdate = true;
+          }
+          
+          // Detect location if not set
+          if (!user.country || !user.countryCode) {
+            const { getLocationFromIP, getClientIP } = require('../lib/geolocation');
+            const clientIP = getClientIP(req);
+            const locationData = await getLocationFromIP(clientIP);
+            
+            if (locationData.success) {
+              user.country = locationData.country || user.country;
+              user.countryCode = locationData.countryCode || user.countryCode;
+              user.region = locationData.region || user.region;
+              user.city = locationData.city || user.city;
+              user.continent = locationData.continent || user.continent;
+              user.timezone = locationData.timezone || user.timezone;
+              needsUpdate = true;
+            }
+          }
+          
+          if (needsUpdate) {
+            await user.save();
+            console.log(`[AUTH MIDDLEWARE] Updated location data for user ${user._id}`);
+          }
+        } catch (error) {
+          console.error('[AUTH MIDDLEWARE] Error updating location data:', error);
+        }
+      }
+
       // Debug logging removed for security
       
       // Check if user is verified (optional based on your requirements)

@@ -195,6 +195,31 @@ const UserSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
+  // Geographic and timezone data
+  timezone: {
+    type: String,
+    default: 'UTC'
+  },
+  country: {
+    type: String,
+    default: ''
+  },
+  countryCode: {
+    type: String,
+    default: ''
+  },
+  region: {
+    type: String,
+    default: ''
+  },
+  city: {
+    type: String,
+    default: ''
+  },
+  continent: {
+    type: String,
+    default: ''
+  },
   // Email change fields
   newEmail: {
     type: String,

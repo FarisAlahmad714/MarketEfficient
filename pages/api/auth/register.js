@@ -128,6 +128,14 @@ export default async function handler(req, res) {
         const verificationToken = generateToken();
         const verificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
         
+        // Get timezone from header and detect location from IP
+        const timezone = req.headers['x-timezone'] || 'UTC';
+        
+        // Detect user location from IP
+        const { getLocationFromIP, getClientIP } = require('../../../lib/geolocation');
+        const clientIP = getClientIP(req);
+        const locationData = await getLocationFromIP(clientIP);
+        
         // Auto-generate username
         let baseUsername = '';
         if (name.trim()) {
@@ -179,6 +187,12 @@ export default async function handler(req, res) {
           verificationToken,
           verificationTokenExpires,
           registrationPromoCode: promoCodeValid ? promoCode : null,
+          timezone: locationData.timezone || timezone,
+          country: locationData.country,
+          countryCode: locationData.countryCode,
+          region: locationData.region,
+          city: locationData.city,
+          continent: locationData.continent,
           createdAt: new Date(),
           hasActiveSubscription: false,
           subscriptionStatus: 'none',

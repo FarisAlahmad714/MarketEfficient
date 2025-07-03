@@ -154,12 +154,12 @@ const AdminPanel = () => {
         actionType: 'modal'
       });
     }
-    // Replace region with timezone analysis since we don't collect location data
+    // Geographic audience analysis for business intelligence
     if (insights.totalUsers > 0) {
       recommendations.push({
-        type: 'timezone_analysis',
-        title: 'Optimize for User Timezones',
-        description: `Analyze user activity patterns across different timezones to optimize content delivery and engagement timing.`,
+        type: 'geographic_analysis',
+        title: 'Geographic Audience Intelligence',
+        description: `Analyze your user base by country and region to identify market opportunities, expansion targets, and localization needs.`,
         action: 'View Analysis',
         actionType: 'modal'
       });

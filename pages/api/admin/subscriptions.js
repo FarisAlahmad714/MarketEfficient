@@ -5,29 +5,16 @@ import AdminAction from '../../../models/AdminAction';
 import { grantAdminAccess, cancelSubscriptionAtPeriodEnd, getSubscriptionAnalytics } from '../../../lib/subscriptionUtils';
 import { cancelSubscription as cancelStripeSubscription } from '../../../lib/stripe';
 import connectDB from '../../../lib/database';
-import jwt from 'jsonwebtoken';
+import { createApiHandler, composeMiddleware } from '../../../lib/api-handler';
+import { requireAdmin } from '../../../middleware/auth';
 
-export default async function handler(req, res) {
+async function subscriptionsHandler(req, res) {
+  // User is already authenticated and verified as admin via middleware
+  await connectDB();
+
   try {
-    await connectDB();
-
-    // Verify admin authentication
-    const token = req.headers.authorization?.replace('Bearer ', '');
-    if (!token) {
-      return res.status(401).json({ error: 'No authorization token provided' });
-    }
-
-    let decoded;
-    try {
-      decoded = jwt.verify(token, process.env.JWT_SECRET);
-    } catch (error) {
-      return res.status(401).json({ error: 'Invalid token' });
-    }
-
-    const admin = await User.findById(decoded.userId);
-    if (!admin || !admin.isAdmin) {
-      return res.status(403).json({ error: 'Admin access required' });
-    }
+    // Get admin user for logging purposes
+    const admin = req.user;
 
     switch (req.method) {
       case 'GET':
@@ -408,4 +395,9 @@ async function cancelSubscription(req, res, admin) {
     console.error('Error cancelling subscription:', error);
     res.status(500).json({ error: 'Failed to cancel subscription' });
   }
-} 
+}
+
+// Export with admin authentication required
+export default createApiHandler(composeMiddleware(requireAdmin, subscriptionsHandler), {
+  methods: ['GET', 'POST', 'PUT', 'DELETE']
+}); 

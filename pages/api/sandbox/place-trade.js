@@ -1,6 +1,7 @@
 // pages/api/sandbox/place-trade.js
 import { requireAuth } from '../../../middleware/auth';
 import { createApiHandler, composeMiddleware } from '../../../lib/api-handler';
+import { withCsrfProtect } from '../../../middleware/csrf';
 import connectDB from '../../../lib/database';
 import SandboxPortfolio from '../../../models/SandboxPortfolio';
 import SandboxTrade from '../../../models/SandboxTrade';
@@ -564,6 +565,6 @@ function getAssetType(symbol) {
 }
 
 export default createApiHandler(
-  composeMiddleware(requireAuth, placeTradeHandler),
+  composeMiddleware(requireAuth, withCsrfProtect, placeTradeHandler),
   { methods: ['POST'] }
 );
