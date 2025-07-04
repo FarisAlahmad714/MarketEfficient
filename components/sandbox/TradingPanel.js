@@ -189,19 +189,80 @@ const TradingPanel = ({ selectedAsset, marketData, portfolioData, onTradeSuccess
         preTradeAnalysis: analysis
       };
       
-      const token = storage.getItem('auth_token');
-      const response = await fetch('/api/sandbox/place-trade', {
+      const token = await storage.getItem('auth_token');
+      
+      // Get CSRF token for sandbox trading requests
+      let csrfToken = null;
+      try {
+        const csrfResponse = await fetch('/api/auth/csrf-token', {
+          credentials: 'include' // Ensure cookies are included
+        });
+        if (csrfResponse.ok) {
+          const csrfData = await csrfResponse.json();
+          csrfToken = csrfData.csrfToken;
+          console.log('CSRF token received:', csrfToken);
+          
+          // Small delay to ensure cookie is set
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      } catch (csrfError) {
+        console.warn('Could not get CSRF token:', csrfError);
+      }
+      
+      const headers = {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      };
+      
+      if (csrfToken) {
+        headers['X-CSRF-Token'] = csrfToken;
+      }
+      
+      console.log('Submitting trade:', tradeData);
+      console.log('Headers:', headers);
+      
+      console.log('Making fetch request to /api/sandbox/place-trade-fast...');
+      
+      // Add timeout to prevent indefinite loading
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
+      const response = await fetch('/api/sandbox/place-trade-fast', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(tradeData)
+        headers,
+        body: JSON.stringify(tradeData),
+        credentials: 'include', // Ensure cookies are sent with request
+        signal: controller.signal
       });
       
+      clearTimeout(timeoutId);
+      
+      console.log('Response received:', response.status, response.statusText);
+      
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to place trade');
+        let errorData;
+        try {
+          errorData = await response.json();
+        } catch (e) {
+          errorData = { error: 'Failed to parse error response' };
+        }
+        console.error('Trade submission failed:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorData
+        });
+        
+        // Handle specific error cases
+        if (response.status === 400 && errorData.validationErrors) {
+          const validationMessages = errorData.validationErrors.map(e => e.message || e.error).join('. ');
+          throw new Error(validationMessages);
+        } else if (errorData.message) {
+          throw new Error(errorData.message);
+        } else if (errorData.error) {
+          throw new Error(errorData.error);
+        } else {
+          throw new Error(`Failed to place trade (${response.status})`);
+        }
       }
       
       const result = await response.json();
@@ -232,7 +293,13 @@ const TradingPanel = ({ selectedAsset, marketData, portfolioData, onTradeSuccess
       
     } catch (error) {
       console.error('Error placing trade:', error);
-      setError(error.message);
+      if (error.name === 'AbortError') {
+        setError('Request timed out after 30 seconds. Please try again.');
+      } else if (error.message.includes('NetworkError') || error.message.includes('fetch')) {
+        setError('Network error occurred. Please check your connection and try again.');
+      } else {
+        setError(error.message);
+      }
     } finally {
       setSubmitting(false);
     }

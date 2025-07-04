@@ -9,18 +9,19 @@ import { getPriceSimulator } from '../../../lib/priceSimulation';
 import { validateTradeRequest } from '../../../lib/trading-validation';
 import { validateAndDetectBias } from '../../../lib/sandbox-bias-detection.js';
 import { 
+  TradingError, 
   logTradingError, 
-  handleMarketDataError, 
-  handleDatabaseError,
-  formatErrorResponse,
-  TradingError,
-  APIFailureHandler,
-  marketDataCircuitBreaker
+  handleDatabaseError, 
+  formatErrorResponse 
 } from '../../../lib/trading-error-handler';
 import { adminSecurityValidator } from '../../../lib/admin-security';
 
 async function placeTradeHandler(req, res) {
+  console.log('[PLACE-TRADE] Starting trade placement...');
+  const startTime = Date.now();
+  
   await connectDB();
+  console.log('[PLACE-TRADE] DB connected in', Date.now() - startTime, 'ms');
   
   const userId = req.user.id;
   const {
@@ -49,22 +50,6 @@ async function placeTradeHandler(req, res) {
     });
 
     if (!validation.isValid) {
-      await logTradingError(
-        new TradingError(
-          `Trade validation failed: ${validation.errors.map(e => e.message).join(', ')}`,
-          'VALIDATION_FAILED',
-          'medium',
-          { validationErrors: validation.errors }
-        ),
-        userId,
-        'place_trade_validation',
-        { 
-          ipAddress: req.ip, 
-          userAgent: req.get('User-Agent'),
-          requestBodySize: JSON.stringify(req.body || {}).length
-        }
-      );
-
       return res.status(400).json({
         success: false,
         error: 'Validation failed',
@@ -75,25 +60,10 @@ async function placeTradeHandler(req, res) {
     // Use validated data
     const validatedData = validation.data;
 
-    // Get user's sandbox portfolio with error handling
-    let portfolio;
-    try {
-      portfolio = await SandboxPortfolio.findOne({ userId, unlocked: true });
-    } catch (error) {
-      await handleDatabaseError('fetch_portfolio', error, userId, {
-        operation: 'place_trade'
-      });
-      return res.status(500).json(formatErrorResponse(error));
-    }
+    // Get user's sandbox portfolio
+    const portfolio = await SandboxPortfolio.findOne({ userId, unlocked: true });
     
     if (!portfolio) {
-      const error = new TradingError(
-        'Sandbox not unlocked or portfolio not found',
-        'PORTFOLIO_NOT_FOUND',
-        'medium',
-        { userId }
-      );
-      await logTradingError(error, userId, 'place_trade_access');
       return res.status(403).json({ 
         error: 'Sandbox not unlocked',
         message: 'Complete required tests to unlock sandbox trading' 
@@ -108,35 +78,20 @@ async function placeTradeHandler(req, res) {
       console.log(`Top-up completed. New balance: ${portfolio.balance} SENSES`);
     }
 
-    // Enhanced pre-trade analysis validation with bias detection
+    // Pre-trade analysis validation
+    console.log('[PLACE-TRADE] Checking pre-trade analysis at', Date.now() - startTime, 'ms');
     if (!preTradeAnalysis || !preTradeAnalysis.entryReason) {
-      const error = new TradingError(
-        'Pre-trade analysis required',
-        'ANALYSIS_REQUIRED',
-        'medium',
-        { userId, symbol: validatedData.symbol }
-      );
-      await logTradingError(error, userId, 'place_trade_analysis');
       return res.status(400).json({ 
         error: 'Missing pre-trade analysis',
         message: 'Entry reason is required for educational purposes' 
       });
     }
 
+    console.log('[PLACE-TRADE] Running bias detection at', Date.now() - startTime, 'ms');
     const biasAnalysis = validateAndDetectBias(preTradeAnalysis);
+    console.log('[PLACE-TRADE] Bias detection completed at', Date.now() - startTime, 'ms');
+    
     if (!biasAnalysis.isValid) {
-      const error = new TradingError(
-        `Analysis validation failed: ${biasAnalysis.errors ? biasAnalysis.errors.join(', ') : 'Bias detection blocked trade'}`,
-        biasAnalysis.code || 'BIAS_DETECTION_FAILED',
-        'medium',
-        { 
-          userId, 
-          biasAnalysis,
-          blockers: biasAnalysis.blockers || []
-        }
-      );
-      await logTradingError(error, userId, 'place_trade_bias_analysis');
-      
       return res.status(400).json({ 
         error: 'Analysis validation failed',
         message: biasAnalysis.errors ? biasAnalysis.errors.join('. ') : 'Severe trading biases detected.',
@@ -146,55 +101,20 @@ async function placeTradeHandler(req, res) {
       });
     }
 
-    // Get current market price with comprehensive error handling
+    // Get current market price
     let currentPrice;
-    const apiHandler = new APIFailureHandler(3, 1000);
-    
     try {
-      currentPrice = await marketDataCircuitBreaker.call(
-        async () => {
-          return await apiHandler.withRetry(
-            async () => {
-              const price = await getCurrentMarketPrice(validatedData.symbol);
-              if (!price) {
-                throw new Error(`No price data available for ${validatedData.symbol}`);
-              }
-              return price;
-            },
-            `fetch_price_${validatedData.symbol}`,
-            { userId, symbol: validatedData.symbol }
-          );
-        },
-        `market_data_${validatedData.symbol}`,
-        { userId, symbol: validatedData.symbol }
-      );
+      console.log('[PLACE-TRADE] Fetching market price at', Date.now() - startTime, 'ms');
+      currentPrice = await getCurrentMarketPrice(validatedData.symbol);
+      console.log('[PLACE-TRADE] Market price fetched at', Date.now() - startTime, 'ms');
+      if (!currentPrice) {
+        throw new Error(`No price data available for ${validatedData.symbol}`);
+      }
     } catch (error) {
-      // CRITICAL: DO NOT use fallback prices for real trading!
-      // This could cause massive losses with incorrect prices
-      await logTradingError(
-        new TradingError(
-          `CRITICAL: Real price API failed for ${validatedData.symbol} - BLOCKING TRADE`,
-          'REAL_PRICE_API_FAILED',
-          'critical',
-          { 
-            symbol: validatedData.symbol, 
-            originalError: error.message,
-            apiKeyConfigured: !!process.env.TWELVE_DATA_API_KEY
-          }
-        ),
-        userId,
-        'place_trade_api_failure'
-      );
-      
       return res.status(503).json({
         success: false,
         error: 'Real-time price unavailable',
-        message: `Cannot execute trade for ${validatedData.symbol}. Real market data is required for trading. Please check API configuration and try again.`,
-        technicalDetails: {
-          apiKeyConfigured: !!process.env.TWELVE_DATA_API_KEY,
-          symbol: validatedData.symbol,
-          apiSymbol: getAPISymbol ? getAPISymbol(validatedData.symbol) : 'unknown'
-        }
+        message: `Cannot execute trade for ${validatedData.symbol}. Real market data is required for trading.`
       });
     }
 
@@ -242,17 +162,15 @@ async function placeTradeHandler(req, res) {
     const positionValue = basePositionValue * validatedData.leverage; // Total exposure with leverage
     const marginRequired = basePositionValue; // Actual money required from balance
 
-    // Check if user is admin with error handling
-    let user, isAdmin;
+    // Check if user is admin
+    let isAdmin = false;
     try {
       const User = require('../../../models/User');
-      user = await User.findById(userId);
+      const user = await User.findById(userId);
       isAdmin = user?.isAdmin || false;
     } catch (error) {
-      await handleDatabaseError('fetch_user', error, userId, {
-        operation: 'place_trade_admin_check'
-      });
-      return res.status(500).json(formatErrorResponse(error));
+      // Continue with regular user limits if admin check fails
+      console.error('Admin check failed:', error);
     }
     
     // Apply enhanced security checks for admins, regular limits for users
@@ -319,7 +237,7 @@ async function placeTradeHandler(req, res) {
     }
 
     // Validate asset-specific leverage
-    const { getMaxLeverage } = require('../../../lib/sandbox-constants');
+    const { getMaxLeverage } = require('../../../lib/sandbox-constants-data');
     const maxLeverageForAsset = getMaxLeverage(validatedData.symbol);
     
     if (validatedData.leverage > maxLeverageForAsset) {
@@ -440,8 +358,10 @@ async function placeTradeHandler(req, res) {
     }
 
     // Create the trade
+    console.log('[PLACE-TRADE] Creating trade record at', Date.now() - startTime, 'ms');
     const trade = new SandboxTrade(tradeData);
     await trade.save();
+    console.log('[PLACE-TRADE] Trade saved at', Date.now() - startTime, 'ms');
 
     // Update portfolio statistics
     portfolio.totalTrades += 1;
@@ -450,19 +370,12 @@ async function placeTradeHandler(req, res) {
     // Update balance (subtract fees)
     portfolio.balance -= entryFee;
     
+    console.log('[PLACE-TRADE] Updating portfolio at', Date.now() - startTime, 'ms');
     await portfolio.save();
+    console.log('[PLACE-TRADE] Portfolio updated at', Date.now() - startTime, 'ms');
 
-    // Check for new badges and send notifications
-    try {
-      const { checkAndNotifyNewBadges } = await import('../../../lib/badge-service');
-      const badgeResult = await checkAndNotifyNewBadges(userId);
-      if (badgeResult.success && badgeResult.newBadges > 0) {
-        console.log(`User ${userId} earned ${badgeResult.newBadges} new badges:`, badgeResult.badges);
-      }
-    } catch (badgeError) {
-      console.error('Error checking for new badges:', badgeError);
-      // Don't fail the main request if badge checking fails
-    }
+    // Note: Badge checking removed from hot path for performance
+    // TODO: Move badge checking to background job or separate endpoint
 
     // Prepare response
     const response = {
@@ -496,10 +409,11 @@ async function placeTradeHandler(req, res) {
       }
     };
 
+    console.log('[PLACE-TRADE] Trade completed successfully in', Date.now() - startTime, 'ms');
     res.status(200).json(response);
 
   } catch (error) {
-    console.error('Error placing sandbox trade:', error);
+    console.error('[PLACE-TRADE] Error placing sandbox trade after', Date.now() - startTime, 'ms:', error);
     res.status(500).json({ 
       error: 'Failed to place trade',
       message: error.message 
@@ -519,11 +433,16 @@ async function getCurrentMarketPrice(symbol) {
     }
     
     // Convert symbol to API format (BTC -> BTC/USD)
-    const { getAPISymbol } = require('../../../lib/sandbox-constants');
+    const { getAPISymbol } = require('../../../lib/sandbox-constants-data');
     const apiSymbol = getAPISymbol(symbol);
     const url = `https://api.twelvedata.com/price?symbol=${apiSymbol}&apikey=${TWELVE_DATA_API_KEY}`;
     
-    const response = await fetch(url);
+    // Add timeout to prevent hanging
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+    
+    const response = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeoutId);
     
     if (!response.ok) {
       console.log(`API failed, using simulated price for trade: ${symbol}`);
@@ -540,7 +459,11 @@ async function getCurrentMarketPrice(symbol) {
     return null;
     
   } catch (error) {
-    console.log(`Error fetching price for ${symbol}, using simulated data:`, error.message);
+    if (error.name === 'AbortError') {
+      console.log(`Price fetch timeout for ${symbol}, using simulated data`);
+    } else {
+      console.log(`Error fetching price for ${symbol}, using simulated data:`, error.message);
+    }
     const priceSimulator = getPriceSimulator();
     return priceSimulator.getPrice(symbol);
   }
@@ -553,7 +476,24 @@ function getAssetType(symbol) {
   return cryptoSymbols.includes(symbol.toUpperCase()) ? 'crypto' : 'stock';
 }
 
-export default createApiHandler(
+const handler = createApiHandler(
   composeMiddleware(requireAuth, withCsrfProtect, placeTradeHandler),
   { methods: ['POST'] }
 );
+
+// Add logging wrapper
+export default async (req, res) => {
+  console.log('🚀 PLACE-TRADE API CALLED at', new Date().toISOString());
+  console.log('Request method:', req.method);
+  console.log('Request body preview:', JSON.stringify(req.body || {}).substring(0, 100) + '...');
+  
+  try {
+    console.log('🔄 Calling handler...');
+    const result = await handler(req, res);
+    console.log('✅ Handler completed');
+    return result;
+  } catch (error) {
+    console.error('❌ Handler error:', error);
+    throw error;
+  }
+};

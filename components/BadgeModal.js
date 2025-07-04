@@ -11,6 +11,7 @@ const BadgeModal = ({ isOpen, onClose, userBadges = [], isOwnProfile = false, pr
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareData, setShareData] = useState(null);
   
+
   // Share badge functionality using SocialShareModal
   const shareBadge = (badge) => {
     setShareData({
@@ -629,38 +630,38 @@ const BadgeModal = ({ isOpen, onClose, userBadges = [], isOwnProfile = false, pr
                     </p>
                     
                     {/* Share Button - Only show for earned badges */}
-                    {isEarned && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          shareBadge(badge);
-                        }}
-                        style={{
-                          background: 'transparent',
-                          border: `1px solid ${badge.color}`,
-                          borderRadius: '4px',
-                          padding: '4px 6px',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                          color: badge.color,
-                          fontSize: '10px',
-                          transition: 'all 0.2s ease'
-                        }}
-                        onMouseEnter={(e) => {
-                          e.target.style.backgroundColor = badge.color;
-                          e.target.style.color = 'white';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.target.style.backgroundColor = 'transparent';
-                          e.target.style.color = badge.color;
-                        }}
-                        title="Share this badge"
-                      >
-                        <Share2 size={10} />
-                        Share
-                      </button>
+                    {isEarned && isOwnProfile && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            shareBadge(badge);
+                          }}
+                          style={{
+                            background: 'transparent',
+                            border: `1px solid ${badge.color}`,
+                            borderRadius: '4px',
+                            padding: '4px 6px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            color: badge.color,
+                            fontSize: '10px',
+                            transition: 'all 0.2s ease'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.target.style.backgroundColor = badge.color;
+                            e.target.style.color = 'white';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.target.style.backgroundColor = 'transparent';
+                            e.target.style.color = badge.color;
+                          }}
+                          title="Share this badge"
+                        >
+                          <Share2 size={10} />
+                          Share
+                        </button>
                     )}
                   </div>
                 </div>
@@ -683,7 +684,9 @@ const BadgeModal = ({ isOpen, onClose, userBadges = [], isOwnProfile = false, pr
       {/* Social Share Modal */}
       <SocialShareModal
         isOpen={showShareModal}
-        onClose={() => setShowShareModal(false)}
+        onClose={() => {
+          setShowShareModal(false);
+        }}
         shareData={shareData}
         darkMode={darkMode}
         profileUrl={profileUrl}

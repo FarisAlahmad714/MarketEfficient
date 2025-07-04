@@ -4,7 +4,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/router';
 import { BiHomeAlt } from 'react-icons/bi';
 import { TbScale, TbChartLine } from 'react-icons/tb';
-import { FaTachometerAlt, FaSun, FaMoon, FaChevronDown, FaUserCog, FaUserShield, FaSignOutAlt, FaCommentDots, FaGraduationCap, FaLock, FaChartLine as FaChartTradingLine, FaUser, FaNewspaper } from 'react-icons/fa';
+import { FaTachometerAlt, FaSun, FaMoon, FaChevronDown, FaUserCog, FaUserShield, FaSignOutAlt, FaCommentDots, FaGraduationCap, FaLock, FaChartLine as FaChartTradingLine, FaUser, FaNewspaper, FaBell } from 'react-icons/fa';
 import { RiExchangeLine } from 'react-icons/ri';
 import { HiMenuAlt3, HiX } from 'react-icons/hi';
 import { AuthContext } from '../contexts/AuthContext';
@@ -30,6 +30,9 @@ const Navbar = () => {
   // Sandbox unlock status
   const [sandboxUnlocked, setSandboxUnlocked] = useState(false);
   const [sandboxProgress, setSandboxProgress] = useState(0);
+
+  // Notification state
+  const [notificationCount, setNotificationCount] = useState(0);
 
   // Real-time asset prices using the API
   const [assetPrices, setAssetPrices] = useState([]);
@@ -80,6 +83,30 @@ const Navbar = () => {
       } else {
         console.log('Navbar: Keeping existing real-time data during temporary failure');
       }
+    }
+  };
+
+  // Fetch notification count
+  const fetchNotificationCount = async () => {
+    if (!isAuthenticated || !user) return;
+    
+    try {
+      const token = localStorage.getItem('auth_token');
+      if (!token) return;
+      
+      const response = await fetch('/api/notifications/unread-count', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Navbar: Fetched notification count:', data.unreadCount);
+        setNotificationCount(data.unreadCount || 0);
+      }
+    } catch (error) {
+      console.error('Error fetching notification count:', error);
     }
   };
 
@@ -157,11 +184,36 @@ const Navbar = () => {
   useEffect(() => {
     if (isAuthenticated && user) {
       checkSandboxUnlock();
+      fetchNotificationCount();
     } else {
       setSandboxUnlocked(false);
       setSandboxProgress(0);
+      setNotificationCount(0);
     }
   }, [isAuthenticated, user]);
+
+  // Periodic notification count refresh
+  useEffect(() => {
+    if (!isAuthenticated || !user) return;
+
+    const interval = setInterval(() => {
+      fetchNotificationCount();
+    }, 30000); // Refresh every 30 seconds
+
+    return () => clearInterval(interval);
+  }, [isAuthenticated, user]);
+
+  // Listen for notification updates from other components
+  useEffect(() => {
+    const handleNotificationUpdate = () => {
+      fetchNotificationCount();
+    };
+
+    window.addEventListener('notificationUpdate', handleNotificationUpdate);
+    return () => {
+      window.removeEventListener('notificationUpdate', handleNotificationUpdate);
+    };
+  }, []);
 
   // Listen for profile image updates
   useEffect(() => {
@@ -423,7 +475,21 @@ const Navbar = () => {
           </button>
           
           {isAuthenticated ? (
-            <div className="user-menu">
+            <>
+              {/* Notification Bell */}
+              <Link href="/notifications" className="notification-bell premium-button">
+                <div className="bell-container">
+                  <FaBell />
+                    {notificationCount > 0 && (
+                    <div className="notification-badge">
+                      {notificationCount > 99 ? '99+' : notificationCount}
+                    </div>
+                  )}
+                </div>
+                <span className="button-glow"></span>
+              </Link>
+
+              <div className="user-menu">
               <button 
                 className="user-avatar-button premium-button"
                 onClick={() => setShowUserMenu(!showUserMenu)}
@@ -561,6 +627,7 @@ const Navbar = () => {
                 </div>
               )}
             </div>
+            </>
           ) : (
             <Link 
               href="/auth/login" 
@@ -634,6 +701,26 @@ const Navbar = () => {
                 <Link href="/feed" className={`mobile-link mobile-link-7 ${router.pathname.includes('/feed') ? 'active' : ''}`} onClick={() => setMobileMenuOpen(false)}>
                   <FaNewspaper className="mobile-icon" />
                   <span>Social Feed</span>
+                </Link>
+              )}
+
+              {isAuthenticated && (
+                <Link href="/notifications" className={`mobile-link mobile-link-8 ${router.pathname.includes('/notifications') ? 'active' : ''}`} onClick={() => setMobileMenuOpen(false)}>
+                  <FaBell className="mobile-icon" />
+                  <span>Notifications</span>
+                  {notificationCount > 0 && (
+                    <div style={{
+                      backgroundColor: '#ef4444',
+                      color: 'white',
+                      borderRadius: '10px',
+                      padding: '2px 6px',
+                      fontSize: '11px',
+                      fontWeight: '600',
+                      marginLeft: 'auto'
+                    }}>
+                      {notificationCount > 99 ? '99+' : notificationCount}
+                    </div>
+                  )}
                 </Link>
               )}
               
@@ -1263,6 +1350,57 @@ const Navbar = () => {
           gap: 12px;
           position: relative;
           z-index: 10001;
+        }
+
+        .notification-bell {
+          position: relative;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 44px;
+          height: 44px;
+          border-radius: 12px;
+          color: #3b82f6;
+          text-decoration: none;
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .notification-bell:hover {
+          color: #2563eb;
+          transform: translateY(-2px);
+        }
+
+        .bell-container {
+          position: relative;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .notification-badge {
+          position: absolute;
+          top: -8px;
+          right: -8px;
+          background: #ef4444 !important;
+          color: white !important;
+          border-radius: 10px;
+          padding: 2px 6px;
+          font-size: 11px;
+          font-weight: 600;
+          min-width: 18px;
+          height: 18px;
+          display: flex !important;
+          align-items: center;
+          justify-content: center;
+          border: 2px solid ${darkMode ? '#1a1a1a' : '#ffffff'};
+          animation: notificationPulse 2s infinite;
+          z-index: 10;
+          pointer-events: none;
+        }
+
+        @keyframes notificationPulse {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.1); }
         }
         
         .premium-button {

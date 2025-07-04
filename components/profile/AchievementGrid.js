@@ -1,5 +1,5 @@
 // components/profile/AchievementGrid.js
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FaShare, FaTrophy } from 'react-icons/fa';
 
 const AchievementGrid = ({ 
@@ -9,6 +9,7 @@ const AchievementGrid = ({
   onShareAchievement = null
 }) => {
   const [selectedAchievement, setSelectedAchievement] = useState(null);
+
 
   if (achievements.length === 0) {
     return (
@@ -71,8 +72,12 @@ const AchievementGrid = ({
 
   const handleShare = (achievement, e) => {
     e.stopPropagation();
+    
     if (onShareAchievement) {
-      onShareAchievement(achievement);
+      onShareAchievement({
+        ...achievement,
+        type: 'achievement'
+      });
     }
   };
 

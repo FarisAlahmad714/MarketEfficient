@@ -7,23 +7,94 @@ const SocialShareModal = ({
   onClose,
   shareData,
   darkMode = false,
-  profileUrl = ''
+  profileUrl = '',
+  onShare = null
 }) => {
   const [shareText, setShareText] = useState('');
   const [copySuccess, setCopySuccess] = useState(false);
   const [selectedPlatforms, setSelectedPlatforms] = useState([]);
   const [shareUrl, setShareUrl] = useState('');
   const [isCreatingShare, setIsCreatingShare] = useState(false);
+  const [hasSharedToFeed, setHasSharedToFeed] = useState(false);
+  const [checkingShareStatus, setCheckingShareStatus] = useState(false);
 
   useEffect(() => {
     if (shareData && isOpen) {
-      if (shareData.type !== 'profile') {
-        createShareableLink();
-      } else {
-        generateShareText();
-      }
+      // Reset state when opening modal
+      setHasSharedToFeed(false);
+      setShareUrl('');
+      generateShareText();
+      checkShareStatus();
     }
   }, [shareData, isOpen]);
+
+  const checkShareStatus = async () => {
+    if (!shareData || shareData.type === 'profile') return;
+    
+    setCheckingShareStatus(true);
+    try {
+      const response = await fetch('/api/share/check-status', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          type: shareData.type,
+          data: shareData
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setHasSharedToFeed(data.isShared);
+        if (data.isShared && data.shareId) {
+          setShareUrl(data.shareId);
+        }
+      }
+    } catch (error) {
+      console.error('Error checking share status:', error);
+    } finally {
+      setCheckingShareStatus(false);
+    }
+  };
+
+  const shareToFeed = async () => {
+    if (!shareData || shareData.type === 'profile') return;
+    
+    setIsCreatingShare(true);
+    try {
+      const response = await fetch('/api/share/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          type: shareData.type,
+          data: shareData
+        })
+      });
+
+      if (response.ok) {
+        const { shareUrl: newShareUrl } = await response.json();
+        setShareUrl(newShareUrl);
+        setHasSharedToFeed(true);
+        generateShareText(newShareUrl);
+        
+        // Call onShare callback if provided
+        if (onShare) {
+          onShare();
+        }
+      } else {
+        console.error('Failed to share to feed');
+        alert('Failed to share to feed. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error sharing to feed:', error);
+      alert('Failed to share to feed. Please try again.');
+    } finally {
+      setIsCreatingShare(false);
+    }
+  };
 
   const createShareableLink = async () => {
     if (!shareData || shareData.type === 'profile') return;
@@ -123,6 +194,11 @@ const SocialShareModal = ({
   };
 
   const shareToSocial = async (platform) => {
+    // Create shareable link if it doesn't exist and this isn't a profile share
+    if (!shareUrl && shareData.type !== 'profile') {
+      await createShareableLink();
+    }
+
     const text = getPlatformSpecificText(platform);
     const encodedText = encodeURIComponent(text);
     
@@ -250,7 +326,7 @@ const SocialShareModal = ({
               marginBottom: '10px'
             }}>
               Share Preview
-              {shareUrl && shareData.type !== 'profile' && (
+              {hasSharedToFeed && (
                 <span style={{
                   marginLeft: '10px',
                   fontSize: '12px',
@@ -259,7 +335,7 @@ const SocialShareModal = ({
                   padding: '2px 8px',
                   borderRadius: '4px'
                 }}>
-                  ✓ Public Link Created
+                  ✓ Shared to Feed
                 </span>
               )}
             </h4>
@@ -338,7 +414,110 @@ const SocialShareModal = ({
           </div>
         )}
 
-        {/* Platform Buttons */}
+        {/* Primary Share to Feed Button */}
+        {shareData && shareData.type !== 'profile' && (
+          <div style={{ marginBottom: '25px' }}>
+            <button
+              onClick={shareToFeed}
+              disabled={isCreatingShare || hasSharedToFeed || checkingShareStatus}
+              style={{
+                width: '100%',
+                padding: '16px 20px',
+                backgroundColor: hasSharedToFeed ? '#4CAF50' : '#2196F3',
+                color: 'white',
+                border: 'none',
+                borderRadius: '12px',
+                fontSize: '16px',
+                fontWeight: '600',
+                cursor: isCreatingShare || hasSharedToFeed || checkingShareStatus ? 'default' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '12px',
+                transition: 'all 0.3s ease',
+                boxShadow: hasSharedToFeed ? '0 4px 12px rgba(76, 175, 80, 0.3)' : '0 4px 12px rgba(33, 150, 243, 0.3)',
+                opacity: isCreatingShare || checkingShareStatus ? 0.7 : 1
+              }}
+              onMouseEnter={(e) => {
+                if (!isCreatingShare && !hasSharedToFeed && !checkingShareStatus) {
+                  e.target.style.transform = 'translateY(-2px)';
+                  e.target.style.boxShadow = '0 6px 20px rgba(33, 150, 243, 0.4)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isCreatingShare && !hasSharedToFeed && !checkingShareStatus) {
+                  e.target.style.transform = 'translateY(0)';
+                  e.target.style.boxShadow = '0 4px 12px rgba(33, 150, 243, 0.3)';
+                }
+              }}
+            >
+              {/* MarketEfficient Logo */}
+              <div style={{
+                width: '24px',
+                height: '24px',
+                backgroundColor: 'white',
+                borderRadius: '4px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '14px',
+                fontWeight: '700',
+                color: hasSharedToFeed ? '#4CAF50' : '#2196F3'
+              }}>
+                ME
+              </div>
+              
+              {checkingShareStatus ? (
+                'Checking...'
+              ) : isCreatingShare ? (
+                'Sharing to Feed...'
+              ) : hasSharedToFeed ? (
+                '✓ Already Shared to Feed'
+              ) : (
+                'Share to MarketEfficient Feed'
+              )}
+            </button>
+            
+            {hasSharedToFeed && (
+              <div style={{
+                marginTop: '8px',
+                fontSize: '12px',
+                color: '#4CAF50',
+                textAlign: 'center'
+              }}>
+                This content is already shared to your feed
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Divider */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          marginBottom: '20px'
+        }}>
+          <div style={{
+            flex: 1,
+            height: '1px',
+            backgroundColor: darkMode ? '#444' : '#e0e0e0'
+          }} />
+          <span style={{
+            fontSize: '14px',
+            color: darkMode ? '#888' : '#666',
+            fontWeight: '500'
+          }}>
+            or share externally
+          </span>
+          <div style={{
+            flex: 1,
+            height: '1px',
+            backgroundColor: darkMode ? '#444' : '#e0e0e0'
+          }} />
+        </div>
+
+        {/* External Social Platform Buttons */}
         <div style={{
           display: 'flex',
           justifyContent: 'center',

@@ -243,7 +243,7 @@ async function getCurrentMarketPrice(symbol) {
     if (TWELVE_DATA_API_KEY) {
       try {
         // Convert symbol to API format (BTC -> BTC/USD)
-        const { getAPISymbol } = require('../../../lib/sandbox-constants');
+        const { getAPISymbol } = require('../../../lib/sandbox-constants-data');
         const apiSymbol = getAPISymbol(symbol);
         const url = `https://api.twelvedata.com/price?symbol=${apiSymbol}&apikey=${TWELVE_DATA_API_KEY}`;
         

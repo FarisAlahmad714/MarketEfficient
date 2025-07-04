@@ -1,6 +1,6 @@
 import { blacklistToken } from '../../../middleware/tokenSecurity';
-import { withCsrfProtect } from '../../../middleware/csrf';
-import { logger } from '../../../lib/logger';
+// import { withCsrfProtect } from '../../../middleware/csrf'; // Removed CSRF for logout
+import logger from '../../../lib/logger';
 
 async function logoutHandler(req, res) {
   if (req.method !== 'POST') {
@@ -61,4 +61,4 @@ async function logoutHandler(req, res) {
   }
 }
 
-export default withCsrfProtect(logoutHandler);
+export default logoutHandler;

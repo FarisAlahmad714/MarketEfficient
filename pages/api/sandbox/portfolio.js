@@ -79,7 +79,7 @@ async function portfolioHandler(req, res) {
     })
     .sort({ exitTime: -1 })
     .limit(20)
-    .select('symbol side entryPrice exitPrice realizedPnL leverage entryTime exitTime duration pnlPercentage marginUsed quantity fees');
+    .select('symbol side entryPrice exitPrice realizedPnL leverage entryTime exitTime duration pnlPercentage marginUsed quantity fees preTradeAnalysis');
     
     // Get transaction history (deposits, fees, etc.)
     const SandboxTransaction = require('../../../models/SandboxTransaction');
@@ -148,16 +148,28 @@ async function portfolioHandler(req, res) {
     // Get trading statistics
     const tradingStats = await SandboxTrade.getUserTradingStats(userId);
     
+    // Calculate total deposits to exclude from performance calculations
+    const totalDeposits = transactions
+      .filter(tx => tx.type === 'deposit')
+      .reduce((sum, tx) => sum + tx.amount, 0);
+    
+    // Calculate returns based on trading performance only (excluding deposits)
+    const tradingBaseAmount = portfolio.initialBalance; // Original 10,000 SENSES
+    const tradingCurrentValue = currentValue - totalDeposits; // Current value minus deposits
+    const tradingPnL = tradingCurrentValue - tradingBaseAmount; // P&L from trading only
+    const tradingPnLPercentage = tradingBaseAmount > 0 ? (tradingPnL / tradingBaseAmount) * 100 : 0;
+    
     const response = {
       // Portfolio Overview - currentValue is the main balance users should see
       balance: Math.round(portfolio.balance * 100) / 100, // Base balance (without unrealized P&L)
       currentValue: currentValue, // Main balance to display (includes unrealized P&L)
-      totalPnL: Math.round((currentValue - portfolio.initialBalance) * 100) / 100,
-      totalPnLPercentage: Math.round(((currentValue - portfolio.initialBalance) / portfolio.initialBalance) * 100 * 100) / 100,
+      totalPnL: Math.round(tradingPnL * 100) / 100, // Trading P&L only (excluding deposits)
+      totalPnLPercentage: Math.round(tradingPnLPercentage * 100) / 100, // Trading performance only
+      totalDeposits: totalDeposits, // Track total deposits separately
       
-      // Performance Metrics - Use real-time calculated stats
+      // Performance Metrics - Use trading-only performance (excluding deposits)
       performance: {
-        totalReturn: Math.round(((currentValue - portfolio.initialBalance) / portfolio.initialBalance) * 100 * 100) / 100,
+        totalReturn: Math.round(tradingPnLPercentage * 100) / 100, // Trading performance only
         highWaterMark: Math.max(portfolio.highWaterMark, currentValue),
         maxDrawdown: portfolio.maxDrawdown,
         sharpeRatio: portfolio.sharpeRatio,
@@ -226,7 +238,9 @@ async function portfolioHandler(req, res) {
         marginUsed: trade.marginUsed,
         duration: trade.duration,
         entryTime: trade.entryTime,
-        exitTime: trade.exitTime
+        exitTime: trade.exitTime,
+        preTradeAnalysis: trade.preTradeAnalysis,
+        entryReason: trade.preTradeAnalysis?.entryReason || null
       })),
       
       // Transaction History
@@ -292,7 +306,7 @@ async function getCurrentMarketPrice(symbol) {
     }
     
     // Convert symbol to API format (BTC -> BTC/USD)
-    const { getAPISymbol } = require('../../../lib/sandbox-constants');
+    const { getAPISymbol } = require('../../../lib/sandbox-constants-data');
     const apiSymbol = getAPISymbol(symbol);
     const url = `https://api.twelvedata.com/price?symbol=${apiSymbol}&apikey=${TWELVE_DATA_API_KEY}`;
     

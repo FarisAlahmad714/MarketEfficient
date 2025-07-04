@@ -1,5 +1,5 @@
 // components/profile/TestResultsCards.js
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FaShare, FaCalendarAlt, FaChartLine, FaTrophy } from 'react-icons/fa';
 
 const TestResultsCards = ({ 
@@ -9,6 +9,7 @@ const TestResultsCards = ({
   onShareResult = null 
 }) => {
   const [filter, setFilter] = useState('all');
+
 
   if (testResults.length === 0) {
     return (
@@ -79,12 +80,12 @@ const TestResultsCards = ({
 
   const handleShare = (result, e) => {
     e.stopPropagation();
+    
     if (onShareResult) {
-      // Pass the complete result data including visual information
       onShareResult({
         ...result,
         type: 'test_result',
-        testType: result.type, // Map 'type' to 'testType' for clarity
+        testType: result.type,
         completedAt: result.completedAt || new Date().toISOString()
       });
     }

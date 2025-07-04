@@ -10,7 +10,8 @@
       "Bash(rg:*)",
       "WebFetch(domain:developer.x.com)",
       "Bash(node:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(ls:*)"
     ],
     "deny": []
   }

@@ -2,6 +2,7 @@
 import jwt from 'jsonwebtoken';
 import User from '../../../models/User';
 import Follow from '../../../models/Follow';
+import Notification from '../../../models/Notification';
 import dbConnect from '../../../lib/database';
 
 export default async function handler(req, res) {
@@ -75,6 +76,25 @@ export default async function handler(req, res) {
       });
 
       await follow.save();
+
+      // Create notification for the user being followed
+      try {
+        await Notification.createNotification({
+          recipient: targetUserId,
+          actor: user._id,
+          type: 'follow',
+          title: 'New Follower',
+          message: `${user.name} started following you`,
+          actionUrl: `/u/${user.username}`,
+          metadata: {
+            followerUsername: user.username,
+            followerName: user.name
+          }
+        });
+      } catch (notificationError) {
+        console.error('Error creating follow notification:', notificationError);
+        // Don't fail the follow action if notification fails
+      }
 
       res.status(201).json({ 
         success: true, 

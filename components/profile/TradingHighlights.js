@@ -1,5 +1,5 @@
 // components/profile/TradingHighlights.js
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FaArrowUp, FaArrowDown, FaShare, FaClock, FaFire, FaTrophy } from 'react-icons/fa';
 
 const TradingHighlights = ({ 
@@ -10,6 +10,51 @@ const TradingHighlights = ({
   onShareTrade = null 
 }) => {
   const [selectedTrade, setSelectedTrade] = useState(null);
+  const [sharingStates, setSharingStates] = useState({});
+  const [sharedTrades, setSharedTrades] = useState(new Set());
+
+  // Check shared status for all trades on mount
+  useEffect(() => {
+    if (bestTrades.length > 0 && isOwnProfile) {
+      checkSharedStatus();
+    }
+  }, [bestTrades, isOwnProfile]);
+
+  const checkSharedStatus = async () => {
+    try {
+      for (const trade of bestTrades) {
+        const response = await fetch('/api/share/check-status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'trading_highlight',
+            data: {
+              type: 'trading_highlight',
+              symbol: trade.symbol,
+              side: trade.side,
+              return: trade.returnPercent,
+              amount: trade.pnl,
+              duration: trade.duration,
+              entryPrice: trade.entryPrice,
+              exitPrice: trade.exitPrice,
+              pnl: trade.pnl,
+              leverage: trade.leverage
+            }
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.isShared) {
+            const tradeKey = `${trade.symbol}_${trade.side}_${trade.returnPercent}_${trade.entryPrice}`;
+            setSharedTrades(prev => new Set([...prev, tradeKey]));
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error checking shared status:', error);
+    }
+  };
 
   if (!tradingStats && bestTrades.length === 0) {
     return (
@@ -73,17 +118,40 @@ const TradingHighlights = ({
     setSelectedTrade(trade);
   };
 
-  const handleShare = (trade, e) => {
+  const handleShare = async (trade, e) => {
     e.stopPropagation();
-    if (onShareTrade) {
-      onShareTrade({
-        type: 'trading_highlight',
-        symbol: trade.symbol,
-        side: trade.side,
-        return: trade.returnPercent,
-        amount: trade.pnl,
-        duration: trade.duration
-      });
+    
+    const tradeKey = `${trade.symbol}_${trade.side}_${trade.returnPercent}_${trade.entryPrice}`;
+    
+    // Prevent double-clicking
+    if (sharingStates[tradeKey] || sharedTrades.has(tradeKey)) {
+      return;
+    }
+    
+    // Set sharing state
+    setSharingStates(prev => ({ ...prev, [tradeKey]: true }));
+    
+    try {
+      if (onShareTrade) {
+        await onShareTrade({
+          type: 'trading_highlight',
+          symbol: trade.symbol,
+          side: trade.side,
+          return: trade.returnPercent,
+          amount: trade.pnl,
+          duration: trade.duration,
+          entryPrice: trade.entryPrice,
+          exitPrice: trade.exitPrice,
+          pnl: trade.pnl,
+          leverage: trade.leverage
+        });
+        
+        // Mark as shared
+        setSharedTrades(prev => new Set([...prev, tradeKey]));
+      }
+    } finally {
+      // Reset sharing state
+      setSharingStates(prev => ({ ...prev, [tradeKey]: false }));
     }
   };
 
@@ -312,22 +380,30 @@ const TradingHighlights = ({
                       </div>
                     </div>
                     
-                    {isOwnProfile && onShareTrade && (
-                      <button
-                        onClick={(e) => handleShare(trade, e)}
-                        style={{
-                          backgroundColor: 'transparent',
-                          border: 'none',
-                          color: darkMode ? '#888' : '#666',
-                          cursor: 'pointer',
-                          padding: '4px',
-                          borderRadius: '4px'
-                        }}
-                        title="Share trade"
-                      >
-                        <FaShare size={12} />
-                      </button>
-                    )}
+                    {isOwnProfile && onShareTrade && (() => {
+                      const tradeKey = `${trade.symbol}_${trade.side}_${trade.returnPercent}_${trade.entryPrice}`;
+                      const isSharing = sharingStates[tradeKey];
+                      const isShared = sharedTrades.has(tradeKey);
+                      
+                      return (
+                        <button
+                          onClick={(e) => handleShare(trade, e)}
+                          disabled={isSharing || isShared}
+                          style={{
+                            backgroundColor: isShared ? '#4CAF50' : 'transparent',
+                            border: 'none',
+                            color: isShared ? 'white' : (darkMode ? '#888' : '#666'),
+                            cursor: isSharing || isShared ? 'not-allowed' : 'pointer',
+                            padding: '4px',
+                            borderRadius: '4px',
+                            opacity: isSharing ? 0.7 : 1
+                          }}
+                          title={isShared ? "Already shared" : isSharing ? "Sharing..." : "Share trade"}
+                        >
+                          <FaShare size={12} />
+                        </button>
+                      );
+                    })()}
                   </div>
 
                   {/* Return & P&L */}
@@ -647,28 +723,36 @@ const TradingHighlights = ({
               gap: '10px',
               justifyContent: 'flex-end'
             }}>
-              {isOwnProfile && onShareTrade && (
-                <button
-                  onClick={() => {
-                    handleShare(selectedTrade, { stopPropagation: () => {} });
-                    setSelectedTrade(null);
-                  }}
-                  style={{
-                    backgroundColor: '#2196F3',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '8px',
-                    padding: '10px 20px',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px'
-                  }}
-                >
-                  <FaShare size={12} />
-                  Share Trade
-                </button>
-              )}
+              {isOwnProfile && onShareTrade && (() => {
+                const tradeKey = `${selectedTrade.symbol}_${selectedTrade.side}_${selectedTrade.returnPercent}_${selectedTrade.entryPrice}`;
+                const isSharing = sharingStates[tradeKey];
+                const isShared = sharedTrades.has(tradeKey);
+                
+                return (
+                  <button
+                    onClick={async () => {
+                      await handleShare(selectedTrade, { stopPropagation: () => {} });
+                      setSelectedTrade(null);
+                    }}
+                    disabled={isSharing || isShared}
+                    style={{
+                      backgroundColor: isShared ? '#4CAF50' : '#2196F3',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      padding: '10px 20px',
+                      cursor: isSharing || isShared ? 'not-allowed' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      opacity: isSharing ? 0.7 : 1
+                    }}
+                  >
+                    <FaShare size={12} />
+                    {isShared ? 'Already Shared' : isSharing ? 'Sharing...' : 'Share Trade'}
+                  </button>
+                );
+              })()}
               
               <button
                 onClick={() => setSelectedTrade(null)}

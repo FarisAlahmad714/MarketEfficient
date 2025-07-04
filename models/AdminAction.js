@@ -4,7 +4,7 @@ const AdminActionSchema = new mongoose.Schema({
   adminUserId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true
+    required: false // Allow null for system-generated actions
   },
   action: {
     type: String,
@@ -26,13 +26,19 @@ const AdminActionSchema = new mongoose.Schema({
       'bulk_action_performed',
       'system_settings_changed',
       'email_sent',
-      'data_exported'
+      'data_exported',
+      // Trading-related actions
+      'TRADING_ERROR_GENERAL',
+      'ADMIN_TRADING_OVERRIDE',
+      'ADMIN_APPROVAL_REQUESTED',
+      'ADMIN_APPROVAL_GRANTED',
+      'ADMIN_APPROVAL_DENIED'
     ],
     required: true
   },
   targetType: {
     type: String,
-    enum: ['user', 'subscription', 'payment', 'promo_code', 'system', 'bulk'],
+    enum: ['user', 'subscription', 'payment', 'promo_code', 'system', 'bulk', 'trading'],
     required: true
   },
   targetId: {
@@ -72,7 +78,7 @@ const AdminActionSchema = new mongoose.Schema({
   },
   category: {
     type: String,
-    enum: ['user_management', 'financial', 'security', 'system', 'content'],
+    enum: ['user_management', 'financial', 'security', 'system', 'content', 'Trading'],
     required: true
   },
   success: {

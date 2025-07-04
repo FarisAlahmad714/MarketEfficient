@@ -62,11 +62,39 @@ export default async function handler(req, res) {
       .limit(50)
       .lean();
 
+    // For older shared content without userId, fetch and add userId and profileImageGcsPath
+    const feedContentWithUserIds = await Promise.all(
+      feedContent.map(async (item) => {
+        if (!item.userId) {
+          // Fetch userId by username for older content
+          const userProfile = await User.findOne({ username: item.username })
+            .select('_id profileImageGcsPath')
+            .lean();
+          
+          return {
+            ...item,
+            userId: userProfile?._id || null,
+            profileImageGcsPath: userProfile?.profileImageGcsPath || null
+          };
+        } else {
+          // For items with userId, fetch the profileImageGcsPath
+          const userProfile = await User.findById(item.userId)
+            .select('profileImageGcsPath')
+            .lean();
+          
+          return {
+            ...item,
+            profileImageGcsPath: userProfile?.profileImageGcsPath || null
+          };
+        }
+      })
+    );
+
     res.status(200).json({
       success: true,
-      feedContent,
+      feedContent: feedContentWithUserIds,
       followedUsers,
-      totalItems: feedContent.length
+      totalItems: feedContentWithUserIds.length
     });
 
   } catch (error) {

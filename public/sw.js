@@ -13,8 +13,18 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
+  // Skip service worker for API requests
+  if (event.request.url.includes('/api/')) {
+    return;
+  }
+  
   // Skip service worker for Google Cloud Storage image requests
   if (event.request.url.includes('storage.googleapis.com')) {
+    return;
+  }
+  
+  // Skip service worker for POST requests
+  if (event.request.method !== 'GET') {
     return;
   }
   

@@ -97,8 +97,11 @@ export const authenticate = (options = {}) => {
         });
       }
 
-      // Auto-generate username for existing users who don't have one
-      if (!user.username) {
+      // Skip expensive username generation for sandbox trading endpoints (performance optimization)
+      const isSandboxTradingEndpoint = req.url?.includes('/sandbox/place-trade') || req.url?.includes('/sandbox/close-trade');
+      
+      // Auto-generate username for existing users who don't have one (skip for trading endpoints)
+      if (!isSandboxTradingEndpoint && !user.username) {
         console.log(`[AUTH MIDDLEWARE] Generating username for user ${user._id}`);
         try {
           let baseUsername = '';
@@ -152,8 +155,8 @@ export const authenticate = (options = {}) => {
         }
       }
 
-      // Update timezone and location data for existing users
-      if (!user.timezone || user.timezone === 'UTC' || !user.country) {
+      // Update timezone and location data for existing users (skip for trading endpoints)
+      if (!isSandboxTradingEndpoint && (!user.timezone || user.timezone === 'UTC' || !user.country)) {
         try {
           const timezone = req.headers['x-timezone'];
           let needsUpdate = false;

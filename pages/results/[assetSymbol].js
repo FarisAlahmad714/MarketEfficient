@@ -457,6 +457,7 @@ const Results = () => {
     try {
       const token = await storage.getItem('auth_token');
       console.log('Sharing bias test data:', shareData);
+      console.log('Making request to /api/share/create...');
       const response = await fetch('/api/share/create', {
         method: 'POST',
         headers: {
@@ -469,7 +470,11 @@ const Results = () => {
         })
       });
 
+      console.log('Share response status:', response.status);
+      console.log('Share response ok:', response.ok);
+      
       if (response.ok) {
+        console.log('Share successful!');
         // Show success message
         const successDiv = document.createElement('div');
         successDiv.style.cssText = `

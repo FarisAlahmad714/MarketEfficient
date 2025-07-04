@@ -261,81 +261,6 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
     setShowShareModal(true);
   };
 
-  const handleShareToProfile = async (trade) => {
-    const returnPercentage = trade.marginUsed && trade.marginUsed > 0 
-      ? (trade.realizedPnL / trade.marginUsed) * 100 
-      : 0;
-    
-    const shareData = {
-      type: 'trading_highlight',
-      symbol: trade.symbol,
-      side: trade.side,
-      leverage: trade.leverage,
-      entryPrice: trade.entryPrice,
-      exitPrice: trade.exitPrice,
-      return: returnPercentage,
-      pnl: trade.realizedPnL,
-      duration: trade.duration,
-      quantity: trade.quantity,
-      marginUsed: trade.marginUsed,
-      fees: trade.fees?.total || 0,
-      entryReason: trade.preTradeAnalysis?.entryReason || '',
-      technicalAnalysis: trade.preTradeAnalysis?.technicalAnalysis || '',
-      riskManagement: trade.preTradeAnalysis?.riskManagement || '',
-      biasCheck: trade.preTradeAnalysis?.biasCheck || '',
-      confidenceLevel: trade.preTradeAnalysis?.confidenceLevel || 0,
-      expectedHoldTime: trade.preTradeAnalysis?.expectedHoldTime || '',
-      emotionalState: trade.preTradeAnalysis?.emotionalState || '',
-      postTradeAnalysis: trade.postTradeAnalysis || {},
-      tradeId: trade.id,
-      exitTime: trade.exitTime,
-      entryTime: trade.entryTime
-    };
-
-    try {
-      const token = await storage.getItem('auth_token');
-      console.log('Sharing trade data:', shareData);
-      const response = await fetch('/api/share/create', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          type: 'trading_highlight',
-          data: shareData
-        })
-      });
-
-      if (response.ok) {
-        // Show success message
-        const successDiv = document.createElement('div');
-        successDiv.style.cssText = `
-          position: fixed;
-          top: 20px;
-          right: 20px;
-          background: #4CAF50;
-          color: white;
-          padding: 12px 20px;
-          border-radius: 8px;
-          z-index: 10000;
-          font-weight: 600;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-        `;
-        successDiv.textContent = '✅ Trade shared to your profile!';
-        document.body.appendChild(successDiv);
-        
-        setTimeout(() => {
-          document.body.removeChild(successDiv);
-        }, 3000);
-      } else {
-        throw new Error('Failed to share');
-      }
-    } catch (error) {
-      console.error('Error sharing trade to profile:', error);
-      alert('Failed to share trade to profile. Please try again.');
-    }
-  };
 
   const openPositions = portfolioData?.openPositions || [];
   const pendingOrders = portfolioData?.pendingOrders || [];
@@ -1118,35 +1043,6 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
                               Share
                             </button>
                             
-                            <button
-                              onClick={() => handleShareToProfile(item)}
-                              className="share-to-profile-button"
-                              style={{
-                                backgroundColor: '#2196F3',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '6px',
-                                padding: '6px 12px',
-                                fontSize: '12px',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                transition: 'all 0.2s ease',
-                              }}
-                              onMouseEnter={(e) => {
-                                e.target.style.backgroundColor = '#1976D2';
-                                e.target.style.transform = 'scale(1.05)';
-                              }}
-                              onMouseLeave={(e) => {
-                                e.target.style.backgroundColor = '#2196F3';
-                                e.target.style.transform = 'scale(1)';
-                              }}
-                              title="Share to your profile"
-                            >
-                              📝
-                              Profile
-                            </button>
                           </div>
                         )}
                       </div>
@@ -1220,6 +1116,15 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
                           </>
                         )}
                       </div>
+                      
+                      {/* Trade Analysis Preview - same as Open Positions */}
+                      {item.itemType === 'trade' && item.entryReason && (
+                        <div className="trade-analysis-preview">
+                          <div className="analysis-item">
+                            <strong>Entry Reason:</strong> {item.entryReason}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -1450,6 +1355,13 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
                                   style={{ color: percentage >= 0 ? '#00ff88' : '#ff4757' }}
                                 >
                                   ({formatPercentage(percentage)})
+                                </div>
+                              </div>
+                              
+                              {/* Trade Reason Preview */}
+                              <div className="trade-analysis-preview">
+                                <div className="analysis-item">
+                                  <strong>Entry Reason:</strong> {trade.entryReason || 'No analysis provided'}
                                 </div>
                               </div>
                             </div>

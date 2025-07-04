@@ -21,6 +21,11 @@ const sharedContentSchema = new mongoose.Schema({
     type: String,
     required: false
   },
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: false
+  },
   data: {
     type: mongoose.Schema.Types.Mixed,
     required: true
