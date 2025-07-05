@@ -110,6 +110,7 @@ async function createComment(req, res) {
       return res.status(404).json({ error: 'Shared content not found' });
     }
     
+    console.log('Found shared content:', {
       shareId: sharedContent.shareId,
       type: sharedContent.type,
       userId: sharedContent.userId,

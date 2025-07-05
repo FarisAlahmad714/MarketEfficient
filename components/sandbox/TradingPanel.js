@@ -240,6 +240,7 @@ const TradingPanel = ({ selectedAsset, marketData, portfolioData, onTradeSuccess
         } catch (e) {
           errorData = { error: 'Failed to parse error response' };
         }
+        console.error('Trade API Error:', {
           status: response.status,
           statusText: response.statusText,
           errorData
