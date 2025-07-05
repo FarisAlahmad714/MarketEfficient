@@ -130,6 +130,10 @@ const SocialFeedPage = () => {
     if (tab === 'user' && userContent.length === 0) {
       fetchUserContent();
     }
+    // Ensure followed users are loaded for the "Following" section
+    if (followedUsers.length === 0) {
+      fetchSocialFeed();
+    }
   };
 
   const searchUsers = async (query) => {

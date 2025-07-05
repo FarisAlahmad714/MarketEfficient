@@ -23,14 +23,14 @@ export default async function handler(req, res) {
     if (type === 'followers') {
       // Get users who follow the target user
       const followers = await Follow.find({ following: targetUserId })
-        .populate('follower', 'username name profileImageUrl')
+        .populate('follower', 'username name profileImageGcsPath')
         .lean();
       
       users = followers.map(follow => follow.follower);
     } else if (type === 'following') {
       // Get users that the target user follows
       const following = await Follow.find({ follower: targetUserId })
-        .populate('following', 'username name profileImageUrl')
+        .populate('following', 'username name profileImageGcsPath')
         .lean();
       
       users = following.map(follow => follow.following);

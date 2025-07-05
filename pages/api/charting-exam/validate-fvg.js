@@ -218,57 +218,29 @@ function validateFairValueGaps(drawings, expectedGaps, chartData, gapType, chart
       if (usedGaps.has(i)) continue;
       
       const gap = expectedGaps[i];
-      const isHLine = drawing.drawingType === 'hline' || 
-                    Math.abs(drawing.topPrice - drawing.bottomPrice) < priceTolerance / 10;
+      // For rectangles, check if the drawing overlaps with the gap
+      const priceOverlap = Math.max(0, 
+        Math.min(drawing.topPrice, gap.topPrice) - Math.max(drawing.bottomPrice, gap.bottomPrice)
+      );
+      const gapHeight = gap.topPrice - gap.bottomPrice;
+      const overlapRatio = priceOverlap / gapHeight;
       
-      if (isHLine) {
-        // For horizontal lines, check if line is in the gap area
-        const price = drawing.topPrice;
-        const gapMedian = (gap.topPrice + gap.bottomPrice) / 2;
-        const priceMatch = Math.abs(price - gapMedian) <= priceTolerance;
+      // Time should be within the FVG timeframe
+      const timeMatch = drawing.startTime >= gap.startTime - timeTolerance && 
+                      drawing.endTime <= gap.endTime + timeTolerance;
+      
+      if (overlapRatio >= 0.7 && timeMatch) { // 70% overlap required
+        matched++;
+        usedGaps.add(i);
+        gapMatched = true;
         
-        // Time should be within the FVG timeframe
-        const timeMatch = drawing.startTime >= gap.startTime - timeTolerance && 
-                        drawing.startTime <= gap.endTime + timeTolerance;
-        
-        if (priceMatch && timeMatch) {
-          matched++;
-          usedGaps.add(i);
-          gapMatched = true;
-          
-          feedback.correct.push({
-            type: gapType,
-            topPrice: gap.topPrice,
-            bottomPrice: gap.bottomPrice,
-            advice: `Good! You correctly identified a ${gapType} FVG at ${gap.topPrice.toFixed(2)} - ${gap.bottomPrice.toFixed(2)}.`
-          });
-          break;
-        }
-      } else {
-        // For rectangles, check if the drawing overlaps with the gap
-        const priceOverlap = Math.max(0, 
-          Math.min(drawing.topPrice, gap.topPrice) - Math.max(drawing.bottomPrice, gap.bottomPrice)
-        );
-        const gapHeight = gap.topPrice - gap.bottomPrice;
-        const overlapRatio = priceOverlap / gapHeight;
-        
-        // Time should be within the FVG timeframe
-        const timeMatch = drawing.startTime >= gap.startTime - timeTolerance && 
-                        drawing.endTime <= gap.endTime + timeTolerance;
-        
-        if (overlapRatio >= 0.7 && timeMatch) { // 70% overlap required
-          matched++;
-          usedGaps.add(i);
-          gapMatched = true;
-          
-          feedback.correct.push({
-            type: gapType,
-            topPrice: gap.topPrice,
-            bottomPrice: gap.bottomPrice,
-            advice: `Great! You correctly identified a ${gapType} FVG from ${gap.topPrice.toFixed(2)} to ${gap.bottomPrice.toFixed(2)}.`
-          });
-          break;
-        }
+        feedback.correct.push({
+          type: gapType,
+          topPrice: gap.topPrice,
+          bottomPrice: gap.bottomPrice,
+          advice: `Great! You correctly identified a ${gapType} FVG from ${gap.topPrice.toFixed(2)} to ${gap.bottomPrice.toFixed(2)}.`
+        });
+        break;
       }
     }
     
@@ -308,8 +280,8 @@ function validateFairValueGaps(drawings, expectedGaps, chartData, gapType, chart
 
 function getFVGAdviceMessage(gapType) {
   return gapType === 'bullish' 
-    ? 'Look for gaps where the low of one candle is above the high of another candle, typically after strong upward moves.'
-    : 'Look for gaps where the high of one candle is below the low of another candle, typically after strong downward moves.';
+    ? 'Look for gaps where the low of one candle is above the high of another candle, typically after strong upward moves. Use the rectangle tool to mark the gap area.'
+    : 'Look for gaps where the high of one candle is below the low of another candle, typically after strong downward moves. Use the rectangle tool to mark the gap area.';
 }
 
 function getFVGFormationMessage(gapType) {

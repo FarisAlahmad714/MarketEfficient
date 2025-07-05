@@ -1,6 +1,7 @@
 // pages/api/profile/shared-content.js
 import dbConnect from '../../../lib/database';
 import SharedContent from '../../../models/SharedContent';
+import User from '../../../models/User';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -28,16 +29,28 @@ export default async function handler(req, res) {
       .limit(parseInt(limit))
       .lean();
 
+    // Fetch user profile to get profileImageGcsPath
+    const userProfile = await User.findOne({ username })
+      .select('_id profileImageGcsPath')
+      .lean();
+
+    // Add userId and profileImageGcsPath to each content item
+    const sharedContentWithUserData = sharedContent.map(item => ({
+      ...item,
+      userId: item.userId || userProfile?._id || null,
+      profileImageGcsPath: userProfile?.profileImageGcsPath || null
+    }));
+
     // Group by type for easier display
     const groupedContent = {
       test_result: [],
       trading_highlight: [],
       achievement: [],
       badge: [],
-      all: sharedContent
+      all: sharedContentWithUserData
     };
 
-    sharedContent.forEach(item => {
+    sharedContentWithUserData.forEach(item => {
       if (groupedContent[item.type]) {
         groupedContent[item.type].push(item);
       }
@@ -46,7 +59,7 @@ export default async function handler(req, res) {
     res.status(200).json({
       success: true,
       content: groupedContent,
-      total: sharedContent.length
+      total: sharedContentWithUserData.length
     });
 
   } catch (error) {

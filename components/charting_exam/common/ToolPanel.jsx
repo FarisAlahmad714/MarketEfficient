@@ -47,6 +47,14 @@ const Tool = styled.button`
   gap: 6px;
   transition: all 0.2s ease;
   
+  i {
+    font-size: 16px;
+    
+    @media (max-width: 768px) {
+      font-size: 14px;
+    }
+  }
+  
   &:hover {
     background-color: ${props => props.$isSelected 
       ? (props.$isDarkMode ? '#1e88e5' : '#43a047')
@@ -75,6 +83,14 @@ const ActionButton = styled.button`
   gap: 6px;
   transition: all 0.2s ease;
   
+  i {
+    font-size: 16px;
+    
+    @media (max-width: 768px) {
+      font-size: 14px;
+    }
+  }
+  
   &:hover {
     background-color: ${props => props.$primary 
       ? (props.$isDarkMode ? '#1e88e5' : '#43a047') 
@@ -101,6 +117,14 @@ const ClearButton = styled.button`
   gap: 6px;
   transition: all 0.2s ease;
   
+  i {
+    font-size: 16px;
+    
+    @media (max-width: 768px) {
+      font-size: 14px;
+    }
+  }
+  
   &:hover {
     background-color: ${props => props.$isDarkMode ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.1)'};
     color: ${props => props.$isDarkMode ? '#fff' : '#000'};
@@ -124,6 +148,14 @@ const NoFvgsButton = styled.button`
   align-items: center;
   gap: 6px;
   transition: all 0.2s ease;
+  
+  i {
+    font-size: 16px;
+    
+    @media (max-width: 768px) {
+      font-size: 14px;
+    }
+  }
   
   &:hover {
     background-color: ${props => props.$isDarkMode ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.1)'};

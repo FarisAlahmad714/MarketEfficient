@@ -231,7 +231,6 @@ const FairValueGaps = ({
   const [startPoint, setStartPoint] = useState(null);
   const [userFVGs, setUserFVGs] = useState([]);
   const [rectangles, setRectangles] = useState([]);
-  const [hlines, setHlines] = useState([]);
   const [panelOffset, setPanelOffset] = useState({ x: 0, y: 10 });
   const [isDragging, setIsDragging] = useState(false);
   const [currentCoords, setCurrentCoords] = useState({ x: 0, y: 0 });
@@ -322,22 +321,6 @@ const FairValueGaps = ({
         }
         
         setStartPoint(null);
-      }
-    } else if (drawingMode === 'draw-hline') {
-      console.log('🔵 About to call drawHLine - drawingMode:', drawingMode);
-      const fvgType = part === 1 ? 'bullish' : 'bearish';
-      const newLine = drawHLine(nearestCandle.time, price, fvgType);
-      
-      if (newLine) {
-        setHlines(prev => [...prev, newLine]);
-        setUserFVGs(prev => [...prev, {
-          startTime: nearestCandle.time,
-          endTime: nearestCandle.time,
-          topPrice: price,
-          bottomPrice: price,
-          type: fvgType,
-          drawingType: 'hline'
-        }]);
       }
     }
   }, [drawingMode, startPoint, part]);
@@ -528,63 +511,6 @@ const FairValueGaps = ({
     };
   };
 
-  // Draw horizontal line on chart - now draws horizontal ray extending to 3rd candlestick
-  const drawHLine = (time, price, type = 'bullish') => {
-    console.log('🟢 drawHLine CALLED with:', { time, price, type });
-    if (!chartRef.current || !candleSeriesRef.current) return null;
-    
-    const color = type === 'bullish' ? colors.bullish : colors.bearish;
-    
-    // Calculate 3rd candlestick time from clicked time
-    const startIndex = chartData.findIndex(d => d.time === time);
-    const thirdCandleIndex = Math.min(startIndex + 3, chartData.length - 1);
-    const thirdCandleTime = chartData[thirdCandleIndex]?.time || time;
-    
-    console.log('FVG DRAWING - NEW CODE:', {
-      clickedTime: time,
-      startIndex,
-      thirdCandleIndex,
-      thirdCandleTime,
-      message: 'Should draw ray to 3rd candle only'
-    });
-    
-    // Create horizontal ray line series extending to 3rd candle
-    const hlineSeries = chartRef.current.addLineSeries({
-      color: color,
-      lineWidth: 2,
-      lineStyle: 0, // Solid
-      lastValueVisible: false,
-      priceLineVisible: false,
-      crosshairMarkerVisible: false
-    });
-    
-    // Set data for ray extending to 3rd candlestick
-    hlineSeries.setData([
-      { time: time, value: price },
-      { time: thirdCandleTime, value: price }
-    ]);
-    
-    const marker = {
-      time: time,
-      position: 'inBar',
-      color: color,
-      shape: 'circle',
-      text: type === 'bullish' ? 'B' : 'S'
-    };
-    
-    const existingMarkers = candleSeriesRef.current.markers() || [];
-    const allMarkers = [...existingMarkers, marker].sort((a, b) => a.time - b.time);
-    candleSeriesRef.current.setMarkers(allMarkers);
-    
-    return {
-      line: hlineSeries,
-      time: time,
-      price: price,
-      type: type,
-      marker: marker,
-      isLineSeries: true
-    };
-  };
 
   // Simple FVG labeling - just add number badges to existing FVG visualizations
   const drawFVGLabels = () => {
@@ -780,32 +706,6 @@ const FairValueGaps = ({
       setRectangles(prev => prev.slice(0, -1));
       
       return true;
-    } else if (hlines.length > 0) {
-      const lastLine = hlines[hlines.length - 1];
-      
-      if (lastLine.isLineSeries) {
-        try {
-          chartRef.current.removeSeries(lastLine.line);
-        } catch (error) {
-          console.error('Error removing line series:', error);
-        }
-      } else {
-        candleSeriesRef.current.removePriceLine(lastLine.line);
-      }
-      
-      const currentMarkers = candleSeriesRef.current.markers() || [];
-      const updatedMarkers = currentMarkers
-        .filter(marker => {
-          return !(marker.time === lastLine.time && 
-                  marker.position === lastLine.marker.position && 
-                  marker.text === lastLine.marker.text);
-        })
-        .sort((a, b) => a.time - b.time);
-      
-      candleSeriesRef.current.setMarkers(updatedMarkers);
-      setHlines(prev => prev.slice(0, -1));
-      
-      return true;
     }
     
     return false;
@@ -832,18 +732,6 @@ const FairValueGaps = ({
     });
     setRectangles([]);
     
-    hlines.forEach(line => {
-      if (line.isLineSeries) {
-        try {
-          chartRef.current.removeSeries(line.line);
-        } catch (error) {
-          console.error('Error removing line series:', error);
-        }
-      } else {
-        candleSeriesRef.current.removePriceLine(line.line);
-      }
-    });
-    setHlines([]);
     
     candleSeriesRef.current.setMarkers([]);
     setUserFVGs([]);
@@ -927,22 +815,6 @@ const FairValueGaps = ({
       
       candleSeriesRef.current.setMarkers(updatedMarkers);
       setRectangles(prev => prev.filter((_, i) => i !== index));
-    } else if (index - rectangles.length < hlines.length) {
-      const hlineIndex = index - rectangles.length;
-      const lineToRemove = hlines[hlineIndex];
-      candleSeriesRef.current.removePriceLine(lineToRemove.line);
-      
-      const currentMarkers = candleSeriesRef.current.markers() || [];
-      const updatedMarkers = currentMarkers
-        .filter(marker => {
-          return !(marker.time === lineToRemove.time && 
-                  marker.position === lineToRemove.marker.position && 
-                  marker.text === lineToRemove.marker.text);
-        })
-        .sort((a, b) => a.time - b.time);
-      
-      candleSeriesRef.current.setMarkers(updatedMarkers);
-      setHlines(prev => prev.filter((_, i) => i !== hlineIndex));
     }
     
     setUserFVGs(prev => prev.filter((_, i) => i !== index));
@@ -1001,17 +873,11 @@ const FairValueGaps = ({
       active: drawingMode === 'draw-rectangle'
     },
     {
-      id: 'draw-hline',
-      label: 'Draw H-Line',
-      icon: 'fa-minus',
-      active: drawingMode === 'draw-hline'
-    },
-    {
       id: 'undo',
       label: 'Undo',
       icon: 'fa-undo',
       onClick: handleUndoDrawing,
-      disabled: rectangles.length === 0 && hlines.length === 0
+      disabled: rectangles.length === 0
     }
   ];
 
@@ -1021,7 +887,7 @@ const FairValueGaps = ({
       label: 'Clear All',
       icon: 'fa-trash',
       onClick: clearAllDrawings,
-      disabled: rectangles.length === 0 && hlines.length === 0
+      disabled: rectangles.length === 0
     },
     {
       id: 'no-fvgs',
@@ -1068,7 +934,7 @@ const FairValueGaps = ({
           
           {drawingMode && (
             <DrawingModeIndicator $isDarkMode={isDarkMode}>
-              {drawingMode === 'draw-rectangle' ? 'Drawing Rectangle' : 'Drawing H-Line'}
+              Drawing Rectangle
             </DrawingModeIndicator>
           )}
           
@@ -1140,11 +1006,6 @@ const FairValueGaps = ({
                       <FVGDate $isDarkMode={isDarkMode}>
                         Date: {startDate}
                       </FVGDate>
-                      {fvg.drawingType === 'hline' && (
-                        <FVGDate $isDarkMode={isDarkMode}>
-                          Type: Horizontal Line
-                        </FVGDate>
-                      )}
                     </FVGItem>
                   );
                 })}

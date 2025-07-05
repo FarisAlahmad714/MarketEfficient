@@ -619,6 +619,7 @@ const CandlestickChartComponent = ({ data, height = 400, timeframe = 'daily', ne
           // Create custom HTML overlay for news markers with gold glimmer effect
           const createCustomNewsMarkers = () => {
             // Remove any existing custom markers
+            if (!containerRef.current) return;
             const existingMarkers = containerRef.current.querySelectorAll('.custom-news-marker');
             existingMarkers.forEach(marker => marker.remove());
             
@@ -699,12 +700,15 @@ const CandlestickChartComponent = ({ data, height = 400, timeframe = 'daily', ne
               // Add click handler
               markerElement.addEventListener('click', (e) => {
                 e.stopPropagation();
+                if (!containerRef.current) return;
                 const rect = containerRef.current.getBoundingClientRect();
                 const point = { x: rect.left + xCoordinate, y: rect.top + yCoordinate - 35 };
                 showNewsTooltip(point, annotation.news, darkMode);
               });
               
-              containerRef.current.appendChild(markerElement);
+              if (containerRef.current) {
+                containerRef.current.appendChild(markerElement);
+              }
             }
           };
           

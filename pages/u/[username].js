@@ -594,6 +594,7 @@ const PublicProfilePage = () => {
           <div style={{ marginBottom: '30px' }}>
             <SharedContent 
               username={profile.username}
+              name={profile.name}
               isOwnProfile={isOwnProfile}
             />
           </div>

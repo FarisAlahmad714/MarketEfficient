@@ -3,6 +3,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import { useRouter } from 'next/router';
 import { ThemeContext } from '../../contexts/ThemeContext';
 import { FaUser, FaTimes, FaUserPlus, FaUserMinus } from 'react-icons/fa';
+import ProfileAvatar from '../ProfileAvatar';
 
 const FollowModal = ({ isOpen, onClose, targetUserId, initialType = 'followers', username }) => {
   const { darkMode } = useContext(ThemeContext);
@@ -12,6 +13,7 @@ const FollowModal = ({ isOpen, onClose, targetUserId, initialType = 'followers',
   const [following, setFollowing] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [imageUrls, setImageUrls] = useState({});
 
   useEffect(() => {
     if (isOpen && targetUserId) {
@@ -19,6 +21,30 @@ const FollowModal = ({ isOpen, onClose, targetUserId, initialType = 'followers',
       fetchFollowLists();
     }
   }, [isOpen, targetUserId, initialType]);
+
+  // Fetch profile images when lists change
+  useEffect(() => {
+    const allUsers = [...followers, ...following];
+    allUsers.forEach(user => {
+      if (user._id && user.profileImageGcsPath && !imageUrls[user._id]) {
+        fetchProfileImage(user._id);
+      }
+    });
+  }, [followers, following]);
+
+  const fetchProfileImage = async (userId) => {
+    try {
+      const response = await fetch(`/api/profile/user-image/${userId}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.imageUrl) {
+          setImageUrls(prev => ({ ...prev, [userId]: data.imageUrl }));
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching profile image:', error);
+    }
+  };
 
   const fetchFollowLists = async () => {
     setLoading(true);
@@ -241,34 +267,12 @@ const FollowModal = ({ isOpen, onClose, targetUserId, initialType = 'followers',
                   }}
                 >
                   {/* Avatar */}
-                  <div style={{
-                    width: '48px',
-                    height: '48px',
-                    borderRadius: '50%',
-                    backgroundColor: '#2196F3',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'white',
-                    fontWeight: '600',
-                    fontSize: '18px',
-                    flexShrink: 0
-                  }}>
-                    {user.profileImageUrl ? (
-                      <img
-                        src={user.profileImageUrl}
-                        alt={user.name}
-                        style={{
-                          width: '100%',
-                          height: '100%',
-                          borderRadius: '50%',
-                          objectFit: 'cover'
-                        }}
-                      />
-                    ) : (
-                      user.name?.charAt(0).toUpperCase() || '?'
-                    )}
-                  </div>
+                  <ProfileAvatar
+                    imageUrl={imageUrls[user._id]}
+                    name={user.name}
+                    size={48}
+                    borderRadius="50%"
+                  />
 
                   {/* User Info */}
                   <div style={{ flex: 1 }}>

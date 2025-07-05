@@ -2,18 +2,47 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { ThemeContext } from '../../contexts/ThemeContext';
 import { FaShare, FaArrowUp, FaArrowDown, FaTrophy, FaCertificate, FaChartLine } from 'react-icons/fa';
+import ProfileAvatar from '../ProfileAvatar';
+import { useProfileImage } from '../../lib/useProfileImage';
 
-const SharedContent = ({ username, isOwnProfile = false }) => {
+const SharedContent = ({ username, name, isOwnProfile = false }) => {
   const { darkMode } = useContext(ThemeContext);
   const [sharedContent, setSharedContent] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all');
+  const [imageUrls, setImageUrls] = useState({});
 
   useEffect(() => {
     if (username) {
       fetchSharedContent();
     }
   }, [username]);
+
+  // Fetch profile images when content changes
+  useEffect(() => {
+    if (sharedContent && sharedContent.all) {
+      const userIds = [...new Set(sharedContent.all.map(item => item.userId).filter(Boolean))];
+      userIds.forEach(userId => {
+        if (!imageUrls[userId]) {
+          fetchProfileImage(userId);
+        }
+      });
+    }
+  }, [sharedContent]);
+
+  const fetchProfileImage = async (userId) => {
+    try {
+      const response = await fetch(`/api/profile/user-image/${userId}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.imageUrl) {
+          setImageUrls(prev => ({ ...prev, [userId]: data.imageUrl }));
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching profile image:', error);
+    }
+  };
 
   const fetchSharedContent = async () => {
     try {
@@ -66,6 +95,36 @@ const SharedContent = ({ username, isOwnProfile = false }) => {
         boxShadow: darkMode ? '0 2px 8px rgba(0,0,0,0.3)' : '0 2px 8px rgba(0,0,0,0.1)',
         marginBottom: '16px'
       }}>
+        {/* User Header */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          marginBottom: '16px'
+        }}>
+          <ProfileAvatar
+            imageUrl={imageUrls[item.userId]}
+            name={item.name || name || username}
+            size={40}
+            borderRadius="50%"
+          />
+          <div style={{ flex: 1 }}>
+            <div style={{
+              fontWeight: '600',
+              color: darkMode ? '#e0e0e0' : '#333',
+              fontSize: '14px'
+            }}>
+              {item.name || name || username}
+            </div>
+            <div style={{
+              fontSize: '12px',
+              color: darkMode ? '#888' : '#666'
+            }}>
+              @{username} • {formatDate(item.createdAt)}
+            </div>
+          </div>
+        </div>
+
         {/* Trade Header */}
         <div style={{
           display: 'flex',
@@ -249,6 +308,36 @@ const SharedContent = ({ username, isOwnProfile = false }) => {
         boxShadow: darkMode ? '0 2px 8px rgba(0,0,0,0.3)' : '0 2px 8px rgba(0,0,0,0.1)',
         marginBottom: '16px'
       }}>
+        {/* User Header */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          marginBottom: '16px'
+        }}>
+          <ProfileAvatar
+            imageUrl={imageUrls[item.userId]}
+            name={item.name || name || username}
+            size={40}
+            borderRadius="50%"
+          />
+          <div style={{ flex: 1 }}>
+            <div style={{
+              fontWeight: '600',
+              color: darkMode ? '#e0e0e0' : '#333',
+              fontSize: '14px'
+            }}>
+              {item.name || name || username}
+            </div>
+            <div style={{
+              fontSize: '12px',
+              color: darkMode ? '#888' : '#666'
+            }}>
+              @{username} • {formatDate(item.createdAt)}
+            </div>
+          </div>
+        </div>
+
         {/* Test Header */}
         <div style={{
           display: 'flex',

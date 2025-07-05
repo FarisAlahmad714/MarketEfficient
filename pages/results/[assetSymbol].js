@@ -1341,23 +1341,19 @@ const Results = () => {
                         : '0 4px 20px rgba(33, 150, 243, 0.1)'
                     }}>
                       <h4 style={{ 
-                        display: 'flex',
-                        alignItems: 'center',
-                        marginBottom: '20px', 
-                        color: darkMode ? '#90caf9' : '#1976d2',
-                        borderBottom: `2px solid ${darkMode ? '#1565c0' : '#90caf9'}`,
-                        paddingBottom: '12px',
-                        textAlign: 'center',
-                        justifyContent: 'center',
-                        fontSize: '20px',
-                        fontWeight: '600'
-                      }}>
-                        <i className="fas fa-brain" style={{ 
-                          marginRight: '12px', 
-                          fontSize: window.innerWidth <= 768 ? '18px' : '24px' 
-                        }}></i>
-                        AI Trading Analysis
-                      </h4>
+  display: 'flex',
+  alignItems: 'center',
+  marginBottom: '20px', 
+  color: darkMode ? '#90caf9' : '#1976d2',
+  borderBottom: `2px solid ${darkMode ? '#1565c0' : '#90caf9'}`,
+  paddingBottom: '12px',
+  textAlign: 'center',
+  justifyContent: 'center',
+  fontSize: '20px',
+  fontWeight: '600'
+}}>
+  AI Trading Analysis
+</h4>
                       <div 
                         className={styles.aiAnalysisContent}
                         style={{ 

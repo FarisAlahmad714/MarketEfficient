@@ -60,6 +60,7 @@ export default function AssetTestPage() {
   const [questionTimestamps, setQuestionTimestamps] = useState({}); // Track time spent per question
   const [confidenceLevels, setConfidenceLevels] = useState({}); // Track confidence per question
   const [contentWarnings, setContentWarnings] = useState({}); // Track content validation warnings
+  const [windowSize, setWindowSize] = useState({ width: undefined, height: undefined });
   const cryptoLoaderRef = useRef(null);
   const isFetchingRef = useRef(false); // Prevent duplicate API calls
   const { darkMode } = useContext(ThemeContext);
@@ -198,6 +199,23 @@ export default function AssetTestPage() {
       script.crossOrigin = 'anonymous';
       script.referrerPolicy = 'no-referrer';
       document.head.appendChild(script);
+    }
+  }, []);
+
+  // Handle window resize
+  useEffect(() => {
+    function handleResize() {
+      setWindowSize({
+        width: window.innerWidth,
+        height: window.innerHeight,
+      });
+    }
+    
+    // Only set up if window is available (client-side)
+    if (typeof window !== 'undefined') {
+      window.addEventListener('resize', handleResize);
+      handleResize();
+      return () => window.removeEventListener('resize', handleResize);
     }
   }, []);
 
@@ -835,7 +853,7 @@ export default function AssetTestPage() {
                 gap: '6px'
               }}
             >
-              <i className={`fas ${showVolume ? 'fa-toggle-on' : 'fa-toggle-off'}`}></i>
+              <i className={`fas ${showVolume ? 'fa-toggle-on' : 'fa-toggle-off'}`} style={{ fontSize: '14px' }}></i>
               {showVolume ? 'Hide Volume' : 'Show Volume'}
             </button>
           </div>
@@ -911,7 +929,10 @@ export default function AssetTestPage() {
                   backgroundColor: darkMode ? '#333' : '#f0f0f0',
                   color: showVolume ? (darkMode ? '#81c784' : '#4caf50') : (darkMode ? '#bbbbbb' : '#888888')
                 }}>
-                  <i className={`fas fa-chart-bar`} style={{ marginRight: '5px' }}></i>
+                  <i className={`fas fa-chart-bar`} style={{ 
+                    marginRight: '5px',
+                    fontSize: '12px'
+                  }}></i>
                   Volume: {showVolume ? 'Visible' : 'Hidden'}
                 </span>
               )}
@@ -1230,7 +1251,6 @@ export default function AssetTestPage() {
                   color: darkMode ? '#999' : '#666',
                   marginTop: '15px'
                 }}>
-                  <i className="fas fa-info-circle" style={{ marginRight: '5px' }}></i>
                   Your reasoning will be analyzed by AI after submission to help improve your trading skills.
                 </p>
               </div>

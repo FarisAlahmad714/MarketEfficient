@@ -38,7 +38,7 @@ export default async function handler(req, res) {
 
     // Get list of users the current user follows
     const followRelations = await Follow.find({ follower: user._id })
-      .populate('following', 'username name')
+      .populate('following', 'username name profileImageGcsPath')
       .lean();
 
     const followedUserIds = followRelations.map(rel => rel.following._id);
