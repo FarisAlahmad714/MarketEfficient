@@ -2,6 +2,7 @@ import jwt from 'jsonwebtoken';
 import connectDB from '../../../lib/database';
 import SandboxPortfolio from '../../../models/SandboxPortfolio';
 import SandboxTrade from '../../../models/SandboxTrade';
+const { SANDBOX_ASSETS } = require('../../../lib/sandbox-constants-data');
 
 export default async function handler(req, res) {
   
@@ -53,13 +54,27 @@ export default async function handler(req, res) {
       'AAPL': 213,
       'TSLA': 315,
       'NVDA': 159,
-      'GLD': 307
+      'GLD': 307,
+      'SPY': 450,
+      'QQQ': 387
     };
     
     const currentPrice = mockPrices[symbol] || 100;
     
-    // Calculate position
-    const positionValue = quantity * currentPrice * leverage;
+    // Determine asset type first to get max leverage
+    const cryptoSymbols = ['BTC', 'ETH', 'SOL', 'BNB'];
+    const assetType = cryptoSymbols.includes(symbol.toUpperCase()) ? 'crypto' : 'stock';
+    
+    // Get asset-specific max leverage
+    const allAssets = [...SANDBOX_ASSETS.crypto, ...SANDBOX_ASSETS.stocks];
+    const asset = allAssets.find(a => a.symbol === symbol.toUpperCase());
+    const maxLeverage = asset?.maxLeverage || 3; // Default to 3 if asset not found
+    
+    // Cap leverage at asset-specific maximum
+    const cappedLeverage = Math.min(Number(leverage) || 1, maxLeverage);
+    
+    // Calculate position with capped leverage
+    const positionValue = quantity * currentPrice * cappedLeverage;
     const marginUsed = quantity * currentPrice;
     const entryFee = positionValue * 0.001;
     
@@ -67,14 +82,6 @@ export default async function handler(req, res) {
     if (marginUsed > portfolio.balance) {
       return res.status(400).json({ error: 'Insufficient balance' });
     }
-    
-    
-    // Determine asset type
-    const cryptoSymbols = ['BTC', 'ETH', 'SOL', 'BNB'];
-    const assetType = cryptoSymbols.includes(symbol.toUpperCase()) ? 'crypto' : 'stock';
-    
-    // Cap leverage at 3 for validation
-    const cappedLeverage = Math.min(parseInt(leverage), 3);
     
     // Create trade
     const trade = new SandboxTrade({
@@ -95,7 +102,7 @@ export default async function handler(req, res) {
       fees: { entry: entryFee, exit: 0, total: entryFee },
       unrealizedPnL: 0,
       preTradeAnalysis: {
-        entryReason: preTradeAnalysis.entryReason
+        entryReason: preTradeAnalysis?.entryReason || ''
       }
     });
     
@@ -126,6 +133,8 @@ export default async function handler(req, res) {
     return res.status(200).json(response);
     
   } catch (error) {
+    console.error('Error in place-trade-fast:', error);
+    console.error('Error stack:', error.stack);
     return res.status(500).json({ error: 'Failed to place trade', details: error.message });
   }
 }
