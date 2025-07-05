@@ -19,7 +19,6 @@ export default async function handler(req, res) {
     }).populate('userId', 'name email registrationPromoCode')
       .populate('promoCodeUsed', 'code description discountType');
 
-    console.log(`Found ${affectedSubscriptions.length} promo code subscriptions with expiration dates`);
 
     if (affectedSubscriptions.length === 0) {
       return res.status(200).json({
@@ -83,7 +82,6 @@ export default async function handler(req, res) {
         updated++;
 
       } catch (error) {
-        console.error(`Error updating ${subscription.userId.email}:`, error);
         errors++;
       }
     }
@@ -105,7 +103,6 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error('Error fixing promo unlimited access:', error);
     res.status(500).json({ 
       error: 'Failed to fix promo unlimited access',
       details: error.message 

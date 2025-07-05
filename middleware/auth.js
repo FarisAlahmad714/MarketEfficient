@@ -102,7 +102,6 @@ export const authenticate = (options = {}) => {
       
       // Auto-generate username for existing users who don't have one (skip for trading endpoints)
       if (!isSandboxTradingEndpoint && !user.username) {
-        console.log(`[AUTH MIDDLEWARE] Generating username for user ${user._id}`);
         try {
           let baseUsername = '';
           if (user.name) {
@@ -148,9 +147,7 @@ export const authenticate = (options = {}) => {
           user.username = username;
           await user.save();
           
-          console.log(`[AUTH MIDDLEWARE] Auto-generated username for user ${user._id}`);
         } catch (error) {
-          console.error('[AUTH MIDDLEWARE] Error auto-generating username:', error);
           // Continue without username - don't break auth flow
         }
       }
@@ -186,10 +183,8 @@ export const authenticate = (options = {}) => {
           
           if (needsUpdate) {
             await user.save();
-            console.log(`[AUTH MIDDLEWARE] Updated location data for user ${user._id}`);
           }
         } catch (error) {
-          console.error('[AUTH MIDDLEWARE] Error updating location data:', error);
         }
       }
 
@@ -235,7 +230,6 @@ export const authenticate = (options = {}) => {
       // Continue to next middleware
       next();
     } catch (error) {
-      console.error('Authentication error:', error);
       return res.status(500).json({ 
         error: 'Authentication failed',
         code: 'AUTH_ERROR'
@@ -308,7 +302,6 @@ export const verifyToken = async (token) => {
       updatedAt: user.updatedAt
     };
   } catch (error) {
-    console.error('Token verification error:', error);
     return null;
   }
 };

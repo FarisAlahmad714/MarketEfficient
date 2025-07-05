@@ -54,7 +54,6 @@ const FinancialAnalyticsDashboard = () => {
       setLastUpdate(new Date());
       setError(null);
     } catch (err) {
-      console.error('Financial analytics error:', err);
       setError(err.message);
     } finally {
       setLoading(false);

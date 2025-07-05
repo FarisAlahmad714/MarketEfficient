@@ -279,9 +279,7 @@ SandboxPortfolioSchema.methods.performQuarterlyTopUp = async function() {
     });
     
     await transaction.save();
-    console.log(`Quarterly deposit transaction created: ${balanceBefore} -> ${this.balance} SENSES`);
   } catch (error) {
-    console.error('Error creating quarterly deposit transaction:', error);
     // Don't throw error to prevent blocking the top-up process
   }
 };

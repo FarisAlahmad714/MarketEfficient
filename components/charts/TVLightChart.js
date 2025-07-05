@@ -119,7 +119,6 @@ const TVLightChart = ({ data, height = 400 }) => {
         // Add window resize event listener
         window.addEventListener('resize', handleResize);
       } catch (error) {
-        console.error('Error initializing TradingView chart:', error);
       }
     };
 

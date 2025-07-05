@@ -83,7 +83,6 @@ const PricingPage = ({ user, onPlanSelect, isRegistrationFlow }) => {
         setError(data.error || 'Invalid promo code');
       }
     } catch (error) {
-      console.error('Promo validation error:', error);
       setPromoValidation({ valid: false });
       setError('Failed to validate promo code');
     } finally {
@@ -120,7 +119,7 @@ const PricingPage = ({ user, onPlanSelect, isRegistrationFlow }) => {
     <div className={styles.pricingContainer}>
       <div className={styles.header}>
         <h1>Choose Your Plan</h1>
-        <p>Unlock the full potential of MarketEfficient with our premium features</p>
+        <p>Unlock the full potential of ChartSense with our premium features</p>
       </div>
 
       {/* Plan Toggle */}

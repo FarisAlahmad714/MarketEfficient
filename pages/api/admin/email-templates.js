@@ -141,7 +141,6 @@ The ChartSense Team`,
         });
 
       } catch (error) {
-        console.error('Email templates API error:', error);
         res.status(500).json({ 
           error: 'Failed to retrieve email templates',
           message: error.message 

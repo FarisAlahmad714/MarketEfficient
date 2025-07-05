@@ -55,7 +55,6 @@ const CleanupPage = () => {
       }
     } catch (err) {
       setError('Network error occurred');
-      console.error('Cleanup error:', err);
     } finally {
       setLoading(false);
     }
@@ -80,7 +79,7 @@ const CleanupPage = () => {
   return (
     <>
       <Head>
-        <title>Admin Cleanup - MarketEfficient</title>
+        <title>Admin Cleanup - ChartSense</title>
       </Head>
       
       <div style={{

@@ -41,7 +41,6 @@ const FollowModal = ({ isOpen, onClose, targetUserId, initialType = 'followers',
         throw new Error('Failed to fetch follow lists');
       }
     } catch (error) {
-      console.error('Error fetching follow lists:', error);
       setError('Failed to load follow lists');
     } finally {
       setLoading(false);

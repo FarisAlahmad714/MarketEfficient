@@ -454,7 +454,6 @@ const SandboxDrawingTools = ({ chartInstance, chartContainer, candlestickSeries,
       try {
         chartInstance.removeSeries(series);
       } catch (error) {
-        console.warn('Error removing series:', error);
       }
     });
     
@@ -473,7 +472,6 @@ const SandboxDrawingTools = ({ chartInstance, chartContainer, candlestickSeries,
       try {
         candlestickSeries.removePriceLine(line);
       } catch (err) {
-        console.warn('Error removing price line:', err);
       }
     });
     setAllPriceLines([]);
@@ -524,7 +522,6 @@ const SandboxDrawingTools = ({ chartInstance, chartContainer, candlestickSeries,
       try {
         chartInstance.removeSeries(series);
       } catch (error) {
-        console.warn('Error removing series:', error);
       }
     });
     

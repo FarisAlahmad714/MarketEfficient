@@ -43,9 +43,7 @@ export default async function handler(req, res) {
         if (includeImages === 'true') {
           try {
             gcsData = await getAnalyticsData(timeframe, testType);
-            console.log('GCS Analytics Data:', gcsData); // Debug log
           } catch (error) {
-            console.log('GCS data not available, continuing with MongoDB only. Error:', error.message);
           }
         }
 
@@ -79,7 +77,6 @@ export default async function handler(req, res) {
         });
 
       } catch (error) {
-        console.error('Visual analytics error:', error);
         res.status(500).json({ 
           error: 'Failed to fetch visual analytics',
           details: error.message 
@@ -139,7 +136,6 @@ async function combineMongoGCSData(testResults, gcsData) {
             viewable_until: new Date(Date.now() + 15 * 60 * 1000) // 15 minutes
           });
         } catch (error) {
-          console.log('Could not generate signed URL for image:', error.message);
         }
       }
     }

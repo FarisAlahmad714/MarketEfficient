@@ -50,7 +50,6 @@ export default async function handler(req, res) {
       message: 'Verification email sent. Please check your inbox.' 
     });
   } catch (error) {
-    console.error('Resend verification error:', error);
     return res.status(500).json({ error: 'Failed to resend verification email' });
   }
 }

@@ -45,10 +45,8 @@ const FeedbackModal = ({ isOpen, onClose }) => {
     setIsSubmitting(true);
     setSubmitStatus(null);
 
-    console.log('Submitting feedback:', formData);
 
     try {
-      console.log('Sending feedback to API...');
       
       // Add timeout to prevent infinite loading
       const controller = new AbortController();
@@ -66,9 +64,7 @@ const FeedbackModal = ({ isOpen, onClose }) => {
       
       clearTimeout(timeoutId);
 
-      console.log('API response status:', response.status);
       const data = await response.json();
-      console.log('API response data:', data);
 
       if (response.ok) {
         setSubmitStatus('success');
@@ -84,11 +80,9 @@ const FeedbackModal = ({ isOpen, onClose }) => {
         }, 2000);
       } else {
         setSubmitStatus('error');
-        console.error('Feedback submission failed:', data);
       }
     } catch (error) {
       setSubmitStatus('error');
-      console.error('Error submitting feedback:', error);
     } finally {
       setIsSubmitting(false);
     }

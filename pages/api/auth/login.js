@@ -184,7 +184,6 @@ async function loginApiRouteHandler(req, res) {
             });
             resolve();
           } catch (error) {
-            console.error('Login error:', error);
             res.status(500).json({ error: 'Login failed' });
             resolve();
           }

@@ -8,7 +8,6 @@ const cron = require('node-cron');
 
 // Simple logger
 const logger = {
-  log: (...args) => console.log(new Date().toISOString(), ...args)
 };
 
 const dev = process.env.NODE_ENV !== 'production';
@@ -41,7 +40,6 @@ async function initializeModules() {
     
     logger.log('✅ All modules loaded successfully');
   } catch (error) {
-    console.error('❌ Error loading modules:', error);
     throw error;
   }
 }
@@ -55,7 +53,6 @@ async function sendEmailWithRateLimit(emailFunction, user, ...args) {
     logger.log(`📧 Email sent to ${user.email}`);
     return true;
   } catch (error) {
-    console.error(`❌ Failed to send email to ${user.email}:`, error.message);
     return false;
   }
 }
@@ -83,7 +80,6 @@ app.prepare().then(async () => {
         await marketDataWS.initialize(server);
         logger.log('🔗 WebSocket server initialized for real-time market data');
       } catch (wsError) {
-        console.error('❌ Failed to initialize WebSocket server:', wsError);
       }
 
       // 📅 WEEKLY METRICS - Every Sunday at 9:00 AM
@@ -117,14 +113,12 @@ app.prepare().then(async () => {
                 logger.log(`⏭️  Skipping ${user.email} - no tests taken this week`);
               }
             } catch (userError) {
-              console.error(`❌ Error processing user ${user.email}:`, userError.message);
               errorCount++;
             }
           }
           
           logger.log(`✅ Weekly metrics job completed: ${successCount} sent, ${errorCount} errors`);
         } catch (error) {
-          console.error('❌ Error in weekly metrics job:', error);
         }
       }, {
         scheduled: true,
@@ -162,14 +156,12 @@ app.prepare().then(async () => {
                 logger.log(`⏭️  Skipping ${user.email} - no tests taken this month`);
               }
             } catch (userError) {
-              console.error(`❌ Error processing user ${user.email}:`, userError.message);
               errorCount++;
             }
           }
           
           logger.log(`✅ Monthly metrics job completed: ${successCount} sent, ${errorCount} errors`);
         } catch (error) {
-          console.error('❌ Error in monthly metrics job:', error);
         }
       }, {
         scheduled: true,
@@ -204,7 +196,6 @@ app.prepare().then(async () => {
           
           logger.log(`✅ Inactive user reminders completed: ${successCount} sent, ${errorCount} errors`);
         } catch (error) {
-          console.error('❌ Error in inactive user reminder job:', error);
         }
       }, {
         scheduled: true,
@@ -221,7 +212,6 @@ app.prepare().then(async () => {
             logger.log(`💰 Funding fees processed: ${result.processed} trades, ${result.totalFees.toFixed(6)} SENSES total`);
           }
         } catch (error) {
-          console.error('❌ Error in funding fee processing:', error);
         }
       }, {
         scheduled: true,
@@ -249,7 +239,6 @@ app.prepare().then(async () => {
       }
       
     } catch (error) {
-      console.error('❌ Error initializing cron jobs:', error);
     }
   });
 });

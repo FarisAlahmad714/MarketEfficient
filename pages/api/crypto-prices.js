@@ -140,11 +140,9 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error('Critical error in crypto-prices API:', error);
     
     // Return cached data if available, even if old
     if (priceCache.data) {
-      console.log('API: Returning stale cached data due to error');
       return res.status(200).json({
         success: true,
         data: priceCache.data,

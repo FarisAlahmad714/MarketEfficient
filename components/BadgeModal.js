@@ -43,6 +43,16 @@ const BadgeModal = ({ isOpen, onClose, userBadges = [], isOwnProfile = false, pr
 
     // Technical Mastery
     {
+      id: 'chart_sensei',
+      title: 'Chart Sensei',
+      description: '98%+ across ALL assets with 150+ tests - The ultimate master who reads market souls',
+      icon: '🥋',
+      color: '#8B0000',
+      rarity: 'mythic',
+      category: 'mastery',
+      requirement: '98%+ avg across all assets with 150+ tests + 25+ perfect scores'
+    },
+    {
       id: 'chart_whisperer',
       title: 'Chart Whisperer',
       description: '95%+ average with 50+ tests - You see what others miss',
@@ -51,6 +61,16 @@ const BadgeModal = ({ isOpen, onClose, userBadges = [], isOwnProfile = false, pr
       rarity: 'mythic',
       category: 'mastery',
       requirement: '95%+ avg score with 50+ tests'
+    },
+    {
+      id: 'chart_seeker',
+      title: 'Chart Seeker',
+      description: '88%+ across 5+ assets with 75+ tests - Hunting patterns across all markets',
+      icon: '🗺️',
+      color: '#FFD700',
+      rarity: 'legendary',
+      category: 'mastery',
+      requirement: '88%+ avg with 75+ tests across 5+ different assets'
     },
     {
       id: 'pattern_prophet',
@@ -81,6 +101,332 @@ const BadgeModal = ({ isOpen, onClose, userBadges = [], isOwnProfile = false, pr
       rarity: 'rare',
       category: 'mastery',
       requirement: '75%+ avg score with 15+ tests'
+    },
+
+    // Crypto Asset Mastery
+    {
+      id: 'bitcoin_wizard',
+      title: 'Bitcoin Wizard',
+      description: '95%+ on Bitcoin with 50+ tests - Master of digital gold spells',
+      icon: '🧙‍♂️',
+      color: '#F7931A',
+      rarity: 'mythic',
+      category: 'mastery',
+      requirement: '95%+ avg on Bitcoin tests with 50+ tests'
+    },
+    {
+      id: 'bitcoin_bull',
+      title: 'Bitcoin Bull',
+      description: '85%+ with 25+ Bitcoin tests - Charging through volatility',
+      icon: '🐂',
+      color: '#F7931A',
+      rarity: 'legendary',
+      category: 'mastery',
+      requirement: '85%+ avg with 25+ Bitcoin tests'
+    },
+    {
+      id: 'bitcoin_buster',
+      title: 'Bitcoin Buster',
+      description: '75%+ with 15+ Bitcoin tests - Breaking through resistance',
+      icon: '💥',
+      color: '#F7931A',
+      rarity: 'epic',
+      category: 'mastery',
+      requirement: '75%+ avg with 15+ Bitcoin tests'
+    },
+    {
+      id: 'ethereum_enchanter',
+      title: 'Ethereum Enchanter',
+      description: '85%+ with 25+ Ethereum tests - Weaving smart contract magic',
+      icon: '🔮',
+      color: '#627EEA',
+      rarity: 'legendary',
+      category: 'mastery',
+      requirement: '85%+ avg with 25+ Ethereum tests'
+    },
+    {
+      id: 'ethereum_dapper',
+      title: 'Ethereum dApper',
+      description: '75%+ with 15+ Ethereum tests - Smooth moves in DeFi',
+      icon: '🎩',
+      color: '#627EEA',
+      rarity: 'epic',
+      category: 'mastery',
+      requirement: '75%+ avg with 15+ Ethereum tests'
+    },
+    {
+      id: 'solana_strategist',
+      title: 'Solana Strategist',
+      description: '80%+ with 20+ Solana tests - Lightning-fast blockchain tactics',
+      icon: '⚡',
+      color: '#9945FF',
+      rarity: 'epic',
+      category: 'mastery',
+      requirement: '80%+ avg with 20+ Solana tests'
+    },
+    {
+      id: 'solana_sorcerer',
+      title: 'Solana Sorcerer',
+      description: '85%+ with 30+ Solana tests - High-speed spell casting',
+      icon: '🔥',
+      color: '#9945FF',
+      rarity: 'legendary',
+      category: 'mastery',
+      requirement: '85%+ avg with 30+ Solana tests'
+    },
+    {
+      id: 'bnb_buccaneer',
+      title: 'BNB Buccaneer',
+      description: '80%+ with 20+ BNB tests - Sailing the Binance seas',
+      icon: '🏴‍☠️',
+      color: '#F3BA2F',
+      rarity: 'epic',
+      category: 'mastery',
+      requirement: '80%+ avg with 20+ BNB tests'
+    },
+    {
+      id: 'bnb_beacon',
+      title: 'BNB Beacon',
+      description: '85%+ with 25+ BNB tests - Guiding ships through exchange waters',
+      icon: '🗼',
+      color: '#F3BA2F',
+      rarity: 'legendary',
+      category: 'mastery',
+      requirement: '85%+ avg with 25+ BNB tests'
+    },
+
+    // Tech Stock Mastery
+    {
+      id: 'apple_visionary',
+      title: 'Apple Visionary',
+      description: '90%+ with 30+ Apple tests - Seeing the future in every bite',
+      icon: '🍎',
+      color: '#007AFF',
+      rarity: 'legendary',
+      category: 'mastery',
+      requirement: '90%+ avg with 30+ Apple tests'
+    },
+    {
+      id: 'apple_innovator',
+      title: 'Apple Innovator',
+      description: '85%+ with 25+ Apple tests - Thinking different about charts',
+      icon: '💡',
+      color: '#007AFF',
+      rarity: 'epic',
+      category: 'mastery',
+      requirement: '85%+ avg with 25+ Apple tests'
+    },
+    {
+      id: 'apple_architect',
+      title: 'Apple Architect',
+      description: '80%+ with 20+ Apple tests - Building beautiful trade structures',
+      icon: '🏗️',
+      color: '#007AFF',
+      rarity: 'epic',
+      category: 'mastery',
+      requirement: '80%+ avg with 20+ Apple tests'
+    },
+    {
+      id: 'apple_alchemist',
+      title: 'Apple Alchemist',
+      description: '75%+ with 15+ Apple tests - Turning analysis into gold',
+      icon: '⚗️',
+      color: '#007AFF',
+      rarity: 'rare',
+      category: 'mastery',
+      requirement: '75%+ avg with 15+ Apple tests'
+    },
+    {
+      id: 'nvidia_navigator',
+      title: 'Nvidia Navigator',
+      description: '85%+ with 25+ Nvidia tests - Navigating AI-powered gains',
+      icon: '🧭',
+      color: '#76B900',
+      rarity: 'legendary',
+      category: 'mastery',
+      requirement: '85%+ avg with 25+ Nvidia tests'
+    },
+    {
+      id: 'nvidia_nexus',
+      title: 'Nvidia Nexus',
+      description: '80%+ with 20+ Nvidia tests - Connected to the GPU matrix',
+      icon: '🔗',
+      color: '#76B900',
+      rarity: 'epic',
+      category: 'mastery',
+      requirement: '80%+ avg with 20+ Nvidia tests'
+    },
+    {
+      id: 'tesla_autopilot',
+      title: 'Tesla Autopilot',
+      description: '90%+ with 30+ Tesla tests - Self-driving through volatility',
+      icon: '🚗',
+      color: '#CC0000',
+      rarity: 'legendary',
+      category: 'mastery',
+      requirement: '90%+ avg with 30+ Tesla tests'
+    },
+    {
+      id: 'tesla_trailblazer',
+      title: 'Tesla Trailblazer',
+      description: '85%+ with 25+ Tesla tests - Blazing new paths in EV markets',
+      icon: '🔥',
+      color: '#CC0000',
+      rarity: 'epic',
+      category: 'mastery',
+      requirement: '85%+ avg with 25+ Tesla tests'
+    },
+    {
+      id: 'tesla_titan',
+      title: 'Tesla Titan',
+      description: '80%+ with 20+ Tesla tests - Gigantic gains understanding',
+      icon: '⚡',
+      color: '#CC0000',
+      rarity: 'epic',
+      category: 'mastery',
+      requirement: '80%+ avg with 20+ Tesla tests'
+    },
+
+    // Commodities Mastery
+    {
+      id: 'golden_hand',
+      title: 'Golden Hand',
+      description: '88%+ with 35+ Gold tests - Everything you touch turns to profit',
+      icon: '👑',
+      color: '#FFD700',
+      rarity: 'legendary',
+      category: 'mastery',
+      requirement: '88%+ avg with 35+ Gold tests'
+    },
+    {
+      id: 'gold_gallant',
+      title: 'Gold Gallant',
+      description: '85%+ with 30+ Gold tests - Noble warrior of precious metals',
+      icon: '⚔️',
+      color: '#FFD700',
+      rarity: 'epic',
+      category: 'mastery',
+      requirement: '85%+ avg with 30+ Gold tests'
+    },
+    {
+      id: 'gold_guardian',
+      title: 'Gold Guardian',
+      description: '82%+ with 25+ Gold tests - Protecting wealth through wisdom',
+      icon: '🛡️',
+      color: '#FFD700',
+      rarity: 'epic',
+      category: 'mastery',
+      requirement: '82%+ avg with 25+ Gold tests'
+    },
+    {
+      id: 'goldetf_guru',
+      title: 'GoldETF Guru',
+      description: '80%+ with 20+ Gold ETF tests - Master of golden instruments',
+      icon: '🧘‍♂️',
+      color: '#DAA520',
+      rarity: 'rare',
+      category: 'mastery',
+      requirement: '80%+ avg with 20+ Gold ETF tests'
+    },
+    {
+      id: 'goldetf_gladiator',
+      title: 'GoldETF Gladiator',
+      description: '75%+ with 15+ Gold ETF tests - Fighting in the golden arena',
+      icon: '🏛️',
+      color: '#DAA520',
+      rarity: 'rare',
+      category: 'mastery',
+      requirement: '75%+ avg with 15+ Gold ETF tests'
+    },
+    {
+      id: 'silver_sentinel',
+      title: 'Silver Sentinel',
+      description: '80%+ with 20+ Silver tests - Standing guard over precious metals',
+      icon: '🗡️',
+      color: '#C0C0C0',
+      rarity: 'epic',
+      category: 'mastery',
+      requirement: '80%+ avg with 20+ Silver tests'
+    },
+    {
+      id: 'silver_sorcerer',
+      title: 'Silver Sorcerer',
+      description: '85%+ with 25+ Silver tests - Casting spells with shiny metal',
+      icon: '🪄',
+      color: '#C0C0C0',
+      rarity: 'legendary',
+      category: 'mastery',
+      requirement: '85%+ avg with 25+ Silver tests'
+    },
+    {
+      id: 'silver_surfer',
+      title: 'Silver Surfer',
+      description: '75%+ with 15+ Silver tests - Riding the waves of precious metal',
+      icon: '🏄‍♂️',
+      color: '#C0C0C0',
+      rarity: 'rare',
+      category: 'mastery',
+      requirement: '75%+ avg with 15+ Silver tests'
+    },
+    {
+      id: 'oil_overlord',
+      title: 'Oil Overlord',
+      description: '85%+ with 30+ Oil tests - Ruling the black gold empire',
+      icon: '👑',
+      color: '#000000',
+      rarity: 'legendary',
+      category: 'mastery',
+      requirement: '85%+ avg with 30+ Oil tests'
+    },
+    {
+      id: 'oil_outlaw',
+      title: 'Oil Outlaw',
+      description: '80%+ with 25+ Oil tests - Breaking all the rules for crude gains',
+      icon: '🤠',
+      color: '#000000',
+      rarity: 'epic',
+      category: 'mastery',
+      requirement: '80%+ avg with 25+ Oil tests'
+    },
+    {
+      id: 'oil_rig_ruler',
+      title: 'Oil Rig Ruler',
+      description: '82%+ with 25+ Oil tests - Commanding the drilling operations',
+      icon: '🏗️',
+      color: '#000000',
+      rarity: 'epic',
+      category: 'mastery',
+      requirement: '82%+ avg with 25+ Oil tests'
+    },
+    {
+      id: 'natural_gas_pro',
+      title: 'Natural Gas Pro',
+      description: '75%+ with 20+ Natural Gas tests - Professional energy trader',
+      icon: '🔥',
+      color: '#4169E1',
+      rarity: 'rare',
+      category: 'mastery',
+      requirement: '75%+ avg with 20+ Natural Gas tests'
+    },
+    {
+      id: 'natural_gas_nighthawk',
+      title: 'Natural Gas Nighthawk',
+      description: '80%+ with 25+ Natural Gas tests - Hunting profits in the dark',
+      icon: '🦅',
+      color: '#4169E1',
+      rarity: 'epic',
+      category: 'mastery',
+      requirement: '80%+ avg with 25+ Natural Gas tests'
+    },
+    {
+      id: 'natural_gas_nomad',
+      title: 'Natural Gas Nomad',
+      description: '70%+ with 15+ Natural Gas tests - Wandering the energy markets',
+      icon: '🏜️',
+      color: '#4169E1',
+      rarity: 'rare',
+      category: 'mastery',
+      requirement: '70%+ avg with 15+ Natural Gas tests'
     },
 
     // Psychology
@@ -380,11 +726,16 @@ const BadgeModal = ({ isOpen, onClose, userBadges = [], isOwnProfile = false, pr
     }
   };
 
-  const filteredBadges = allBadges.filter(badge => {
-    const categoryMatch = selectedCategory === 'all' || badge.category === selectedCategory;
-    const rarityMatch = selectedRarity === 'all' || badge.rarity === selectedRarity;
-    return categoryMatch && rarityMatch;
-  });
+  const getRarityColor = (rarity) => {
+    switch (rarity) {
+      case 'mythic': return '#E74C3C';
+      case 'legendary': return '#FFD700';
+      case 'epic': return '#9B59B6';
+      case 'rare': return '#3498DB';
+      case 'common': return '#BDC3C7';
+      default: return '#95A5A6';
+    }
+  };
 
   // Handle both array of strings (earnedBadges) and array of objects (achievements)
   const earnedBadgeIds = Array.isArray(userBadges) 
@@ -392,6 +743,20 @@ const BadgeModal = ({ isOpen, onClose, userBadges = [], isOwnProfile = false, pr
     : [];
   const earnedCount = earnedBadgeIds.length;
   const totalCount = allBadges.length;
+
+  const filteredBadges = allBadges.filter(badge => {
+    const categoryMatch = selectedCategory === 'all' || badge.category === selectedCategory;
+    const rarityMatch = selectedRarity === 'all' || badge.rarity === selectedRarity;
+    return categoryMatch && rarityMatch;
+  }).sort((a, b) => {
+    // Sort so earned badges appear first
+    const aEarned = earnedBadgeIds.includes(a.id);
+    const bEarned = earnedBadgeIds.includes(b.id);
+    
+    if (aEarned && !bEarned) return -1;
+    if (!aEarned && bEarned) return 1;
+    return 0;
+  });
 
   if (!isOpen) return null;
 
@@ -550,7 +915,7 @@ const BadgeModal = ({ isOpen, onClose, userBadges = [], isOwnProfile = false, pr
                     backgroundColor: darkMode ? '#262626' : '#f9f9f9',
                     borderRadius: '12px',
                     padding: '16px',
-                    border: isEarned ? `2px solid ${badge.color}` : `2px solid ${darkMode ? '#333' : '#e0e0e0'}`,
+                    border: isEarned ? `2px solid ${getRarityColor(badge.rarity)}` : `2px solid ${darkMode ? '#333' : '#e0e0e0'}`,
                     opacity: isEarned ? 1 : 0.6,
                     position: 'relative',
                     boxShadow: isEarned ? getRarityGlow(badge.rarity) : 'none',
@@ -572,7 +937,7 @@ const BadgeModal = ({ isOpen, onClose, userBadges = [], isOwnProfile = false, pr
                     </div>
                     <div style={{ flex: 1 }}>
                       <h3 style={{
-                        color: isEarned ? badge.color : darkMode ? '#666' : '#999',
+                        color: isEarned ? getRarityColor(badge.rarity) : darkMode ? '#666' : '#999',
                         margin: 0,
                         fontSize: '16px',
                         fontWeight: '600'
@@ -589,7 +954,7 @@ const BadgeModal = ({ isOpen, onClose, userBadges = [], isOwnProfile = false, pr
                           fontSize: '10px',
                           padding: '2px 6px',
                           borderRadius: '4px',
-                          backgroundColor: badge.color,
+                          backgroundColor: getRarityColor(badge.rarity),
                           color: 'white',
                           textTransform: 'uppercase',
                           fontWeight: '600'
@@ -597,7 +962,7 @@ const BadgeModal = ({ isOpen, onClose, userBadges = [], isOwnProfile = false, pr
                           {badge.rarity}
                         </span>
                         {isEarned && (
-                          <Star size={12} color={badge.color} fill={badge.color} />
+                          <Star size={12} color={getRarityColor(badge.rarity)} fill={getRarityColor(badge.rarity)} />
                         )}
                       </div>
                     </div>
@@ -638,24 +1003,24 @@ const BadgeModal = ({ isOpen, onClose, userBadges = [], isOwnProfile = false, pr
                           }}
                           style={{
                             background: 'transparent',
-                            border: `1px solid ${badge.color}`,
+                            border: `1px solid ${getRarityColor(badge.rarity)}`,
                             borderRadius: '4px',
                             padding: '4px 6px',
                             cursor: 'pointer',
                             display: 'flex',
                             alignItems: 'center',
                             gap: '4px',
-                            color: badge.color,
+                            color: getRarityColor(badge.rarity),
                             fontSize: '10px',
                             transition: 'all 0.2s ease'
                           }}
                           onMouseEnter={(e) => {
-                            e.target.style.backgroundColor = badge.color;
+                            e.target.style.backgroundColor = getRarityColor(badge.rarity);
                             e.target.style.color = 'white';
                           }}
                           onMouseLeave={(e) => {
                             e.target.style.backgroundColor = 'transparent';
-                            e.target.style.color = badge.color;
+                            e.target.style.color = getRarityColor(badge.rarity);
                           }}
                           title="Share this badge"
                         >

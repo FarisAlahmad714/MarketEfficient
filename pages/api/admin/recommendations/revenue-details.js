@@ -139,7 +139,6 @@ export default async function handler(req, res) {
     });
 
       } catch (error) {
-        console.error('Revenue details error:', error);
         res.status(500).json({ error: 'Failed to fetch revenue details' });
       } finally {
         resolve();

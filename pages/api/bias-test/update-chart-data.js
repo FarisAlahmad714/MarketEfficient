@@ -57,7 +57,6 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Invalid question index' });
     }
   } catch (error) {
-    console.error('Error updating chart data:', error);
     return res.status(500).json({ 
       error: 'Failed to update chart data',
       message: error.message 

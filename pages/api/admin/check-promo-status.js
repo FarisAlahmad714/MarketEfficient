@@ -34,7 +34,6 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error('Error checking promo status:', error);
     res.status(500).json({ 
       error: 'Failed to check promo status',
       details: error.message 

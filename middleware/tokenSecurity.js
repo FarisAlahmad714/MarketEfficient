@@ -47,8 +47,8 @@ export function isTokenBlacklisted(token) {
 export function generateSecureToken(payload, options = {}) {
   const {
     expiresIn = '7d',
-    issuer = 'MarketEfficient',
-    audience = 'MarketEfficient-Users'
+    issuer = 'ChartSense',
+    audience = 'ChartSense-Users'
   } = options;
 
   // Add security claims
@@ -83,8 +83,8 @@ export function verifySecureToken(token) {
     // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET, {
       algorithms: ['HS256'],
-      issuer: 'MarketEfficient',
-      audience: 'MarketEfficient-Users'
+      issuer: 'ChartSense',
+      audience: 'ChartSense-Users'
     });
 
     // Additional security checks

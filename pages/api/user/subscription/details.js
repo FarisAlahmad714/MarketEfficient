@@ -146,7 +146,6 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error('Subscription details fetch error:', error);
     
     if (error.name === 'JsonWebTokenError') {
       return res.status(401).json({ error: 'Invalid token' });

@@ -77,7 +77,6 @@ const ProfileHeader = ({
         setLeaderboardRank(rankData);
       }
     } catch (error) {
-      console.error('Error fetching leaderboard rank:', error);
     } finally {
       setRankLoading(false);
     }
@@ -95,13 +94,11 @@ const ProfileHeader = ({
         setFollowStatus(data);
       }
     } catch (error) {
-      console.error('Error fetching follow status:', error);
     }
   };
 
   // Sync form data when profile prop changes
   React.useEffect(() => {
-    console.log('ProfileHeader received profile:', profile);
     if (profile) {
       setFormData({
         username: profile.username || '',
@@ -117,7 +114,6 @@ const ProfileHeader = ({
       });
       
       // Always update the profile image when profile prop changes
-      console.log('Setting profile image from prop:', profile.profileImageUrl);
       setProfileImage(profile.profileImageUrl || '');
       
       // Fetch leaderboard rank and follow status
@@ -146,7 +142,6 @@ const ProfileHeader = ({
           }));
         }
       } catch (error) {
-        console.error('Error generating username:', error);
       }
     }
   };
@@ -227,7 +222,6 @@ const ProfileHeader = ({
       }
       
     } catch (error) {
-      console.error('Error saving profile image:', error);
       setSaveError(error.message);
       setTimeout(() => setSaveError(null), 5000);
       setProfileImage(profile?.profileImageUrl || '');
@@ -268,10 +262,8 @@ const ProfileHeader = ({
       setTimeout(() => setSaveSuccess(false), 3000);
       
       // Refresh user data in AuthContext to update navbar
-      console.log('Calling refreshUserData after profile save...');
       if (refreshUserData) {
         const refreshSuccess = await refreshUserData();
-        console.log('RefreshUserData result:', refreshSuccess);
       }
       
       if (onProfileUpdate) {
@@ -279,7 +271,6 @@ const ProfileHeader = ({
       }
       
     } catch (error) {
-      console.error('Error saving profile:', error);
       setSaveError(error.message);
       setTimeout(() => setSaveError(null), 5000);
     } finally {
@@ -297,13 +288,8 @@ const ProfileHeader = ({
   };
 
   const handleFollowToggle = async () => {
-    console.log('Follow button clicked!');
-    console.log('User:', user);
-    console.log('Profile:', profile);
-    console.log('Profile._id:', profile?._id);
     
     if (!user || !profile?._id) {
-      console.log('Missing user or profile._id, returning early');
       return;
     }
     
@@ -362,7 +348,6 @@ const ProfileHeader = ({
         throw new Error(errorData.error || 'Failed to update follow status');
       }
     } catch (error) {
-      console.error('Error toggling follow:', error);
       alert(error.message || 'Failed to update follow status. Please try again.');
     } finally {
       setFollowLoading(false);
@@ -434,7 +419,6 @@ const ProfileHeader = ({
               }}
               sizes="120px"
               onError={(e) => {
-                console.log('Profile image failed to load:', profileImage);
                 setImageError(true);
                 // Hide the broken image
                 e.target.style.display = 'none';
@@ -819,7 +803,6 @@ const ProfileHeader = ({
 
           {/* Pokemon-Style Badge Showcase */}
           {(() => {
-            console.log('ProfileHeader: earnedBadges:', profile?.earnedBadges);
             return profile?.earnedBadges && profile.earnedBadges.length > 0;
           })() && (
             <div style={{

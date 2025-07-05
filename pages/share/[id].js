@@ -16,8 +16,6 @@ const SharePage = ({ shareData: initialShareData, shareId }) => {
   const error = null;
 
   // Debug logging
-  console.log('SharePage props:', { shareData, shareId });
-  console.log('Loading state:', loading);
 
   const getShareUrl = () => {
     const domain = process.env.NODE_ENV === 'production' ? 'https://chartsense.trade' : (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000');
@@ -40,7 +38,6 @@ const SharePage = ({ shareData: initialShareData, shareId }) => {
       }
       return 'Shared Achievement - ChartSense';
     } catch (error) {
-      console.error('Error generating meta title:', error);
       return 'Shared Achievement - ChartSense';
     }
   };
@@ -50,18 +47,17 @@ const SharePage = ({ shareData: initialShareData, shareId }) => {
     
     try {
       if (shareData.type === 'achievement') {
-        return `${shareData.username} earned "${shareData.title}" on MarketEfficient! ${shareData.description}`;
+        return `${shareData.username} earned "${shareData.title}" on ChartSense! ${shareData.description}`;
       } else if (shareData.type === 'badge') {
-        return `${shareData.username} earned the "${shareData.title}" badge on MarketEfficient! ${shareData.description} (${shareData.rarity} rarity)`;
+        return `${shareData.username} earned the "${shareData.title}" badge on ChartSense! ${shareData.description} (${shareData.rarity} rarity)`;
       } else if (shareData.type === 'test_result') {
         return `${shareData.username} scored ${shareData.percentage}% on ${shareData.testType}. Score: ${shareData.score}/${shareData.totalPoints}`;
       } else if (shareData.type === 'trading_highlight') {
         const returnText = shareData.return > 0 ? `+${shareData.return.toFixed(1)}%` : `${shareData.return.toFixed(1)}%`;
-        return `${shareData.username} achieved ${returnText} return on ${shareData.symbol} trade on MarketEfficient!`;
+        return `${shareData.username} achieved ${returnText} return on ${shareData.symbol} trade on ChartSense!`;
       }
       return 'Check out this achievement on ChartSense!';
     } catch (error) {
-      console.error('Error generating meta description:', error);
       return 'Check out this achievement on ChartSense!';
     }
   };
@@ -491,7 +487,6 @@ export async function getServerSideProps(context) {
       }
     };
   } catch (error) {
-    console.error('Error fetching share data:', error);
     return {
       notFound: true
     };

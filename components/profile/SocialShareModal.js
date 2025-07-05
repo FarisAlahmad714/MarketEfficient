@@ -52,7 +52,6 @@ const SocialShareModal = ({
         }
       }
     } catch (error) {
-      console.error('Error checking share status:', error);
     } finally {
       setCheckingShareStatus(false);
     }
@@ -85,11 +84,9 @@ const SocialShareModal = ({
           onShare();
         }
       } else {
-        console.error('Failed to share to feed');
         alert('Failed to share to feed. Please try again.');
       }
     } catch (error) {
-      console.error('Error sharing to feed:', error);
       alert('Failed to share to feed. Please try again.');
     } finally {
       setIsCreatingShare(false);
@@ -117,13 +114,11 @@ const SocialShareModal = ({
         setShareUrl(newShareUrl);
         generateShareText(newShareUrl);
       } else {
-        console.error('Failed to create shareable link');
         // Fallback to profile URL
         setShareUrl(profileUrl);
         generateShareText(profileUrl);
       }
     } catch (error) {
-      console.error('Error creating shareable link:', error);
       // Fallback to profile URL
       setShareUrl(profileUrl);
       generateShareText(profileUrl);
@@ -136,16 +131,16 @@ const SocialShareModal = ({
     if (!shareData) return '';
 
     if (shareData.type === 'achievement') {
-      return `🏆 Earned "${shareData.title}" on MarketEfficient! ${shareData.description}`;
+      return `🏆 Earned "${shareData.title}" on ChartSense! ${shareData.description}`;
     } else if (shareData.type === 'badge') {
-      return `🏆 Earned the "${shareData.title}" badge on MarketEfficient! ${shareData.description}`;
+      return `🏆 Earned the "${shareData.title}" badge on ChartSense! ${shareData.description}`;
     } else if (shareData.type === 'test_result') {
       return `📊 Scored ${shareData.percentage}% on ${shareData.testType} 🎯`;
     } else if (shareData.type === 'trading_highlight') {
       const returnText = shareData.return > 0 ? `+${shareData.return.toFixed(1)}%` : `${shareData.return.toFixed(1)}%`;
-      return `📈 ${shareData.side.toUpperCase()} ${shareData.symbol} trade: ${returnText} return on MarketEfficient! 💪`;
+      return `📈 ${shareData.side.toUpperCase()} ${shareData.symbol} trade: ${returnText} return on ChartSense! 💪`;
     } else if (shareData.type === 'profile') {
-      return `Check out my trading profile on MarketEfficient! 📊`;
+      return `Check out my trading profile on ChartSense! 📊`;
     }
     return '';
   };
@@ -175,11 +170,11 @@ const SocialShareModal = ({
     } else if (platform === 'linkedin') {
       let linkedinText = '';
       if (shareData.type === 'achievement') {
-        linkedinText = `Excited to share that I've earned the "${shareData.title}" achievement on MarketEfficient! ${shareData.description}\n\nContinuing to develop my trading and market analysis skills through structured learning and practice.`;
+        linkedinText = `Excited to share that I've earned the "${shareData.title}" achievement on ChartSense! ${shareData.description}\n\nContinuing to develop my trading and market analysis skills through structured learning and practice.`;
       } else if (shareData.type === 'badge') {
-        linkedinText = `Proud to share that I've earned the "${shareData.title}" badge on MarketEfficient! ${shareData.description}\n\nThis ${shareData.rarity} badge represents my commitment to mastering trading skills and market psychology.`;
+        linkedinText = `Proud to share that I've earned the "${shareData.title}" badge on ChartSense! ${shareData.description}\n\nThis ${shareData.rarity} badge represents my commitment to mastering trading skills and market psychology.`;
       } else if (shareData.type === 'test_result') {
-        linkedinText = `Achieved ${shareData.percentage}% on a ${shareData.testType} assessment on MarketEfficient. Continuing to sharpen my market analysis skills through systematic testing and learning.`;
+        linkedinText = `Achieved ${shareData.percentage}% on a ${shareData.testType} assessment on ChartSense. Continuing to sharpen my market analysis skills through systematic testing and learning.`;
       } else {
         linkedinText = baseText;
       }
@@ -451,7 +446,7 @@ const SocialShareModal = ({
                 }
               }}
             >
-              {/* MarketEfficient Logo */}
+              {/* ChartSense Logo */}
               <div style={{
                 width: '24px',
                 height: '24px',
@@ -464,7 +459,7 @@ const SocialShareModal = ({
                 fontWeight: '700',
                 color: hasSharedToFeed ? '#4CAF50' : '#2196F3'
               }}>
-                ME
+                CS
               </div>
               
               {checkingShareStatus ? (
@@ -474,7 +469,7 @@ const SocialShareModal = ({
               ) : hasSharedToFeed ? (
                 '✓ Already Shared to Feed'
               ) : (
-                'Share to MarketEfficient Feed'
+                'Share to ChartSense Feed'
               )}
             </button>
             

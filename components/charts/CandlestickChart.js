@@ -429,7 +429,6 @@ if (typeof window !== 'undefined') {
         hideNewsTooltip();
       }
     } catch (error) {
-      console.error('Error in global hideNewsTooltip:', error);
       // Fallback: just remove any element with news-tooltip id
       const fallback = document.getElementById('news-tooltip');
       if (fallback && fallback.parentNode) {
@@ -440,9 +439,7 @@ if (typeof window !== 'undefined') {
   
   // Double-check it's available
   if (!window.hideNewsTooltip) {
-    console.error('CRITICAL: Failed to register hideNewsTooltip globally');
   } else {
-    console.log('Global hideNewsTooltip successfully registered');
   }
 }
 
@@ -583,11 +580,9 @@ const CandlestickChartComponent = ({ data, height = 400, timeframe = 'daily', ne
               const oneMonthFromNow = now + (30 * 24 * 60 * 60); // 1 month in future
               
               if (timeValue < threeYearsAgo || timeValue > oneMonthFromNow) {
-                console.warn('Timestamp seems out of reasonable range:', item.date, timeValue);
               }
               
             } catch (e) {
-              console.error('Invalid date format:', item.date, e);
               // Create fallback timestamp based on index (going backwards in time)
               const now = Math.floor(Date.now() / 1000);
               timeValue = now - ((data.length - index) * 86400); // 1 day intervals as fallback
@@ -792,7 +787,6 @@ const CandlestickChartComponent = ({ data, height = 400, timeframe = 'daily', ne
           window.removeEventListener('resize', handleResize);
         };
       } catch (error) {
-        console.error('Failed to initialize chart:', error);
       }
     };
     

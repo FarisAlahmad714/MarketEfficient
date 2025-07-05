@@ -26,7 +26,6 @@ const LoginForm = () => {
         // The response body (which contains the token) isn't strictly needed here by LoginForm,
         // as AuthContext will read the cookie directly.
       } catch (err) {
-        console.error('Failed to prime CSRF cookie:', err);
         // Consider if any user-facing error or retry logic is needed here,
         // though CSRF failure will be caught upon login attempt.
       }

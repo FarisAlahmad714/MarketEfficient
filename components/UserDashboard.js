@@ -52,7 +52,6 @@ const UserDashboard = ({ user }) => {
       }
 
     } catch (error) {
-      console.error('Error fetching user data:', error);
       setError('Failed to load dashboard data');
     } finally {
       setLoading(false);
@@ -78,7 +77,6 @@ const UserDashboard = ({ user }) => {
         window.open(data.url, '_blank');
       }
     } catch (error) {
-      console.error('Error opening customer portal:', error);
     }
   };
 

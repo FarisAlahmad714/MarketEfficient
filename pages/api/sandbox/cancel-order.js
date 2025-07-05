@@ -80,7 +80,6 @@ async function cancelOrderHandler(req, res) {
     res.status(200).json(response);
 
   } catch (error) {
-    console.error('Error cancelling order:', error);
     res.status(500).json({ 
       error: 'Failed to cancel order',
       message: error.message 

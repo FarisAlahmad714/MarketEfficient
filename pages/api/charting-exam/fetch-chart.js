@@ -34,7 +34,6 @@ const getSampleChartData = () => {
     const fileData = fs.readFileSync(dataPath, 'utf8');
     return JSON.parse(fileData);
   } catch (error) {
-    console.error('Error reading sample chart data:', error);
     return null;
   }
 };
@@ -105,13 +104,11 @@ async function fetchChartHandler(req, res) {
       chart_count: chartCount
     };
   } catch (error) {
-    console.warn('Data fetch failed, using sample data:', error.message);
     chartData = getSampleChartData();
   }
 
   // Fallback to mock data if needed
   if (!chartData || !chartData.chart_data || chartData.chart_data.length < 20) {
-    console.warn('Insufficient data, generating mock data');
     const now = Math.floor(Date.now() / 1000);
     const interval = timeframe === '1h' ? 3600 : timeframe === '4h' ? 14400 : timeframe === '1d' ? 86400 : 604800;
     const generatedData = [];

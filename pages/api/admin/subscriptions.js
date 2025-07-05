@@ -30,7 +30,6 @@ async function subscriptionsHandler(req, res) {
     }
 
   } catch (error) {
-    console.error('Subscriptions API error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 }
@@ -123,7 +122,6 @@ async function getSubscriptions(req, res) {
     });
 
   } catch (error) {
-    console.error('Error fetching subscriptions:', error);
     res.status(500).json({ error: 'Failed to fetch subscriptions' });
   }
 }
@@ -193,7 +191,6 @@ async function createSubscription(req, res, admin) {
     });
 
   } catch (error) {
-    console.error('Error creating subscription:', error);
     res.status(500).json({ error: 'Failed to create subscription' });
   }
 }
@@ -323,7 +320,6 @@ async function updateSubscription(req, res, admin) {
     });
 
   } catch (error) {
-    console.error('Error updating subscription:', error);
     res.status(500).json({ error: 'Failed to update subscription' });
   }
 }
@@ -355,7 +351,6 @@ async function cancelSubscription(req, res, admin) {
         try {
           await cancelStripeSubscription(subscription.stripeSubscriptionId, false);
         } catch (error) {
-          console.error('Error cancelling Stripe subscription:', error);
         }
       }
 
@@ -392,7 +387,6 @@ async function cancelSubscription(req, res, admin) {
     });
 
   } catch (error) {
-    console.error('Error cancelling subscription:', error);
     res.status(500).json({ error: 'Failed to cancel subscription' });
   }
 }

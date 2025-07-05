@@ -71,7 +71,6 @@ async function updateTradeHandler(req, res) {
     });
 
   } catch (error) {
-    console.error('Error updating trade:', error);
     res.status(500).json({ 
       error: 'Server error',
       message: error.message 

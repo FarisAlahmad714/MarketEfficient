@@ -34,11 +34,9 @@ export default async function handler(req, res) {
       try {
         const user = await verifyToken(authHeader.replace('Bearer ', ''));
         if (user) {
-          console.log(`Quiz attempt - User: ${user.email}, Topic: ${topicName}, Lesson: ${lessonTitle}, Correct: ${isCorrect}`);
           // Here you could save to database for progress tracking
         }
       } catch (error) {
-        console.log('Could not identify user for quiz logging');
       }
     }
 
@@ -48,7 +46,6 @@ export default async function handler(req, res) {
       correctAnswer: lessonData.quiz.correct
     });
   } catch (error) {
-    console.error('Error validating quiz:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 }

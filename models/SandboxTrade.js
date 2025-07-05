@@ -341,7 +341,6 @@ SandboxTradeSchema.methods.updateUnrealizedPnL = function(currentPrice) {
       totalFees: this.fees.total
     });
   } catch (error) {
-    console.error('Error calculating unrealized P&L:', error);
     this.unrealizedPnL = 0;
   }
 };

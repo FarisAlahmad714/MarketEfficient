@@ -128,7 +128,6 @@ export function sanitizeInput(options = {}) {
       
       next();
     } catch (error) {
-      console.error('Sanitization error:', error);
       return res.status(400).json({
         error: 'Invalid input data',
         code: 'SANITIZATION_ERROR'

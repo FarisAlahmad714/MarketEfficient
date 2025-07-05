@@ -49,7 +49,7 @@ export default async function handler(req, res) {
         price_data: {
           currency: 'usd',
           product_data: {
-            name: `MarketEfficient ${plan.charAt(0).toUpperCase() + plan.slice(1)} Subscription`,
+            name: `ChartSense ${plan.charAt(0).toUpperCase() + plan.slice(1)} Subscription`,
             description: promoCode 
               ? `${plan === 'monthly' ? 'Monthly' : 'Annual'} subscription with promo code ${promoCode}`
               : `${plan === 'monthly' ? 'Monthly' : 'Annual'} subscription`
@@ -86,7 +86,6 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error('Create checkout error:', error);
     res.status(500).json({ 
       error: 'Failed to create checkout session',
       details: error.message 

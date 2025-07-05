@@ -33,8 +33,6 @@ async function chartAnalyticsHandler(req, res) {
       .sort({ sessionStartTime: -1 })
       .lean();
     
-    console.log(`Chart Analytics Query:`, query);
-    console.log(`Found ${analyticsData.length} chart exam analytics records`);
 
     // If CSV export requested
     if (format === 'csv') {
@@ -138,7 +136,6 @@ async function chartAnalyticsHandler(req, res) {
     });
 
   } catch (error) {
-    console.error('Error fetching chart analytics:', error);
     res.status(500).json({ 
       error: 'Internal server error',
       message: error.message 

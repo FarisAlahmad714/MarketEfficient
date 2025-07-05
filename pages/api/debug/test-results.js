@@ -67,7 +67,6 @@ async function debugTestResultsHandler(req, res) {
     });
 
   } catch (error) {
-    console.error('Error in test results debug:', error);
     return res.status(500).json({ 
       error: 'Failed to debug test results',
       message: error.message 

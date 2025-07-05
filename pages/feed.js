@@ -38,12 +38,23 @@ const SocialFeedPage = () => {
   // Get profile images for feed users (same as leaderboard) - memoized to prevent infinite updates
   const feedUsersForImages = useMemo(() => {
     const currentContent = activeTab === 'feed' ? feedContent : userContent;
-    return currentContent.map(item => ({
+    const feedUsers = currentContent.map(item => ({
       userId: item.userId,
       profileImageGcsPath: item.profileImageGcsPath || null
     }));
-  }, [feedContent, userContent, activeTab]);
+    
+    // Also include followed users for the stacked avatars (avoid duplicates)
+    const followedUsersForImages = followedUsers
+      .filter(user => !feedUsers.some(feedUser => feedUser.userId === user._id))
+      .map(user => ({
+        userId: user._id,
+        profileImageGcsPath: user.profileImageGcsPath || null
+      }));
+    
+    return [...feedUsers, ...followedUsersForImages];
+  }, [feedContent, userContent, activeTab, followedUsers]);
   const { imageUrls } = useLeaderboardImages(feedUsersForImages);
+
 
   useEffect(() => {
     if (!user) {
@@ -76,7 +87,6 @@ const SocialFeedPage = () => {
         router.push('/auth/login');
       }
     } catch (error) {
-      console.error('Error fetching social feed:', error);
     } finally {
       setLoading(false);
     }
@@ -100,7 +110,6 @@ const SocialFeedPage = () => {
         router.push('/auth/login');
       }
     } catch (error) {
-      console.error('Error fetching user content:', error);
     } finally {
       setUserLoading(false);
     }
@@ -146,7 +155,6 @@ const SocialFeedPage = () => {
         setShowSearchResults(true);
       }
     } catch (error) {
-      console.error('Error searching users:', error);
     } finally {
       setSearchLoading(false);
     }
@@ -204,7 +212,6 @@ const SocialFeedPage = () => {
         }, 3000);
       }
     } catch (error) {
-      console.error('Error following/unfollowing user:', error);
     }
   };
 
@@ -275,7 +282,6 @@ const SocialFeedPage = () => {
         showNotification('Failed to delete post', 'error');
       }
     } catch (error) {
-      console.error('Error deleting post:', error);
       showNotification('Failed to delete post', 'error');
     }
   };
@@ -1972,7 +1978,7 @@ const SocialFeedPage = () => {
   return (
     <>
       <Head>
-        <title>Social Feed - MarketEfficient</title>
+        <title>Social Feed - ChartSense</title>
         <meta name="description" content="Connect with fellow traders and see their latest insights" />
       </Head>
       
@@ -2240,26 +2246,70 @@ const SocialFeedPage = () => {
             </div>
             <div style={{
               display: 'flex',
-              flexWrap: 'wrap',
-              gap: '8px'
+              alignItems: 'center',
+              gap: '4px'
             }}>
-              {followedUsers.map(followedUser => (
+              {followedUsers.slice(0, 8).map((followedUser, index) => (
                 <div
                   key={followedUser._id}
                   onClick={() => router.push(`/u/${followedUser.username}`)}
                   style={{
-                    backgroundColor: darkMode ? '#262626' : '#f8f9fa',
-                    borderRadius: '16px',
-                    padding: '6px 12px',
-                    fontSize: '12px',
-                    color: darkMode ? '#e0e0e0' : '#333',
+                    position: 'relative',
+                    zIndex: 8 - index,
+                    marginLeft: index > 0 ? '-16px' : '0',
                     cursor: 'pointer',
-                    transition: 'background-color 0.2s'
+                    transition: 'all 0.2s ease',
+                    transform: 'scale(1)',
                   }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'scale(1.1)';
+                    e.currentTarget.style.zIndex = '100';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'scale(1)';
+                    e.currentTarget.style.zIndex = 8 - index;
+                  }}
+                  title={`@${followedUser.username}`}
                 >
-                  @{followedUser.username}
+                  <div style={{
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '50%',
+                    border: `2px solid ${darkMode ? '#1e1e1e' : 'white'}`,
+                    overflow: 'hidden',
+                    backgroundColor: darkMode ? '#333' : '#f0f0f0'
+                  }}>
+                    <ProfileAvatar
+                      imageUrl={imageUrls[followedUser._id]}
+                      name={followedUser.name || followedUser.username}
+                      size={32}
+                      borderRadius="50%"
+                    />
+                  </div>
                 </div>
               ))}
+              {followedUsers.length > 8 && (
+                <div style={{
+                  marginLeft: '-16px',
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '50%',
+                  backgroundColor: darkMode ? '#333' : '#e0e0e0',
+                  border: `2px solid ${darkMode ? '#1e1e1e' : 'white'}`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '12px',
+                  fontWeight: '600',
+                  color: darkMode ? '#e0e0e0' : '#666',
+                  cursor: 'pointer',
+                  zIndex: '0'
+                }}
+                title={`+${followedUsers.length - 8} more traders`}
+                >
+                  +{followedUsers.length - 8}
+                </div>
+              )}
             </div>
           </div>
         )}

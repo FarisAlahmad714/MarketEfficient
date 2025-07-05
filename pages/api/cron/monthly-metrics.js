@@ -20,7 +20,6 @@ export default async function handler(req, res) {
   try {
     await connectDB();
     
-    console.log('Starting monthly metrics cron job...');
     
     // Get all verified users with email notifications enabled
     const users = await User.find({ 
@@ -28,7 +27,6 @@ export default async function handler(req, res) {
       'notifications.email': { $ne: false }
     });
     
-    console.log(`Found ${users.length} eligible users for monthly metrics`);
     
     let successCount = 0;
     let errorCount = 0;
@@ -42,22 +40,18 @@ export default async function handler(req, res) {
         if (metrics.testsTaken > 0) {
           await sendMetricsEmail(user, metrics, 'monthly');
           successCount++;
-          console.log(`Sent monthly metrics to ${user.email}`);
         } else {
-          console.log(`Skipped ${user.email} - no tests taken this month`);
         }
         
         // Small delay to avoid rate limiting
         await new Promise(resolve => setTimeout(resolve, 500));
         
       } catch (error) {
-        console.error(`Error sending monthly metrics to ${user.email}:`, error);
         errorCount++;
         errors.push({ email: user.email, error: error.message });
       }
     }
     
-    console.log(`Monthly metrics cron completed: ${successCount} sent, ${errorCount} errors`);
     
     return res.status(200).json({
       message: 'Monthly metrics cron job completed',
@@ -68,7 +62,6 @@ export default async function handler(req, res) {
     });
     
   } catch (error) {
-    console.error('Monthly metrics cron error:', error);
     return res.status(500).json({ 
       error: 'Cron job failed',
       message: error.message 

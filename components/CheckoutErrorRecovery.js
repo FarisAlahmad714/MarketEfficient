@@ -56,14 +56,13 @@ const CheckoutErrorRecovery = ({ error, sessionId, onRetry }) => {
         router.push('/pricing');
       }
     } catch (err) {
-      console.error('Retry payment error:', err);
       setLoading(false);
     }
   };
 
   const handleContactSupport = () => {
     // Could open a support modal or redirect to support page
-    window.location.href = 'mailto:support@marketefficient.com?subject=Payment Issue';
+    window.location.href = 'mailto:support@chartsense.trade?subject=Payment Issue';
   };
 
   return (

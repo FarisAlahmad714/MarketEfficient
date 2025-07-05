@@ -52,7 +52,6 @@ export default function EmailVerificationPage() {
         return false;
       }
     } catch (error) {
-      console.error('Failed to resend verification email:', error);
       return false;
     }
   };

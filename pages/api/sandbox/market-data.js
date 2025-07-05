@@ -51,7 +51,6 @@ async function marketDataHandler(req, res) {
         
         // Get real historical chart data for charting
         try {
-          console.log(`Fetching chart data for ${apiSymbol}, interval: ${interval}, outputsize: ${outputsize}`);
           const chartData = await getHistoricalData(apiSymbol, interval, parseInt(outputsize));
           
           // Convert USD prices to SENSES prices (1:1 for now)
@@ -74,7 +73,6 @@ async function marketDataHandler(req, res) {
             marketStatus: 'real-time' // Will be updated based on data freshness
           });
         } catch (error) {
-          console.log('Falling back to simulated data for chart:', error.message);
           // Fallback to simulated data if real data fails
           const chartData = generateSimulatedChartData(
             requestedSymbol, 
@@ -133,9 +131,7 @@ async function marketDataHandler(req, res) {
           source: 'twelvedata'
         }));
         
-        console.log(`Successfully fetched ${priceData.length} real prices from Twelvedata`);
       } catch (error) {
-        console.error('Twelvedata API failed, using simulated prices:', error.message);
         priceData = generateSimulatedPriceData(validSymbols);
       }
       
@@ -151,7 +147,6 @@ async function marketDataHandler(req, res) {
     }
     
   } catch (error) {
-    console.error('Error fetching sandbox market data:', error);
     res.status(500).json({ 
       error: 'Failed to fetch market data',
       message: error.message 
@@ -186,7 +181,6 @@ async function fetchTwelvedataRealTime(symbols) {
       });
       
       if (!response.ok) {
-        console.error(`Twelvedata API error: ${response.status} ${response.statusText}`);
         continue;
       }
       
@@ -234,7 +228,6 @@ async function fetchTwelvedataRealTime(symbols) {
       }
       
     } catch (error) {
-      console.error(`Error fetching batch ${symbolString}:`, error);
       continue;
     }
   }
@@ -252,7 +245,6 @@ async function getHistoricalData(symbol, interval = '1h', outputsize = 100) {
   
   try {
     const url = `https://api.twelvedata.com/time_series?symbol=${symbol}&interval=${interval}&outputsize=${outputsize}&apikey=${TWELVE_DATA_API_KEY}`;
-    console.log(`Twelve Data API URL: ${url}`);
     
     const response = await fetch(url);
     
@@ -280,12 +272,10 @@ async function getHistoricalData(symbol, interval = '1h', outputsize = 100) {
       volume: item.volume ? parseFloat(item.volume) : 0
     }));
     
-    console.log(`Chart data received: ${chartData.length} candles, latest: ${new Date(chartData[chartData.length-1]?.time * 1000)}, oldest: ${new Date(chartData[0]?.time * 1000)}`);
     
     return chartData;
     
   } catch (error) {
-    console.error(`Error fetching historical data for ${symbol}:`, error);
     throw error;
   }
 }

@@ -17,11 +17,9 @@ import {
 import { adminSecurityValidator } from '../../../lib/admin-security';
 
 async function placeTradeHandler(req, res) {
-  console.log('[PLACE-TRADE] Starting trade placement...');
   const startTime = Date.now();
   
   await connectDB();
-  console.log('[PLACE-TRADE] DB connected in', Date.now() - startTime, 'ms');
   
   const userId = req.user.id;
   const {
@@ -72,14 +70,11 @@ async function placeTradeHandler(req, res) {
 
     // Check if quarterly top-up is due and apply it automatically (sandbox already validated as unlocked)
     if (portfolio.isTopUpDue()) {
-      console.log(`Quarterly top-up due for user ${userId}, adding 10,000 SENSES`);
       await portfolio.performQuarterlyTopUp();
       await portfolio.save();
-      console.log(`Top-up completed. New balance: ${portfolio.balance} SENSES`);
     }
 
     // Pre-trade analysis validation
-    console.log('[PLACE-TRADE] Checking pre-trade analysis at', Date.now() - startTime, 'ms');
     if (!preTradeAnalysis || !preTradeAnalysis.entryReason) {
       return res.status(400).json({ 
         error: 'Missing pre-trade analysis',
@@ -87,9 +82,7 @@ async function placeTradeHandler(req, res) {
       });
     }
 
-    console.log('[PLACE-TRADE] Running bias detection at', Date.now() - startTime, 'ms');
     const biasAnalysis = validateAndDetectBias(preTradeAnalysis);
-    console.log('[PLACE-TRADE] Bias detection completed at', Date.now() - startTime, 'ms');
     
     if (!biasAnalysis.isValid) {
       return res.status(400).json({ 
@@ -104,9 +97,7 @@ async function placeTradeHandler(req, res) {
     // Get current market price
     let currentPrice;
     try {
-      console.log('[PLACE-TRADE] Fetching market price at', Date.now() - startTime, 'ms');
       currentPrice = await getCurrentMarketPrice(validatedData.symbol);
-      console.log('[PLACE-TRADE] Market price fetched at', Date.now() - startTime, 'ms');
       if (!currentPrice) {
         throw new Error(`No price data available for ${validatedData.symbol}`);
       }
@@ -170,7 +161,6 @@ async function placeTradeHandler(req, res) {
       isAdmin = user?.isAdmin || false;
     } catch (error) {
       // Continue with regular user limits if admin check fails
-      console.error('Admin check failed:', error);
     }
     
     // Apply enhanced security checks for admins, regular limits for users
@@ -344,7 +334,6 @@ async function placeTradeHandler(req, res) {
           totalFees: tradeData.fees.total
         });
       } catch (error) {
-        console.error('Error calculating initial unrealized P&L:', error);
         tradeData.unrealizedPnL = 0;
       }
     } else if (type === 'limit') {
@@ -358,10 +347,8 @@ async function placeTradeHandler(req, res) {
     }
 
     // Create the trade
-    console.log('[PLACE-TRADE] Creating trade record at', Date.now() - startTime, 'ms');
     const trade = new SandboxTrade(tradeData);
     await trade.save();
-    console.log('[PLACE-TRADE] Trade saved at', Date.now() - startTime, 'ms');
 
     // Update portfolio statistics
     portfolio.totalTrades += 1;
@@ -370,9 +357,7 @@ async function placeTradeHandler(req, res) {
     // Update balance (subtract fees)
     portfolio.balance -= entryFee;
     
-    console.log('[PLACE-TRADE] Updating portfolio at', Date.now() - startTime, 'ms');
     await portfolio.save();
-    console.log('[PLACE-TRADE] Portfolio updated at', Date.now() - startTime, 'ms');
 
     // Note: Badge checking removed from hot path for performance
     // TODO: Move badge checking to background job or separate endpoint
@@ -409,11 +394,9 @@ async function placeTradeHandler(req, res) {
       }
     };
 
-    console.log('[PLACE-TRADE] Trade completed successfully in', Date.now() - startTime, 'ms');
     res.status(200).json(response);
 
   } catch (error) {
-    console.error('[PLACE-TRADE] Error placing sandbox trade after', Date.now() - startTime, 'ms:', error);
     res.status(500).json({ 
       error: 'Failed to place trade',
       message: error.message 
@@ -427,7 +410,6 @@ async function getCurrentMarketPrice(symbol) {
     const TWELVE_DATA_API_KEY = process.env.TWELVE_DATA_API_KEY;
     
     if (!TWELVE_DATA_API_KEY) {
-      console.log(`Using simulated price for trade: ${symbol}`);
       const priceSimulator = getPriceSimulator();
       return priceSimulator.getPrice(symbol);
     }
@@ -445,7 +427,6 @@ async function getCurrentMarketPrice(symbol) {
     clearTimeout(timeoutId);
     
     if (!response.ok) {
-      console.log(`API failed, using simulated price for trade: ${symbol}`);
       const priceSimulator = getPriceSimulator();
       return priceSimulator.getPrice(symbol);
     }
@@ -460,9 +441,7 @@ async function getCurrentMarketPrice(symbol) {
     
   } catch (error) {
     if (error.name === 'AbortError') {
-      console.log(`Price fetch timeout for ${symbol}, using simulated data`);
     } else {
-      console.log(`Error fetching price for ${symbol}, using simulated data:`, error.message);
     }
     const priceSimulator = getPriceSimulator();
     return priceSimulator.getPrice(symbol);
@@ -483,17 +462,11 @@ const handler = createApiHandler(
 
 // Add logging wrapper
 export default async (req, res) => {
-  console.log('🚀 PLACE-TRADE API CALLED at', new Date().toISOString());
-  console.log('Request method:', req.method);
-  console.log('Request body preview:', JSON.stringify(req.body || {}).substring(0, 100) + '...');
   
   try {
-    console.log('🔄 Calling handler...');
     const result = await handler(req, res);
-    console.log('✅ Handler completed');
     return result;
   } catch (error) {
-    console.error('❌ Handler error:', error);
     throw error;
   }
 };

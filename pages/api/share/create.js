@@ -8,9 +8,6 @@ import SharedContent from '../../../models/SharedContent';
 import { v4 as uuidv4 } from 'uuid';
 
 export default async function handler(req, res) {
-  console.log('=== SHARE API CALLED ===');
-  console.log('Method:', req.method);
-  console.log('Body:', JSON.stringify(req.body, null, 2));
   
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -61,16 +58,13 @@ export default async function handler(req, res) {
     let enhancedData = data;
     
     // If sharing a bias test result, fetch detailed session data including chart images
-    console.log('Share API - Type:', type, 'SessionId:', data.sessionId, 'TestType:', data.testType);
     if (type === 'test_result' && data.sessionId && data.testType && data.testType.toLowerCase().includes('bias')) {
       try {
-        console.log('Fetching detailed bias test data for sessionId:', data.sessionId);
         
         // Import TestResults model
         const TestResults = (await import('../../../models/TestResults')).default;
         
         // Fetch detailed test results from database
-        console.log('Searching for test result with sessionId:', data.sessionId, 'userId:', user._id);
         
         // Fetch detailed test results from database using correct query path
         const detailedResult = await TestResults.findOne({ 
@@ -78,10 +72,8 @@ export default async function handler(req, res) {
           userId: user._id 
         }).lean();
         
-        console.log('Query result:', detailedResult ? 'Found!' : 'Not found');
         
         if (detailedResult && detailedResult.details && detailedResult.details.testDetails) {
-          console.log('Found detailed test result with', detailedResult.details.testDetails.length, 'questions');
           
           // Extract chart images from all questions
           const chartImages = {
@@ -128,12 +120,8 @@ export default async function handler(req, res) {
             const dateStr = `${year}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
             
             const prefix = `Trading_Psychology_Research/Market_Bias_Testing/${year}/${month}/${day}/`;
-            console.log('Searching for images with prefix:', prefix);
             
             const [files] = await bucket.getFiles({ prefix });
-            console.log('Found', files.length, 'files in GCS for today');
-            console.log('Looking for files with dateStr:', dateStr);
-            console.log('First few files:', files.slice(0, 5).map(f => f.name));
             
             // Find ALL setup and outcome images for ALL 5 questions
             allSetupImages = [];
@@ -153,7 +141,6 @@ export default async function handler(req, res) {
                   url: `https://storage.googleapis.com/chartsensebucket/${setupImage.name}`,
                   path: setupImage.name
                 });
-                console.log(`Found setup image for Question ${questionNum}:`, setupImage.name);
               }
               
               // Find outcome image for this question
@@ -168,11 +155,9 @@ export default async function handler(req, res) {
                   url: `https://storage.googleapis.com/chartsensebucket/${outcomeImage.name}`,
                   path: outcomeImage.name
                 });
-                console.log(`Found outcome image for Question ${questionNum}:`, outcomeImage.name);
               }
             }
             
-            console.log(`Total images found: ${allSetupImages.length} setup, ${allOutcomeImages.length} outcome`);
             
             // Set the first images for backward compatibility
             if (allSetupImages.length > 0) {
@@ -184,7 +169,6 @@ export default async function handler(req, res) {
               outcomeImageUrl = allOutcomeImages[0].url;
             }
           } catch (gcsError) {
-            console.error('Error searching GCS for chart images:', gcsError);
           }
 
           enhancedData = {
@@ -225,19 +209,9 @@ export default async function handler(req, res) {
             })
           };
             
-          console.log('Enhanced data with chart images:', {
-            setupImageUrl: enhancedData.setupImageUrl,
-            outcomeImageUrl: enhancedData.outcomeImageUrl,
-            totalSetupImages: enhancedData.allSetupImages?.length || 0,
-            totalOutcomeImages: enhancedData.allOutcomeImages?.length || 0,
-            userReasoningCount: enhancedData.userReasoning?.length,
-            aiAnalysisCount: enhancedData.aiAnalysis?.length
-          });
         } else {
-          console.log('No detailed test result found for sessionId:', data.sessionId);
         }
       } catch (error) {
-        console.error('Error fetching detailed bias test data:', error);
         // Continue with original data if fetching fails
       }
     }
@@ -280,7 +254,6 @@ export default async function handler(req, res) {
         await Notification.insertMany(notifications);
       }
     } catch (notificationError) {
-      console.error('Error creating content notifications:', notificationError);
       // Don't fail the share action if notifications fail
     }
 
@@ -296,13 +269,6 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error('Error creating shared content:', error);
-    console.error('Error details:', {
-      message: error.message,
-      stack: error.stack,
-      body: req.body,
-      user: user ? { id: user._id, username: user.username } : 'No user'
-    });
     res.status(500).json({ error: 'Internal server error', details: error.message });
   }
 }

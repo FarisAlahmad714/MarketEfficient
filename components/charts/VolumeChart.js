@@ -95,7 +95,6 @@ const VolumeChart = ({ data, height = 120, width = '100%' }) => {
                 timeValue = Math.floor(item.date / 1000);
               }
             } catch (e) {
-              console.error('Invalid date format:', item.date);
               timeValue = Math.floor(Date.now() / 1000) - (86400 * 30);
             }
           } else {
@@ -132,7 +131,6 @@ const VolumeChart = ({ data, height = 120, width = '100%' }) => {
           window.removeEventListener('resize', handleResize);
         };
       } catch (error) {
-        console.error('Failed to initialize volume chart:', error);
       }
     };
     

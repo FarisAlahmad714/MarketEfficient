@@ -39,7 +39,6 @@ const LikeButton = ({ shareId, targetType, targetId, initialLikesCount = 0, size
         }
       }
     } catch (error) {
-      console.error('Error fetching like status:', error);
     }
   };
 
@@ -72,7 +71,6 @@ const LikeButton = ({ shareId, targetType, targetId, initialLikesCount = 0, size
         window.dispatchEvent(new Event('notificationUpdate'));
       }
     } catch (error) {
-      console.error('Error toggling like:', error);
     } finally {
       setLoading(false);
     }

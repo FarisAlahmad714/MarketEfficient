@@ -66,7 +66,6 @@ const MentionTextarea = ({
         setShowSuggestions(data.users && data.users.length > 0);
       }
     } catch (error) {
-      console.error('Error searching users for mentions:', error);
       setSuggestions([]);
       setShowSuggestions(false);
     }

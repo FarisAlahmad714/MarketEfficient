@@ -332,7 +332,6 @@ export default async function handler(req, res) {
         });
 
       } catch (error) {
-        console.error('Financial analytics error:', error);
         res.status(500).json({ 
           error: 'Failed to fetch financial analytics',
           message: error.message 

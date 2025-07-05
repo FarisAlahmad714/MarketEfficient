@@ -46,7 +46,6 @@ async function handler(req, res) {
     return res.status(200).json({ message: 'Password changed successfully.' });
 
   } catch (error) {
-    console.error('Error changing password:', error);
     if (error.name === 'ValidationError') {
         // Mongoose validation errors (e.g., if password doesn't meet schema criteria after trying to set)
         return res.status(400).json({ error: 'Password validation failed', details: error.errors });

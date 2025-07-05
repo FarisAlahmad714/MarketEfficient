@@ -75,11 +75,9 @@ const Results = () => {
     try {
       const setupChartElement = document.getElementById(`setup-chart-${questionId}`);
       if (!setupChartElement) {
-        console.log(`Setup chart element not found for question ${questionId}`);
         return null;
       }
 
-      console.log(`Capturing setup chart for question ${questionId}`);
 
       // Use html2canvas to capture the setup chart
       const html2canvas = (await import('html2canvas')).default;
@@ -108,7 +106,6 @@ const Results = () => {
           });
 
           if (uploadResponse.data.success) {
-            console.log(`Setup chart uploaded for question ${questionId}`);
             return {
               url: uploadResponse.data.imageUrl,
               gcsPath: uploadResponse.data.gcsPath
@@ -116,12 +113,10 @@ const Results = () => {
           }
         }
       } catch (uploadError) {
-        console.error('Error uploading setup chart:', uploadError);
       }
 
       return null;
     } catch (error) {
-      console.error('Error capturing setup chart:', error);
       return null;
     }
   };
@@ -131,11 +126,9 @@ const Results = () => {
     try {
       const outcomeChartElement = document.getElementById(`outcome-chart-${questionId}`);
       if (!outcomeChartElement) {
-        console.log(`Outcome chart element not found for question ${questionId}`);
         return null;
       }
 
-      console.log(`Capturing outcome chart for question ${questionId}`);
 
       // Use html2canvas to capture the outcome chart
       const html2canvas = (await import('html2canvas')).default;
@@ -164,7 +157,6 @@ const Results = () => {
           });
 
           if (uploadResponse.data.success) {
-            console.log(`Outcome chart uploaded for question ${questionId}`);
             return {
               url: uploadResponse.data.imageUrl,
               gcsPath: uploadResponse.data.gcsPath
@@ -172,12 +164,10 @@ const Results = () => {
           }
         }
       } catch (uploadError) {
-        console.error('Error uploading outcome chart:', uploadError);
       }
 
       return null;
     } catch (error) {
-      console.error('Error capturing outcome chart:', error);
       return null;
     }
   };
@@ -193,7 +183,6 @@ const Results = () => {
     
     // Check if we have required parameters
     if (!assetSymbol || !session_id) {
-      console.warn("Missing required parameters:", { assetSymbol, session_id });
       setDebugInfo({ 
         message: "Missing required parameters",
         assetSymbol, 
@@ -255,7 +244,6 @@ const Results = () => {
               return;
             }
           } catch (dbError) {
-            console.error('Error fetching from database via test endpoint:', dbError);
             
             // If the test endpoint with db source fails, try our dedicated get-results endpoint
             try {
@@ -276,7 +264,6 @@ const Results = () => {
                 return;
               }
             } catch (directDbError) {
-              console.error('Error fetching from direct database endpoint:', directDbError);
               // Continue to error handling below
             }
           }
@@ -291,7 +278,6 @@ const Results = () => {
           session_id
         });
       } catch (err) {
-        console.error('Error fetching results:', err);
         setError(`Failed to load results: ${err.message}`);
         setDebugInfo({
           message: "API request failed",
@@ -348,7 +334,6 @@ const Results = () => {
             // Check if setup image needs to be captured
             if (questionId && !answer.setup_chart_image_url && !setupImagesCaptured[questionId]) {
               setTimeout(async () => {
-                console.log(`Delaying setup chart capture for ${questionId}`);
                 const imageInfo = await captureSetupChartImage(questionId, router.query.session_id);
                 if (imageInfo) {
                   setSetupImagesCaptured(prev => ({ ...prev, [questionId]: true }));
@@ -359,7 +344,6 @@ const Results = () => {
             // Check if outcome image needs to be captured
             if (questionId && !answer.outcome_chart_image_url && !outcomeImagesCaptured[questionId]) {
               setTimeout(async () => {
-                console.log(`Delaying outcome chart capture for ${questionId}`);
                 const imageInfo = await captureOutcomeChartImage(questionId, router.query.session_id);
                 if (imageInfo) {
                   setOutcomeImagesCaptured(prev => ({ ...prev, [questionId]: true }));
@@ -404,16 +388,13 @@ const Results = () => {
                 responses.forEach((response, index) => {
                   if (response.data.success) {
                     const imageType = index === 0 && setupImages.length > 0 ? 'setup' : 'outcome';
-                    console.log(`Updated ${response.data.updatedCount} ${imageType} images in database`);
                   }
                 });
               }
             } catch (updateError) {
-              console.error('Error updating chart images in database:', updateError);
             }
           }
         } catch (error) {
-          console.error('Error during chart capture:', error);
         }
       }, 2000); // 2 second delay to ensure charts are rendered
 
@@ -456,8 +437,6 @@ const Results = () => {
 
     try {
       const token = await storage.getItem('auth_token');
-      console.log('Sharing bias test data:', shareData);
-      console.log('Making request to /api/share/create...');
       const response = await fetch('/api/share/create', {
         method: 'POST',
         headers: {
@@ -470,11 +449,8 @@ const Results = () => {
         })
       });
 
-      console.log('Share response status:', response.status);
-      console.log('Share response ok:', response.ok);
       
       if (response.ok) {
-        console.log('Share successful!');
         // Show success message
         const successDiv = document.createElement('div');
         successDiv.style.cssText = `
@@ -499,7 +475,6 @@ const Results = () => {
         throw new Error('Failed to share');
       }
     } catch (error) {
-      console.error('Error sharing to profile:', error);
       alert('Failed to share to profile. Please try again.');
     }
   };
@@ -655,7 +630,6 @@ const Results = () => {
         isPositive: percentChange >= 0
       };
     } catch (error) {
-      console.error('Error calculating percentage change:', error);
       return { value: 0, isPositive: false };
     }
   };
@@ -922,7 +896,6 @@ const Results = () => {
               const assetSymbol = router.query.assetSymbol;
               drawAssetShape(ctx, assetSymbol);
             } catch (error) {
-              console.error('Error drawing confetti shape:', error);
               // Fallback
               ctx.fillStyle = '#2196f3';
               ctx.beginPath();

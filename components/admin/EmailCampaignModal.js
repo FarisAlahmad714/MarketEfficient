@@ -56,7 +56,7 @@ const EmailCampaignModal = ({ campaignType, targetUsers, darkMode, onClose, onSu
         return {
           default: {
             name: 'General Campaign',
-            subject: 'Update from MarketEfficient',
+            subject: 'Update from ChartSense',
             preview: 'A general purpose email campaign.'
           }
         };

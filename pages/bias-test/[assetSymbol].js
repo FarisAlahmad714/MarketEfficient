@@ -208,13 +208,11 @@ export default function AssetTestPage() {
 
     // Don't refetch if we already have test data with the same session
     if (testData && testData.session_id && session_id && testData.session_id === session_id) {
-      console.log('Skipping refetch - already have test data for this session');
       return;
     }
 
     // Prevent duplicate API calls
     if (isFetchingRef.current) {
-      console.log('Already fetching test data, skipping duplicate request');
       return;
     }
 
@@ -229,8 +227,6 @@ export default function AssetTestPage() {
           params.append('session_id', session_id);
         }
         const response = await axios.get(`/api/test/${assetSymbol}?${params.toString()}`);
-        console.log('Received test data:', response.data);
-        console.log('Questions news_loading status:', response.data.questions.map(q => ({ id: q.id, news_loading: q.news_loading, news_count: q.news_annotations?.length || 0 })));
         setTestData(response.data);
         // Initialize userAnswers and reasoningInputs with empty values
         const initialAnswers = {};
@@ -261,7 +257,6 @@ export default function AssetTestPage() {
           }
         }, 1500);
       } catch (err) {
-        console.error('Error fetching test data:', err);
         setError('Failed to load test data. Please try again later.');
         setLoading(false);
         setChartsLoading(false);
@@ -275,17 +270,13 @@ export default function AssetTestPage() {
 
   // Progressive news loading useEffect
   useEffect(() => {
-    console.log('News loading useEffect triggered. TestData:', testData?.session_id);
     if (!testData || !testData.session_id) {
-      console.log('No test data or session ID, skipping news loading');
       return;
     }
 
     // Check if any questions have news loading flag
     const hasNewsLoading = testData.questions.some(q => q.news_loading);
-    console.log('Questions with news_loading flag:', testData.questions.filter(q => q.news_loading).length);
     if (!hasNewsLoading) {
-      console.log('No questions have news_loading flag, skipping polling');
       return;
     }
 
@@ -296,10 +287,8 @@ export default function AssetTestPage() {
     
     const pollNewsStatus = async () => {
       try {
-        console.log(`Polling news status for session: ${testData.session_id}`);
         const response = await axios.get(`/api/test/news-status/${testData.session_id}`);
         const newsStatus = response.data;
-        console.log('News status response:', newsStatus);
 
         // Update progress
         setNewsProgress({
@@ -335,11 +324,9 @@ export default function AssetTestPage() {
         if (newsStatus.all_complete) {
           setNewsLoading(false);
           clearInterval(pollInterval);
-          console.log('News loading completed for all questions');
         }
 
       } catch (error) {
-        console.error('Error polling news status:', error);
         // Continue polling on error - don't break the process
       }
     };
@@ -396,7 +383,6 @@ export default function AssetTestPage() {
         playBeep(800, 0.3, 500);  // High beep (longer)
         
       } catch (error) {
-        console.log('Audio not supported or blocked:', error);
         // Fallback: try to vibrate on mobile
         if (navigator.vibrate) {
           navigator.vibrate([200, 100, 200, 100, 400]);
@@ -614,7 +600,6 @@ export default function AssetTestPage() {
       
       // Check if the token was retrieved successfully
       if (!token) {
-        console.error('Auth token not found. Cannot submit test.');
         showError('Authentication error. Please log in again.', 'Authentication Required');
         setIsSubmitting(false);
         if (typeof window !== 'undefined' && window.hideGlobalLoader) {
@@ -647,7 +632,6 @@ export default function AssetTestPage() {
         scores: response.data.scores
       }));
     } catch (err) {
-      console.error('Error submitting test:', err);
       showError('Failed to submit test. Please try again.', 'Submission Error');
       
       setIsSubmitting(false);

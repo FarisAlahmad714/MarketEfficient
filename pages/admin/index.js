@@ -228,7 +228,6 @@ const AdminPanel = () => {
       setAuditData(data);
       setAuditPage(page);
     } catch (err) {
-      console.error('Error fetching audit trail:', err);
     } finally {
       setAuditLoading(false);
     }

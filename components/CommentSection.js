@@ -54,7 +54,6 @@ const CommentSection = ({ shareId, initialCommentsCount = 0 }) => {
         setCommentsCount(data.totalCount);
       }
     } catch (error) {
-      console.error('Error fetching comments:', error);
     } finally {
       setLoading(false);
     }
@@ -115,7 +114,6 @@ const CommentSection = ({ shareId, initialCommentsCount = 0 }) => {
         window.dispatchEvent(new Event('notificationUpdate'));
       }
     } catch (error) {
-      console.error('Error posting comment:', error);
     }
   };
 
@@ -149,7 +147,6 @@ const CommentSection = ({ shareId, initialCommentsCount = 0 }) => {
         }
       }
     } catch (error) {
-      console.error('Error deleting comment:', error);
     }
   };
 

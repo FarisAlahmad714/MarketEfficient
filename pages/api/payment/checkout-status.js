@@ -102,7 +102,6 @@ export default async function handler(req, res) {
         return res.status(200).json(responseData);
         
       } catch (stripeError) {
-        console.error('Stripe session retrieval error:', stripeError);
         
         const pendingReg = await PendingRegistration.findOne({ stripeSessionId: session_id });
         if (pendingReg) {
@@ -121,7 +120,6 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Invalid request parameters' });
 
   } catch (error) {
-    console.error('Checkout status check error:', error);
     res.status(500).json({ 
       error: 'Failed to check checkout status',
       canRetry: true

@@ -60,7 +60,6 @@ export function rateLimit(options = {}) {
     
     if (requestData.count > maxRequests) {
       // Log the rate limit violation
-      console.warn(`Rate limit exceeded for key: ${key}, requests: ${requestData.count}`);
       
       return res.status(429).json({
         error: message,

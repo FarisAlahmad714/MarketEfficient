@@ -16,7 +16,6 @@ const TrackedPage = ({ children }) => {
         setAnalytics(analyticsInstance);
         logger.log("✅ Firebase Analytics initialized successfully");
       } catch (error) {
-        console.error("❌ Failed to initialize Firebase Analytics:", error);
       }
     }
   }, []);
@@ -33,7 +32,6 @@ const TrackedPage = ({ children }) => {
       });
       logger.log(`✅ page_view event logged for: ${pagePath}`);
     } else if (!analytics) {
-      console.warn("⚠️ Analytics not initialized yet");
     }
   }, [analytics, router.isReady, router.asPath]); // Dependencies for Next.js
 

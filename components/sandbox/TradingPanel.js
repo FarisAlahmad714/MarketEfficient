@@ -200,13 +200,11 @@ const TradingPanel = ({ selectedAsset, marketData, portfolioData, onTradeSuccess
         if (csrfResponse.ok) {
           const csrfData = await csrfResponse.json();
           csrfToken = csrfData.csrfToken;
-          console.log('CSRF token received:', csrfToken);
           
           // Small delay to ensure cookie is set
           await new Promise(resolve => setTimeout(resolve, 100));
         }
       } catch (csrfError) {
-        console.warn('Could not get CSRF token:', csrfError);
       }
       
       const headers = {
@@ -218,10 +216,7 @@ const TradingPanel = ({ selectedAsset, marketData, portfolioData, onTradeSuccess
         headers['X-CSRF-Token'] = csrfToken;
       }
       
-      console.log('Submitting trade:', tradeData);
-      console.log('Headers:', headers);
       
-      console.log('Making fetch request to /api/sandbox/place-trade-fast...');
       
       // Add timeout to prevent indefinite loading
       const controller = new AbortController();
@@ -237,7 +232,6 @@ const TradingPanel = ({ selectedAsset, marketData, portfolioData, onTradeSuccess
       
       clearTimeout(timeoutId);
       
-      console.log('Response received:', response.status, response.statusText);
       
       if (!response.ok) {
         let errorData;
@@ -246,7 +240,6 @@ const TradingPanel = ({ selectedAsset, marketData, portfolioData, onTradeSuccess
         } catch (e) {
           errorData = { error: 'Failed to parse error response' };
         }
-        console.error('Trade submission failed:', {
           status: response.status,
           statusText: response.statusText,
           errorData
@@ -292,7 +285,6 @@ const TradingPanel = ({ selectedAsset, marketData, portfolioData, onTradeSuccess
       }
       
     } catch (error) {
-      console.error('Error placing trade:', error);
       if (error.name === 'AbortError') {
         setError('Request timed out after 30 seconds. Please try again.');
       } else if (error.message.includes('NetworkError') || error.message.includes('fetch')) {

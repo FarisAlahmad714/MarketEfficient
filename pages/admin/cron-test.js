@@ -81,7 +81,6 @@ export default function CronTestPage() {
         setEmailData(data);
       }
     } catch (error) {
-      console.error('Error fetching email data:', error);
     } finally {
       setEmailLoading(false);
     }
@@ -100,7 +99,6 @@ export default function CronTestPage() {
         setTemplates(data.templates);
       }
     } catch (error) {
-      console.error('Error fetching templates:', error);
     }
   };
 
@@ -125,7 +123,6 @@ export default function CronTestPage() {
         setUsersPagination(data.pagination);
       }
     } catch (error) {
-      console.error('Error fetching users:', error);
     }
   };
 

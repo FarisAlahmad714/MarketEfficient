@@ -4,7 +4,6 @@ import SandboxPortfolio from '../../../models/SandboxPortfolio';
 import SandboxTrade from '../../../models/SandboxTrade';
 
 export default async function handler(req, res) {
-  console.log('🚀 FAST-TRADE API CALLED');
   
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -12,7 +11,6 @@ export default async function handler(req, res) {
 
   try {
     const startTime = Date.now();
-    console.log('⏱️ Starting at', startTime);
     
     // Simple auth check
     const authHeader = req.headers.authorization;
@@ -22,15 +20,12 @@ export default async function handler(req, res) {
     
     const token = authHeader.split(' ')[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    console.log('🔐 Auth verified in', Date.now() - startTime, 'ms');
     
     await connectDB();
-    console.log('📦 DB connected in', Date.now() - startTime, 'ms');
     
     const userId = decoded.userId;
     const { symbol, side, type, quantity, leverage = 1, preTradeAnalysis } = req.body;
     
-    console.log('📋 Trade data:', { symbol, side, type, quantity, leverage });
     
     // Basic validation
     if (!symbol || !side || !type || !quantity || !preTradeAnalysis?.entryReason) {
@@ -41,7 +36,6 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Invalid quantity' });
     }
     
-    console.log('✅ Validation passed in', Date.now() - startTime, 'ms');
     
     // Get portfolio
     const portfolio = await SandboxPortfolio.findOne({ userId, unlocked: true });
@@ -49,7 +43,6 @@ export default async function handler(req, res) {
       return res.status(403).json({ error: 'Sandbox not unlocked' });
     }
     
-    console.log('💰 Portfolio found in', Date.now() - startTime, 'ms');
     
     // Use simple fixed price (no external API call)
     const mockPrices = {
@@ -64,7 +57,6 @@ export default async function handler(req, res) {
     };
     
     const currentPrice = mockPrices[symbol] || 100;
-    console.log('💹 Price set in', Date.now() - startTime, 'ms');
     
     // Calculate position
     const positionValue = quantity * currentPrice * leverage;
@@ -76,7 +68,6 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Insufficient balance' });
     }
     
-    console.log('🔢 Calculations done in', Date.now() - startTime, 'ms');
     
     // Determine asset type
     const cryptoSymbols = ['BTC', 'ETH', 'SOL', 'BNB'];
@@ -109,7 +100,6 @@ export default async function handler(req, res) {
     });
     
     await trade.save();
-    console.log('💾 Trade saved in', Date.now() - startTime, 'ms');
     
     // Update portfolio
     portfolio.balance -= entryFee;
@@ -117,7 +107,6 @@ export default async function handler(req, res) {
     portfolio.lastTradeAt = new Date();
     await portfolio.save();
     
-    console.log('🎯 Portfolio updated in', Date.now() - startTime, 'ms');
     
     const response = {
       success: true,
@@ -134,11 +123,9 @@ export default async function handler(req, res) {
       }
     };
     
-    console.log('✅ FAST-TRADE completed in', Date.now() - startTime, 'ms');
     return res.status(200).json(response);
     
   } catch (error) {
-    console.error('❌ FAST-TRADE error:', error);
     return res.status(500).json({ error: 'Failed to place trade', details: error.message });
   }
 }

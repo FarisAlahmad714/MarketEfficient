@@ -81,7 +81,6 @@ async function sandboxPerformanceHandler(req, res) {
             }
           };
         } catch (error) {
-          console.error(`Error fetching stats for user ${portfolio.userId._id}:`, error);
           return {
             userId: portfolio.userId._id,
             userInfo: {
@@ -128,7 +127,6 @@ async function sandboxPerformanceHandler(req, res) {
     });
 
   } catch (error) {
-    console.error('Error fetching sandbox performance data:', error);
     res.status(500).json({ 
       error: 'Failed to fetch sandbox performance data',
       message: error.message 

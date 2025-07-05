@@ -180,7 +180,6 @@ export const AuthProvider = ({ children }) => {
         headers['X-CSRF-Token'] = csrfToken;
       } else {
         // This warning is for development; server will enforce CSRF
-        console.warn('CSRF token cookie not found. Login may be blocked by CSRF protection.');
       }
 
       const response = await fetch('/api/auth/login', {

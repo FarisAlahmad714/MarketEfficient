@@ -39,7 +39,6 @@ export default async function handler(req, res) {
           }
         }
       } catch (error) {
-        console.log('Token verification failed, using free access');
       }
     }
 
@@ -63,7 +62,6 @@ export default async function handler(req, res) {
       userSubscription
     });
   } catch (error) {
-    console.error('Error fetching study content:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 }

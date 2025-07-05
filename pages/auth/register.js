@@ -7,8 +7,8 @@ const RegisterPage = () => {
   return (
     <>
       <Head>
-        <title>Register - MarketEfficient</title>
-        <meta name="description" content="Create your MarketEfficient account and choose your plan" />
+        <title>Register - ChartSense</title>
+        <meta name="description" content="Create your ChartSense account and choose your plan" />
       </Head>
       <RegisterWithPricing />
     </>

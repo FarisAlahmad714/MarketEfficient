@@ -27,7 +27,6 @@ export default function handler(req, res) {
 
     res.status(200).json({ sessionKey });
   } catch (error) {
-    console.error('[API /api/auth/session-key] Error generating session key:', error);
     res.status(500).json({ error: 'Could not generate session key' });
   }
 } 

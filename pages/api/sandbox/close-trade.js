@@ -78,7 +78,6 @@ async function closeTradeHandler(req, res) {
     const positionValue = exitPrice * closeQuantity * trade.leverage; // Apply leverage to position value
     const exitFee = positionValue * exitFeeRate;
     
-    console.log(`Exit fee calculation: ${exitPrice} * ${closeQuantity} * ${trade.leverage} * ${exitFeeRate} = ${exitFee.toFixed(2)} SENSES`);
 
     // Calculate realized P&L using standardized calculation
     const { calculatePartialClosePnL } = require('../../../lib/pnl-calculator');
@@ -99,7 +98,6 @@ async function closeTradeHandler(req, res) {
       realizedPnL = result.realizedPnL;
       feesPaid = result.feesPaid;
     } catch (error) {
-      console.error('Error calculating partial close P&L:', error);
       // Fallback to basic calculation
       const priceDiff = trade.side === 'long'
         ? exitPrice - trade.entryPrice
@@ -182,10 +180,8 @@ async function closeTradeHandler(req, res) {
       const { checkAndNotifyNewBadges } = await import('../../../lib/badge-service');
       const badgeResult = await checkAndNotifyNewBadges(userId);
       if (badgeResult.success && badgeResult.newBadges > 0) {
-        console.log(`User ${userId} earned ${badgeResult.newBadges} new badges:`, badgeResult.badges);
       }
     } catch (badgeError) {
-      console.error('Error checking for new badges:', badgeError);
       // Don't fail the main request if badge checking fails
     }
 
@@ -227,7 +223,6 @@ async function closeTradeHandler(req, res) {
     res.status(200).json(response);
 
   } catch (error) {
-    console.error('Error closing sandbox trade:', error);
     res.status(500).json({ 
       error: 'Failed to close trade',
       message: error.message 
@@ -256,13 +251,11 @@ async function getCurrentMarketPrice(symbol) {
           }
         }
       } catch (apiError) {
-        console.log(`Real API failed for ${symbol}, using fallback:`, apiError.message);
       }
     }
     
     // CRITICAL: For closing trades, we MUST allow fallback
     // Users cannot be trapped in positions due to API failures
-    console.log(`Using simulated price for closing ${symbol} position`);
     const { getPriceSimulator } = require('../../../lib/priceSimulation');
     const priceSimulator = getPriceSimulator();
     const simulatedPrice = priceSimulator.getPrice(symbol);
@@ -274,7 +267,6 @@ async function getCurrentMarketPrice(symbol) {
     throw new Error(`Unable to get any price for ${symbol}`);
     
   } catch (error) {
-    console.error(`Error fetching price for ${symbol}:`, error);
     
     // Last resort: Return a reasonable fallback price to allow position closing
     // This prevents users from being trapped in positions
@@ -291,7 +283,6 @@ async function getCurrentMarketPrice(symbol) {
       'QQQ': 460
     };
     
-    console.log(`Using emergency fallback price for ${symbol}`);
     return fallbackPrices[symbol] || 100; // Default fallback
   }
 }

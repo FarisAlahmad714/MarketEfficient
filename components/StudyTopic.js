@@ -28,10 +28,8 @@ const StudyTopic = ({ topicName }) => {
         // If user is logged in (has email), give them existing user access
         setUserSubscription('existing');
       }
-      console.log('User subscription set to:', userSubscription, 'User data:', user);
     } else {
       setUserSubscription('free');
-      console.log('No user found, setting subscription to free');
     }
   }, [user]);
 

@@ -39,7 +39,6 @@ const PortfolioOverview = ({ portfolioData, onRefresh }) => {
       }
       
     } catch (error) {
-      console.error('Error resetting portfolio:', error);
       alert(`Failed to reset portfolio: ${error.message}`);
     } finally {
       setResetting(false);
@@ -56,7 +55,6 @@ const PortfolioOverview = ({ portfolioData, onRefresh }) => {
       }
       
     } catch (error) {
-      console.error('Error reloading assets:', error);
       alert(`Failed to reload assets: ${error.message}`);
     } finally {
       setReloadingAssets(false);
@@ -86,7 +84,6 @@ const PortfolioOverview = ({ portfolioData, onRefresh }) => {
       window.location.reload();
       
     } catch (error) {
-      console.error('Error granting admin:', error);
       alert(`Failed to grant admin: ${error.message}`);
     } finally {
       setGrantingAdmin(false);

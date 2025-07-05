@@ -55,7 +55,6 @@ export default async function handler(req, res) {
         }
       } catch (error) {
         // Token invalid, but still return public data
-        console.log('Invalid token in follow status check');
       }
     }
 
@@ -67,7 +66,6 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error('Error getting follow status:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 }

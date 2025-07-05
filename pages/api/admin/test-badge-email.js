@@ -60,7 +60,6 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error('Error sending test badge email:', error);
     return res.status(500).json({ 
       error: 'Failed to send test badge email',
       message: error.message 

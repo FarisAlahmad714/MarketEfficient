@@ -144,7 +144,6 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
       }
       
     } catch (error) {
-      console.error('Error closing position:', error);
       alert('Failed to close position: ' + error.message);
     } finally {
       setLoading(false);
@@ -188,7 +187,6 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
       }
       
     } catch (error) {
-      console.error('Error cancelling order:', error);
       alert('Failed to cancel order: ' + error.message);
     } finally {
       setLoading(false);
@@ -226,7 +224,6 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
       }
       
     } catch (error) {
-      console.error('Error updating position:', error);
       alert('Failed to update position: ' + error.message);
     } finally {
       setLoading(false);

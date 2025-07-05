@@ -14,7 +14,6 @@ async function adminResetHandler(req, res) {
   try {
     // Check if user is admin
     const user = await User.findById(userId);
-    console.log('Admin reset check - User:', user?.email, 'isAdmin:', user?.isAdmin);
     
     if (!user || !user.isAdmin) {
       return res.status(403).json({ 
@@ -74,7 +73,6 @@ async function adminResetHandler(req, res) {
     });
 
   } catch (error) {
-    console.error('Error resetting admin portfolio:', error);
     res.status(500).json({ 
       error: 'Failed to reset portfolio',
       message: error.message 

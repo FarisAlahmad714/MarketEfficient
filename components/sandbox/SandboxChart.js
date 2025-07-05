@@ -35,7 +35,6 @@ const SandboxChart = ({ selectedAsset, marketData, onAssetChange, portfolioData 
 
   useEffect(() => {
     if (selectedAsset) {
-      console.log(`Loading chart data for ${selectedAsset} on ${timeframe}`);
       loadChartData();
     }
   }, [selectedAsset, timeframe]); // Removed darkMode to prevent auto-refresh
@@ -120,7 +119,6 @@ const SandboxChart = ({ selectedAsset, marketData, onAssetChange, portfolioData 
       }
 
       const data = await response.json();
-      console.log(`Chart data response:`, data);
       
       if (data.success && data.chartData) {
         let chartData = data.chartData;
@@ -128,7 +126,6 @@ const SandboxChart = ({ selectedAsset, marketData, onAssetChange, portfolioData 
         // If we got real data but need more historical data, extend with simulated data
         const desiredSize = getOptimalOutputSize(timeframe);
         if (chartData.length < desiredSize && !data.isSimulated) {
-          console.log(`Extending ${chartData.length} real candles to ${desiredSize} with simulated historical data`);
           
           // Request additional simulated historical data to fill the gap
           const additionalSize = desiredSize - chartData.length;
@@ -152,7 +149,6 @@ const SandboxChart = ({ selectedAsset, marketData, onAssetChange, portfolioData 
                 index === 0 || candle.time !== array[index - 1].time
               );
               
-              console.log(`Extended chart data to ${chartData.length} candles total (sorted)`);
             }
           }
         }
@@ -162,15 +158,12 @@ const SandboxChart = ({ selectedAsset, marketData, onAssetChange, portfolioData 
         
         // Log first and last candle times for debugging
         if (chartData.length > 0) {
-          console.log(`Final chart data: ${chartData.length} candles (${data.isSimulated ? 'simulated' : 'real + simulated'})`);
-          console.log(`Time range: ${new Date(chartData[0].time * 1000).toISOString()} to ${new Date(chartData[chartData.length-1].time * 1000).toISOString()}`);
         }
         
         setChartData(chartData);
       }
       
     } catch (error) {
-      console.error('Error loading chart data:', error);
     } finally {
       setLoading(false);
     }
@@ -285,7 +278,6 @@ const SandboxChart = ({ selectedAsset, marketData, onAssetChange, portfolioData 
       chartContainerRef.current._cleanup = cleanup;
       
     } catch (error) {
-      console.error('Error initializing chart:', error);
     }
   };
 
@@ -412,7 +404,6 @@ const SandboxChart = ({ selectedAsset, marketData, onAssetChange, portfolioData 
           }
         }
       } catch (error) {
-        console.warn('Chart update failed (chart may be disposed):', error.message);
       }
     }
   }, [marketData, selectedAsset, candlestickSeries, chartData]);

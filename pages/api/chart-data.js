@@ -107,7 +107,6 @@ export async function fetchChartData(coin = null, timeframe = null) {
       timeframe: timeframe
     };
   } catch (error) {
-    console.error("Error fetching chart data:", error);
     // Generate synthetic data as fallback
     const syntheticData = generateSyntheticData();
     return {
@@ -311,7 +310,6 @@ export async function fetchCryptoOHLCData(apiId, timeframe = 'daily', days = 30,
       } catch (error) {
         if (error.response && error.response.status === 429) {
           const retryAfter = parseInt(error.response.headers['retry-after'] || '60', 10);
-          console.warn(`Rate limited by CoinGecko. Retry after ${retryAfter} seconds.`);
           
           dataCache.failedRequests.crypto += 1;
           
@@ -320,7 +318,6 @@ export async function fetchCryptoOHLCData(apiId, timeframe = 'daily', days = 30,
             await sleep(retryAfter * 1000);
           }
         } else {
-          console.error(`Error fetching OHLC data for ${apiId}:`, error.message);
           dataCache.failedRequests.crypto += 1;
         }
       }
@@ -345,7 +342,6 @@ export async function fetchCryptoOHLCData(apiId, timeframe = 'daily', days = 30,
     
     return ohlcData;
   } catch (error) {
-    console.error(`Unexpected error in fetchCryptoOHLCData for ${apiId}:`, error.message);
     const mockData = generateMockOHLCData(
       apiId === 'bitcoin' ? 60000 :
       apiId === 'ethereum' ? 3000 :
@@ -457,7 +453,6 @@ export async function fetchStockOHLCData(symbol, timeframe = 'daily', candles = 
     return limitedData;
   } catch (error) {
     dataCache.failedRequests.stock += 1;
-    console.error(`Error fetching stock data for ${symbol}:`, error.message);
     
     logger.log(`Using mock data for ${symbol} as fallback`);
     let basePrice = 100;
@@ -503,7 +498,6 @@ export async function fetchAssetOHLCData(asset, timeframe = 'daily', candles = 2
     
     return ohlcData;
   } catch (error) {
-    console.error(`Error fetching OHLC data for ${asset.symbol}:`, error.message);
     
     return generateMockOHLCData(
       asset.type === 'crypto' ? 
@@ -634,7 +628,6 @@ export async function fetchCoinGeckoOHLC(coinId, days, vs_currency = 'usd') {
     
     return plotlyData;
   } catch (error) {
-    console.error(`Error fetching CoinGecko OHLC data: ${error.message}`);
     dataCache.failedRequests.crypto += 1;
     
     return generateMockPlotlyData(coinId, days);
@@ -648,7 +641,6 @@ export async function fetchCoinGeckoOHLC(coinId, days, vs_currency = 'usd') {
  */
 export function transformCoinGeckoData(data) {
   if (!Array.isArray(data) || data.length === 0) {
-    console.warn('Invalid or empty CoinGecko data');
     return {
       x: [],
       open: [],

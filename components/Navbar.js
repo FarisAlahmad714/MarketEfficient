@@ -43,7 +43,6 @@ const Navbar = () => {
   // Fetch REAL-TIME prices from API 
   const fetchPrices = async () => {
     try {
-      console.log('Navbar: Fetching REAL-TIME ticker prices...');
       const response = await fetch('/api/crypto-prices', {
         method: 'GET',
         headers: {
@@ -56,7 +55,6 @@ const Navbar = () => {
       }
       
       const data = await response.json();
-      console.log('Navbar: REAL-TIME API response:', data);
       
       if (data.success && data.data && Array.isArray(data.data)) {
         // Filter out any assets that failed to get real prices (price = 0)
@@ -66,22 +64,17 @@ const Navbar = () => {
           setAssetPrices(validPrices);
           setPricesLoading(false);
           setLastFetchTime(Date.now());
-          console.log(`Navbar: Successfully updated ticker with REAL-TIME data for ${validPrices.length}/${data.data.length} assets`);
         } else {
-          console.warn('Navbar: No valid real-time prices received');
         }
       } else {
         throw new Error('Invalid API response format');
       }
     } catch (error) {
-      console.error('Navbar: Error fetching REAL-TIME prices:', error);
       
       // Only set fallback data if we don't have any existing data
       if (assetPrices.length === 0) {
-        console.log('Navbar: No existing data, keeping ticker empty until real data is available');
         setPricesLoading(false);
       } else {
-        console.log('Navbar: Keeping existing real-time data during temporary failure');
       }
     }
   };
@@ -102,11 +95,9 @@ const Navbar = () => {
       
       if (response.ok) {
         const data = await response.json();
-        console.log('Navbar: Fetched notification count:', data.unreadCount);
         setNotificationCount(data.unreadCount || 0);
       }
     } catch (error) {
-      console.error('Error fetching notification count:', error);
     }
   };
 
@@ -130,7 +121,6 @@ const Navbar = () => {
         setSandboxProgress(data.progressPercentage || 0);
       }
     } catch (error) {
-      console.error('Error checking sandbox unlock status:', error);
     }
   };
 
@@ -143,7 +133,6 @@ const Navbar = () => {
           clearInterval(fetchIntervalRef.current);
           fetchIntervalRef.current = null;
         }
-        console.log('Navbar: Paused ticker updates (tab hidden)');
       } else {
         // Resume fetching when tab becomes visible
         fetchPrices(); // Fetch immediately
@@ -151,7 +140,6 @@ const Navbar = () => {
           clearInterval(fetchIntervalRef.current);
         }
         fetchIntervalRef.current = setInterval(fetchPrices, 300000); // Update every 5 MINUTES for simple display
-        console.log('Navbar: Resumed ticker updates (tab visible)');
       }
     };
 
@@ -176,7 +164,6 @@ const Navbar = () => {
   // Debug: Log current asset prices (only in development)
   useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
-      console.log('Navbar: Current ticker prices:', assetPrices.map(p => `${p.symbol}: $${p.price.toFixed(2)} (${p.change24h.toFixed(2)}%)`));
     }
   }, [assetPrices]);
 

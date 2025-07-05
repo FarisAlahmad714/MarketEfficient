@@ -19,7 +19,6 @@ export default async function handler(req, res) {
   try {
     await connectDB();
     
-    console.log('Starting subscription sync cron job...');
     
     const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
     
@@ -29,7 +28,6 @@ export default async function handler(req, res) {
       status: { $in: ['active', 'trialing', 'past_due'] }
     });
     
-    console.log(`Found ${subscriptions.length} subscriptions to sync`);
     
     let updatedCount = 0;
     let errorCount = 0;
@@ -67,14 +65,12 @@ export default async function handler(req, res) {
             newStatus: stripeSubscription.status
           });
           
-          console.log(`Updated subscription for ${user?.email}: ${oldStatus} -> ${stripeSubscription.status}`);
         }
         
         // Small delay to avoid rate limiting
         await new Promise(resolve => setTimeout(resolve, 200));
         
       } catch (error) {
-        console.error(`Error syncing subscription ${subscription._id}:`, error);
         errorCount++;
         errors.push({
           subscriptionId: subscription._id,
@@ -83,7 +79,6 @@ export default async function handler(req, res) {
       }
     }
     
-    console.log(`Subscription sync completed: ${updatedCount} updated, ${errorCount} errors`);
     
     return res.status(200).json({
       message: 'Subscription sync cron job completed',
@@ -95,7 +90,6 @@ export default async function handler(req, res) {
     });
     
   } catch (error) {
-    console.error('Subscription sync cron error:', error);
     return res.status(500).json({ 
       error: 'Cron job failed',
       message: error.message 

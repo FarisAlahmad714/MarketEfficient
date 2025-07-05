@@ -1989,7 +1989,6 @@ const ChartExamsTab = ({ data, darkMode }) => {
       
       if (response.ok) {
         const examData = await response.json();
-        console.log('Chart exam data received:', examData);
         setChartAnalytics(examData.data?.recentSessions || []);
         setExamStats({
           totalSessions: examData.data?.overview?.totalSessions || 0,
@@ -2001,7 +2000,6 @@ const ChartExamsTab = ({ data, darkMode }) => {
         });
       }
     } catch (error) {
-      console.error('Error fetching chart exam data:', error);
     } finally {
       setLoadingExams(false);
     }
@@ -2335,7 +2333,6 @@ const BiasTestsTab = ({ darkMode }) => {
       const result = await response.json();
       setBiasData(result.data);
     } catch (error) {
-      console.error('Error fetching bias analytics:', error);
     } finally {
       setLoading(false);
     }
@@ -2368,7 +2365,6 @@ const BiasTestsTab = ({ darkMode }) => {
       a.click();
       window.URL.revokeObjectURL(url);
     } catch (error) {
-      console.error('Error exporting CSV:', error);
       alert('Failed to export data');
     }
   };

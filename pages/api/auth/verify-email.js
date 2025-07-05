@@ -46,7 +46,6 @@ export default async function handler(req, res) {
       });
     }
   } catch (error) {
-    console.error('Email verification error:', error);
     return res.status(500).json({ error: 'Email verification failed' });
   }
 }

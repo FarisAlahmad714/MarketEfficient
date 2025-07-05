@@ -75,7 +75,6 @@ async function deleteComment(req, res, commentId) {
     });
 
   } catch (error) {
-    console.error('Error deleting comment:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 }
@@ -104,7 +103,6 @@ async function getCommentReplies(req, res, commentId) {
     });
 
   } catch (error) {
-    console.error('Error fetching comment replies:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 }

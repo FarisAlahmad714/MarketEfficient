@@ -80,7 +80,6 @@ export default async function handler(req, res) {
               promoCodeData = promoCodeDoc;
             }
           } catch (error) {
-            console.error('Promo code validation error:', error);
           }
         }
         
@@ -231,7 +230,6 @@ export default async function handler(req, res) {
               );
               logger.log('✅ Promo code marked as used successfully');
             } catch (useCodeError) {
-              console.error('❌ Error marking promo code as used:', useCodeError.message);
             }
           }
         }
@@ -239,7 +237,6 @@ export default async function handler(req, res) {
         try {
           await sendVerificationEmail(user, verificationToken);
         } catch (emailError) {
-          console.error('Failed to send verification email:', emailError);
         }
         
         const token = jwt.sign(
@@ -270,7 +267,6 @@ export default async function handler(req, res) {
           message: 'Registration successful. Please check your email to verify your account.'
         });
       } catch (error) {
-        console.error('Registration error:', error);
         return res.status(500).json({ error: 'Registration failed' });
       } finally {
         resolve();

@@ -51,7 +51,6 @@ async function cancelSubscriptionHandler(req, res) {
       message: 'Subscription cancelled successfully',
     });
   } catch (error) {
-    console.error('Cancel subscription error:', error);
     return res.status(500).json({
       error: 'Failed to cancel subscription',
       details: error.message,

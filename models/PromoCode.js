@@ -239,7 +239,6 @@ PromoCodeSchema.statics.createPresetCodes = async function(adminUserId) {
         createdCodes.push(newCode);
       }
     } catch (error) {
-      console.error(`Error creating preset code ${codeData.code}:`, error);
     }
   }
   

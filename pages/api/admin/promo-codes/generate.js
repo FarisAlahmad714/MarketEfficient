@@ -101,7 +101,6 @@ export default async function handler(req, res) {
         generatedCodes.push(promoCode);
 
       } catch (error) {
-        console.error(`Error generating code ${i + 1}:`, error);
         errors.push(`Failed to generate code ${i + 1}: ${error.message}`);
       }
     }
@@ -140,7 +139,6 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error('Generate promo codes error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 } 

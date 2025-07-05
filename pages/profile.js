@@ -58,7 +58,6 @@ const ProfilePage = () => {
     
     // Listen for profile image updates from ProfileHeader
     const handleProfileImageUpdate = () => {
-      console.log('Profile image update event received, refreshing...');
       fetchProfileImage();
     };
     
@@ -98,7 +97,6 @@ const ProfilePage = () => {
       // Fetch full badge objects
       await fetchBadgeObjects();
     } catch (err) {
-      console.error('Error fetching user data:', err);
       setSaveError('Failed to load subscription data');
     } finally {
       setLoading(false);
@@ -131,7 +129,6 @@ const ProfilePage = () => {
         setEarnedBadgeObjects(data.badges || []);
       }
     } catch (error) {
-      console.error('Error fetching badge objects:', error);
     }
   };
 
@@ -153,7 +150,6 @@ const ProfilePage = () => {
         }
       }
     } catch (error) {
-      console.error('Error fetching profile image:', error);
       // Don't show error for missing profile image, just leave it empty
     }
   };
@@ -225,7 +221,6 @@ const ProfilePage = () => {
       window.dispatchEvent(new CustomEvent('profileImageUpdated'));
       
     } catch (error) {
-      console.error('Error saving profile image:', error);
       setSaveError(error.message);
       setTimeout(() => setSaveError(null), 5000);
       // Reset the profile image to previous state on error
@@ -270,7 +265,6 @@ const ProfilePage = () => {
       }
       
     } catch (error) {
-      console.error('Error saving profile:', error);
       setSaveError(error.message);
       setTimeout(() => setSaveError(null), 5000);
     } finally {
@@ -402,7 +396,6 @@ const ProfilePage = () => {
       setTimeout(() => setSaveSuccess(false), 3000);
       
     } catch (error) {
-      console.error('Error changing password:', error);
       setSaveError(error.message);
       setTimeout(() => setSaveError(null), 5000);
     } finally {
@@ -497,7 +490,6 @@ const ProfilePage = () => {
             router.push('/');
             
           } catch (error) {
-            console.error('Error deleting account:', error);
             setSaveError(error.message);
             setTimeout(() => setSaveError(null), 5000);
           } finally {
@@ -585,7 +577,7 @@ const ProfilePage = () => {
   return (
     <>
       <Head>
-        <title>Profile - MarketEfficient</title>
+        <title>Profile - ChartSense</title>
         <meta name="description" content="Manage your profile and subscription" />
       </Head>
       

@@ -24,14 +24,12 @@ export function detectSwingPoints(chartData, options = {}) {
     
     // Validate input data
     if (!chartData || !Array.isArray(chartData) || chartData.length < 2 * config.lookback + 1) {
-      console.warn("Insufficient chart data for swing detection");
       return swingPoints;
     }
     
     // Normalize chart data to ensure consistent structure
     const normalizedData = normalizeChartData(chartData, config);
     if (normalizedData.length === 0) {
-      console.warn("Failed to normalize chart data");
       return swingPoints;
     }
     
@@ -142,7 +140,6 @@ export function detectSwingPoints(chartData, options = {}) {
             time = Math.floor(new Date(timeValue).getTime() / 1000);
           } catch (e) {
             // If date parsing fails, use array index as fallback
-            console.warn(`Failed to parse date: ${timeValue}`, e);
             time = index;
           }
         } else {

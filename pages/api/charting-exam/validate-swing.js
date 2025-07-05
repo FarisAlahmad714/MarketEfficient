@@ -112,9 +112,7 @@ async function validateSwingHandler(req, res) {
   });
   
   // End session and collect analytics
-  console.log(`Ending chart session for user ${userId}, exam: swing, chart: ${chartCount}`);
   const sessionAnalytics = await endChartSession(userId, 'swing', chartCount, 1);
-  console.log(`Session analytics result:`, sessionAnalytics ? 'Success' : 'Failed');
   
   return res.status(200).json({
     success: true,
@@ -139,7 +137,6 @@ async function getChartData() {
   // This is a placeholder - in production, this would fetch from a database or API
   // For testing, you could return hardcoded sample data here
   
-  console.warn('Using fallback getChartData() - this should be replaced with actual data source');
   
   // Return empty array as fallback - the frontend should be sending the chart data
   return [];

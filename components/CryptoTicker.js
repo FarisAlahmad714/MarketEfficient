@@ -17,7 +17,6 @@ const CryptoTicker = () => {
         setLoading(false);
       }
     } catch (error) {
-      console.error('Error fetching prices:', error);
       // Fallback data
       setAssetPrices([
         { symbol: 'BTC', price: 43000 + (Math.random() - 0.5) * 2000, change24h: (Math.random() - 0.5) * 5, type: 'crypto' },

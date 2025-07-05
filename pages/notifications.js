@@ -54,7 +54,6 @@ const NotificationsPage = () => {
         router.push('/auth/login');
       }
     } catch (error) {
-      console.error('Error fetching notifications:', error);
     } finally {
       setLoading(false);
     }
@@ -84,7 +83,6 @@ const NotificationsPage = () => {
         setUnreadCount(prev => Math.max(0, prev - 1));
       }
     } catch (error) {
-      console.error('Error marking notification as read:', error);
     }
   };
 
@@ -109,7 +107,6 @@ const NotificationsPage = () => {
         setUnreadCount(0);
       }
     } catch (error) {
-      console.error('Error marking all notifications as read:', error);
     } finally {
       setMarkingAllRead(false);
     }
@@ -161,7 +158,7 @@ const NotificationsPage = () => {
   return (
     <>
       <Head>
-        <title>Notifications - MarketEfficient</title>
+        <title>Notifications - ChartSense</title>
         <meta name="description" content="Stay updated with your trading community" />
       </Head>
 

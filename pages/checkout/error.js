@@ -12,7 +12,7 @@ const CheckoutError = () => {
   return (
     <>
       <Head>
-        <title>Payment Error - MarketEfficient</title>
+        <title>Payment Error - ChartSense</title>
       </Head>
       
       <CheckoutErrorRecovery 

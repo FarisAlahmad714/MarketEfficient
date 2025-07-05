@@ -105,7 +105,6 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error('Error toggling like:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 }
@@ -122,11 +121,9 @@ async function createLikeNotification(like, liker) {
       if (sharedContent) {
         // If userId is missing, find it by username
         if (!sharedContent.userId && sharedContent.username) {
-          console.log('Like: SharedContent missing userId, looking up by username:', sharedContent.username);
           const contentOwner = await User.findOne({ username: sharedContent.username }).select('_id');
           if (contentOwner) {
             sharedContent.userId = contentOwner._id;
-            console.log('Like: Found userId for username:', contentOwner._id);
           }
         }
         
@@ -164,12 +161,9 @@ async function createLikeNotification(like, liker) {
         actionUrl: `/post/${like.shareId}`
       });
 
-      console.log('Creating like notification:', notification);
       await notification.save();
-      console.log('Like notification created successfully');
     }
 
   } catch (error) {
-    console.error('Error creating like notification:', error);
   }
 }

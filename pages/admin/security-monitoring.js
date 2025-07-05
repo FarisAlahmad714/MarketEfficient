@@ -51,7 +51,6 @@ const SecurityMonitoringDashboard = () => {
       setLastUpdate(new Date());
       setError(null);
     } catch (err) {
-      console.error('Security monitoring error:', err);
       setError(err.message);
     } finally {
       setLoading(false);

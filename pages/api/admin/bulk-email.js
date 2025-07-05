@@ -178,7 +178,6 @@ The ChartSense Team`
         for (let i = 0; i < limitedUsers.length; i += batchSize) {
           const batch = limitedUsers.slice(i, i + batchSize);
           
-          console.log(`Processing batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(limitedUsers.length / batchSize)}`);
           
           for (const user of batch) {
             try {
@@ -225,7 +224,6 @@ The ChartSense Team`
               await new Promise(resolve => setTimeout(resolve, 500));
               
             } catch (error) {
-              console.error(`Failed to send email to ${user.email}:`, error);
               failedCount++;
               errors.push({ 
                 email: user.email, 
@@ -237,7 +235,6 @@ The ChartSense Team`
 
           // Longer delay between batches to avoid rate limiting
           if (i + batchSize < limitedUsers.length) {
-            console.log(`Waiting before next batch...`);
             await new Promise(resolve => setTimeout(resolve, 2000));
           }
         }
@@ -271,7 +268,6 @@ The ChartSense Team`
         });
 
       } catch (error) {
-        console.error('Bulk email API error:', error);
         
         // Log failed action
         try {
@@ -290,7 +286,6 @@ The ChartSense Team`
             errorMessage: error.message
           });
         } catch (logError) {
-          console.error('Failed to log bulk email error:', logError);
         }
 
         res.status(500).json({ 

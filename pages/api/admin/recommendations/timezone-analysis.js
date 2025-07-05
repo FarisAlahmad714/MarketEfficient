@@ -86,7 +86,6 @@ export default async function handler(req, res) {
     });
 
       } catch (error) {
-        console.error('Timezone analysis error:', error);
         res.status(500).json({ error: 'Failed to fetch timezone analysis data' });
       } finally {
         resolve();

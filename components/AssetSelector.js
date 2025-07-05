@@ -638,7 +638,6 @@ const AssetSelector = () => {
           }
         }, 1500);
       } catch (err) {
-        console.error('Error fetching assets:', err);
         setError('Failed to load assets. Please try again later.');
         setLoading(false);
       }

@@ -22,7 +22,6 @@ export function detectSwingPoints(chartData, options = {}) {
   
   // Validate input data
   if (!chartData || !Array.isArray(chartData) || chartData.length < 2 * config.lookback + 1) {
-    console.warn("Insufficient chart data for swing detection");
     return { highs: [], lows: [] };
   }
   
@@ -366,7 +365,6 @@ export function getFibonacciRetracement(chartData, direction = 'uptrend') {
   }
   
   // If no suitable points found, return default
-  console.warn(`No suitable ${direction} retracement found`);
   return {
     start: { time: 0, price: 0 },
     end: { time: 0, price: 0 },

@@ -44,8 +44,6 @@ export default async function handler(req, res) {
     const defaultCutoffDate = new Date('2025-07-03T08:06:00.000Z');
     const actualCutoffDate = cutoffDate ? new Date(cutoffDate) : defaultCutoffDate;
 
-    console.log(`Admin cleanup requested by ${user.email}`);
-    console.log(`Action: ${action}, Cutoff: ${actualCutoffDate.toISOString()}`);
 
     let results = {};
 
@@ -107,7 +105,6 @@ export default async function handler(req, res) {
             notFound++;
           }
         } catch (error) {
-          console.error(`Error fixing post ${post._id}:`, error);
         }
       }
 
@@ -137,7 +134,6 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error('Cleanup error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 }

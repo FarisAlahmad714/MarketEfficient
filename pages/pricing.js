@@ -27,7 +27,6 @@ export default function Pricing() {
         const data = await response.json();
         setCsrfToken(data.csrfToken);
       } catch (error) {
-        console.error('Failed to fetch CSRF token:', error);
       }
     };
     fetchCsrfToken();
@@ -46,7 +45,6 @@ export default function Pricing() {
     // Use storage wrapper instead of direct localStorage
     const storedToken = storage.getItem('registrationTempToken');
     if (!isAuthenticated && !storedToken) {
-      console.error('No auth or temp token, redirecting to register');
       router.push('/auth/register');
       return;
     }
@@ -71,11 +69,9 @@ export default function Pricing() {
         logger.log('Redirecting to Stripe checkout:', data.url);
         window.location.href = data.url;
       } else {
-        console.error('Checkout failed:', data.error);
         return data.error || 'Failed to create checkout session';
       }
     } catch (error) {
-      console.error('Error initiating checkout:', error);
       return 'Failed to start checkout process';
     }
   };

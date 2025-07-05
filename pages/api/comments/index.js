@@ -65,7 +65,6 @@ async function getComments(req, res) {
     });
 
   } catch (error) {
-    console.error('Error fetching comments:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 }
@@ -111,7 +110,6 @@ async function createComment(req, res) {
       return res.status(404).json({ error: 'Shared content not found' });
     }
     
-    console.log('Found shared content for notification:', {
       shareId: sharedContent.shareId,
       type: sharedContent.type,
       userId: sharedContent.userId,
@@ -120,13 +118,10 @@ async function createComment(req, res) {
 
     // If userId is missing, find it by username
     if (!sharedContent.userId && sharedContent.username) {
-      console.log('SharedContent missing userId, looking up by username:', sharedContent.username);
       const contentOwner = await User.findOne({ username: sharedContent.username }).select('_id');
       if (contentOwner) {
         sharedContent.userId = contentOwner._id;
-        console.log('Found userId for username:', contentOwner._id);
       } else {
-        console.log('Could not find user for username:', sharedContent.username);
       }
     }
 
@@ -165,7 +160,6 @@ async function createComment(req, res) {
     });
 
   } catch (error) {
-    console.error('Error creating comment:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 }
@@ -245,6 +239,5 @@ async function createCommentNotifications(comment, sharedContent, commenter) {
     }
 
   } catch (error) {
-    console.error('Error creating comment notifications:', error);
   }
 }

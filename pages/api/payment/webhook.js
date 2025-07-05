@@ -87,7 +87,6 @@ export default async function handler(req, res) {
     res.status(200).json({ received: true });
 
   } catch (error) {
-    console.error('Webhook error:', error);
     res.status(400).json({ error: error.message });
   }
 }
@@ -106,7 +105,6 @@ async function handleCheckoutSessionCompleted(session) {
       try {
         registrationData = jwt.verify(registrationDataToken, process.env.JWT_SECRET);
       } catch (error) {
-        console.error('Failed to decode registration data:', error);
         return;
       }
       
@@ -143,13 +141,11 @@ async function handleCheckoutSessionCompleted(session) {
       // Normal flow - user already exists
       const userId = session.metadata?.userId;
       if (!userId) {
-        console.error('No userId in session metadata');
         return;
       }
 
       user = await User.findById(userId);
       if (!user) {
-        console.error('User not found:', userId);
         return;
       }
     }
@@ -166,7 +162,6 @@ async function handleCheckoutSessionCompleted(session) {
       try {
         await processPromoCodeUsage(promoCodeId, user._id, originalAmount, discountAmount, finalAmount);
       } catch (error) {
-        console.error('Error processing promo code usage:', error);
       }
     }
 
@@ -223,7 +218,6 @@ async function handleCheckoutSessionCompleted(session) {
         await sendVerificationEmail(user, user.verificationToken);
         logger.log('Verification email sent after payment');
       } catch (emailError) {
-        console.error('Failed to send verification email after payment:', emailError);
       }
     }
     
@@ -236,14 +230,12 @@ async function handleCheckoutSessionCompleted(session) {
         await user.save();
         logger.log('Welcome email sent after payment');
       } catch (emailError) {
-        console.error('Failed to send welcome email:', emailError);
       }
     }
 
     logger.log(`Checkout completed for user ${user._id}, plan: ${plan}`);
 
   } catch (error) {
-    console.error('Error handling checkout session completed:', error);
   }
 }
 
@@ -251,7 +243,6 @@ async function handleSubscriptionCreated(subscription) {
   try {
     const userId = subscription.metadata?.userId;
     if (!userId) {
-      console.error('No userId in subscription metadata');
       return;
     }
 
@@ -276,7 +267,6 @@ async function handleSubscriptionCreated(subscription) {
     logger.log(`Subscription created for user ${userId}: ${subscription.id}`);
 
   } catch (error) {
-    console.error('Error handling subscription created:', error);
   }
 }
 
@@ -287,7 +277,6 @@ async function handleSubscriptionUpdated(subscription) {
     });
 
     if (!existingSubscription) {
-      console.error('Subscription not found:', subscription.id);
       return;
     }
 
@@ -308,7 +297,6 @@ async function handleSubscriptionUpdated(subscription) {
     logger.log(`Subscription updated: ${subscription.id}, status: ${subscription.status}`);
 
   } catch (error) {
-    console.error('Error handling subscription updated:', error);
   }
 }
 
@@ -319,7 +307,6 @@ async function handleSubscriptionDeleted(subscription) {
     });
 
     if (!existingSubscription) {
-      console.error('Subscription not found:', subscription.id);
       return;
     }
 
@@ -336,7 +323,6 @@ async function handleSubscriptionDeleted(subscription) {
     logger.log(`Subscription deleted: ${subscription.id}`);
 
   } catch (error) {
-    console.error('Error handling subscription deleted:', error);
   }
 }
 
@@ -347,7 +333,6 @@ async function handleInvoicePaymentSucceeded(invoice) {
     });
 
     if (!subscription) {
-      console.error('Subscription not found for invoice:', invoice.id);
       return;
     }
 
@@ -372,7 +357,6 @@ async function handleInvoicePaymentSucceeded(invoice) {
     logger.log(`Invoice payment succeeded: ${invoice.id}`);
 
   } catch (error) {
-    console.error('Error handling invoice payment succeeded:', error);
   }
 }
 
@@ -383,7 +367,6 @@ async function handleInvoicePaymentFailed(invoice) {
     });
 
     if (!subscription) {
-      console.error('Subscription not found for invoice:', invoice.id);
       return;
     }
 
@@ -407,7 +390,6 @@ async function handleInvoicePaymentFailed(invoice) {
     logger.log(`Invoice payment failed: ${invoice.id}`);
 
   } catch (error) {
-    console.error('Error handling invoice payment failed:', error);
   }
 }
 
@@ -424,7 +406,6 @@ async function handlePaymentIntentSucceeded(paymentIntent) {
     // Find the user and their subscription
     const user = await User.findById(userId);
     if (!user) {
-      console.error('User not found:', userId);
       return;
     }
 
@@ -453,7 +434,6 @@ async function handlePaymentIntentSucceeded(paymentIntent) {
     logger.log(`Payment intent succeeded: ${paymentIntent.id} for user ${userId}`);
 
   } catch (error) {
-    console.error('Error handling payment intent succeeded:', error);
   }
 }
 
@@ -470,7 +450,6 @@ async function handlePaymentIntentFailed(paymentIntent) {
     logger.log(`Payment intent failed: ${paymentIntent.id} for user ${userId}`);
 
   } catch (error) {
-    console.error('Error handling payment intent failed:', error);
   }
 }
 
@@ -486,7 +465,6 @@ async function createPaymentRecord(paymentData) {
     return payment;
 
   } catch (error) {
-    console.error('Error creating payment record:', error);
     throw error;
   }
 }

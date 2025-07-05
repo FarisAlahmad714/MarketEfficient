@@ -22,9 +22,6 @@ async function getProfileImageHandler(req, res) {
     return res.status(200).json({ profileImageUrl, hasProfileImage: true });
 
   } catch (error) {
-    console.error('Error getting profile image:', error);
-    console.error('User ID:', userId);
-    console.error('GCS Path:', user?.profileImageGcsPath);
     
     // Provide specific error messages based on error type
     let errorMessage = 'Failed to get profile image';

@@ -514,7 +514,7 @@ useEffect(() => {
   // Fetch initial chart data
   useEffect(() => {
     fetchChartData(true); // Force refresh for initial load
-  }, []);
+  }, [examType, assetType]);
   
   // Restart session when part changes (for fibonacci/fvg exams)
   useEffect(() => {

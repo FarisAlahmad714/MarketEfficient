@@ -47,7 +47,6 @@ export default async function handler(req, res) {
     });
 
     await testNotification.save();
-    console.log('Test notification created:', testNotification);
 
     res.status(200).json({
       success: true,
@@ -56,7 +55,6 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error('Error creating test notification:', error);
     res.status(500).json({ error: 'Internal server error', details: error.message });
   }
 }

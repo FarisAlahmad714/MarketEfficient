@@ -54,10 +54,8 @@ async function portfolioHandler(req, res) {
     
     // Check if quarterly top-up is due and apply automatically (ONLY for unlocked sandbox)
     if (portfolio.unlocked && portfolio.isTopUpDue()) {
-      console.log(`Quarterly top-up due for user ${userId}, adding 10,000 SENSES`);
       await portfolio.performQuarterlyTopUp();
       await portfolio.save();
-      console.log(`Top-up completed. New balance: ${portfolio.balance} SENSES`);
     }
     
     // Get open positions
@@ -115,7 +113,6 @@ async function portfolioHandler(req, res) {
           totalFees: trade.fees?.total || 0
         });
       } catch (error) {
-        console.error('Error calculating P&L for trade:', trade._id, error);
         pnl = 0;
       }
       
@@ -288,7 +285,6 @@ async function portfolioHandler(req, res) {
     res.status(200).json(response);
     
   } catch (error) {
-    console.error('Error fetching sandbox portfolio:', error);
     res.status(500).json({ 
       error: 'Failed to fetch portfolio',
       message: error.message 
@@ -325,7 +321,6 @@ async function getCurrentMarketPrice(symbol) {
     return null;
     
   } catch (error) {
-    console.error(`Error fetching price for ${symbol}:`, error);
     return null;
   }
 }

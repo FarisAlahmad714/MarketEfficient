@@ -110,7 +110,6 @@ export const requireSubscription = (options = {}) => {
       
       next();
     } catch (error) {
-      console.error('Subscription check error:', error);
       return res.status(500).json({ 
         error: 'Subscription verification failed',
         code: 'SUBSCRIPTION_CHECK_ERROR'

@@ -105,7 +105,6 @@ export default async function handler(req, res) {
     const campaign = await EmailCampaign.create(campaignData);
 
     // Log the campaign creation for audit trail
-    console.log(`Email campaign created: ${campaign._id}`);
 
     // Return success response
     res.status(201).json({
@@ -125,7 +124,6 @@ export default async function handler(req, res) {
     });
 
       } catch (error) {
-        console.error('Email campaign creation error:', error);
         res.status(500).json({ error: 'Failed to create email campaign' });
       } finally {
         resolve();
@@ -145,7 +143,7 @@ function getTemplateContent(template, campaignType, options) {
         content: `
           <h2>Your Trading Psychology Journey Awaits</h2>
           <p>Hi there,</p>
-          <p>We noticed you haven't been active on MarketEfficient lately, and we wanted to reach out to see how you're doing.</p>
+          <p>We noticed you haven't been active on ChartSense lately, and we wanted to reach out to see how you're doing.</p>
           <p>Your trading psychology development is important to us, and we have some new insights and tools that could help you on your journey.</p>
           ${includePromoCode ? `
           <div style="background: #f0f8ff; padding: 20px; border-radius: 8px; margin: 20px 0;">
@@ -155,7 +153,7 @@ function getTemplateContent(template, campaignType, options) {
           ` : ''}
           <p>We'd love to have you back. Click the link below to continue your progress:</p>
           <a href="${process.env.NEXT_PUBLIC_BASE_URL}/dashboard" style="background: #2196F3; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">Return to Dashboard</a>
-          <p>Best regards,<br>The MarketEfficient Team</p>
+          <p>Best regards,<br>The ChartSense Team</p>
         `
       },
       discount: {

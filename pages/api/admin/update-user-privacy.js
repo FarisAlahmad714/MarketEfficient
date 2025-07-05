@@ -38,7 +38,6 @@ export default async function handler(req, res) {
       }
     );
 
-    console.log(`[ADMIN] Updated ${result.modifiedCount} users to public/share settings`);
 
     // Get sample of updated users
     const sampleUsers = await User.find({})
@@ -57,7 +56,6 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error('Error updating user privacy:', error);
     return res.status(500).json({ 
       error: 'Failed to update user privacy',
       details: error.message 

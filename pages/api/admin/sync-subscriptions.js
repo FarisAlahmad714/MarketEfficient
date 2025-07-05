@@ -49,7 +49,6 @@ export default async function handler(req, res) {
               });
             }
           } catch (error) {
-            console.error(`Error syncing subscription ${subscription._id}:`, error);
           }
         }
 
@@ -60,7 +59,6 @@ export default async function handler(req, res) {
           results
         });
       } catch (error) {
-        console.error('Sync error:', error);
         res.status(500).json({ error: 'Sync failed' });
       } finally {
         resolve();

@@ -459,7 +459,6 @@ The ${outcomeCandleChange}% ${correctAnswer} move to $${firstOutcomeCandle?.clos
     return res.status(200).json({ analysis });
 
   } catch (error) {
-    console.error('Error in trading analysis:', error);
     return res.status(500).json({ 
       error: 'Failed to analyze trading decision', 
       message: error.message 

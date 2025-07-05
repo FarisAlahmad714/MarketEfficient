@@ -32,7 +32,6 @@ export default async function handler(req, res) {
             return res.status(400).json({ error: 'Invalid test type' });
         }
       } catch (error) {
-        console.error('Test cron error:', error);
         return res.status(500).json({ error: 'Test failed' });
       } finally {
         resolve();
@@ -143,7 +142,6 @@ async function testWeeklyMetrics(req, res, userId, dryRun = false) {
         }
         processedCount++;
       } catch (error) {
-        console.error(`Error processing weekly metrics for ${user.email}:`, error);
         results.push({
           email: user.email,
           status: 'error',
@@ -160,7 +158,6 @@ async function testWeeklyMetrics(req, res, userId, dryRun = false) {
       results
     });
   } catch (error) {
-    console.error('Weekly metrics test error:', error);
     return res.status(500).json({ error: error.message });
   }
 }
@@ -206,7 +203,6 @@ async function testMonthlyMetrics(req, res, userId, dryRun = false) {
         }
         processedCount++;
       } catch (error) {
-        console.error(`Error processing monthly metrics for ${user.email}:`, error);
         results.push({
           email: user.email,
           status: 'error',
@@ -223,38 +219,30 @@ async function testMonthlyMetrics(req, res, userId, dryRun = false) {
       results
     });
   } catch (error) {
-    console.error('Monthly metrics test error:', error);
     return res.status(500).json({ error: error.message });
   }
 }
 
 async function testInactiveReminders(req, res, dryRun = false) {
   try {
-    console.log('Starting inactive reminders test...');
     const inactiveUsers = await getInactiveUsers(30);
-    console.log(`Found ${inactiveUsers.length} inactive users`);
     
     // Filter users who have email notifications enabled and limit for testing
     const eligibleUsers = inactiveUsers
       .filter(user => {
         const hasEmailEnabled = user.notifications?.email !== false;
-        console.log(`User ${user.email}: email enabled = ${hasEmailEnabled}`);
         return hasEmailEnabled;
       })
       .slice(0, 5); // Limit to 5 for testing
     
-    console.log(`${eligibleUsers.length} users are eligible for inactive reminders`);
     
     const results = [];
     let processedCount = 0;
     
     for (const user of eligibleUsers) {
       try {
-        console.log(`Processing user ${user.email} for inactive reminder...`);
         if (!dryRun) {
-          console.log(`Sending inactive reminder email to ${user.email}...`);
           const emailResult = await sendInactiveUserReminder(user);
-          console.log(`Email result for ${user.email}:`, emailResult);
           // Add small delay to avoid rate limiting
           await new Promise(resolve => setTimeout(resolve, 200));
         }
@@ -264,9 +252,7 @@ async function testInactiveReminders(req, res, dryRun = false) {
           lastLoginAt: user.lastLoginAt
         });
         processedCount++;
-        console.log(`Successfully processed ${user.email}`);
       } catch (error) {
-        console.error(`Error sending inactive reminder to ${user.email}:`, error);
         results.push({
           email: user.email,
           status: 'error',
@@ -284,21 +270,18 @@ async function testInactiveReminders(req, res, dryRun = false) {
       results
     });
   } catch (error) {
-    console.error('Inactive reminders test error:', error);
     return res.status(500).json({ error: error.message });
   }
 }
 
 async function testEmailAutomation(req, res, dryRun = false) {
   try {
-    console.log('Starting email automation test...');
     
     // Simulate calling the email automation endpoint
     const today = new Date();
     const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
     const dayOfMonth = today.getDate();
     
-    console.log(`Test day: ${dayOfWeek}, Date: ${dayOfMonth}`);
     
     const results = {
       dayOfWeek,
@@ -308,7 +291,6 @@ async function testEmailAutomation(req, res, dryRun = false) {
     
     // Check what would run today
     if (dayOfWeek === 0) {
-      console.log('Would run weekly metrics...');
       results.scheduledTasks.push('weekly-metrics');
       if (!dryRun) {
         const weeklyResult = await testWeeklyMetrics(req, res, null, false);
@@ -317,7 +299,6 @@ async function testEmailAutomation(req, res, dryRun = false) {
     }
     
     if (dayOfMonth === 1) {
-      console.log('Would run monthly metrics...');
       results.scheduledTasks.push('monthly-metrics');
       if (!dryRun) {
         await testMonthlyMetrics(req, res, null, false);
@@ -325,7 +306,6 @@ async function testEmailAutomation(req, res, dryRun = false) {
     }
     
     if (dayOfWeek === 1) {
-      console.log('Would run inactive reminders...');
       results.scheduledTasks.push('inactive-reminders');
       if (!dryRun) {
         await testInactiveReminders(req, res, false);
@@ -347,7 +327,6 @@ async function testEmailAutomation(req, res, dryRun = false) {
     });
     
   } catch (error) {
-    console.error('Email automation test error:', error);
     return res.status(500).json({ error: error.message });
   }
 }

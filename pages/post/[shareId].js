@@ -56,7 +56,6 @@ const PostDetailPage = () => {
         setError('Failed to load post');
       }
     } catch (error) {
-      console.error('Error fetching post:', error);
       setError('Failed to load post');
     } finally {
       setLoading(false);
@@ -796,7 +795,7 @@ const PostDetailPage = () => {
     return (
       <>
         <Head>
-          <title>Loading Post - MarketEfficient</title>
+          <title>Loading Post - ChartSense</title>
         </Head>
         <div style={{
           maxWidth: '800px',
@@ -821,7 +820,7 @@ const PostDetailPage = () => {
     return (
       <>
         <Head>
-          <title>Post Not Found - MarketEfficient</title>
+          <title>Post Not Found - ChartSense</title>
         </Head>
         <div style={{
           maxWidth: '800px',
@@ -862,7 +861,7 @@ const PostDetailPage = () => {
     <>
       <Head>
         <title>
-          {postData ? `${postData.name}'s ${postData.type.replace('_', ' ')} - MarketEfficient` : 'Post - MarketEfficient'}
+          {postData ? `${postData.name}'s ${postData.type.replace('_', ' ')} - ChartSense` : 'Post - ChartSense'}
         </title>
         <meta name="description" content={postData ? `View ${postData.name}'s shared ${postData.type.replace('_', ' ')}` : 'View post'} />
       </Head>

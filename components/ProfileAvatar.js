@@ -59,7 +59,6 @@ const ProfileAvatar = ({
           }}
           sizes={`${size}px`}
           onError={(e) => {
-            console.log(`ProfileAvatar: Image failed to load for ${name}: ${imageUrl}`);
             setImageError(true);
           }}
         />

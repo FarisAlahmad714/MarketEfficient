@@ -32,7 +32,6 @@ const TradingAnalysis = ({ chartData, prediction, questionId }) => {
           const canvas = await html2canvas(chartElement);
           chartImage = canvas.toDataURL('image/png');
         } catch (err) {
-          console.warn('Failed to capture chart image:', err);
         }
       }
       
@@ -57,7 +56,6 @@ const TradingAnalysis = ({ chartData, prediction, questionId }) => {
       const data = await response.json();
       setAiResponse(data.analysis);
     } catch (error) {
-      console.error('Error analyzing trading decision:', error);
       setAiResponse('Sorry, there was an error analyzing your trading decision. Please try again later.');
     } finally {
       setIsAnalyzing(false);

@@ -41,12 +41,10 @@ async function getAIAnalysis(chartData, outcomeData, prediction, reasoning, corr
     // Check if we have OpenAI API key
     const apiKey = process.env.OPENAI_API_KEY?.trim();
     if (!apiKey) {
-      console.warn('OPENAI_API_KEY not set, skipping AI analysis');
       return null;
     }
     
     if (!apiKey.startsWith('sk-')) {
-      console.warn('Invalid OPENAI_API_KEY format, skipping AI analysis');
       return null;
     }
     
@@ -137,7 +135,6 @@ Keep the analysis specific and educational.`;
 
     return completion.choices[0].message.content;
   } catch (error) {
-    console.error('Error getting AI analysis:', error);
     return null;
   }
 }
@@ -283,7 +280,6 @@ async function fetchSegmentedData(asset, timeframe, questionCount) {
     // Shuffle the segments to add more randomness
     return shuffleArray(segments);
   } catch (error) {
-    console.error(`Error fetching segmented data for ${asset.symbol}:`, error.message);
     
     // Generate mock data for all segments with different patterns
     const segments = [];
@@ -743,7 +739,6 @@ async function handler(req, res) {
         return res.status(200).json(formattedResponse);
       }
     } catch (dbError) {
-      console.error('Error fetching from database:', dbError);
       // Continue to regular process if database fetch fails
     }
   }
@@ -779,7 +774,6 @@ async function handler(req, res) {
       const testSession = sessions[testSessionKey];
       
       if (!testSession) {
-        console.error(`Test session not found for ${sessionId}`);
         return res.status(404).json({ error: 'Test session not found' });
       }
       
@@ -808,7 +802,6 @@ async function handler(req, res) {
         const question = testSession.questions.find(q => q.id === answer.test_id);
         
         if (!question) {
-          console.error(`Question ${answer.test_id} not found in test session`);
           return {
             test_id: answer.test_id,
             user_prediction: answer.prediction,
@@ -851,7 +844,6 @@ async function handler(req, res) {
             );
             logger.log(`AI analysis received for answer ${answer.test_id}: ${aiAnalysis ? 'success' : 'empty'}`);
           } catch (error) {
-            console.error(`Error getting AI analysis for answer ${answer.test_id}:`, error);
           }
         }
         
@@ -943,7 +935,6 @@ async function handler(req, res) {
         logger.log(`Document size before saving: ${documentSize / 1024} KB`);
         
         if (documentSize > 15 * 1024 * 1024) {
-          console.error(`Document too large (${documentSize / 1024 / 1024} MB), may exceed MongoDB 16MB limit`);
           // Reduce size if needed
           testDetails.forEach(detail => {
             if (detail.ohlcData && detail.ohlcData.length > 50) {
@@ -974,7 +965,6 @@ async function handler(req, res) {
       
       return res.status(200).json(results);
     } catch (error) {
-      console.error('Error processing test answers:', error);
       return res.status(500).json({ error: 'Failed to process test answers' });
     }
   }
@@ -1245,7 +1235,6 @@ async function handler(req, res) {
     // Send testData to client immediately (with news_loading flags set to true)
     return res.status(200).json(testData);
   } catch (error) {
-    console.error('Error generating test:', error);
     
     // Return basic mock test data as fallback
     const randomSeed = Date.now();

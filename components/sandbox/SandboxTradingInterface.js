@@ -59,7 +59,6 @@ const SandboxTradingInterface = ({ sandboxStatus, onPortfolioUpdate }) => {
       await fetchPortfolioData();
       await fetchAssetPrice(selectedAsset);
     } catch (error) {
-      console.error('Error initializing sandbox interface:', error);
       setError('Failed to load trading interface');
     } finally {
       setLoading(false);
@@ -97,7 +96,6 @@ const SandboxTradingInterface = ({ sandboxStatus, onPortfolioUpdate }) => {
       }
       
     } catch (error) {
-      console.error('Error fetching portfolio:', error);
       throw error;
     }
   };
@@ -111,7 +109,6 @@ const SandboxTradingInterface = ({ sandboxStatus, onPortfolioUpdate }) => {
         onPortfolioUpdate();
       }
     } catch (error) {
-      console.error('Error refreshing portfolio:', error);
       // Don't show error to user for background refreshes
       // The user can still manually refresh if needed
     }
@@ -169,7 +166,6 @@ const SandboxTradingInterface = ({ sandboxStatus, onPortfolioUpdate }) => {
       }
     } catch (error) {
       // Silent fail for background price updates
-      console.log('Background price update failed:', error.message);
     }
   };
 
@@ -210,7 +206,6 @@ const SandboxTradingInterface = ({ sandboxStatus, onPortfolioUpdate }) => {
         }
       }
     } catch (error) {
-      console.log('Silent portfolio refresh failed:', error.message);
     }
   };
 
@@ -220,7 +215,6 @@ const SandboxTradingInterface = ({ sandboxStatus, onPortfolioUpdate }) => {
     
     // Fetch price in background without blocking UI
     fetchAssetPrice(newAsset).catch(error => {
-      console.log('Asset price fetch failed:', error.message);
     });
   };
 
@@ -248,7 +242,6 @@ const SandboxTradingInterface = ({ sandboxStatus, onPortfolioUpdate }) => {
         }
       }
     } catch (error) {
-      console.error('Error fetching asset price:', error);
     }
   };
 

@@ -12,14 +12,12 @@ export default async function handler(req, res) {
   try {
     await connectDB();
     
-    console.log('🔍 ANALYZING CHART EXAM DATA (READ-ONLY)...');
     
     // Get all chart exam results
     const chartExamResults = await TestResults.find({
       testType: 'chart-exam'
     }).sort({ completedAt: -1 });
     
-    console.log(`📊 Total chart exam results found: ${chartExamResults.length}`);
     
     if (chartExamResults.length === 0) {
       return res.json({
@@ -77,10 +75,6 @@ export default async function handler(req, res) {
       needsMigration: totalIssues > 0
     };
     
-    console.log('📈 ANALYSIS COMPLETE');
-    console.log(`   Total records: ${summary.totalRecords}`);
-    console.log(`   Total issues: ${summary.totalIssues}`);
-    console.log(`   Issue rate: ${summary.issueRate}%`);
     
     return res.json({
       summary,
@@ -91,7 +85,6 @@ export default async function handler(req, res) {
     });
     
   } catch (error) {
-    console.error('❌ Error analyzing data:', error);
     return res.status(500).json({ 
       error: 'Analysis failed', 
       message: error.message 

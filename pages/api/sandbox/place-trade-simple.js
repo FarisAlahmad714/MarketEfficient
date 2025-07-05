@@ -10,24 +10,19 @@ async function handler(req, res) {
   }
 
   try {
-    console.log('🚀 API HIT - Starting trade placement');
     
     await connectDB();
-    console.log('✅ Database connected');
     
     const userId = req.user.id;
     const { symbol, side, type, quantity, leverage = 1 } = req.body;
     
-    console.log('📝 Trade details:', { symbol, side, type, quantity, leverage });
     
     // Get portfolio
     const portfolio = await SandboxPortfolio.findOne({ userId, unlocked: true });
     if (!portfolio) {
-      console.log('❌ No portfolio found');
       return res.status(403).json({ error: 'Sandbox not unlocked' });
     }
     
-    console.log('💰 Portfolio balance:', portfolio.balance);
     
     // Simple validation
     if (!quantity || quantity <= 0) {
@@ -42,7 +37,6 @@ async function handler(req, res) {
       return res.status(400).json({ error: 'Insufficient balance' });
     }
     
-    console.log('💹 Creating trade...');
     
     // Create trade
     const trade = new SandboxTrade({
@@ -64,7 +58,6 @@ async function handler(req, res) {
     });
     
     await trade.save();
-    console.log('✅ Trade saved');
     
     // Update portfolio
     portfolio.balance -= trade.fees.total;
@@ -72,7 +65,6 @@ async function handler(req, res) {
     portfolio.lastTradeAt = new Date();
     await portfolio.save();
     
-    console.log('✅ Portfolio updated');
     
     return res.status(200).json({
       success: true,
@@ -90,7 +82,6 @@ async function handler(req, res) {
     });
     
   } catch (error) {
-    console.error('❌ Trade error:', error);
     return res.status(500).json({ error: 'Failed to place trade', details: error.message });
   }
 }

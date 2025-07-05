@@ -38,7 +38,6 @@ export default async function handler(req, res) {
       try {
         profileImageUrl = await getSignedUrlForImage(user.profileImageGcsPath);
       } catch (error) {
-        console.error('Error generating signed URL for profile image:', error);
         // Fall back to the stored URL if signed URL generation fails
         profileImageUrl = user.profileImageUrl;
       }
@@ -50,12 +49,10 @@ export default async function handler(req, res) {
     let achievements = [];
 
     // Debug: Always show test results since we removed privacy settings
-    console.log(`[PROFILE API] User ${user.username} shareResults:`, user.shareResults);
     
     // Since we removed privacy settings, all users share results by default  
     // Show recent tests with variety across different test types
     const totalTests = await TestResults.countDocuments({ userId: user._id });
-    console.log(`[PROFILE API] User ${user.username} total tests in DB:`, totalTests);
 
     // Get recent tests, but also ensure we show variety by getting some of each type
     const recentBiasTests = await TestResults.find({
@@ -83,23 +80,18 @@ export default async function handler(req, res) {
       .sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt))
       .slice(0, 10);
 
-    console.log(`[PROFILE API] User ${user.username} found ${testResults.length} recent tests:`, testResults.map(t => ({ type: t.testType, subType: t.subType, date: t.completedAt })));
     
     // Debug: Check all test types for this user
     const allTestTypes = await TestResults.distinct('testType', { userId: user._id });
-    console.log(`[PROFILE API] User ${user.username} all test types in DB:`, allTestTypes);
     
     // Debug: Check recent chart-exam tests specifically  
-    console.log(`[PROFILE API] User ${user.username} chart-exam tests found:`, recentChartTests.length);
 
       // Get trading statistics
       try {
         const sandboxPortfolio = await SandboxPortfolio.findOne({ userId: user._id });
-        console.log(`[PROFILE API] User ${user.username} sandbox portfolio:`, sandboxPortfolio ? { unlocked: sandboxPortfolio.unlocked, totalPnL: sandboxPortfolio.totalPnLPercentage } : 'null');
         
         if (sandboxPortfolio && sandboxPortfolio.unlocked) {
           const tradingStatsData = await SandboxTrade.getUserTradingStats(user._id);
-          console.log(`[PROFILE API] User ${user.username} trading stats:`, tradingStatsData);
           tradingStats = {
             totalTrades: tradingStatsData.totalTrades,
             winRate: Math.round(tradingStatsData.winRate),
@@ -108,7 +100,6 @@ export default async function handler(req, res) {
           };
         }
       } catch (error) {
-        console.error('Error fetching trading stats:', error);
       }
 
       // Generate lifetime achievements based on test results and trading performance
@@ -166,7 +157,6 @@ export default async function handler(req, res) {
     try {
       earnedBadgeObjects = await getBadgeObjectsFromIds(user._id, user.earnedBadges || []);
     } catch (error) {
-      console.error('Error getting badge objects:', error);
     }
 
     const publicProfile = {
@@ -196,7 +186,6 @@ export default async function handler(req, res) {
     res.status(200).json(publicProfile);
 
   } catch (error) {
-    console.error('Error fetching public profile:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 }
@@ -474,7 +463,6 @@ function getAllAvailableAchievements(timeInfo) {
 // Helper function to get real dashboard goals and convert completed ones to achievements
 async function getGoalAchievements(userId) {
   try {
-    console.log(`[PROFILE API] Fetching goal achievements for user ${userId}`);
     
     // Get user metrics for goal calculation
     const userMetrics = await getUserMetrics(userId);
@@ -525,10 +513,8 @@ async function getGoalAchievements(userId) {
       }
     });
     
-    console.log(`[PROFILE API] Generated ${goalAchievements.length} goal achievements`);
     return goalAchievements;
   } catch (error) {
-    console.error('Error fetching goal achievements:', error);
     return [];
   }
 }
@@ -574,7 +560,6 @@ async function getUserMetrics(userId) {
       }
     };
   } catch (error) {
-    console.error('Error getting user metrics:', error);
     return { summary: { totalTests: 0, averageScore: 0, testsByType: {} } };
   }
 }

@@ -92,7 +92,6 @@ export default async function handler(req, res) {
           }
         });
       } catch (notificationError) {
-        console.error('Error creating follow notification:', notificationError);
         // Don't fail the follow action if notification fails
       }
 
@@ -121,7 +120,6 @@ export default async function handler(req, res) {
     }
 
   } catch (error) {
-    console.error('Error in follow/unfollow:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 }

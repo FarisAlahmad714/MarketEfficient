@@ -28,14 +28,12 @@ const UsersManagement = () => {
   useEffect(() => {
     const fetchUsers = async () => {
       if (process.env.NODE_ENV === 'development') {
-        console.log('Admin Users: Starting fetchUsers. Current page:', page, 'Search:', search);
       }
       setLoading(true);
       setError(null);
       try {
         const token = await storage.getItem('auth_token');
         if (process.env.NODE_ENV === 'development') {
-          console.log('Admin Users: Auth token retrieved:', token ? 'found' : 'not found');
         }
 
         const response = await fetch(
@@ -45,60 +43,50 @@ const UsersManagement = () => {
           }
         );
         if (process.env.NODE_ENV === 'development') {
-          console.log('Admin Users: Fetch response status:', response.status);
         }
 
         if (!response.ok) {
           const errorText = await response.text(); // Read error text for more details
           if (process.env.NODE_ENV === 'development') {
-            console.error('Admin Users: API fetch failed. Status:', response.status, 'Details:', errorText);
           }
           throw new Error(`Failed to fetch users. Status: ${response.status}.`);
         }
 
         const data = await response.json();
         if (process.env.NODE_ENV === 'development') {
-          console.log('Admin Users: API fetch successful. Users:', data.users?.length, 'Total Pages:', data.pagination?.pages);
         }
         setUsers(data.users || []); // Ensure users is always an array
         setTotalPages(data.pagination?.pages || 1); // Ensure totalPages has a default
 
         if (cryptoLoaderRef.current) {
           if (process.env.NODE_ENV === 'development') {
-            console.log('Admin Users: Hiding CryptoLoader via ref immediately (success path).');
           }
           cryptoLoaderRef.current.hideLoader();
         } else {
           if (process.env.NODE_ENV === 'development') {
-            console.warn('Admin Users: cryptoLoaderRef.current is null when trying to hide (success path).');
           }
         }
         // Short delay for hideLoader animation to potentially start before removing loader's container from DOM
         setTimeout(() => {
             if (process.env.NODE_ENV === 'development') {
-              console.log('Admin Users: Setting loading to false (success path).');
             }
             setLoading(false);
         }, 100);
 
       } catch (err) {
         if (process.env.NODE_ENV === 'development') {
-          console.error('Admin Users: Error in fetchUsers catch block:', err);
         }
         setError(err.message || 'An unexpected error occurred while fetching users.');
         
         if (cryptoLoaderRef.current) {
           if (process.env.NODE_ENV === 'development') {
-            console.log('Admin Users: Hiding CryptoLoader via ref (error path).');
           }
           cryptoLoaderRef.current.hideLoader();
         } else {
           if (process.env.NODE_ENV === 'development') {
-            console.warn('Admin Users: cryptoLoaderRef.current is null when trying to hide (error path).');
           }
         }
         if (process.env.NODE_ENV === 'development') {
-          console.log('Admin Users: Setting loading to false (error path).');
         }
         setLoading(false);
       }

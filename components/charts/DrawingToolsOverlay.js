@@ -114,7 +114,6 @@ const DrawingToolsOverlay = ({
       // Find Plotly container in the DOM
       const plotlyContainer = document.querySelector('.js-plotly-plot');
       if (!plotlyContainer) {
-        console.warn("No Plotly container found in the DOM");
         return;
       }
       
@@ -123,7 +122,6 @@ const DrawingToolsOverlay = ({
       // Find the plot area (the main SVG or the plot div)
       const mainSvg = plotlyContainer.querySelector('.main-svg');
       if (!mainSvg) {
-        console.warn("No main-svg found in Plotly container");
         return;
       }
       
@@ -176,7 +174,6 @@ const DrawingToolsOverlay = ({
         resizeObserver.disconnect();
       };
     } catch (err) {
-      console.error("Error setting up drawing overlay:", err);
     }
   };
   
@@ -201,7 +198,6 @@ const DrawingToolsOverlay = ({
         left: plotRect.left - containerRect.left
       });
     } catch (err) {
-      console.error("Error positioning drawing area:", err);
     }
   };
 
@@ -248,7 +244,6 @@ const DrawingToolsOverlay = ({
         }
       }
     } catch (err) {
-      console.error("Error updating tool mode:", err);
     }
   }, [activeTool, plotlyNode]);
 
@@ -258,14 +253,12 @@ const DrawingToolsOverlay = ({
       // Find the Plotly chart
       const plotlyDiv = document.querySelector('.js-plotly-plot');
       if (!plotlyDiv || !window.Plotly) {
-        console.warn("Cannot convert coordinates - Plotly not found");
         return { date: new Date(), price: 0 };
       }
       
       // Get the full layout with axes
       const fullLayout = plotlyDiv._fullLayout;
       if (!fullLayout || !fullLayout.xaxis || !fullLayout.yaxis) {
-        console.warn("Plotly layout or axes not available");
         return { date: new Date(), price: 0 };
       }
       
@@ -275,7 +268,6 @@ const DrawingToolsOverlay = ({
       
       return { date: new Date(date), price };
     } catch (error) {
-      console.error("Error converting coordinates:", error);
       return { date: new Date(), price: 0 };
     }
   };
@@ -286,14 +278,12 @@ const DrawingToolsOverlay = ({
       // Find the Plotly chart
       const plotlyDiv = document.querySelector('.js-plotly-plot');
       if (!plotlyDiv || !window.Plotly) {
-        console.warn("Cannot convert coordinates - Plotly not found");
         return { x: 0, y: 0 };
       }
       
       // Get the full layout with axes
       const fullLayout = plotlyDiv._fullLayout;
       if (!fullLayout || !fullLayout.xaxis || !fullLayout.yaxis) {
-        console.warn("Plotly layout or axes not available");
         return { x: 0, y: 0 };
       }
       
@@ -303,7 +293,6 @@ const DrawingToolsOverlay = ({
       
       return { x, y };
     } catch (error) {
-      console.error("Error converting data to pixel coordinates:", error);
       return { x: 0, y: 0 };
     }
   };

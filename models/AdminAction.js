@@ -116,7 +116,6 @@ AdminActionSchema.statics.logAction = async function(actionData) {
     await action.save();
     return action;
   } catch (error) {
-    console.error('Failed to log admin action:', error);
     // Don't throw error to prevent breaking the main operation
     return null;
   }

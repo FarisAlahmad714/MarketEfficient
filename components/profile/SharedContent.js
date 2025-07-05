@@ -18,18 +18,14 @@ const SharedContent = ({ username, isOwnProfile = false }) => {
   const fetchSharedContent = async () => {
     try {
       setLoading(true);
-      console.log('Fetching shared content for:', username);
       const response = await fetch(`/api/profile/shared-content?username=${username}&limit=20`);
       
       if (response.ok) {
         const data = await response.json();
-        console.log('Fetched shared content:', data);
         setSharedContent(data.content);
       } else {
-        console.error('Failed to fetch shared content:', response.status, response.statusText);
       }
     } catch (error) {
-      console.error('Error fetching shared content:', error);
     } finally {
       setLoading(false);
     }

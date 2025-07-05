@@ -52,7 +52,6 @@ const TradingHighlights = ({
         }
       }
     } catch (error) {
-      console.error('Error checking shared status:', error);
     }
   };
 

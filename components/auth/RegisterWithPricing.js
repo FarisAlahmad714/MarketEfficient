@@ -83,7 +83,6 @@ const RegisterWithPricing = () => {
         const data = await response.json();
         setCsrfToken(data.csrfToken);
       } catch (error) {
-        console.error('Failed to fetch CSRF token:', error);
         setError('Could not initialize secure session. Please refresh the page.');
       }
     };
@@ -118,7 +117,6 @@ const RegisterWithPricing = () => {
           throw new Error(data.error);
         }
       } catch (err) {
-        console.error('Failed to restore session:', err);
         setError(err.message || 'Could not restore your previous session. Please start again.');
         // Clear the URL on failure too
         router.replace('/auth/register', undefined, { shallow: true });
@@ -151,7 +149,6 @@ const RegisterWithPricing = () => {
       setIsEmailAvailable(data.isAvailable);
       setEmailMessage(data.isAvailable ? '✅' : 'Email is already in use');
     } catch (error) {
-      console.error('Error checking email:', error);
       setEmailMessage('Error checking email');
     } finally {
       setIsCheckingEmail(false);
@@ -242,7 +239,6 @@ const RegisterWithPricing = () => {
         setError(data.error || 'Invalid promo code');
       }
     } catch (error) {
-      console.error('Promo validation error:', error);
       setPromoValidation({ valid: false });
       setError('Failed to validate promo code');
     } finally {
@@ -383,7 +379,6 @@ const RegisterWithPricing = () => {
       });
       return response.ok;
     } catch (error) {
-      console.error('Failed to resend verification email:', error);
       return false;
     }
   };
@@ -440,7 +435,7 @@ const RegisterWithPricing = () => {
         {currentStep === 1 && (
           <div className={styles.stepContent}>
             <h2>Create Your Account</h2>
-            <p>Start your trading journey with MarketEfficient</p>
+            <p>Start your trading journey with ChartSense</p>
 
             <form onSubmit={handleAccountSubmit}>
               <div className={styles.formGroup}>

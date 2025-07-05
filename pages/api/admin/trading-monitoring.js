@@ -73,7 +73,6 @@ async function tradingMonitoringHandler(req, res) {
     });
 
   } catch (error) {
-    console.error('Trading monitoring API error:', error);
     return res.status(500).json({ 
       error: 'Internal server error',
       message: 'Failed to fetch trading monitoring data' 

@@ -29,7 +29,6 @@ export default async function handler(req, res) {
       try {
         profileImageUrl = await getSignedUrlForImage(user.profileImageGcsPath);
       } catch (error) {
-        console.error('Error generating signed URL for user profile image:', error);
         return res.status(500).json({ 
           error: 'Failed to generate profile image URL',
           details: error.message
@@ -43,7 +42,6 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error('Error fetching user profile image:', error);
     return res.status(500).json({ 
       error: 'Internal server error',
       details: error.message 

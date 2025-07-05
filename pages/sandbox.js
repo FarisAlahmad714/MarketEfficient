@@ -49,7 +49,6 @@ const SandboxPage = () => {
       setSandboxStatus(data);
       
     } catch (error) {
-      console.error('Error checking sandbox access:', error);
       setError('Failed to load sandbox. Please try again.');
     } finally {
       setLoading(false);

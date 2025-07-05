@@ -38,7 +38,6 @@ const AdminFeedback = () => {
       }
     } catch (err) {
       setError('Network error occurred');
-      console.error('Error fetching feedback:', err);
     } finally {
       setLoading(false);
     }
@@ -75,7 +74,6 @@ const AdminFeedback = () => {
       }
     } catch (err) {
       setError('Network error occurred');
-      console.error('Error updating feedback status:', err);
     }
   };
 
@@ -109,7 +107,6 @@ const AdminFeedback = () => {
       }
     } catch (err) {
       setError('Network error occurred');
-      console.error('Error deleting feedback:', err);
     }
   };
 

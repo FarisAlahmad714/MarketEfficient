@@ -45,7 +45,6 @@ export default async function handler(req, res) {
     res.status(200).json(subscriptionData);
 
   } catch (error) {
-    console.error('Subscription fetch error:', error);
     
     if (error.name === 'JsonWebTokenError') {
       return res.status(401).json({ error: 'Invalid token' });

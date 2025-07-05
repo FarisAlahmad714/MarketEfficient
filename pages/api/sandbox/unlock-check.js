@@ -121,7 +121,6 @@ async function unlockCheckHandler(req, res) {
     res.status(200).json(response);
     
   } catch (error) {
-    console.error('Error checking sandbox unlock status:', error);
     res.status(500).json({ 
       error: 'Failed to check unlock status',
       message: error.message 

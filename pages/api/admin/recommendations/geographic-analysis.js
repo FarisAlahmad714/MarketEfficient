@@ -157,7 +157,6 @@ export default async function handler(req, res) {
         });
 
       } catch (error) {
-        console.error('Geographic analysis error:', error);
         res.status(500).json({ error: 'Failed to fetch geographic analysis data' });
       } finally {
         resolve();

@@ -95,7 +95,6 @@ export default async function handler(req, res) {
         });
 
       } catch (error) {
-        console.error('Email management API error:', error);
         res.status(500).json({ 
           error: 'Failed to fetch email management data',
           message: error.message 

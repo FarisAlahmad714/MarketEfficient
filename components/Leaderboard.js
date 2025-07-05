@@ -79,7 +79,6 @@ const Leaderboard = () => {
           }, 500);
         }, 1000);
       } catch (err) {
-        console.error('Error fetching leaderboard:', err);
         setError('Unable to load leaderboard data. Please try again later.');
         setLoading(false);
       }

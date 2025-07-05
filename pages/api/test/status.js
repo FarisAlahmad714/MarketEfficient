@@ -52,7 +52,6 @@ export default async function handler(req, res) {
       message: 'No data found for this session'
     });
   } catch (error) {
-    console.error('Error checking test status:', error);
     return res.status(500).json({
       error: 'Failed to check test status',
       message: error.message

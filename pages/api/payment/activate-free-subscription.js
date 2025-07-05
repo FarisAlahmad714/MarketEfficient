@@ -102,7 +102,6 @@ export default async function handler(req, res) {
         await sendVerificationEmail(user, user.verificationToken);
         logger.log('Verification email sent for free subscription');
       } catch (emailError) {
-        console.error('Failed to send verification email for free subscription:', emailError);
       }
     }
     
@@ -113,7 +112,6 @@ export default async function handler(req, res) {
       await user.save();
       logger.log('Welcome email sent for free subscription');
     } catch (emailError) {
-      console.error('Failed to send welcome email:', emailError);
     }
 
     res.status(200).json({
@@ -128,7 +126,6 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error('Free subscription activation error:', error);
     res.status(500).json({ 
       error: 'Failed to activate free subscription',
       details: error.message 

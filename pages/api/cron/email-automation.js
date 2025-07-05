@@ -23,7 +23,6 @@ export default async function handler(req, res) {
     const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
     const dayOfMonth = today.getDate();
     
-    console.log(`Starting email automation cron job - Day: ${dayOfWeek}, Date: ${dayOfMonth}`);
     
     const results = {
       weeklyMetrics: null,
@@ -33,26 +32,22 @@ export default async function handler(req, res) {
     
     // Sunday (0) - Weekly Metrics
     if (dayOfWeek === 0) {
-      console.log('Running weekly metrics...');
       results.weeklyMetrics = await runWeeklyMetrics();
     }
     
     // 1st of month - Monthly Metrics + Quarterly Sandbox Deposits
     if (dayOfMonth === 1) {
-      console.log('Running monthly metrics...');
       results.monthlyMetrics = await runMonthlyMetrics();
       
       // Check if this is a quarter start month (Jan=0, Apr=3, Jul=6, Oct=9)
       const currentMonth = today.getMonth();
       if ([0, 3, 6, 9].includes(currentMonth)) {
-        console.log('Running quarterly sandbox deposit notifications...');
         results.sandboxDeposits = await runQuarterlySandboxDeposits();
       }
     }
     
     // Monday (1) - Inactive Reminders
     if (dayOfWeek === 1) {
-      console.log('Running inactive reminders...');
       results.inactiveReminders = await runInactiveReminders();
     }
     
@@ -73,7 +68,6 @@ export default async function handler(req, res) {
     });
     
   } catch (error) {
-    console.error('Email automation cron error:', error);
     return res.status(500).json({ 
       error: 'Cron job failed',
       message: error.message 
@@ -99,14 +93,12 @@ async function runWeeklyMetrics() {
         if (metrics.testsTaken > 0) {
           await sendMetricsEmail(user, metrics, 'weekly');
           successCount++;
-          console.log(`Sent weekly metrics to ${user.email}`);
         }
         
         // Small delay to avoid rate limiting
         await new Promise(resolve => setTimeout(resolve, 500));
         
       } catch (error) {
-        console.error(`Error sending weekly metrics to ${user.email}:`, error);
         errorCount++;
         errors.push({ email: user.email, error: error.message });
       }
@@ -121,7 +113,6 @@ async function runWeeklyMetrics() {
     };
     
   } catch (error) {
-    console.error('Weekly metrics error:', error);
     return {
       type: 'weekly-metrics',
       error: error.message
@@ -147,14 +138,12 @@ async function runMonthlyMetrics() {
         if (metrics.testsTaken > 0) {
           await sendMetricsEmail(user, metrics, 'monthly');
           successCount++;
-          console.log(`Sent monthly metrics to ${user.email}`);
         }
         
         // Small delay to avoid rate limiting
         await new Promise(resolve => setTimeout(resolve, 500));
         
       } catch (error) {
-        console.error(`Error sending monthly metrics to ${user.email}:`, error);
         errorCount++;
         errors.push({ email: user.email, error: error.message });
       }
@@ -169,7 +158,6 @@ async function runMonthlyMetrics() {
     };
     
   } catch (error) {
-    console.error('Monthly metrics error:', error);
     return {
       type: 'monthly-metrics',
       error: error.message
@@ -190,13 +178,11 @@ async function runInactiveReminders() {
       try {
         await sendInactiveUserReminder(user);
         successCount++;
-        console.log(`Sent inactive reminder to ${user.email}`);
         
         // Small delay to avoid rate limiting
         await new Promise(resolve => setTimeout(resolve, 500));
         
       } catch (error) {
-        console.error(`Error sending inactive reminder to ${user.email}:`, error);
         errorCount++;
         errors.push({ email: user.email, error: error.message });
       }
@@ -212,7 +198,6 @@ async function runInactiveReminders() {
     };
     
   } catch (error) {
-    console.error('Inactive reminders error:', error);
     return {
       type: 'inactive-reminders',
       error: error.message
@@ -294,7 +279,6 @@ async function runQuarterlySandboxDeposits() {
             year: new Date().getFullYear()
           });
           
-          console.log(`Processed quarterly deposit for ${user.email}`);
         }
         
         successCount++;
@@ -303,7 +287,6 @@ async function runQuarterlySandboxDeposits() {
         await new Promise(resolve => setTimeout(resolve, 500));
         
       } catch (error) {
-        console.error(`Error processing quarterly deposit for portfolio ${portfolio._id}:`, error);
         errorCount++;
         errors.push({ portfolioId: portfolio._id, error: error.message });
       }
@@ -319,7 +302,6 @@ async function runQuarterlySandboxDeposits() {
     };
     
   } catch (error) {
-    console.error('Quarterly sandbox deposits error:', error);
     return {
       type: 'quarterly-sandbox-deposits',
       error: error.message

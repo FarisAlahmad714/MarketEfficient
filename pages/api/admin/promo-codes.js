@@ -40,7 +40,6 @@ export default async function handler(req, res) {
     }
 
   } catch (error) {
-    console.error('Promo codes API error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 }
@@ -97,7 +96,6 @@ async function getPromoCodes(req, res) {
     });
 
   } catch (error) {
-    console.error('Error fetching promo codes:', error);
     res.status(500).json({ error: 'Failed to fetch promo codes' });
   }
 }
@@ -171,7 +169,6 @@ async function createPromoCode(req, res, admin) {
     });
 
   } catch (error) {
-    console.error('Error creating promo code:', error);
     res.status(500).json({ error: 'Failed to create promo code' });
   }
 }
@@ -230,7 +227,6 @@ async function updatePromoCode(req, res, admin) {
     });
 
   } catch (error) {
-    console.error('Error updating promo code:', error);
     res.status(500).json({ error: 'Failed to update promo code' });
   }
 }
@@ -272,7 +268,6 @@ async function deactivatePromoCode(req, res, admin) {
     });
 
   } catch (error) {
-    console.error('Error deactivating promo code:', error);
     res.status(500).json({ error: 'Failed to deactivate promo code' });
   }
 } 

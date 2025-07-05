@@ -239,7 +239,7 @@ const StudySection = () => {
       </div>
 
       <div className="study-benefits">
-        <h2>Why Choose MarketEfficient Academy?</h2>
+        <h2>Why Choose ChartSense Academy?</h2>
         <div className="benefits-grid">
           <div className="benefit-card">
             <div className="benefit-icon">

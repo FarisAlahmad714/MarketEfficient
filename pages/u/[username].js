@@ -54,7 +54,6 @@ const PublicProfilePage = () => {
       const data = await response.json();
       setProfile(data);
     } catch (err) {
-      console.error('Error fetching public profile:', err);
       setError('Failed to load profile');
     } finally {
       setLoading(false);
@@ -107,7 +106,7 @@ const PublicProfilePage = () => {
 
   const shareToSocial = (platform) => {
     const url = getProductionUrl();
-    const text = `Check out ${profile.name}'s trading profile on MarketEfficient!`;
+    const text = `Check out ${profile.name}'s trading profile on ChartSense!`;
     
     const shareUrls = {
       twitter: `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`,
@@ -158,7 +157,7 @@ const PublicProfilePage = () => {
         textAlign: 'center'
       }}>
         <Head>
-          <title>Profile Not Found - MarketEfficient</title>
+          <title>Profile Not Found - ChartSense</title>
         </Head>
         
         <div style={{
@@ -207,27 +206,27 @@ const PublicProfilePage = () => {
   return (
     <>
       <Head>
-        <title>{profile.name} (@{profile.username}) - MarketEfficient</title>
-        <meta name="description" content={`${profile.name}'s trading profile on MarketEfficient. ${profile.bio}`} />
+        <title>{profile.name} (@{profile.username}) - ChartSense</title>
+        <meta name="description" content={`${profile.name}'s trading profile on ChartSense. ${profile.bio}`} />
         
         {/* Open Graph meta tags for social sharing */}
-        <meta property="og:title" content={`${profile.name} (@${profile.username}) - MarketEfficient`} />
-        <meta property="og:description" content={profile.bio || `Check out ${profile.name}'s trading performance on MarketEfficient!`} />
+        <meta property="og:title" content={`${profile.name} (@${profile.username}) - ChartSense`} />
+        <meta property="og:description" content={profile.bio || `Check out ${profile.name}'s trading performance on ChartSense!`} />
         <meta property="og:type" content="profile" />
         <meta property="og:url" content={getProductionUrl()} />
-        <meta property="og:site_name" content="MarketEfficient" />
+        <meta property="og:site_name" content="ChartSense" />
         
         {/* Open Graph image */}
         <meta property="og:image" content="https://www.chartsense.trade/images/banner.png?v=2" />
         <meta property="og:image:width" content="1024" />
         <meta property="og:image:height" content="1024" />
-        <meta property="og:image:alt" content={`${profile.name}'s MarketEfficient trading profile`} />
+        <meta property="og:image:alt" content={`${profile.name}'s ChartSense trading profile`} />
         
         {/* Twitter Card meta tags */}
         <meta name="twitter:card" content="summary" />
         <meta name="twitter:site" content="@chartsense" />
-        <meta name="twitter:title" content={`${profile.name} (@${profile.username}) - MarketEfficient`} />
-        <meta name="twitter:description" content={profile.bio || `Check out ${profile.name}'s trading performance on MarketEfficient!`} />
+        <meta name="twitter:title" content={`${profile.name} (@${profile.username}) - ChartSense`} />
+        <meta name="twitter:description" content={profile.bio || `Check out ${profile.name}'s trading performance on ChartSense!`} />
         <meta name="twitter:image" content="https://www.chartsense.trade/images/banner.png?v=2" />
       </Head>
 

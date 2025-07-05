@@ -41,7 +41,6 @@ const CheckoutSuccess = () => {
         storage.removeItem('checkout_error');
         
       } catch (error) {
-        console.error('Error verifying payment:', error);
         router.push('/profile');
       } finally {
         setLoading(false);
@@ -69,7 +68,7 @@ const CheckoutSuccess = () => {
   return (
     <>
       <Head>
-        <title>Payment Successful - MarketEfficient</title>
+        <title>Payment Successful - ChartSense</title>
       </Head>
       
       <div style={{
@@ -106,7 +105,7 @@ const CheckoutSuccess = () => {
           fontSize: '18px',
           lineHeight: '1.5'
         }}>
-          Welcome to MarketEfficient Pro! Your subscription is now active and you have 
+          Welcome to ChartSense ! Your subscription is now active and you have 
           full access to all premium features.
         </p>
         

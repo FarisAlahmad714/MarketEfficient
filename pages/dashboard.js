@@ -149,7 +149,6 @@ if (data && data.summary && data.summary.testsByType) {
     logging.log('Dashboard data after filtering:', data); // Debug log
     setMetrics(data);
   } catch (err) {
-    console.error('Error fetching dashboard metrics:', err);
     setError('Failed to load dashboard data. Please try again.');
   } finally {
     // Use the CryptoLoader ref to hide the loader

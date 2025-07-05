@@ -104,9 +104,7 @@ async function handler(req, res) {
     });
     
     // End session and collect analytics
-    console.log(`Ending chart session for user ${userId}, exam: fibonacci, chart: ${chartCount}, part: ${part}`);
     const sessionAnalytics = await endChartSession(userId, 'fibonacci', chartCount, part);
-    console.log(`Session analytics result:`, sessionAnalytics ? 'Success' : 'Failed');
     
     return res.status(200).json({
       success: true,
@@ -127,7 +125,6 @@ async function handler(req, res) {
       attempts: timeValidation.attempts
     });
   } catch (error) {
-    console.error('Error in validate-fibonacci API:', error);
     return res.status(500).json({ 
       error: 'Validation failed',
       message: error.message 
@@ -573,7 +570,6 @@ function findAlternativeRetracements(chartData, part) {
     // Return top alternatives (limit to 3 to avoid excessive checking)
     return alternatives.slice(0, 3);
   } catch (error) {
-    console.error('Error finding alternative retracements:', error);
     return [];
   }
 }

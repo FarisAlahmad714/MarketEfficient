@@ -105,7 +105,6 @@ export default async function handler(req, res) {
         });
 
       } catch (error) {
-        console.error('Users list API error:', error);
         res.status(500).json({ 
           error: 'Failed to retrieve users',
           message: error.message 

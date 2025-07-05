@@ -64,7 +64,6 @@ export default async function handler(req, res) {
     }
 
   } catch (error) {
-    console.error('Error marking notification as read:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 }
