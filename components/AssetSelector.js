@@ -1110,17 +1110,6 @@ const AssetSelector = () => {
           </CarouselControls>
         )}
         
-        {canNavigate && (
-          <AutoPlayIndicator>
-            <motion.div
-              animate={{ scale: autoPlay ? [1, 1.2, 1] : 1 }}
-              transition={{ repeat: autoPlay ? Infinity : 0, duration: 2 }}
-            >
-              🔄
-            </motion.div>
-            Auto-play {autoPlay ? 'enabled' : 'paused'}
-          </AutoPlayIndicator>
-        )}
       </CategorySection>
     );
   };

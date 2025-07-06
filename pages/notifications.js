@@ -81,6 +81,9 @@ const NotificationsPage = () => {
           )
         );
         setUnreadCount(prev => Math.max(0, prev - 1));
+        
+        // Notify navbar to update notification count
+        window.dispatchEvent(new CustomEvent('notificationUpdate'));
       }
     } catch (error) {
     }
@@ -105,6 +108,9 @@ const NotificationsPage = () => {
           prev.map(notif => ({ ...notif, isRead: true, readAt: new Date() }))
         );
         setUnreadCount(0);
+        
+        // Notify navbar to update notification count
+        window.dispatchEvent(new CustomEvent('notificationUpdate'));
       }
     } catch (error) {
     } finally {

@@ -9,6 +9,7 @@ import { RiExchangeLine } from 'react-icons/ri';
 import { HiMenuAlt3, HiX } from 'react-icons/hi';
 import { AuthContext } from '../contexts/AuthContext';
 import { ThemeContext } from '../contexts/ThemeContext';
+import storage from '../lib/storage';
 import { useProfileImage } from '../lib/useProfileImage';
 import ProfileAvatar from './ProfileAvatar';
 import FeedbackModal from './FeedbackModal';
@@ -33,6 +34,7 @@ const Navbar = () => {
 
   // Notification state
   const [notificationCount, setNotificationCount] = useState(0);
+  
 
   // Real-time asset prices using the API
   const [assetPrices, setAssetPrices] = useState([]);
@@ -84,8 +86,11 @@ const Navbar = () => {
     if (!isAuthenticated || !user) return;
     
     try {
-      const token = localStorage.getItem('auth_token');
-      if (!token) return;
+      const token = await storage.getItem('auth_token');
+      if (!token) {
+        console.warn('No auth token found for notification count fetch');
+        return;
+      }
       
       const response = await fetch('/api/notifications/unread-count', {
         headers: {
@@ -95,9 +100,13 @@ const Navbar = () => {
       
       if (response.ok) {
         const data = await response.json();
+        console.log('Notification count fetched:', data.unreadCount);
         setNotificationCount(data.unreadCount || 0);
+      } else {
+        console.error('Failed to fetch notification count:', response.status, response.statusText);
       }
     } catch (error) {
+      console.error('Error fetching notification count:', error);
     }
   };
 
@@ -106,7 +115,7 @@ const Navbar = () => {
     if (!isAuthenticated || !user) return;
     
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = await storage.getItem('auth_token');
       if (!token) return;
       
       const response = await fetch('/api/sandbox/unlock-check', {
@@ -467,7 +476,7 @@ const Navbar = () => {
               <Link href="/notifications" className="notification-bell premium-button">
                 <div className="bell-container">
                   <FaBell />
-                    {notificationCount > 0 && (
+                  {notificationCount > 0 && (
                     <div className="notification-badge">
                       {notificationCount > 99 ? '99+' : notificationCount}
                     </div>
@@ -475,6 +484,7 @@ const Navbar = () => {
                 </div>
                 <span className="button-glow"></span>
               </Link>
+
 
               <div className="user-menu">
               <button 
@@ -1358,24 +1368,26 @@ const Navbar = () => {
         }
 
         .bell-container {
-          position: relative;
+          position: relative !important;
           display: flex;
           align-items: center;
           justify-content: center;
+          width: 24px;
+          height: 24px;
         }
 
         .notification-badge {
-          position: absolute;
-          top: -8px;
-          right: -8px;
+          position: absolute !important;
+          top: -8px !important;
+          right: -8px !important;
           background: #ef4444 !important;
           color: white !important;
-          border-radius: 10px;
-          padding: 2px 6px;
-          font-size: 11px;
+          border-radius: 8px;
+          padding: 1px 4px;
+          font-size: 10px;
           font-weight: 600;
-          min-width: 18px;
-          height: 18px;
+          min-width: 14px;
+          height: 14px;
           display: flex !important;
           align-items: center;
           justify-content: center;
