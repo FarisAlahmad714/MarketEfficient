@@ -24,6 +24,31 @@ const ExamContainer = styled.div`
 
 const ExamHeader = styled.div`
   margin-bottom: 20px;
+  position: relative;
+`;
+
+const HelpButton = styled.button`
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: ${({ $isDarkMode }) => $isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'};
+  border: 1px solid ${({ $isDarkMode }) => $isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)'};
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: ${({ $isDarkMode }) => $isDarkMode ? '#ffffff' : '#1a1a1a'};
+  font-size: 16px;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+
+  &:hover {
+    transform: scale(1.1);
+    background: ${({ $isDarkMode }) => $isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)'};
+  }
 `;
 
 const Title = styled.h1`
@@ -99,7 +124,7 @@ const LoadingOverlay = styled.div`
   }
 `;
 
-const ChartExam = ({ examType, assetType }) => {
+const ChartExam = ({ examType, assetType, startTour }) => {
   // Move all hook calls inside the component function
   const router = useRouter();
   const { darkMode } = React.useContext(ThemeContext);
@@ -598,6 +623,17 @@ useEffect(() => {
   return (
     <ExamContainer>
       <ExamHeader>
+        {startTour && (
+          <HelpButton
+            $isDarkMode={darkMode}
+            onClick={startTour}
+            title="Take guided tour"
+            className="help-button"
+          >
+            ?
+          </HelpButton>
+        )}
+        
         <Title $isDarkMode={darkMode}>
           {examType === 'swing-analysis' ? 'Swing Analysis' :
            examType === 'fibonacci-retracement' ? 'Fibonacci Retracement' :

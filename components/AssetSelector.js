@@ -63,6 +63,7 @@ const Header = styled.div`
   z-index: 2;
 `;
 
+
 const Title = styled.h1`
   font-size: 3.5rem;
   margin-bottom: 25px;
@@ -613,6 +614,7 @@ const AssetSelector = () => {
   const [equityAutoPlay, setEquityAutoPlay] = useState(false);
   const [commodityAutoPlay, setCommodityAutoPlay] = useState(false);
   
+  
   const router = useRouter();
   const cryptoLoaderRef = useRef(null);
   const cryptoIntervalRef = useRef(null);
@@ -655,6 +657,7 @@ const AssetSelector = () => {
     );
     setFilteredAssets(filtered);
   }, [searchQuery, assets]);
+
 
   // Separate assets by type
   const cryptoAssets = filteredAssets.filter(asset => asset.type === 'crypto');
@@ -800,6 +803,7 @@ const AssetSelector = () => {
   const handleCloseModal = () => {
     setShowTimeframeModal(false);
   };
+
 
   const getGradient = (type, symbol) => {
     if (type === 'crypto') {
@@ -1148,7 +1152,7 @@ const AssetSelector = () => {
         style={{ bottom: '10%', right: '15%' }}
       />
 
-      <Header>
+      <Header className="asset-selector-container">
         <motion.div
           initial={{ opacity: 0, y: -30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -1173,7 +1177,7 @@ const AssetSelector = () => {
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.6, delay: 0.4, ease: "easeOut" }}
         >
-          <SearchBar>
+          <SearchBar className="asset-search-bar">
             <FaSearch style={{ color: '#a0a0a0', marginRight: '12px', fontSize: '1.1rem' }} />
             <SearchInput
               type="text"
@@ -1186,39 +1190,45 @@ const AssetSelector = () => {
         </motion.div>
       </Header>
 
-      <div style={{ marginTop: '80px' }}>
+      <div style={{ marginTop: '80px' }} className="asset-categories-container">
         {/* Crypto Assets Carousel */}
-        {renderCarousel(
-          cryptoAssets, 
-          cryptoCurrentIndex, 
-          navigateCrypto, 
-          goToCryptoSlide, 
-          cryptoAutoPlay, 
-          setCryptoAutoPlay,
-          'Cryptocurrency'
-        )}
+        <div className="crypto-assets-section">
+          {renderCarousel(
+            cryptoAssets, 
+            cryptoCurrentIndex, 
+            navigateCrypto, 
+            goToCryptoSlide, 
+            cryptoAutoPlay, 
+            setCryptoAutoPlay,
+            'Cryptocurrency'
+          )}
+        </div>
         
         {/* Equity Assets Carousel */}
-        {renderCarousel(
-          equityAssets, 
-          equityCurrentIndex, 
-          navigateEquity, 
-          goToEquitySlide, 
-          equityAutoPlay, 
-          setEquityAutoPlay,
-          'Equities'
-        )}
+        <div className="equity-assets-section">
+          {renderCarousel(
+            equityAssets, 
+            equityCurrentIndex, 
+            navigateEquity, 
+            goToEquitySlide, 
+            equityAutoPlay, 
+            setEquityAutoPlay,
+            'Equities'
+          )}
+        </div>
         
         {/* Commodity Assets Carousel */}
-        {renderCarousel(
-          commodityAssets, 
-          commodityCurrentIndex, 
-          navigateCommodity, 
-          goToCommoditySlide, 
-          commodityAutoPlay, 
-          setCommodityAutoPlay,
-          'Commodities'
-        )}
+        <div className="commodity-assets-section">
+          {renderCarousel(
+            commodityAssets, 
+            commodityCurrentIndex, 
+            navigateCommodity, 
+            goToCommoditySlide, 
+            commodityAutoPlay, 
+            setCommodityAutoPlay,
+            'Commodities'
+          )}
+        </div>
       </div>
 
       {showTimeframeModal && (
@@ -1228,6 +1238,7 @@ const AssetSelector = () => {
           onClose={handleCloseModal}
         />
       )}
+
     </Container>
   );
 };

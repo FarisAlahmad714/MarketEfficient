@@ -5,15 +5,35 @@ import { useContext } from 'react';
 import { ThemeContext } from '../../contexts/ThemeContext';
 import CryptoLoader from '../../components/CryptoLoader';
 import logger from '../../lib/logger'; // Adjust path to your logger utility
+import GuidedTour from '../../components/common/GuidedTour';
+import { getTourSteps } from '../../lib/tourSteps';
 const ChartExamPage = () => {
   const router = useRouter();
   const { type, assetType } = router.query;
   const { darkMode } = useContext(ThemeContext);
   const [loading, setLoading] = useState(true);
   
+  // Tour state
+  const [showTour, setShowTour] = useState(false);
+  const [tourSteps, setTourSteps] = useState([]);
+  
   useEffect(() => {
     if (type) {
       setLoading(false);
+      
+      // Initialize tour based on exam type
+      const steps = getTourSteps('chart-exam', type);
+      setTourSteps(steps);
+      
+      // Check if user hasn't seen this exam's tour
+      const hasSeenTour = localStorage.getItem(`tour-completed-chart-exam-${type}`);
+      const tourSkipped = localStorage.getItem(`tour-skipped-chart-exam-${type}`);
+      
+      if (!hasSeenTour && !tourSkipped && steps.length > 0) {
+        setTimeout(() => {
+          setShowTour(true);
+        }, 2000);
+      }
     }
   }, [type]);
   
@@ -76,8 +96,36 @@ const ChartExamPage = () => {
       </div>
     );
   }
+
+  // Tour handlers
+  const handleTourComplete = () => {
+    localStorage.setItem(`tour-completed-chart-exam-${type}`, 'true');
+    setShowTour(false);
+  };
+
+  const handleTourSkip = () => {
+    setShowTour(false);
+  };
+
+  const startTour = () => {
+    if (tourSteps.length > 0) {
+      setShowTour(true);
+    }
+  };
   
-  return <ChartExam examType={type} assetType={assetType} />;
+  return (
+    <>
+      <ChartExam examType={type} assetType={assetType} startTour={startTour} />
+      
+      <GuidedTour
+        steps={tourSteps}
+        isOpen={showTour}
+        onComplete={handleTourComplete}
+        onSkip={handleTourSkip}
+        tourId={`chart-exam-${type}`}
+      />
+    </>
+  );
 };
 
 export default ChartExamPage;

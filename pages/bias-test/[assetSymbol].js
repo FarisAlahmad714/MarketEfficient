@@ -11,6 +11,8 @@ import storage from '../../lib/storage';
 import AppModal from '../../components/common/AppModal';
 import { useModal } from '../../lib/useModal';
 import { filterContent, quickValidate } from '../../lib/contentFilter';
+import GuidedTour from '../../components/common/GuidedTour';
+import { getTourSteps } from '../../lib/tourSteps';
 
 // Import CandlestickChart with SSR disabled
 const CandlestickChart = dynamic(
@@ -61,6 +63,11 @@ export default function AssetTestPage() {
   const [confidenceLevels, setConfidenceLevels] = useState({}); // Track confidence per question
   const [contentWarnings, setContentWarnings] = useState({}); // Track content validation warnings
   const [windowSize, setWindowSize] = useState({ width: undefined, height: undefined });
+  
+  // Tour state
+  const [showTour, setShowTour] = useState(false);
+  const [tourSteps] = useState(getTourSteps('bias-test'));
+  
   const cryptoLoaderRef = useRef(null);
   const isFetchingRef = useRef(false); // Prevent duplicate API calls
   const { darkMode } = useContext(ThemeContext);
@@ -272,6 +279,16 @@ export default function AssetTestPage() {
           setChartsLoading(false);
           if (cryptoLoaderRef.current) {
             cryptoLoaderRef.current.hideLoader();
+          }
+          
+          // Initialize tour for first-time users
+          const hasSeenTour = localStorage.getItem('tour-completed-bias-test-exam');
+          const tourSkipped = localStorage.getItem('tour-skipped-bias-test-exam');
+          
+          if (!hasSeenTour && !tourSkipped) {
+            setTimeout(() => {
+              setShowTour(true);
+            }, 2000);
           }
         }, 1500);
       } catch (err) {
@@ -490,6 +507,20 @@ export default function AssetTestPage() {
   const handleContinueTest = () => {
     setShowFocusWarning(false);
     setWarningCountdown(60);
+  };
+
+  // Tour handlers
+  const handleTourComplete = () => {
+    localStorage.setItem('tour-completed-bias-test-exam', 'true');
+    setShowTour(false);
+  };
+
+  const handleTourSkip = () => {
+    setShowTour(false);
+  };
+
+  const startTour = () => {
+    setShowTour(true);
   };
 
   const handleAnswerSelect = async (questionId, prediction) => {
@@ -801,13 +832,42 @@ export default function AssetTestPage() {
     }}>
       
       {/* Page Title */}
-      <h1 style={{ 
-        textAlign: 'center', 
-        marginBottom: '30px',
-        color: darkMode ? '#e0e0e0' : 'inherit'
-      }}>
-        {testData.asset_name} Bias Test - {testData.selected_timeframe.toUpperCase()} Timeframe
-      </h1>
+      <div style={{ position: 'relative', textAlign: 'center', marginBottom: '30px' }}>
+        <button
+          onClick={startTour}
+          style={{
+            position: 'absolute',
+            top: '0',
+            right: '0',
+            background: darkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+            border: `1px solid ${darkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)'}`,
+            borderRadius: '50%',
+            width: '40px',
+            height: '40px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            color: darkMode ? '#ffffff' : '#1a1a1a',
+            fontSize: '16px',
+            transition: 'all 0.3s ease',
+            backdropFilter: 'blur(10px)'
+          }}
+          title="Take guided tour"
+          className="help-button"
+          onMouseOver={(e) => e.target.style.transform = 'scale(1.1)'}
+          onMouseOut={(e) => e.target.style.transform = 'scale(1)'}
+        >
+          ?
+        </button>
+        
+        <h1 style={{ 
+          color: darkMode ? '#e0e0e0' : 'inherit',
+          margin: 0
+        }}>
+          {testData.asset_name} Bias Test - {testData.selected_timeframe.toUpperCase()} Timeframe
+        </h1>
+      </div>
       
       <div style={{ 
         backgroundColor: darkMode ? '#1e1e1e' : '#f5f5f5', 
@@ -882,7 +942,7 @@ export default function AssetTestPage() {
         const hasVolumeData = question.ohlc_data && question.ohlc_data.some(candle => candle.volume > 0);
         
         return (
-          <div key={question.id} style={{ 
+          <div key={question.id} className="chart-container" style={{ 
             backgroundColor: darkMode ? '#262626' : 'white', 
             padding: '20px', 
             borderRadius: '8px', 
@@ -1107,7 +1167,7 @@ export default function AssetTestPage() {
               )}
             </div>
             
-            <div style={{ 
+            <div className="prediction-buttons" style={{ 
               display: 'flex', 
               justifyContent: 'space-between', 
               gap: '15px', 
@@ -1170,6 +1230,7 @@ export default function AssetTestPage() {
                 </h3>
                 
                 <textarea
+                  className="reasoning-textarea"
                   value={reasoningInputs[question.id]}
                   onChange={(e) => handleReasoningChange(question.id, e.target.value)}
                   placeholder="Explain your analysis and reasoning..."
@@ -1208,7 +1269,7 @@ export default function AssetTestPage() {
                 )}
                 
                 {/* Confidence Level Slider */}
-                <div style={{ marginTop: '15px' }}>
+                <div className="confidence-slider" style={{ marginTop: '15px' }}>
                   <label style={{ 
                     display: 'block',
                     fontSize: '14px',
@@ -1261,6 +1322,7 @@ export default function AssetTestPage() {
       
       <div style={{ display: 'flex', justifyContent: 'center', marginTop: '30px' }}>
         <button
+          className="submit-button"
           onClick={handleSubmitTest}
           disabled={isSubmitting}
           style={{
@@ -1355,6 +1417,14 @@ export default function AssetTestPage() {
           </div>
         </div>
       )}
+
+      <GuidedTour
+        steps={tourSteps}
+        isOpen={showTour}
+        onComplete={handleTourComplete}
+        onSkip={handleTourSkip}
+        tourId="bias-test-exam"
+      />
     </div>
   );
 }

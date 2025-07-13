@@ -150,7 +150,7 @@ function AppContent({ Component, pageProps }) {
           overflow: 'hidden'
         }}>
           <CryptoLoader 
-            message="Initializing application..."
+            message="Initializing ChartSense..."
             minDisplayTime={1500}
             height="350px"
           />

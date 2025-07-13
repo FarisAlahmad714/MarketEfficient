@@ -229,69 +229,102 @@ async function fetchSegmentedData(asset, timeframe, questionCount) {
                       ((questionCount - 1) * OVERLAP);
   
   try {
-    // Fetch a large dataset, starting from a timeframe-aware random historical date
-    // This ensures we get the most recent possible data while maintaining complete outcome data
-    const randomHistoricalDate = getRandomHistoricalDate(timeframe);
-    logger.log(`Fetching ${totalCandles} candles for ${asset.symbol} at ${timeframe} timeframe, starting from ${randomHistoricalDate.toISOString()}`);
-    
-    // Use the random date as a seed for generating different data patterns
-    const randomSeed = getRandomSeed();
-    logger.log(`Using random seed: ${randomSeed} for data generation`);
-    
-    // Fetch real data with randomization
-    const allData = await fetchAssetOHLCData(asset, timeframe, totalCandles, randomHistoricalDate, randomSeed);
-    
-    // Create segments for each question
+    // FETCH SEPARATE HISTORICAL DATA FOR EACH CHART TO ENSURE UNIQUENESS
     const segments = [];
-    const segmentSize = SETUP_CANDLES + OUTCOME_CANDLES;
-    
-    // Instead of fixed steps, use random offsets for each segment to increase variability
-    let currentIdx = 0;
+    const usedEndDates = new Set(); // Track used end dates to prevent duplicates
     
     for (let i = 0; i < questionCount; i++) {
-      // Add some randomness to the step size between segments
-      const randomStepVariation = Math.floor(Math.random() * 5); // 0-4 extra candles
-      const stepSize = segmentSize - OVERLAP + randomStepVariation;
+      let attempts = 0;
+      let chartData = null;
+      let lastDate = null;
       
-      // Ensure we don't go out of bounds
-      currentIdx = Math.min(currentIdx, allData.length - segmentSize);
+      // Try multiple times to get unique data
+      while (attempts < 10 && !chartData) {
+        // Generate a unique random historical date for EACH chart
+        const chartHistoricalDate = getRandomHistoricalDate(timeframe);
+        const chartSeed = getRandomSeed() + (i * 100000) + Math.floor(Math.random() * 50000) + attempts * 1000;
+        
+        logger.log(`Chart ${i + 1}, attempt ${attempts + 1}: Fetching data starting from ${chartHistoricalDate.toISOString()}`);
+        
+        try {
+          // Fetch data specifically for this chart's time period
+          const fetchedData = await fetchAssetOHLCData(
+            asset, 
+            timeframe, 
+            SETUP_CANDLES + OUTCOME_CANDLES, 
+            chartHistoricalDate, 
+            chartSeed
+          );
+          
+          if (fetchedData && fetchedData.length >= SETUP_CANDLES + OUTCOME_CANDLES) {
+            // Check if the end date is unique
+            lastDate = fetchedData[fetchedData.length - 1]?.date;
+            const endDateKey = lastDate?.substring(0, 10); // Use just the date part (YYYY-MM-DD)
+            
+            if (!usedEndDates.has(endDateKey)) {
+              chartData = fetchedData;
+              usedEndDates.add(endDateKey);
+              segments.push(chartData);
+              logger.log(`Chart ${i + 1}: Successfully fetched unique data, last date: ${lastDate}`);
+            } else {
+              logger.log(`Chart ${i + 1}: Duplicate end date ${endDateKey}, retrying...`);
+              chartData = null; // CRITICAL: Reset to null to force retry!
+            }
+          } else {
+            throw new Error(`Insufficient data: got ${fetchedData?.length || 0} candles`);
+          }
+        } catch (error) {
+          logger.error(`Chart ${i + 1}, attempt ${attempts + 1}: Failed to fetch data:`, error.message);
+        }
+        
+        attempts++;
+      }
       
-      if (currentIdx < 0 || currentIdx >= allData.length || currentIdx + SETUP_CANDLES >= allData.length) {
-        // Generate mock data if we don't have enough real data
-        logger.log(`Not enough data for question ${i+1}, generating mock data`);
+      // If we couldn't get unique real data, use mock data
+      if (!chartData) {
+        logger.error(`Chart ${i + 1}: Could not fetch unique data after ${attempts} attempts, using mock`);
+        
         const mockSegment = generateMockSegment(
-          asset.basePrice, 
+          asset.basePrice * (0.7 + (Math.random() * 0.6)), 
           SETUP_CANDLES, 
           OUTCOME_CANDLES, 
           timeframe,
-          randomSeed + i // Use a different seed for each question
+          getRandomSeed() + (i * 200000)
         );
         segments.push(mockSegment);
-      } else {
-        // Extract a segment from the real data
-        const segment = allData.slice(currentIdx, currentIdx + segmentSize);
-        segments.push(segment);
       }
-      
-      // Move to the next segment with random offset
-      currentIdx += stepSize;
+    }
+    
+    // Validate uniqueness by checking segment end dates
+    const segmentEndDates = segments.map(seg => seg[seg.length - 1]?.date).filter(Boolean);
+    const uniqueEndDates = new Set(segmentEndDates);
+    logger.log(`Generated ${segments.length} charts with ${uniqueEndDates.size} unique end dates`);
+    
+    if (uniqueEndDates.size < segments.length) {
+      logger.error(`WARNING: Only ${uniqueEndDates.size} unique end dates for ${segments.length} charts!`);
+      logger.error(`End dates: ${Array.from(uniqueEndDates).join(', ')}`);
     }
     
     // Shuffle the segments to add more randomness
     return shuffleArray(segments);
   } catch (error) {
     
-    // Generate mock data for all segments with different patterns
+    // Generate mock data for all segments with highly different patterns
     const segments = [];
     for (let i = 0; i < questionCount; i++) {
-      const adjustedSeed = getRandomSeed() + i;
+      // Use much more diverse seeds to ensure completely different patterns
+      const adjustedSeed = getRandomSeed() + (i * 10000) + Math.floor(Math.random() * 50000);
+      // Also vary the base price significantly for each mock segment
+      const basePrice = asset.basePrice * (0.7 + (Math.random() * 0.6)); // 0.7x to 1.3x variation
+      
       segments.push(generateMockSegment(
-        asset.basePrice, 
+        basePrice, 
         SETUP_CANDLES, 
         OUTCOME_CANDLES, 
         timeframe,
         adjustedSeed
       ));
+      logger.log(`Generated unique mock segment ${i+1} with seed ${adjustedSeed} and base price ${basePrice.toFixed(2)}`);
     }
     return segments;
   }
@@ -1066,49 +1099,92 @@ async function handler(req, res) {
         }
       }
     } else if (timeframe === 'random') {
-      // For random timeframes, generate each question individually with different timeframes
+      // For random timeframes, use the same unique fetching logic
       const availableTimeframes = ['4h', 'daily', 'weekly', 'monthly'];
+      const usedEndDatesTimeframe = new Set(); // Track used end dates to prevent duplicates
       
       for (let i = 0; i < questionCount; i++) {
-        const questionTimeframe = availableTimeframes[Math.floor(Math.random() * availableTimeframes.length)];
-        const { setup: questionSetupCandles, outcome: questionOutcomeCandles } = getTimeframeCandleCounts(questionTimeframe);
-        logger.log(`Generating question ${i + 1} with ${questionTimeframe} timeframe (${questionSetupCandles}/${questionOutcomeCandles} candles)`);
+        let attempts = 0;
+        let chartData = null;
+        let questionTimeframe = null;
+        let lastDate = null;
         
-        // Fetch individual data segment for this specific timeframe
-        const questionDataSegments = await fetchSegmentedData(asset, questionTimeframe, 1);
+        // Try multiple times to get unique data with random timeframe
+        while (attempts < 15 && !chartData) {
+          // Select a random timeframe for this attempt
+          questionTimeframe = availableTimeframes[Math.floor(Math.random() * availableTimeframes.length)];
+          const { setup: questionSetupCandles, outcome: questionOutcomeCandles } = getTimeframeCandleCounts(questionTimeframe);
+          
+          // Generate unique historical date and seed
+          const chartHistoricalDate = getRandomHistoricalDate(questionTimeframe);
+          const chartSeed = getRandomSeed() + (i * 100000) + Math.floor(Math.random() * 50000) + attempts * 1000;
+          
+          logger.log(`Chart ${i + 1}, attempt ${attempts + 1}: Fetching ${questionTimeframe} data from ${chartHistoricalDate.toISOString()}`);
+          
+          try {
+            // Fetch data for this specific timeframe
+            const fetchedData = await fetchAssetOHLCData(
+              asset, 
+              questionTimeframe, 
+              questionSetupCandles + questionOutcomeCandles, 
+              chartHistoricalDate, 
+              chartSeed
+            );
+            
+            if (fetchedData && fetchedData.length >= questionSetupCandles + questionOutcomeCandles) {
+              // Check if the end date is unique
+              lastDate = fetchedData[fetchedData.length - 1]?.date;
+              const endDateKey = lastDate?.substring(0, 10); // Use just the date part
+              
+              if (!usedEndDatesTimeframe.has(endDateKey)) {
+                chartData = fetchedData;
+                usedEndDatesTimeframe.add(endDateKey);
+                
+                // Split the data
+                const setupData = chartData.slice(0, questionSetupCandles);
+                const outcomeData = chartData.slice(questionSetupCandles, questionSetupCandles + questionOutcomeCandles);
+                
+                // Determine outcome
+                const lastSetupCandle = setupData[setupData.length - 1];
+                const lastOutcomeCandle = outcomeData[outcomeData.length - 1];
+                const correctAnswer = lastOutcomeCandle.close > lastSetupCandle.close ? 'Bullish' : 'Bearish';
+                
+                questions.push({
+                  id: i + 1,
+                  timeframe: questionTimeframe,
+                  asset_name: asset.name,
+                  asset_symbol: asset.symbol,
+                  date: lastSetupCandle.date,
+                  ohlc: {
+                    open: lastSetupCandle.open,
+                    high: lastSetupCandle.high,
+                    low: lastSetupCandle.low,
+                    close: lastSetupCandle.close,
+                    volume: lastSetupCandle.volume || 0
+                  },
+                  ohlc_data: setupData,
+                  correct_answer: correctAnswer,
+                  outcome_data: outcomeData,
+                  news_annotations: [],
+                  news_loading: true
+                });
+                
+                logger.log(`Chart ${i + 1}: Successfully fetched unique ${questionTimeframe} data, last date: ${lastDate}`);
+              } else {
+                logger.log(`Chart ${i + 1}: Duplicate end date ${endDateKey} for ${questionTimeframe}, retrying...`);
+                chartData = null;
+              }
+            }
+          } catch (error) {
+            logger.error(`Chart ${i + 1}, attempt ${attempts + 1}: Failed to fetch ${questionTimeframe} data:`, error.message);
+          }
+          
+          attempts++;
+        }
         
-        if (questionDataSegments && questionDataSegments.length > 0) {
-          const segment = questionDataSegments[0];
-          
-          // Split the segment into setup and outcome using timeframe-specific counts
-          const setupData = segment.slice(0, questionSetupCandles);
-          const outcomeData = segment.slice(questionSetupCandles, questionSetupCandles + questionOutcomeCandles);
-          
-          // Determine if the outcome was bullish or bearish
-          const lastSetupCandle = setupData[setupData.length - 1];
-          const lastOutcomeCandle = outcomeData[outcomeData.length - 1];
-          const correctAnswer = lastOutcomeCandle.close > lastSetupCandle.close ? 'Bullish' : 'Bearish';
-          
-          // Store question without news annotations for now
-          questions.push({
-            id: i + 1,
-            timeframe: questionTimeframe,
-            asset_name: asset.name,
-            asset_symbol: asset.symbol,
-            date: lastSetupCandle.date,
-            ohlc: {
-              open: lastSetupCandle.open,
-              high: lastSetupCandle.high,
-              low: lastSetupCandle.low,
-              close: lastSetupCandle.close,
-              volume: lastSetupCandle.volume || 0
-            },
-            ohlc_data: setupData,
-            correct_answer: correctAnswer,
-            outcome_data: outcomeData,
-            news_annotations: [], // Will be populated by background fetching
-            news_loading: true // Flag to indicate news is being loaded
-          });
+        // If we couldn't get unique real data, log error
+        if (!chartData) {
+          logger.error(`Chart ${i + 1}: Could not fetch unique data after ${attempts} attempts`);
         }
       }
     } else {
