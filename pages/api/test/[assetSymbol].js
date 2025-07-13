@@ -257,17 +257,41 @@ async function fetchSegmentedData(asset, timeframe, questionCount) {
           );
           
           if (fetchedData && fetchedData.length >= SETUP_CANDLES + OUTCOME_CANDLES) {
-            // Check if the end date is unique
+            // Check if the end date is unique AND has sufficient gap from other charts
             lastDate = fetchedData[fetchedData.length - 1]?.date;
             const endDateKey = lastDate?.substring(0, 10); // Use just the date part (YYYY-MM-DD)
+            const endDateObj = new Date(lastDate);
             
-            if (!usedEndDates.has(endDateKey)) {
+            // Define minimum gaps between charts based on timeframe
+            const minGapDays = {
+              '4h': 30,      // At least 1 month apart
+              'daily': 60,   // At least 2 months apart
+              'weekly': 120, // At least 4 months apart
+              'monthly': 180 // At least 6 months apart
+            };
+            
+            const requiredGap = minGapDays[timeframe] || 60; // Default 2 months
+            let hasSufficientGap = true;
+            
+            // Check gap from all existing chart end dates
+            for (const existingDate of usedEndDates) {
+              const existingDateObj = new Date(existingDate);
+              const daysDiff = Math.abs((endDateObj - existingDateObj) / (1000 * 60 * 60 * 24));
+              
+              if (daysDiff < requiredGap) {
+                hasSufficientGap = false;
+                logger.log(`Chart ${i + 1}: Insufficient gap (${daysDiff.toFixed(0)} days) from ${existingDate}, need ${requiredGap} days`);
+                break;
+              }
+            }
+            
+            if (!usedEndDates.has(endDateKey) && hasSufficientGap) {
               chartData = fetchedData;
               usedEndDates.add(endDateKey);
               segments.push(chartData);
-              logger.log(`Chart ${i + 1}: Successfully fetched unique data, last date: ${lastDate}`);
+              logger.log(`Chart ${i + 1}: Successfully fetched unique data with sufficient gaps, last date: ${lastDate}`);
             } else {
-              logger.log(`Chart ${i + 1}: Duplicate end date ${endDateKey}, retrying...`);
+              logger.log(`Chart ${i + 1}: Date ${endDateKey} rejected (duplicate or too close), retrying...`);
               chartData = null; // CRITICAL: Reset to null to force retry!
             }
           } else {
@@ -1132,11 +1156,35 @@ async function handler(req, res) {
             );
             
             if (fetchedData && fetchedData.length >= questionSetupCandles + questionOutcomeCandles) {
-              // Check if the end date is unique
+              // Check if the end date is unique AND has sufficient gap from other charts
               lastDate = fetchedData[fetchedData.length - 1]?.date;
               const endDateKey = lastDate?.substring(0, 10); // Use just the date part
+              const endDateObj = new Date(lastDate);
               
-              if (!usedEndDatesTimeframe.has(endDateKey)) {
+              // Define minimum gaps between charts based on timeframe
+              const minGapDays = {
+                '4h': 30,      // At least 1 month apart
+                'daily': 60,   // At least 2 months apart
+                'weekly': 120, // At least 4 months apart
+                'monthly': 180 // At least 6 months apart
+              };
+              
+              const requiredGap = minGapDays[questionTimeframe] || 60; // Default 2 months
+              let hasSufficientGap = true;
+              
+              // Check gap from all existing chart end dates
+              for (const existingDate of usedEndDatesTimeframe) {
+                const existingDateObj = new Date(existingDate);
+                const daysDiff = Math.abs((endDateObj - existingDateObj) / (1000 * 60 * 60 * 24));
+                
+                if (daysDiff < requiredGap) {
+                  hasSufficientGap = false;
+                  logger.log(`Chart ${i + 1}: Insufficient gap (${daysDiff.toFixed(0)} days) from ${existingDate}, need ${requiredGap} days for ${questionTimeframe}`);
+                  break;
+                }
+              }
+              
+              if (!usedEndDatesTimeframe.has(endDateKey) && hasSufficientGap) {
                 chartData = fetchedData;
                 usedEndDatesTimeframe.add(endDateKey);
                 
@@ -1169,9 +1217,9 @@ async function handler(req, res) {
                   news_loading: true
                 });
                 
-                logger.log(`Chart ${i + 1}: Successfully fetched unique ${questionTimeframe} data, last date: ${lastDate}`);
+                logger.log(`Chart ${i + 1}: Successfully fetched unique ${questionTimeframe} data with sufficient gaps, last date: ${lastDate}`);
               } else {
-                logger.log(`Chart ${i + 1}: Duplicate end date ${endDateKey} for ${questionTimeframe}, retrying...`);
+                logger.log(`Chart ${i + 1}: Date ${endDateKey} rejected for ${questionTimeframe} (duplicate or too close), retrying...`);
                 chartData = null;
               }
             }

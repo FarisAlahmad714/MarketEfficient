@@ -73,12 +73,34 @@ export default function AssetTestPage() {
   const { darkMode } = useContext(ThemeContext);
   const { isOpen: modalOpen, modalProps, hideModal, showAlert, showError } = useModal();
 
-  // Helper function to format dates nicely
-  const formatDate = (dateString) => {
+  // Helper function to format dates with timezone information
+  const formatDate = (dateString, timeframe, assetSymbol) => {
     if (!dateString) return 'N/A';
     try {
       const date = new Date(dateString);
-      return date.toLocaleDateString('en-US', { 
+      const hours = date.getUTCHours();
+      
+      // Determine if this is crypto or traditional market
+      const cryptoSymbols = ['btc', 'eth', 'sol', 'bnb'];
+      const isCrypto = cryptoSymbols.includes(assetSymbol?.toLowerCase());
+      
+      // Determine timezone based on time and asset type
+      let timezone = 'EST';
+      if (isCrypto) {
+        // For crypto: midnight UTC shows as UTC, 4 PM EST shows as EST
+        if (hours === 0) {
+          timezone = 'UTC';
+        } else if (hours === 21) {
+          timezone = 'EST';
+        } else {
+          timezone = 'UTC'; // Default for 4h periods
+        }
+      } else {
+        // For stocks/commodities: always EST
+        timezone = 'EST';
+      }
+      
+      const baseFormat = date.toLocaleDateString('en-US', { 
         year: 'numeric', 
         month: 'short', 
         day: 'numeric',
@@ -86,6 +108,8 @@ export default function AssetTestPage() {
         minute: '2-digit',
         hour12: true
       });
+      
+      return `${baseFormat.replace(' at ', ' at ')} ${timezone}`;
     } catch (e) {
       return dateString;
     }
@@ -1093,7 +1117,7 @@ export default function AssetTestPage() {
                           marginBottom: '10px',
                           color: darkMode ? '#81c784' : '#2e7d32'
                         }}>
-                          Last Candle Data ({formatDate(lastCandle.date)}):
+                          Last Candle Data ({formatDate(lastCandle.date, question.timeframe, testData?.asset_symbol)}):
                         </p>
                         <div style={{ 
                           display: 'grid', 
