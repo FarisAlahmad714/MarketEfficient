@@ -80,16 +80,16 @@ const StudySection = () => {
                 <div key={index} className={styles.lessonItem}>
                   <div className={styles.lessonThumbnail}>
                     <div className={styles.lessonPlayBtn}>
-                      <i className="fas fa-play"></i>
+                      <i className="fas fa-book-open"></i>
                     </div>
-                    <div className={styles.lessonDuration}>5 min</div>
+                    <div className={styles.lessonDuration}>Read</div>
                   </div>
                   <div className={styles.lessonDetails}>
                     <h5 className={styles.lessonName}>{lessonTitle}</h5>
                     <div className={styles.lessonMeta}>
                       <span className={styles.lessonType}>
-                        <i className="fas fa-video"></i>
-                        Video Lesson
+                        <i className="fas fa-file-text"></i>
+                        Interactive Lesson
                       </span>
                       <span className={styles.lessonDifficulty}>
                         <i className="fas fa-signal"></i>
