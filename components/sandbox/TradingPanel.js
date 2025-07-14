@@ -38,11 +38,11 @@ const TradingPanel = ({ selectedAsset, marketData, portfolioData, onTradeSuccess
     }
   };
 
-  // Get current price with multiple fallbacks
+  // Get current price with multiple fallbacks (no hardcoded values)
   const currentPrice = marketData[selectedAsset]?.price || 
                       marketData[selectedAsset]?.currentPrice || 
                       portfolioData?.openPositions?.find(p => p.symbol === selectedAsset)?.currentPrice ||
-                      (selectedAsset === 'BTC' ? 107000 : selectedAsset === 'SOL' ? 156 : selectedAsset === 'ETH' ? 3800 : 0);
+                      0;
   const availableBalance = portfolioData?.balance || 0;
   const currentValue = portfolioData?.currentValue || availableBalance;
   const availableMargin = portfolioData?.riskLimits?.availableMargin ?? availableBalance;
@@ -547,7 +547,7 @@ const TradingPanel = ({ selectedAsset, marketData, portfolioData, onTradeSuccess
                   onChange={(e) => setAnalysis({...analysis, entryReason: e.target.value})}
                   onFocus={() => handleUserInteraction(true)}
                   onBlur={() => handleUserInteraction(false)}
-                  placeholder="Explain your reasoning for entering this position... (minimum 10 characters)"
+                  placeholder="Explain your reasoning for entering this position...What technical indicators/patterns support this trade?... (minimum 10 characters)"
                   className="analysis-textarea"
                   rows="4"
                 />

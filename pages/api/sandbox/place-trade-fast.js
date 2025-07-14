@@ -25,7 +25,7 @@ export default async function handler(req, res) {
     await connectDB();
     
     const userId = decoded.userId;
-    const { symbol, side, type, quantity, leverage = 1, preTradeAnalysis } = req.body;
+    const { symbol, side, type, quantity, leverage = 1, stopLoss, takeProfit, preTradeAnalysis } = req.body;
     
     
     // Basic validation
@@ -45,21 +45,22 @@ export default async function handler(req, res) {
     }
     
     
-    // Use simple fixed price (no external API call)
-    const mockPrices = {
-      'BTC': 108000,
-      'ETH': 2500,
-      'SOL': 147,
-      'BNB': 653,
-      'AAPL': 213,
-      'TSLA': 315,
-      'NVDA': 159,
-      'GLD': 307,
-      'SPY': 450,
-      'QQQ': 387
-    };
+    // Get real-time price using price simulator
+    const { getPriceSimulator } = require('../../../lib/priceSimulation');
+    const priceSimulator = getPriceSimulator();
     
-    const currentPrice = mockPrices[symbol] || 100;
+    // Try to get real price from API first, fallback to simulated
+    let currentPrice;
+    try {
+      currentPrice = await priceSimulator.getPriceAsync(symbol.toUpperCase());
+    } catch (error) {
+      // Fallback to synchronous simulated price
+      currentPrice = priceSimulator.getPrice(symbol.toUpperCase());
+    }
+    
+    if (!currentPrice || currentPrice <= 0) {
+      return res.status(400).json({ error: 'Unable to fetch current market price' });
+    }
     
     // Determine asset type first to get max leverage
     const cryptoSymbols = ['BTC', 'ETH', 'SOL', 'BNB'];
@@ -103,7 +104,9 @@ export default async function handler(req, res) {
       unrealizedPnL: 0,
       preTradeAnalysis: {
         entryReason: preTradeAnalysis?.entryReason || ''
-      }
+      },
+      stopLoss: stopLoss ? { price: parseFloat(stopLoss), type: 'stop_loss' } : null,
+      takeProfit: takeProfit ? { price: parseFloat(takeProfit), type: 'take_profit' } : null
     });
     
     await trade.save();

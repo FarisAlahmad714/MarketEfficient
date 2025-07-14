@@ -341,6 +341,21 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
                         <span className="quantity">
                           {position.quantity?.toFixed(6) || '0'} units
                         </span>
+                        {/* Display SL/TP in header for quick visibility */}
+                        {(position.stopLoss?.price || position.takeProfit?.price) && (
+                          <span className="sl-tp-indicators">
+                            {position.stopLoss?.price && (
+                              <span className="sl-indicator" title={`Stop Loss: ${position.stopLoss.price.toFixed(2)} SENSES`}>
+                                SL: {position.stopLoss.price.toFixed(0)}
+                              </span>
+                            )}
+                            {position.takeProfit?.price && (
+                              <span className="tp-indicator" title={`Take Profit: ${position.takeProfit.price.toFixed(2)} SENSES`}>
+                                TP: {position.takeProfit.price.toFixed(0)}
+                              </span>
+                            )}
+                          </span>
+                        )}
                       </div>
                       
                       <div className="position-actions">
@@ -1724,6 +1739,32 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
         
         .detail-value.take-profit {
           color: #00ff88;
+        }
+        
+        .sl-tp-indicators {
+          display: inline-flex;
+          gap: 8px;
+          margin-left: 12px;
+        }
+        
+        .sl-indicator, .tp-indicator {
+          padding: 2px 8px;
+          border-radius: 4px;
+          font-size: 0.75rem;
+          font-weight: 600;
+          font-family: 'SF Mono', Monaco, monospace;
+        }
+        
+        .sl-indicator {
+          background: rgba(255, 71, 87, 0.15);
+          color: #ff4757;
+          border: 1px solid rgba(255, 71, 87, 0.3);
+        }
+        
+        .tp-indicator {
+          background: rgba(0, 255, 136, 0.15);
+          color: #00ff88;
+          border: 1px solid rgba(0, 255, 136, 0.3);
         }
         
         .pnl-breakdown {
