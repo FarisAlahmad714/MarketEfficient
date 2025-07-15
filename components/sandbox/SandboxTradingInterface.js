@@ -27,6 +27,9 @@ const SandboxTradingInterface = ({ sandboxStatus, onPortfolioUpdate }) => {
   useEffect(() => {
     initializeInterface();
     
+    // Start the stop loss monitor when sandbox opens
+    startStopLossMonitor();
+    
     // Smart background updates without interrupting user flow
     setupSmartUpdates();
     
@@ -166,6 +169,45 @@ const SandboxTradingInterface = ({ sandboxStatus, onPortfolioUpdate }) => {
       }
     } catch (error) {
       // Silent fail for background price updates
+    }
+  };
+
+  // Start the stop loss monitor
+  const startStopLossMonitor = async () => {
+    try {
+      const token = await storage.getItem('auth_token');
+      
+      // First check if monitor is already running
+      const statusResponse = await fetch('/api/sandbox/monitor-status', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      if (statusResponse.ok) {
+        const status = await statusResponse.json();
+        
+        if (!status.isRunning) {
+          console.log('[Sandbox] Starting stop loss monitor...');
+          
+          // Start the monitor
+          const startResponse = await fetch('/api/sandbox/start-monitor', {
+            method: 'POST',
+            headers: { 
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          if (startResponse.ok) {
+            console.log('[Sandbox] Stop loss monitor started successfully');
+          } else {
+            console.error('[Sandbox] Failed to start stop loss monitor');
+          }
+        } else {
+          console.log('[Sandbox] Stop loss monitor already running');
+        }
+      }
+    } catch (error) {
+      console.error('[Sandbox] Error starting stop loss monitor:', error);
     }
   };
 

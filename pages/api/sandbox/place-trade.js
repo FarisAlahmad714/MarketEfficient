@@ -5,7 +5,7 @@ import { withCsrfProtect } from '../../../middleware/csrf';
 import connectDB from '../../../lib/database';
 import SandboxPortfolio from '../../../models/SandboxPortfolio';
 import SandboxTrade from '../../../models/SandboxTrade';
-import { getPriceSimulator } from '../../../lib/priceSimulation';
+const { getPriceSimulator } = require('../../../lib/priceSimulation');
 import { validateTradeRequest } from '../../../lib/trading-validation';
 import { validateAndDetectBias } from '../../../lib/sandbox-bias-detection.js';
 import { 

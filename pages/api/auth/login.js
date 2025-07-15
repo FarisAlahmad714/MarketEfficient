@@ -12,6 +12,7 @@ async function loginApiRouteHandler(req, res) {
   const isProduction = process.env.NODE_ENV === 'production';
 
   if (req.method === 'GET') {
+    // No rate limiting for GET requests (CSRF token priming)
     const csrfToken = crypto.randomBytes(32).toString('hex');
     const csrfCookieOptions = [
       `csrf_token=${csrfToken}`,
@@ -28,7 +29,7 @@ async function loginApiRouteHandler(req, res) {
     // GET IP ADDRESS INSIDE THE HANDLER
     const ip = req.headers['x-forwarded-for'] || req.connection?.remoteAddress || 'unknown';
 
-    // Apply rate limiting for authentication
+    // Apply rate limiting for authentication (POST requests only)
     return new Promise((resolve, reject) => {
       authRateLimit(req, res, () => {
         sanitizeInput()(req, res, async () => {
@@ -197,14 +198,5 @@ async function loginApiRouteHandler(req, res) {
   return res.status(405).json({ error: `Method ${req.method} Not Allowed` });
 }
 
-// Apply rate limiting before CSRF protection
-const rateLimitedHandler = (req, res) => {
-  return new Promise((resolve) => {
-    authRateLimit(req, res, () => {
-      withCsrfProtect(loginApiRouteHandler)(req, res);
-      resolve();
-    });
-  });
-};
-
-export default rateLimitedHandler;
+// Apply CSRF protection only (rate limiting is handled inside loginApiRouteHandler for POST requests)
+export default withCsrfProtect(loginApiRouteHandler);

@@ -8,6 +8,10 @@ const cron = require('node-cron');
 
 // Simple logger
 const logger = {
+  log: (...args) => console.log(...args),
+  error: (...args) => console.error(...args),
+  warn: (...args) => console.warn(...args),
+  info: (...args) => console.info(...args)
 };
 
 const dev = process.env.NODE_ENV !== 'production';
@@ -233,12 +237,25 @@ app.prepare().then(async () => {
       logger.log('💰 Funding fees: Every 8 hours (00:00, 08:00, 16:00 UTC)');
       
       // Start sandbox stop loss monitor
+      console.log('[Server] Checking stop loss monitor...');
       if (stopLossMonitor) {
-        await stopLossMonitor.start();
-        logger.log('🎯 Sandbox stop loss monitor started');
+        console.log('[Server] Stop loss monitor module loaded, attempting to start...');
+        try {
+          await stopLossMonitor.start();
+          console.log('[Server] ✓ Stop loss monitor started successfully');
+          
+          // Log initial status
+          const status = stopLossMonitor.getStatus();
+          logger.log('🎯 Monitor status:', status);
+        } catch (monitorError) {
+          logger.error('❌ Failed to start stop loss monitor:', monitorError);
+        }
+      } else {
+        logger.error('❌ Stop loss monitor module not loaded');
       }
       
     } catch (error) {
+      logger.error('❌ Error during server initialization:', error);
     }
   });
 });

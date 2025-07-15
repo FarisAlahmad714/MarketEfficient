@@ -4,7 +4,7 @@ import { createApiHandler, composeMiddleware } from '../../../lib/api-handler';
 import connectDB from '../../../lib/database';
 import SandboxPortfolio from '../../../models/SandboxPortfolio';
 import { SANDBOX_ASSETS, getAPISymbol, convertUSDToSENSES } from '../../../lib/sandbox-constants';
-import { getPriceSimulator } from '../../../lib/priceSimulation';
+const { getPriceSimulator } = require('../../../lib/priceSimulation');
 
 async function marketDataHandler(req, res) {
   await connectDB();
