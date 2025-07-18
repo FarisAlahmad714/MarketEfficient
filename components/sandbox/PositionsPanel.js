@@ -370,35 +370,6 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
             📈 Performance
           </button>
         </div>
-        {activeTab === 'open' && openPositions.length > 0 && (
-          <button 
-            className="force-check-button"
-            onClick={async () => {
-              try {
-                const token = await storage.getItem('auth_token');
-                const response = await fetch('/api/sandbox/force-check-positions', {
-                  method: 'POST',
-                  headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                  }
-                });
-                if (response.ok) {
-                  console.log('Force check completed');
-                  // Trigger parent refresh if available
-                  if (onTradeSuccess) {
-                    onTradeSuccess();
-                  }
-                }
-              } catch (error) {
-                console.error('Error forcing position check:', error);
-              }
-            }}
-            title="Force check all positions for SL/TP execution"
-          >
-            🔄 Check SL/TP
-          </button>
-        )}
       </div>
 
       <div className="panel-content">
@@ -1553,28 +1524,6 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
         .panel-header {
           padding: 20px 24px;
           border-bottom: 1px solid;
-          position: relative;
-        }
-        
-        .force-check-button {
-          position: absolute;
-          right: 24px;
-          top: 50%;
-          transform: translateY(-50%);
-          padding: 8px 16px;
-          background: rgba(59, 130, 246, 0.1);
-          color: #3b82f6;
-          border: 1px solid rgba(59, 130, 246, 0.3);
-          border-radius: 8px;
-          font-size: 0.875rem;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.3s ease;
-        }
-        
-        .force-check-button:hover {
-          background: rgba(59, 130, 246, 0.2);
-          transform: translateY(-50%) scale(1.05);
         }
         
         .dark .panel-header {
