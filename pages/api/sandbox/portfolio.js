@@ -11,6 +11,11 @@ async function portfolioHandler(req, res) {
   
   const userId = req.user.id;
   
+  // Get pagination parameters from query
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 20;
+  const skip = (page - 1) * limit;
+  
   try {
     // Check if user is admin first
     const User = require('../../../models/User');
@@ -70,20 +75,29 @@ async function portfolioHandler(req, res) {
       status: 'pending' 
     }).sort({ entryTime: -1 });
     
-    // Get recent closed trades
+    // Get recent closed trades with pagination
+    const totalTrades = await SandboxTrade.countDocuments({ 
+      userId, 
+      status: 'closed' 
+    });
+    
     const recentTrades = await SandboxTrade.find({ 
       userId, 
       status: 'closed' 
     })
     .sort({ exitTime: -1 })
-    .limit(20)
-    .select('symbol side entryPrice exitPrice realizedPnL leverage entryTime exitTime duration pnlPercentage marginUsed quantity fees preTradeAnalysis');
+    .skip(skip)
+    .limit(limit)
+    .select('symbol side entryPrice exitPrice realizedPnL leverage entryTime exitTime duration pnlPercentage marginUsed quantity fees preTradeAnalysis closeReason');
     
-    // Get transaction history (deposits, fees, etc.)
+    // Get transaction history with pagination
     const SandboxTransaction = require('../../../models/SandboxTransaction');
+    const totalTransactions = await SandboxTransaction.countDocuments({ userId });
+    
     const transactions = await SandboxTransaction.find({ userId })
       .sort({ createdAt: -1 })
-      .limit(20)
+      .skip(skip)
+      .limit(limit)
       .lean();
     
     // Calculate total unrealized P&L from open positions with real-time prices
@@ -237,7 +251,8 @@ async function portfolioHandler(req, res) {
         entryTime: trade.entryTime,
         exitTime: trade.exitTime,
         preTradeAnalysis: trade.preTradeAnalysis,
-        entryReason: trade.preTradeAnalysis?.entryReason || null
+        entryReason: trade.preTradeAnalysis?.entryReason || null,
+        closeReason: trade.closeReason || null
       })),
       
       // Transaction History
@@ -279,7 +294,18 @@ async function portfolioHandler(req, res) {
       },
       
       // Admin Status
-      isAdmin: isAdmin
+      isAdmin: isAdmin,
+      
+      // Pagination info
+      pagination: {
+        page: page,
+        limit: limit,
+        totalTrades: totalTrades,
+        totalTransactions: totalTransactions,
+        totalItems: totalTrades + totalTransactions,
+        totalPages: Math.ceil((totalTrades + totalTransactions) / limit),
+        hasMore: (totalTrades + totalTransactions) > (page * limit)
+      }
     };
     
     res.status(200).json(response);

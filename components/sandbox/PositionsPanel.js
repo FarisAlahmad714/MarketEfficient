@@ -1,10 +1,11 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { ThemeContext } from '../../contexts/ThemeContext';
 import { AuthContext } from '../../contexts/AuthContext';
 import { FaEye, FaTimesCircle, FaEdit, FaArrowUp, FaArrowDown, FaClock, FaShieldAlt, FaShare } from 'react-icons/fa';
 import SocialShareModal from '../profile/SocialShareModal';
 import storage from '../../lib/storage';
 import { getMaxLeverage } from '../../lib/sandbox-constants';
+import CryptoLoader from '../CryptoLoader';
 
 const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
   const { darkMode } = useContext(ThemeContext);
@@ -21,6 +22,12 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
   const [loading, setLoading] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareData, setShareData] = useState(null);
+  
+  // Pagination state
+  const [historyPage, setHistoryPage] = useState(1);
+  const [historyItems, setHistoryItems] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyPagination, setHistoryPagination] = useState(null);
 
   const formatCurrency = (amount) => {
     if (amount === null || amount === undefined || isNaN(amount)) {
@@ -110,6 +117,47 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
     return `${minutes}m`;
   };
 
+  // Load history with pagination
+  const loadHistory = async (page = 1, append = false) => {
+    setHistoryLoading(true);
+    try {
+      const token = storage.getItem('auth_token');
+      const response = await fetch(`/api/sandbox/history?page=${page}&limit=20`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('History API error response:', errorData);
+        throw new Error(errorData.error || 'Failed to load history');
+      }
+      
+      const data = await response.json();
+      
+      if (append) {
+        setHistoryItems(prev => [...prev, ...data.data]);
+      } else {
+        setHistoryItems(data.data);
+      }
+      
+      setHistoryPagination(data.pagination);
+      setHistoryPage(page);
+    } catch (error) {
+      console.error('Failed to load history:', error);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+  
+  // Load history when tab changes to history
+  useEffect(() => {
+    if (activeTab === 'history') {
+      loadHistory(1);
+    }
+  }, [activeTab]);
+  
   const handleClosePosition = async (positionId, closeType = 'manual', partialPercentage = null) => {
     try {
       setLoading(true);
@@ -265,6 +313,13 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
   const transactions = portfolioData?.transactions || [];
 
   // Combine trades and transactions for unified history
+  // Debug history count
+  console.log('[PositionsPanel] History items:', {
+    recentTrades: recentTrades.length,
+    transactions: transactions.length,
+    total: recentTrades.length + transactions.length
+  });
+  
   const allHistoryItems = [
     ...recentTrades.map(trade => ({
       ...trade,
@@ -306,7 +361,7 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
             className={`tab-button ${activeTab === 'history' ? 'active' : ''}`}
             onClick={() => setActiveTab('history')}
           >
-            📊 History ({allHistoryItems.length})
+            📊 History ({historyPagination?.totalItems ?? allHistoryItems.length})
           </button>
           <button 
             className={`tab-button ${activeTab === 'performance' ? 'active' : ''}`}
@@ -1000,15 +1055,24 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
 
         {activeTab === 'history' && (
           <div className="history-content">
-            {allHistoryItems.length === 0 ? (
+            {historyLoading && historyItems.length === 0 ? (
+              <div style={{ padding: '40px', display: 'flex', justifyContent: 'center' }}>
+                <CryptoLoader 
+                  message="Loading history..." 
+                  height="200px"
+                  lightMode={!darkMode}
+                />
+              </div>
+            ) : historyItems.length === 0 ? (
               <div className="empty-state">
                 <div className="empty-icon">📊</div>
                 <h3>No History</h3>
                 <p>Your trades and transactions will appear here</p>
               </div>
             ) : (
-              <div className="history-list">
-                {allHistoryItems.map((item) => (
+              <>
+                <div className="history-list">
+                  {historyItems.map((item) => (
                   <div key={item.id} className={`history-card ${item.itemType}`}>
                     <div className="history-header">
                       <div className="item-info">
@@ -1164,12 +1228,55 @@ const PositionsPanel = ({ portfolioData, marketData, onPositionUpdate }) => {
                           <div className="analysis-item">
                             <strong>Entry Reason:</strong> {item.entryReason}
                           </div>
+                          {item.closeReason && (
+                            <div className="analysis-item">
+                              <strong>Close Reason:</strong> 
+                              <span className={`close-reason ${item.closeReason}`} style={{
+                                marginLeft: '5px',
+                                padding: '2px 8px',
+                                borderRadius: '4px',
+                                fontSize: '0.85em',
+                                backgroundColor: item.closeReason === 'stop_loss' ? '#ff4757' :
+                                               item.closeReason === 'take_profit' ? '#00ff88' :
+                                               item.closeReason === 'liquidation' ? '#ff6348' :
+                                               '#666',
+                                color: '#fff'
+                              }}>
+                                {item.closeReason === 'stop_loss' ? '🛑 Stop Loss' :
+                                 item.closeReason === 'take_profit' ? '🎯 Take Profit' :
+                                 item.closeReason === 'liquidation' ? '⚠️ Liquidated' :
+                                 item.closeReason === 'manual' ? '👤 Manual' : 
+                                 item.closeReason}
+                              </span>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
                   </div>
                 ))}
-              </div>
+                </div>
+                
+                {/* Load More Button */}
+                {historyPagination?.hasMore && (
+                  <div className="load-more-container">
+                    <button
+                      className="load-more-btn"
+                      onClick={() => loadHistory(historyPage + 1, true)}
+                      disabled={historyLoading}
+                    >
+                      {historyLoading ? 'Loading...' : (
+                        <>
+                          Load More 
+                          <span className="remaining">
+                            ({historyPagination.totalItems - historyItems.length} remaining)
+                          </span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}

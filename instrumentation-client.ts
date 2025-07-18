@@ -11,3 +11,6 @@ Sentry.init({
   // `release` value here - use the environment variable `SENTRY_RELEASE`, so
   // that it will also get attached to your source maps
 });
+
+// Export required hook for navigation instrumentation
+export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;

@@ -49,7 +49,7 @@ const SandboxTradeSchema = new mongoose.Schema({
     type: Number,
     default: 1,
     min: 1,
-    max: 20 // Max 20x leverage for crypto assets
+    max: 50 // TEMPORARY: Max 50x leverage for testing liquidations
   },
   
   // Price Information

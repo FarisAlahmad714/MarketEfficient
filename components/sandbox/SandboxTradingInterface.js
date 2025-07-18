@@ -6,6 +6,7 @@ import PortfolioOverview from './PortfolioOverview';
 import PositionsPanel from './PositionsPanel';
 // import PerformanceChart from './PerformanceChart';
 import storage from '../../lib/storage';
+import CryptoLoader from '../CryptoLoader';
 // WebSocket removed - using API polling instead
 
 const SandboxTradingInterface = ({ sandboxStatus, onPortfolioUpdate }) => {
@@ -298,50 +299,29 @@ const SandboxTradingInterface = ({ sandboxStatus, onPortfolioUpdate }) => {
   if (loading) {
     return (
       <div className={`trading-interface ${darkMode ? 'dark' : 'light'}`}>
-        <div className="loading-container">
-          <div className="spinner"></div>
-          <p>Loading trading interface...</p>
-          <p className="connection-status">
-            📡 Loading market data...
-          </p>
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'center', 
+          alignItems: 'center',
+          minHeight: '600px'
+        }}>
+          <div style={{ 
+            width: '400px', 
+            maxWidth: '90vw',
+            height: '300px',
+            boxShadow: '0 10px 30px rgba(0, 0, 0, 0.3)',
+            borderRadius: '8px',
+            overflow: 'hidden'
+          }}>
+            <CryptoLoader 
+              message="Loading trading interface..." 
+              minDisplayTime={1500} 
+              lightMode={!darkMode}
+              candleCount={18}
+              height="300px"
+            />
+          </div>
         </div>
-        
-        <style jsx>{`
-          .trading-interface {
-            min-height: 600px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-          }
-          
-          .loading-container {
-            text-align: center;
-          }
-          
-          .spinner {
-            width: 40px;
-            height: 40px;
-            border: 3px solid rgba(59, 130, 246, 0.3);
-            border-top: 3px solid #3b82f6;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 16px;
-          }
-          
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-          
-          .loading-container p {
-            color: rgba(255, 255, 255, 0.7);
-            font-size: 1rem;
-          }
-          
-          .light .loading-container p {
-            color: rgba(0, 0, 0, 0.7);
-          }
-        `}</style>
       </div>
     );
   }

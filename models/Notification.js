@@ -36,7 +36,10 @@ const notificationSchema = new mongoose.Schema({
       'comment',
       'like',
       'mention',
-      'reply'
+      'reply',
+      'trade_stop_loss',
+      'trade_take_profit',
+      'trade_liquidation'
     ]
   },
   
