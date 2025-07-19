@@ -7,6 +7,7 @@ import { createApiHandler, composeMiddleware } from '../../../lib/api-handler';
 import TestResults from '../../../models/TestResults';
 import connectDB from '../../../lib/database';
 import User from '../../../models/User';
+import { trackUserActivity } from '../../../middleware/activityTracker';
 
 async function userMetricsHandler(req, res) {
   // User is already authenticated via middleware
@@ -253,6 +254,6 @@ function generateTestTypeBreakdown(results) {
 
 // Export the wrapped handler with middleware
 export default createApiHandler(
-  composeMiddleware(requireAuth, requirePremiumAccess, userMetricsHandler),
+  composeMiddleware(trackUserActivity, requireAuth, requirePremiumAccess, userMetricsHandler),
   { methods: ['GET'] }
 );

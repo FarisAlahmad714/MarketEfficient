@@ -105,8 +105,9 @@ async function loginApiRouteHandler(req, res) {
                 return resolve();
               }
               
-              // Update last login on success
+              // Update last login and last active on success
               user.lastLogin = new Date();
+              user.lastActiveAt = new Date();
               await user.save();
               
               // Log successful login

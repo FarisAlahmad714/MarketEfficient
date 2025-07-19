@@ -56,6 +56,9 @@ const AdminPanel = () => {
   const [selectedRecommendation, setSelectedRecommendation] = useState(null);
   const [showEmailCampaignModal, setShowEmailCampaignModal] = useState(false);
   const [emailCampaignData, setEmailCampaignData] = useState(null);
+  const [onlineUsers, setOnlineUsers] = useState([]);
+  const [onlineStats, setOnlineStats] = useState(null);
+  const [onlineUsersLoading, setOnlineUsersLoading] = useState(true);
 
   // Define tools for the admin panel
   const tools = [
@@ -124,6 +127,35 @@ const AdminPanel = () => {
       }
     };
     if (isAuthenticated && user?.isAdmin) fetchInsights();
+  }, [isAuthenticated, user]);
+
+  // Fetch online users
+  useEffect(() => {
+    const fetchOnlineUsers = async () => {
+      if (!isAuthenticated || !user?.isAdmin) return;
+      
+      try {
+        setOnlineUsersLoading(true);
+        const token = storage.getItem('auth_token');
+        const response = await fetch('/api/admin/online-users', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!response.ok) throw new Error('Failed to fetch online users');
+        const data = await response.json();
+        setOnlineUsers(data.onlineUsers || []);
+        setOnlineStats(data.stats || null);
+      } catch (err) {
+        console.error('Error fetching online users:', err);
+      } finally {
+        setOnlineUsersLoading(false);
+      }
+    };
+
+    fetchOnlineUsers();
+    // Refresh every 30 seconds
+    const interval = setInterval(fetchOnlineUsers, 30000);
+    
+    return () => clearInterval(interval);
   }, [isAuthenticated, user]);
 
   // Generate AI recommendations based on insights
@@ -264,6 +296,176 @@ const AdminPanel = () => {
     <TrackedPage>
     <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px 20px' }}>
       <h1 style={{ color: darkMode ? '#e0e0e0' : '#333', marginBottom: '30px' }}>Admin Panel</h1>
+
+      {/* Online Users Section */}
+      <div style={{
+        backgroundColor: darkMode ? '#1e1e1e' : 'white',
+        borderRadius: '12px',
+        padding: '20px',
+        marginBottom: '30px',
+        boxShadow: darkMode ? '0 4px 12px rgba(0,0,0,0.3)' : '0 4px 12px rgba(0,0,0,0.1)'
+      }}>
+        <h3 style={{ color: darkMode ? '#e0e0e0' : '#333', marginBottom: '20px', fontSize: '18px' }}>
+          🟢 User Activity {onlineStats && `(${onlineStats.totalActiveToday} active today)`}
+        </h3>
+        
+        {onlineUsersLoading ? (
+          <div style={{ textAlign: 'center', padding: '20px' }}>
+            <CryptoLoader message="Loading user activity..." />
+          </div>
+        ) : onlineUsers.length > 0 ? (
+          <>
+            {/* Group users by activity level */}
+            {['active_now', 'active', 'recently_active'].map(statusGroup => {
+              const groupUsers = onlineUsers.filter(u => u.status === statusGroup);
+              if (groupUsers.length === 0) return null;
+              
+              const groupLabel = statusGroup === 'active_now' ? '🟢 Active Now' :
+                                statusGroup === 'active' ? '🔵 Active Last Hour' :
+                                '🟠 Active Today';
+              
+              return (
+                <div key={statusGroup} style={{ marginBottom: '25px' }}>
+                  <h4 style={{ 
+                    color: darkMode ? '#e0e0e0' : '#333', 
+                    fontSize: '14px',
+                    marginBottom: '12px',
+                    fontWeight: '600'
+                  }}>
+                    {groupLabel} ({groupUsers.length})
+                  </h4>
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+                    gap: '12px'
+                  }}>
+                    {groupUsers.slice(0, statusGroup === 'recently_active' ? 20 : 10).map((user) => (
+                <div key={user._id} style={{
+                  padding: '12px 15px',
+                  backgroundColor: darkMode ? '#2a2a2a' : '#f8f9fa',
+                  borderRadius: '8px',
+                  border: `1px solid ${
+                    user.status === 'active_now' ? '#4caf50' :
+                    user.status === 'active' ? '#2196f3' : 
+                    user.status === 'recently_active' ? '#ff9800' : '#9e9e9e'
+                  }`,
+                  borderLeft: `4px solid ${
+                    user.status === 'active_now' ? '#4caf50' :
+                    user.status === 'active' ? '#2196f3' : 
+                    user.status === 'recently_active' ? '#ff9800' : '#9e9e9e'
+                  }`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px'
+                }}>
+                  <div style={{
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '50%',
+                    backgroundColor: user.status === 'active_now' ? '#4caf50' :
+                                    user.status === 'active' ? '#2196f3' : 
+                                    user.status === 'recently_active' ? '#ff9800' : '#9e9e9e',
+                    flexShrink: 0
+                  }}></div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{
+                      color: darkMode ? '#e0e0e0' : '#333',
+                      fontWeight: '500',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis'
+                    }}>
+                      {user.name}
+                      {user.isAdmin && (
+                        <span style={{
+                          marginLeft: '8px',
+                          padding: '2px 6px',
+                          backgroundColor: '#6f42c1',
+                          color: 'white',
+                          borderRadius: '4px',
+                          fontSize: '10px',
+                          fontWeight: '600'
+                        }}>ADMIN</span>
+                      )}
+                    </div>
+                    <div style={{
+                      fontSize: '12px',
+                      color: darkMode ? '#b0b0b0' : '#666',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis'
+                    }}>
+                      {user.email}
+                    </div>
+                  </div>
+                  <div style={{
+                    fontSize: '12px',
+                    color: user.status === 'active_now' ? '#4caf50' :
+                           user.status === 'active' ? '#2196f3' : 
+                           user.status === 'recently_active' ? '#ff9800' : '#9e9e9e',
+                    fontWeight: '500',
+                    whiteSpace: 'nowrap'
+                  }}>
+                    {user.statusDisplay}
+                  </div>
+                </div>
+                    ))}
+                    {groupUsers.length > (statusGroup === 'recently_active' ? 20 : 10) && (
+                      <div style={{
+                        padding: '10px',
+                        textAlign: 'center',
+                        color: darkMode ? '#b0b0b0' : '#666',
+                        fontSize: '12px',
+                        gridColumn: '1 / -1'
+                      }}>
+                        +{groupUsers.length - (statusGroup === 'recently_active' ? 20 : 10)} more
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+            
+            {false && (
+              <div style={{
+                textAlign: 'center',
+                padding: '10px',
+                color: darkMode ? '#b0b0b0' : '#666',
+                fontSize: '14px'
+              }}>
+                And {onlineUsers.length - 12} more users active...
+              </div>
+            )}
+          </>
+        ) : (
+          <div style={{
+            padding: '20px',
+            textAlign: 'center',
+            color: darkMode ? '#b0b0b0' : '#666'
+          }}>
+            No users active in the last 24 hours
+          </div>
+        )}
+        
+        {onlineStats && (
+          <div style={{
+            marginTop: '15px',
+            padding: '10px 15px',
+            backgroundColor: darkMode ? 'rgba(33, 150, 243, 0.1)' : '#e3f2fd',
+            borderRadius: '6px',
+            fontSize: '14px',
+            color: '#2196f3',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            <span>📊</span>
+            <span>
+              {onlineStats.totalOnline} online now • {onlineStats.totalActiveLastHour} active in last hour • {onlineStats.totalActiveToday} active today
+            </span>
+          </div>
+        )}
+      </div>
 
       {/* AI Recommendations Section */}
       {insightsLoading ? (

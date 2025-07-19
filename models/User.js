@@ -78,6 +78,11 @@ const UserSchema = new mongoose.Schema({
   },
   lockUntil: Date,
   lastLogin: Date,
+  lastActiveAt: {
+    type: Date,
+    default: Date.now,
+    index: true
+  },
   notifications: {
     email: {
       type: Boolean,

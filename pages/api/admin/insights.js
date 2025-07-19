@@ -6,6 +6,7 @@ import Subscription from '../../../models/Subscription';
 import PaymentHistory from '../../../models/PaymentHistory';
 import connectDB from '../../../lib/database';
 import { startOfMonth, subMonths } from 'date-fns';
+import { trackUserActivity } from '../../../middleware/activityTracker';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -13,7 +14,8 @@ export default async function handler(req, res) {
   }
 
   return new Promise((resolve) => {
-    requireAdmin(req, res, async () => {
+    trackUserActivity(req, res, () => {
+      requireAdmin(req, res, async () => {
       try {
         await connectDB();
 
@@ -138,6 +140,7 @@ export default async function handler(req, res) {
       } finally {
         resolve();
       }
+      });
     });
   });
 }
