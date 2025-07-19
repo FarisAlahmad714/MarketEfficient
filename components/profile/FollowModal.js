@@ -37,8 +37,8 @@ const FollowModal = ({ isOpen, onClose, targetUserId, initialType = 'followers',
       const response = await fetch(`/api/profile/user-image/${userId}`);
       if (response.ok) {
         const data = await response.json();
-        if (data.imageUrl) {
-          setImageUrls(prev => ({ ...prev, [userId]: data.imageUrl }));
+        if (data.profileImageUrl) {
+          setImageUrls(prev => ({ ...prev, [userId]: data.profileImageUrl }));
         }
       }
     } catch (error) {

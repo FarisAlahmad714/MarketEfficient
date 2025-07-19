@@ -140,6 +140,9 @@ const SandboxPage = () => {
     );
   }
 
+  // TEMPORARY BYPASS: Sandbox unlock check disabled for development
+  // To re-enable: Uncomment the block below
+  /*
   // If sandbox is not unlocked, show requirements
   if (!sandboxStatus?.unlocked) {
     return (
@@ -149,6 +152,7 @@ const SandboxPage = () => {
       />
     );
   }
+  */
 
   // Sandbox is unlocked - show trading interface
   return (
@@ -195,10 +199,14 @@ const SandboxPage = () => {
           font-size: 2rem;
           font-weight: 800;
           margin-bottom: 8px;
-          background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
+        }
+        
+        .dark .title-section h1 {
+          color: rgba(255, 255, 255, 0.9);
+        }
+        
+        .light .title-section h1 {
+          color: rgba(0, 0, 0, 0.9);
         }
         
         .title-section p {

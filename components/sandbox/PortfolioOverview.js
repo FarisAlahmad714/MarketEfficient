@@ -188,24 +188,7 @@ const PortfolioOverview = ({ portfolioData, onRefresh }) => {
           >
             {reloadingAssets ? '⏳ Loading...' : '🔄 Refresh'}
           </button>
-          {!portfolioData.isAdmin && (
-            <button 
-              className="grant-admin-button" 
-              onClick={handleGrantAdmin}
-              disabled={grantingAdmin}
-            >
-              {grantingAdmin ? '⏳ Granting...' : '🔑 Grant Admin'}
-            </button>
-          )}
-          {portfolioData.isAdmin && (
-            <button 
-              className="admin-reset-button" 
-              onClick={handleAdminReset}
-              disabled={resetting}
-            >
-              {resetting ? '⏳ Resetting...' : '💰 Reset to 10k'}
-            </button>
-          )}
+          {/* Grant Admin and Reset buttons removed */}
         </div>
         <div className="reset-info">
           📅 Next Reset: {new Date(portfolioData.reset?.nextResetDate).toLocaleDateString()}

@@ -95,6 +95,9 @@ const TradingHighlights = ({
   };
 
   const formatPercentage = (percent) => {
+    if (percent === null || percent === undefined || isNaN(percent)) {
+      return '0.0%';
+    }
     const sign = percent >= 0 ? '+' : '';
     return `${sign}${percent.toFixed(1)}%`;
   };
@@ -489,8 +492,8 @@ const TradingHighlights = ({
           </>
         )}
 
-        {/* Performance Insights */}
-        {tradingStats && (
+        {/* Performance Insights - Hidden until we have actual data for these metrics */}
+        {tradingStats && tradingStats.totalTrades > 0 && tradingStats.currentWinStreak !== undefined && (
           <div style={{
             marginTop: '25px',
             paddingTop: '20px',
@@ -522,7 +525,7 @@ const TradingHighlights = ({
                   color: '#4CAF50',
                   marginBottom: '5px'
                 }}>
-                  🔥 5
+                  🔥 {tradingStats.currentWinStreak || 0}
                 </div>
                 <div style={{
                   color: darkMode ? '#b0b0b0' : '#666',
@@ -545,7 +548,7 @@ const TradingHighlights = ({
                   color: '#2196F3',
                   marginBottom: '5px'
                 }}>
-                  +12.5%
+                  {formatPercentage(tradingStats.bestDayReturn || 0)}
                 </div>
                 <div style={{
                   color: darkMode ? '#b0b0b0' : '#666',
@@ -568,7 +571,7 @@ const TradingHighlights = ({
                   color: '#9C27B0',
                   marginBottom: '5px'
                 }}>
-                  -2.1%
+                  {tradingStats.avgLossSize ? formatPercentage(tradingStats.avgLossSize) : '0.0%'}
                 </div>
                 <div style={{
                   color: darkMode ? '#b0b0b0' : '#666',
