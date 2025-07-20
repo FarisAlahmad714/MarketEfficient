@@ -1,6 +1,7 @@
 // pages/admin/users.js (Frontend page, not API route)
 import { useState, useEffect, useContext, useRef } from 'react';
 import { ThemeContext } from '../../contexts/ThemeContext';
+import { AuthContext } from '../../contexts/AuthContext';
 import AdminProtectedRoute from '../../components/auth/AdminProtectedRoute';
 import Link from 'next/link';
 import CryptoLoader from '../../components/CryptoLoader';
@@ -8,6 +9,7 @@ import storage from '../../lib/storage';
 
 const UsersManagement = () => {
   const { darkMode } = useContext(ThemeContext);
+  const { user: currentUser } = useContext(AuthContext);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -22,8 +24,11 @@ const UsersManagement = () => {
   const [userToCancel, setUserToCancel] = useState(null);
   const [cancelLoading, setCancelLoading] = useState(false);
   const [cancelError, setCancelError] = useState(null);
+  const [promoteLoadingId, setPromoteLoadingId] = useState(null);
+  const [promoteError, setPromoteError] = useState(null);
 
   const cryptoLoaderRef = useRef(null);
+  const isSuperAdmin = currentUser?.email === 'support@chartsense.trade';
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -180,6 +185,48 @@ const UsersManagement = () => {
       setCancelError(err.message || 'An error occurred while canceling the subscription');
     } finally {
       setCancelLoading(false);
+    }
+  };
+
+  const handlePromoteUser = async (userId, action) => {
+    if (!isSuperAdmin) return;
+    
+    setPromoteLoadingId(userId);
+    setPromoteError(null);
+    try {
+      const token = await storage.getItem('auth_token');
+      const response = await fetch('/api/admin/promote-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ userId, action })
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to update admin status');
+      }
+
+      const data = await response.json();
+      
+      // Update the user in the local state
+      setUsers(
+        users.map((u) =>
+          u._id === userId
+            ? { ...u, isAdmin: data.user.isAdmin }
+            : u
+        )
+      );
+
+      // Show success message
+      alert(data.message);
+    } catch (err) {
+      setPromoteError(err.message || 'An error occurred while updating admin status');
+      alert(`Error: ${err.message}`);
+    } finally {
+      setPromoteLoadingId(null);
     }
   };
 
@@ -511,6 +558,25 @@ const UsersManagement = () => {
                               onClick={() => handleCancelSubscription(user._id)}
                             >
                               Cancel Subscription
+                            </button>
+                          )}
+                          {isSuperAdmin && user.email !== 'support@chartsense.trade' && (
+                            <button
+                              style={{
+                                padding: '5px 10px',
+                                backgroundColor: user.isAdmin 
+                                  ? darkMode ? '#3A2A1A' : '#ffebee'
+                                  : darkMode ? '#1A3A1A' : '#e8f5e9',
+                                color: user.isAdmin ? '#F44336' : '#4CAF50',
+                                border: 'none',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                fontWeight: '500'
+                              }}
+                              onClick={() => handlePromoteUser(user._id, user.isAdmin ? 'demote' : 'promote')}
+                              disabled={promoteLoadingId === user._id}
+                            >
+                              {promoteLoadingId === user._id ? 'Processing...' : user.isAdmin ? 'Demote Admin' : 'Make Admin'}
                             </button>
                           )}
                           {!user.isAdmin && (
