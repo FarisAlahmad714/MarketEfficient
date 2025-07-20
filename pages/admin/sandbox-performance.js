@@ -15,6 +15,7 @@ const SandboxPerformancePage = () => {
 
   const [performanceData, setPerformanceData] = useState([]);
   const [summary, setSummary] = useState(null);
+  const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [sortBy, setSortBy] = useState('realTradingReturn');
@@ -43,6 +44,7 @@ const SandboxPerformancePage = () => {
         const data = await response.json();
         setPerformanceData(data.performanceData);
         setSummary(data.summary);
+        setAnalytics(data.analytics);
       } catch (err) {
         setError(err.message || 'An error occurred');
       } finally {
@@ -258,6 +260,226 @@ const SandboxPerformancePage = () => {
                 {formatCurrency(summary.totalQuarterlyDeposits)}
               </div>
               <div style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '14px' }}>Quarterly Deposits</div>
+            </div>
+          </div>
+        )}
+
+        {/* Trading Analytics Section */}
+        {analytics && (
+          <div style={{ marginBottom: '30px' }}>
+            {/* Top Traded Assets */}
+            <div style={{
+              backgroundColor: darkMode ? '#1e1e1e' : 'white',
+              borderRadius: '12px',
+              padding: '20px',
+              marginBottom: '20px',
+              boxShadow: darkMode ? '0 4px 12px rgba(0,0,0,0.3)' : '0 4px 12px rgba(0,0,0,0.1)'
+            }}>
+              <h3 style={{ color: darkMode ? '#e0e0e0' : '#333', marginBottom: '15px' }}>
+                📈 Top Traded Assets
+              </h3>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ borderBottom: `2px solid ${darkMode ? '#444' : '#eee'}` }}>
+                      <th style={{ padding: '10px', textAlign: 'left', color: darkMode ? '#e0e0e0' : '#333' }}>Symbol</th>
+                      <th style={{ padding: '10px', textAlign: 'center', color: darkMode ? '#e0e0e0' : '#333' }}>Total Trades</th>
+                      <th style={{ padding: '10px', textAlign: 'center', color: darkMode ? '#e0e0e0' : '#333' }}>Unique Traders</th>
+                      <th style={{ padding: '10px', textAlign: 'center', color: darkMode ? '#e0e0e0' : '#333' }}>Win Rate</th>
+                      <th style={{ padding: '10px', textAlign: 'right', color: darkMode ? '#e0e0e0' : '#333' }}>Total Volume</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {analytics.topTradedAssets.map((asset, index) => (
+                      <tr key={asset.symbol} style={{ borderBottom: `1px solid ${darkMode ? '#333' : '#eee'}` }}>
+                        <td style={{ padding: '10px', fontWeight: '500', color: darkMode ? '#e0e0e0' : '#333' }}>
+                          {asset.symbol}
+                        </td>
+                        <td style={{ padding: '10px', textAlign: 'center', color: darkMode ? '#b0b0b0' : '#666' }}>
+                          {asset.totalTrades}
+                        </td>
+                        <td style={{ padding: '10px', textAlign: 'center', color: darkMode ? '#b0b0b0' : '#666' }}>
+                          {asset.uniqueTraders}
+                        </td>
+                        <td style={{ 
+                          padding: '10px', 
+                          textAlign: 'center',
+                          color: getReturnColor(asset.winRate - 50),
+                          fontWeight: '500'
+                        }}>
+                          {asset.winRate.toFixed(1)}%
+                        </td>
+                        <td style={{ padding: '10px', textAlign: 'right', color: darkMode ? '#b0b0b0' : '#666' }}>
+                          {formatCurrency(asset.totalVolume)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Trading Mistakes Analysis */}
+            <div style={{
+              backgroundColor: darkMode ? '#1e1e1e' : 'white',
+              borderRadius: '12px',
+              padding: '20px',
+              marginBottom: '20px',
+              boxShadow: darkMode ? '0 4px 12px rgba(0,0,0,0.3)' : '0 4px 12px rgba(0,0,0,0.1)'
+            }}>
+              <h3 style={{ color: darkMode ? '#e0e0e0' : '#333', marginBottom: '15px' }}>
+                ⚠️ Common Trading Mistakes
+              </h3>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                gap: '15px'
+              }}>
+                <div style={{
+                  backgroundColor: darkMode ? '#2a2a2a' : '#f5f5f5',
+                  borderRadius: '8px',
+                  padding: '15px',
+                  textAlign: 'center'
+                }}>
+                  <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#F44336', marginBottom: '5px' }}>
+                    {analytics.tradingMistakes.overleveraging}
+                  </div>
+                  <div style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '14px' }}>Overleveraging</div>
+                  <div style={{ color: darkMode ? '#888' : '#999', fontSize: '12px', marginTop: '5px' }}>
+                    Position &gt; 20% of balance
+                  </div>
+                </div>
+                <div style={{
+                  backgroundColor: darkMode ? '#2a2a2a' : '#f5f5f5',
+                  borderRadius: '8px',
+                  padding: '15px',
+                  textAlign: 'center'
+                }}>
+                  <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#FF9800', marginBottom: '5px' }}>
+                    {analytics.tradingMistakes.noStopLoss}
+                  </div>
+                  <div style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '14px' }}>No Stop Loss</div>
+                  <div style={{ color: darkMode ? '#888' : '#999', fontSize: '12px', marginTop: '5px' }}>
+                    Trading without protection
+                  </div>
+                </div>
+                <div style={{
+                  backgroundColor: darkMode ? '#2a2a2a' : '#f5f5f5',
+                  borderRadius: '8px',
+                  padding: '15px',
+                  textAlign: 'center'
+                }}>
+                  <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#2196F3', marginBottom: '5px' }}>
+                    {analytics.tradingMistakes.quickExits}
+                  </div>
+                  <div style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '14px' }}>Quick Exits</div>
+                  <div style={{ color: darkMode ? '#888' : '#999', fontSize: '12px', marginTop: '5px' }}>
+                    Exited in &lt; 5 minutes
+                  </div>
+                </div>
+                <div style={{
+                  backgroundColor: darkMode ? '#2a2a2a' : '#f5f5f5',
+                  borderRadius: '8px',
+                  padding: '15px',
+                  textAlign: 'center'
+                }}>
+                  <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#9C27B0', marginBottom: '5px' }}>
+                    {analytics.tradingMistakes.largePositionSizes}
+                  </div>
+                  <div style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '14px' }}>High Leverage</div>
+                  <div style={{ color: darkMode ? '#888' : '#999', fontSize: '12px', marginTop: '5px' }}>
+                    Leverage &gt; 10x
+                  </div>
+                </div>
+              </div>
+              <div style={{
+                marginTop: '20px',
+                padding: '15px',
+                backgroundColor: darkMode ? 'rgba(244, 67, 54, 0.1)' : '#ffebee',
+                borderRadius: '8px',
+                textAlign: 'center'
+              }}>
+                <div style={{ color: '#F44336', fontSize: '16px', fontWeight: '500' }}>
+                  Total Trades with Mistakes: {analytics.tradingMistakes.totalMistakes}
+                </div>
+                <div style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '14px', marginTop: '5px' }}>
+                  These mistakes often lead to losses and account liquidations
+                </div>
+              </div>
+            </div>
+
+            {/* Time to Profitability */}
+            <div style={{
+              backgroundColor: darkMode ? '#1e1e1e' : 'white',
+              borderRadius: '12px',
+              padding: '20px',
+              marginBottom: '20px',
+              boxShadow: darkMode ? '0 4px 12px rgba(0,0,0,0.3)' : '0 4px 12px rgba(0,0,0,0.1)'
+            }}>
+              <h3 style={{ color: darkMode ? '#e0e0e0' : '#333', marginBottom: '15px' }}>
+                💰 Time to Profitability
+              </h3>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+                gap: '20px',
+                marginBottom: '20px'
+              }}>
+                <div style={{
+                  backgroundColor: darkMode ? '#2a2a2a' : '#f5f5f5',
+                  borderRadius: '8px',
+                  padding: '20px',
+                  textAlign: 'center'
+                }}>
+                  <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#4CAF50', marginBottom: '10px' }}>
+                    {analytics.profitability.averageTimeToProfit 
+                      ? `${analytics.profitability.averageTimeToProfit.toFixed(1)} days`
+                      : 'N/A'}
+                  </div>
+                  <div style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '14px' }}>
+                    Average Time to Profitability
+                  </div>
+                </div>
+                <div style={{
+                  backgroundColor: darkMode ? '#2a2a2a' : '#f5f5f5',
+                  borderRadius: '8px',
+                  padding: '20px',
+                  textAlign: 'center'
+                }}>
+                  <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#2196F3', marginBottom: '10px' }}>
+                    {analytics.profitability.profitabilityRate.toFixed(1)}%
+                  </div>
+                  <div style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '14px' }}>
+                    Profitable Traders
+                  </div>
+                </div>
+              </div>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-around',
+                padding: '15px',
+                backgroundColor: darkMode ? '#2a2a2a' : '#f5f5f5',
+                borderRadius: '8px'
+              }}>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#4CAF50' }}>
+                    {analytics.profitability.userBreakdown.profitable}
+                  </div>
+                  <div style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '12px' }}>Profitable</div>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#F44336' }}>
+                    {analytics.profitability.userBreakdown.unprofitable}
+                  </div>
+                  <div style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '12px' }}>Unprofitable</div>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#9E9E9E' }}>
+                    {analytics.profitability.userBreakdown.noTrades}
+                  </div>
+                  <div style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '12px' }}>No Trades</div>
+                </div>
+              </div>
             </div>
           </div>
         )}
