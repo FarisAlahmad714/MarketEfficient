@@ -101,7 +101,7 @@ async function getOverviewMetrics(analyticsData, timeRange) {
 
   // Group by test type
   const testTypeStats = {};
-  ['crypto', 'forex', 'stocks'].forEach(type => {
+  ['crypto', 'commodities', 'stocks'].forEach(type => {
     const typeData = analyticsData.filter(session => session.testType === type);
     testTypeStats[type] = {
       totalSessions: typeData.length,

@@ -20,7 +20,7 @@ const VisualAnalyticsDashboard = () => {
     timeframe: 'month',
     testType: '',
     includeImages: true,
-    limit: 50
+    limit: 500
   });
 
   // Authentication check
@@ -248,10 +248,12 @@ const VisualAnalyticsDashboard = () => {
                   color: darkMode ? '#e0e0e0' : '#333'
                 }}
               >
-                <option value="25">25 Results</option>
                 <option value="50">50 Results</option>
                 <option value="100">100 Results</option>
-                <option value="200">200 Results</option>
+                <option value="250">250 Results</option>
+                <option value="500">500 Results</option>
+                <option value="1000">1000 Results</option>
+                <option value="2000">2000 Results</option>
               </select>
             </div>
 
@@ -302,12 +304,6 @@ const VisualAnalyticsDashboard = () => {
               title="📊 Avg Performance"
               value={`${(data.business_metrics?.overview?.average_score || 0).toFixed(1)}%`}
               subtitle="Success rate"
-              darkMode={darkMode}
-            />
-            <StatCard
-              title="💎 Data Value"
-              value={`$${data.business_metrics?.monetization?.estimated_research_value || 0}`}
-              subtitle="Research value"
               darkMode={darkMode}
             />
           </div>
@@ -413,7 +409,6 @@ const StatCard = ({ title, value, subtitle, darkMode }) => (
 
 // 🔥 OVERVIEW TAB - Enhanced with Real Business Intelligence
 const OverviewTab = ({ data, darkMode }) => {
-  const totalValue = data.business_metrics?.monetization?.estimated_research_value || 0;
   const totalTests = data.business_metrics?.overview?.total_tests_completed || 0;
   const totalImages = data.business_metrics?.overview?.total_images_uploaded || 0;
   
@@ -423,53 +418,6 @@ const OverviewTab = ({ data, darkMode }) => {
         📊 Trading Psychology Data Overview
       </h2>
       
-      {/* Revenue & Value Metrics */}
-      <div style={{
-        backgroundColor: darkMode ? '#1a2332' : '#f0f7ff',
-        borderRadius: '12px',
-        padding: '25px',
-        marginBottom: '30px',
-        border: `2px solid ${darkMode ? '#2196F3' : '#b3d9ff'}`
-      }}>
-        <h3 style={{ color: darkMode ? '#e0e0e0' : '#333', marginBottom: '20px', fontSize: '18px' }}>
-          💰 Data Monetization Analytics
-        </h3>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '32px', fontWeight: '700', color: '#2196F3', marginBottom: '8px' }}>
-              ${totalValue.toLocaleString()}
-            </div>
-            <div style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '14px' }}>
-              Total Research Value
-            </div>
-            <div style={{ color: darkMode ? '#888' : '#999', fontSize: '12px', marginTop: '4px' }}>
-              Psychology Tests: ${(totalTests * 15).toLocaleString()} + Visual Data: ${(totalImages * 25).toLocaleString()}
-            </div>
-          </div>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '28px', fontWeight: '600', color: '#4CAF50', marginBottom: '8px' }}>
-              ${((totalValue / Math.max(totalTests + totalImages, 1))).toFixed(0)}
-            </div>
-            <div style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '14px' }}>
-              Value Per Data Point
-            </div>
-            <div style={{ color: darkMode ? '#888' : '#999', fontSize: '12px', marginTop: '4px' }}>
-              Industry benchmark: $20-40
-            </div>
-          </div>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '28px', fontWeight: '600', color: '#FF9800', marginBottom: '8px' }}>
-              {data.business_metrics?.overview?.data_richness_score || 0}
-            </div>
-            <div style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '14px' }}>
-              Data Quality Score
-            </div>
-            <div style={{ color: darkMode ? '#888' : '#999', fontSize: '12px', marginTop: '4px' }}>
-              Out of 1000 (Premium: 800+)
-            </div>
-          </div>
-        </div>
-      </div>
     
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px' }}>
         
@@ -561,10 +509,6 @@ const OverviewTab = ({ data, darkMode }) => {
             
             <div style={{ marginBottom: '15px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <span style={{ color: darkMode ? '#e0e0e0' : '#333', fontWeight: '500' }}>Psychological Insights</span>
-                <span style={{ color: '#2196F3', fontWeight: '600' }}>
-                  {data.business_metrics?.monetization?.psychological_insights_count || 0}
-                </span>
               </div>
               <div style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '13px' }}>
                 Detailed responses with confidence and reasoning
@@ -640,6 +584,7 @@ const OverviewTab = ({ data, darkMode }) => {
 // 🔥 VISUAL DATA TAB - Enhanced with Calendar View
 const VisualDataTab = ({ data, darkMode }) => {
   const [viewMode, setViewMode] = useState('calendar');
+  const [expandedUsers, setExpandedUsers] = useState({});
   
   // Prepare data for calendar view
   const calendarData = React.useMemo(() => {
@@ -774,6 +719,14 @@ const VisualDataTab = ({ data, darkMode }) => {
     
     return grouped;
   }, [data.combined_analytics]);
+
+  // Toggle function for expanding/collapsing user cards
+  const toggleUserExpanded = (userId) => {
+    setExpandedUsers(prev => ({
+      ...prev,
+      [userId]: !prev[userId]
+    }));
+  };
 
   return (
     <div>
@@ -1029,7 +982,9 @@ const VisualDataTab = ({ data, darkMode }) => {
       ) : (
         Object.keys(groupedByUser).length > 0 ? (
         <div style={{ display: 'grid', gap: '30px' }}>
-          {Object.entries(groupedByUser).map(([userId, userGroup], index) => (
+          {Object.entries(groupedByUser).map(([userId, userGroup], index) => {
+            const isExpanded = expandedUsers[userId] || false;
+            return (
             <div key={index} style={{
               backgroundColor: darkMode ? '#1a1a1a' : '#ffffff',
               borderRadius: '16px',
@@ -1055,8 +1010,9 @@ const VisualDataTab = ({ data, darkMode }) => {
                       📧 {userGroup.user_info.email || 'No email provided'}
                     </p>
                   </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ 
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ 
                       backgroundColor: '#2196F3',
                       color: 'white',
                       padding: '6px 12px',
@@ -1077,6 +1033,27 @@ const VisualDataTab = ({ data, darkMode }) => {
                     }}>
                       {userGroup.total_images} Images
                     </div>
+                    </div>
+                    <button
+                      onClick={() => toggleUserExpanded(userId)}
+                      style={{
+                        padding: '8px 16px',
+                        backgroundColor: darkMode ? '#444' : '#e0e0e0',
+                        color: darkMode ? '#e0e0e0' : '#333',
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '5px',
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      {isExpanded ? '▲' : '▼'}
+                      {isExpanded ? 'Collapse' : 'Expand'}
+                    </button>
                   </div>
                 </div>
 
@@ -1141,6 +1118,7 @@ const VisualDataTab = ({ data, darkMode }) => {
               </div>
 
               {/* 🔥 CHRONOLOGICAL TEST TIMELINE */}
+              {isExpanded && (
               <div style={{ marginBottom: '25px' }}>
                 <h4 style={{ color: darkMode ? '#e0e0e0' : '#333', marginBottom: '15px', fontSize: '16px' }}>
                   📅 Test Timeline (Chronological Order)
@@ -1305,6 +1283,7 @@ const VisualDataTab = ({ data, darkMode }) => {
                   </div>
                 </div>
               </div>
+              )}
 
               {/* 🔥 USER INSIGHTS SUMMARY */}
               <div style={{
@@ -1334,7 +1313,8 @@ const VisualDataTab = ({ data, darkMode }) => {
                 </div>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
         ) : (
           <div style={{
@@ -1743,7 +1723,6 @@ const InsightsTab = ({ data, darkMode }) => {
                 const difficultyLevel = asset.avg_score < 0.4 ? 'Extremely Challenging' : 
                                       asset.avg_score < 0.6 ? 'Challenging' : 
                                       asset.avg_score < 0.8 ? 'Moderate' : 'Accessible';
-                const researchValue = asset.test_count * (1 - asset.avg_score) * 20; // Higher value for more challenging assets
                 
                 return (
                   <div key={index} style={{
@@ -1772,14 +1751,6 @@ const InsightsTab = ({ data, darkMode }) => {
                         </div>
                         <div style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '14px' }}>
                           {asset.test_count} traders analyzed • {(asset.avg_score * 100).toFixed(1)}% success rate
-                        </div>
-                      </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <div style={{ color: '#2196F3', fontWeight: '600', fontSize: '16px' }}>
-                          ${researchValue.toFixed(0)}
-                        </div>
-                        <div style={{ color: darkMode ? '#888' : '#999', fontSize: '12px' }}>
-                          Research Value
                         </div>
                       </div>
                     </div>
@@ -2453,7 +2424,7 @@ const BiasTestsTab = ({ darkMode }) => {
           >
             <option value="all">All Test Types</option>
             <option value="crypto">Crypto</option>
-            <option value="forex">Forex</option>
+            <option value="commodities">Commodities</option>
             <option value="stocks">Stocks</option>
           </select>
         </div>
@@ -2468,8 +2439,7 @@ const BiasTestsTab = ({ darkMode }) => {
           {[
             { id: 'overview', label: '📊 Overview' },
             { id: 'progression', label: '📈 User Progression' },
-            { id: 'market-insights', label: '📉 Market Insights' },
-            { id: 'monetization', label: '💰 Monetization' }
+            { id: 'market-insights', label: '📉 Market Insights' }
           ].map((tab) => (
             <button
               key={tab.id}
@@ -2510,9 +2480,6 @@ const BiasTestsTab = ({ darkMode }) => {
           )}
           {activeSubTab === 'market-insights' && (
             <BiasMarketInsightsContent data={biasData} darkMode={darkMode} />
-          )}
-          {activeSubTab === 'monetization' && (
-            <BiasMonetizationContent data={biasData} darkMode={darkMode} />
           )}
         </div>
       )}
@@ -2559,18 +2526,6 @@ const BiasOverviewContent = ({ data, darkMode }) => {
           darkMode={darkMode}
           icon="⏱️"
         />
-        <MetricCard
-          title="Premium Candidates"
-          value={`${overview.premiumCandidateRate || 0}%`}
-          darkMode={darkMode}
-          icon="⭐"
-        />
-        <MetricCard
-          title="High Churn Risk"
-          value={`${overview.churnRiskRate || 0}%`}
-          darkMode={darkMode}
-          icon="⚠️"
-        />
       </div>
 
       {/* Test Type Performance */}
@@ -2595,7 +2550,7 @@ const BiasOverviewContent = ({ data, darkMode }) => {
                 margin: '0 0 15px 0',
                 textTransform: 'capitalize'
               }}>
-                {type === 'crypto' ? '₿ Crypto' : type === 'forex' ? '💱 Forex' : '📈 Stocks'}
+                {type === 'crypto' ? '₿ Crypto' : type === 'commodities' ? '🛢️ Commodities' : '📈 Stocks'}
               </h4>
               <div style={{ display: 'grid', gap: '8px', fontSize: '14px' }}>
                 <div style={{ color: darkMode ? '#b0b0b0' : '#666' }}>
@@ -2638,7 +2593,6 @@ const BiasOverviewContent = ({ data, darkMode }) => {
                   <th style={{ padding: '8px', textAlign: 'left', color: darkMode ? '#e0e0e0' : '#333' }}>Accuracy</th>
                   <th style={{ padding: '8px', textAlign: 'left', color: darkMode ? '#e0e0e0' : '#333' }}>Confidence</th>
                   <th style={{ padding: '8px', textAlign: 'left', color: darkMode ? '#e0e0e0' : '#333' }}>Time</th>
-                  <th style={{ padding: '8px', textAlign: 'left', color: darkMode ? '#e0e0e0' : '#333' }}>Premium</th>
                 </tr>
               </thead>
               <tbody>
@@ -2662,9 +2616,6 @@ const BiasOverviewContent = ({ data, darkMode }) => {
                     <td style={{ padding: '8px', color: darkMode ? '#b0b0b0' : '#666' }}>
                       {Math.round(session.totalSessionTime)}s
                     </td>
-                    <td style={{ padding: '8px', color: darkMode ? '#b0b0b0' : '#666' }}>
-                      {session.premiumCandidate ? '⭐' : '—'}
-                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -2681,26 +2632,279 @@ const BiasOverviewContent = ({ data, darkMode }) => {
 };
 
 // Placeholder components for other tabs
-const BiasProgressionContent = ({ data, darkMode }) => (
-  <div style={{ color: darkMode ? '#e0e0e0' : '#333' }}>
-    <h3>User Progression Analytics</h3>
-    <p>Detailed user progression metrics will be displayed here.</p>
-  </div>
-);
+const BiasProgressionContent = ({ data, darkMode }) => {
+  const progressionData = data || {};
+  const improvementDist = progressionData.improvementDistribution || {};
+  const topLearners = progressionData.topLearners || [];
 
-const BiasMarketInsightsContent = ({ data, darkMode }) => (
-  <div style={{ color: darkMode ? '#e0e0e0' : '#333' }}>
-    <h3>Market Insights</h3>
-    <p>Market condition analysis and bias patterns will be displayed here.</p>
-  </div>
-);
+  return (
+    <div style={{ display: 'grid', gap: '20px' }}>
+      {/* Key Progression Metrics */}
+      <div style={{ 
+        display: 'grid', 
+        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
+        gap: '15px' 
+      }}>
+        <MetricCard
+          title="Total Users"
+          value={progressionData.totalUsers || 0}
+          darkMode={darkMode}
+          icon="👥"
+        />
+        <MetricCard
+          title="Users w/ Progress"
+          value={progressionData.usersWithProgression || 0}
+          darkMode={darkMode}
+          icon="📈"
+        />
+        <MetricCard
+          title="Avg Accuracy Gain"
+          value={`${Math.round((progressionData.avgAccuracyImprovement || 0) * 100)}%`}
+          darkMode={darkMode}
+          icon="🎯"
+        />
+        <MetricCard
+          title="Avg Technical Growth"
+          value={`${Math.round((progressionData.avgTechnicalGrowth || 0) * 100)}%`}
+          darkMode={darkMode}
+          icon="🔧"
+        />
+      </div>
 
-const BiasMonetizationContent = ({ data, darkMode }) => (
-  <div style={{ color: darkMode ? '#e0e0e0' : '#333' }}>
-    <h3>Monetization Metrics</h3>
-    <p>Premium conversion and data value metrics will be displayed here.</p>
-  </div>
-);
+      {/* Improvement Distribution */}
+      <div>
+        <h3 style={{ color: darkMode ? '#e0e0e0' : '#333', marginBottom: '15px' }}>
+          📊 Improvement Distribution
+        </h3>
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(3, 1fr)', 
+          gap: '15px' 
+        }}>
+          <div style={{
+            backgroundColor: '#4CAF50',
+            color: 'white',
+            padding: '20px',
+            borderRadius: '8px',
+            textAlign: 'center'
+          }}>
+            <div style={{ fontSize: '24px', fontWeight: 'bold' }}>
+              {improvementDist.improved || 0}
+            </div>
+            <div>Improved</div>
+          </div>
+          <div style={{
+            backgroundColor: '#FF9800',
+            color: 'white',
+            padding: '20px',
+            borderRadius: '8px',
+            textAlign: 'center'
+          }}>
+            <div style={{ fontSize: '24px', fontWeight: 'bold' }}>
+              {improvementDist.stable || 0}
+            </div>
+            <div>Stable</div>
+          </div>
+          <div style={{
+            backgroundColor: '#f44336',
+            color: 'white',
+            padding: '20px',
+            borderRadius: '8px',
+            textAlign: 'center'
+          }}>
+            <div style={{ fontSize: '24px', fontWeight: 'bold' }}>
+              {improvementDist.declined || 0}
+            </div>
+            <div>Declined</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Top Learners */}
+      {topLearners.length > 0 && (
+        <div>
+          <h3 style={{ color: darkMode ? '#e0e0e0' : '#333', marginBottom: '15px' }}>
+            🏆 Top Learners
+          </h3>
+          <div style={{
+            backgroundColor: darkMode ? '#2a2a2a' : '#f9f9f9',
+            borderRadius: '8px',
+            padding: '20px',
+            border: `1px solid ${darkMode ? '#444' : '#ddd'}`
+          }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>
+                  <th style={{ padding: '10px', textAlign: 'left', borderBottom: `1px solid ${darkMode ? '#444' : '#ddd'}` }}>User ID</th>
+                  <th style={{ padding: '10px', textAlign: 'left', borderBottom: `1px solid ${darkMode ? '#444' : '#ddd'}` }}>Sessions</th>
+                  <th style={{ padding: '10px', textAlign: 'left', borderBottom: `1px solid ${darkMode ? '#444' : '#ddd'}` }}>Accuracy Gain</th>
+                  <th style={{ padding: '10px', textAlign: 'left', borderBottom: `1px solid ${darkMode ? '#444' : '#ddd'}` }}>Learning Velocity</th>
+                </tr>
+              </thead>
+              <tbody>
+                {topLearners.map((learner, index) => (
+                  <tr key={learner.userId}>
+                    <td style={{ padding: '10px', borderBottom: `1px solid ${darkMode ? '#444' : '#ddd'}` }}>
+                      {learner.userId.substring(0, 8)}...
+                    </td>
+                    <td style={{ padding: '10px', borderBottom: `1px solid ${darkMode ? '#444' : '#ddd'}` }}>
+                      {learner.sessionCount}
+                    </td>
+                    <td style={{ padding: '10px', borderBottom: `1px solid ${darkMode ? '#444' : '#ddd'}` }}>
+                      {Math.round(learner.accuracyImprovement * 100)}%
+                    </td>
+                    <td style={{ padding: '10px', borderBottom: `1px solid ${darkMode ? '#444' : '#ddd'}` }}>
+                      {learner.learningVelocity.toFixed(2)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const BiasMarketInsightsContent = ({ data, darkMode }) => {
+  const marketData = data || {};
+  const conditionAnalysis = marketData.marketConditionAnalysis || {};
+  const biasPatterns = marketData.biasPatterns || {};
+  const technicalInsights = marketData.technicalInsights || {};
+
+  return (
+    <div style={{ display: 'grid', gap: '20px' }}>
+      {/* Market Conditions Performance */}
+      <div>
+        <h3 style={{ color: darkMode ? '#e0e0e0' : '#333', marginBottom: '15px' }}>
+          📈 Performance by Market Condition
+        </h3>
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', 
+          gap: '15px' 
+        }}>
+          {Object.entries(conditionAnalysis).map(([condition, stats]) => (
+            <div key={condition} style={{
+              backgroundColor: darkMode ? '#2a2a2a' : '#f9f9f9',
+              borderRadius: '8px',
+              padding: '20px',
+              border: `1px solid ${darkMode ? '#444' : '#ddd'}`
+            }}>
+              <h4 style={{ 
+                color: darkMode ? '#e0e0e0' : '#333', 
+                margin: '0 0 15px 0',
+                textTransform: 'capitalize'
+              }}>
+                {condition === 'trending' ? '📈 Trending' : condition === 'sideways' ? '➡️ Sideways' : '🌊 Volatile'}
+              </h4>
+              <div style={{ display: 'grid', gap: '8px', fontSize: '14px' }}>
+                <div style={{ color: darkMode ? '#b0b0b0' : '#666' }}>
+                  Questions: <strong>{stats.totalQuestions || 0}</strong>
+                </div>
+                <div style={{ color: darkMode ? '#b0b0b0' : '#666' }}>
+                  Accuracy: <strong>{Math.round((stats.avgAccuracy || 0) * 100)}%</strong>
+                </div>
+                <div style={{ color: darkMode ? '#b0b0b0' : '#666' }}>
+                  Avg Confidence: <strong>{(stats.avgConfidence || 0).toFixed(1)}/10</strong>
+                </div>
+                <div style={{ color: darkMode ? '#b0b0b0' : '#666' }}>
+                  Complexity: <strong>{(stats.avgTechnicalComplexity || 0).toFixed(1)}/10</strong>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Bias Patterns */}
+      <div>
+        <h3 style={{ color: darkMode ? '#e0e0e0' : '#333', marginBottom: '15px' }}>
+          🧠 Bias Pattern Distribution
+        </h3>
+        <div style={{
+          backgroundColor: darkMode ? '#2a2a2a' : '#f9f9f9',
+          borderRadius: '8px',
+          padding: '20px',
+          border: `1px solid ${darkMode ? '#444' : '#ddd'}`
+        }}>
+          {Object.entries(biasPatterns).length > 0 ? (
+            <div style={{ display: 'grid', gap: '10px' }}>
+              {Object.entries(biasPatterns).map(([pattern, count]) => (
+                <div key={pattern} style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between',
+                  padding: '10px',
+                  backgroundColor: darkMode ? '#333' : '#fff',
+                  borderRadius: '4px'
+                }}>
+                  <span style={{ textTransform: 'capitalize' }}>{pattern}</span>
+                  <span style={{ fontWeight: 'bold' }}>{count}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p>No bias pattern data available</p>
+          )}
+        </div>
+      </div>
+
+      {/* Technical Factors */}
+      <div>
+        <h3 style={{ color: darkMode ? '#e0e0e0' : '#333', marginBottom: '15px' }}>
+          🔧 Top Technical Factors
+        </h3>
+        <div style={{
+          backgroundColor: darkMode ? '#2a2a2a' : '#f9f9f9',
+          borderRadius: '8px',
+          padding: '20px',
+          border: `1px solid ${darkMode ? '#444' : '#ddd'}`
+        }}>
+          {Object.entries(technicalInsights).length > 0 ? (
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>
+                  <th style={{ padding: '10px', textAlign: 'left', borderBottom: `1px solid ${darkMode ? '#444' : '#ddd'}` }}>Factor</th>
+                  <th style={{ padding: '10px', textAlign: 'left', borderBottom: `1px solid ${darkMode ? '#444' : '#ddd'}` }}>Occurrences</th>
+                  <th style={{ padding: '10px', textAlign: 'left', borderBottom: `1px solid ${darkMode ? '#444' : '#ddd'}` }}>Success Rate</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Object.entries(technicalInsights).slice(0, 10).map(([factor, data]) => (
+                  <tr key={factor}>
+                    <td style={{ padding: '10px', borderBottom: `1px solid ${darkMode ? '#444' : '#ddd'}` }}>
+                      {factor}
+                    </td>
+                    <td style={{ padding: '10px', borderBottom: `1px solid ${darkMode ? '#444' : '#ddd'}` }}>
+                      {data.count}
+                    </td>
+                    <td style={{ padding: '10px', borderBottom: `1px solid ${darkMode ? '#444' : '#ddd'}` }}>
+                      {Math.round(data.successRate * 100)}%
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <p>No technical insights data available</p>
+          )}
+        </div>
+      </div>
+
+      {/* Total Insights */}
+      <div>
+        <MetricCard
+          title="Total Unique Insights"
+          value={marketData.totalInsights || 0}
+          darkMode={darkMode}
+          icon="💡"
+        />
+      </div>
+    </div>
+  );
+};
+
 
 // Helper component for metric cards
 const MetricCard = ({ title, value, icon, darkMode }) => (
