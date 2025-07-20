@@ -15,12 +15,14 @@ const SandboxPerformancePage = () => {
 
   const [performanceData, setPerformanceData] = useState([]);
   const [summary, setSummary] = useState(null);
-  const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [sortBy, setSortBy] = useState('realTradingReturn');
   const [sortOrder, setSortOrder] = useState('desc');
   const [filterUnlocked, setFilterUnlocked] = useState('all');
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [userAnalytics, setUserAnalytics] = useState(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -44,7 +46,6 @@ const SandboxPerformancePage = () => {
         const data = await response.json();
         setPerformanceData(data.performanceData);
         setSummary(data.summary);
-        setAnalytics(data.analytics);
       } catch (err) {
         setError(err.message || 'An error occurred');
       } finally {
@@ -115,6 +116,28 @@ const SandboxPerformancePage = () => {
   });
 
   const sortedData = sortData(filteredData, sortBy, sortOrder);
+
+  const fetchUserAnalytics = async (userId) => {
+    setAnalyticsLoading(true);
+    try {
+      const token = storage.getItem('auth_token');
+      const response = await fetch(`/api/admin/sandbox-user-analytics?userId=${userId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!response.ok) throw new Error('Failed to fetch user analytics');
+      const data = await response.json();
+      setUserAnalytics(data.analytics);
+      setSelectedUser(data.user);
+    } catch (err) {
+      console.error('Failed to fetch user analytics:', err);
+    } finally {
+      setAnalyticsLoading(false);
+    }
+  };
+
+  const handleUserClick = (userId) => {
+    fetchUserAnalytics(userId);
+  };
 
   if (loading) {
     return (
@@ -264,225 +287,6 @@ const SandboxPerformancePage = () => {
           </div>
         )}
 
-        {/* Trading Analytics Section */}
-        {analytics && (
-          <div style={{ marginBottom: '30px' }}>
-            {/* Top Traded Assets */}
-            <div style={{
-              backgroundColor: darkMode ? '#1e1e1e' : 'white',
-              borderRadius: '12px',
-              padding: '20px',
-              marginBottom: '20px',
-              boxShadow: darkMode ? '0 4px 12px rgba(0,0,0,0.3)' : '0 4px 12px rgba(0,0,0,0.1)'
-            }}>
-              <h3 style={{ color: darkMode ? '#e0e0e0' : '#333', marginBottom: '15px' }}>
-                📈 Top Traded Assets
-              </h3>
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr style={{ borderBottom: `2px solid ${darkMode ? '#444' : '#eee'}` }}>
-                      <th style={{ padding: '10px', textAlign: 'left', color: darkMode ? '#e0e0e0' : '#333' }}>Symbol</th>
-                      <th style={{ padding: '10px', textAlign: 'center', color: darkMode ? '#e0e0e0' : '#333' }}>Total Trades</th>
-                      <th style={{ padding: '10px', textAlign: 'center', color: darkMode ? '#e0e0e0' : '#333' }}>Unique Traders</th>
-                      <th style={{ padding: '10px', textAlign: 'center', color: darkMode ? '#e0e0e0' : '#333' }}>Win Rate</th>
-                      <th style={{ padding: '10px', textAlign: 'right', color: darkMode ? '#e0e0e0' : '#333' }}>Total Volume</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {analytics.topTradedAssets.map((asset, index) => (
-                      <tr key={asset.symbol} style={{ borderBottom: `1px solid ${darkMode ? '#333' : '#eee'}` }}>
-                        <td style={{ padding: '10px', fontWeight: '500', color: darkMode ? '#e0e0e0' : '#333' }}>
-                          {asset.symbol}
-                        </td>
-                        <td style={{ padding: '10px', textAlign: 'center', color: darkMode ? '#b0b0b0' : '#666' }}>
-                          {asset.totalTrades}
-                        </td>
-                        <td style={{ padding: '10px', textAlign: 'center', color: darkMode ? '#b0b0b0' : '#666' }}>
-                          {asset.uniqueTraders}
-                        </td>
-                        <td style={{ 
-                          padding: '10px', 
-                          textAlign: 'center',
-                          color: getReturnColor(asset.winRate - 50),
-                          fontWeight: '500'
-                        }}>
-                          {asset.winRate.toFixed(1)}%
-                        </td>
-                        <td style={{ padding: '10px', textAlign: 'right', color: darkMode ? '#b0b0b0' : '#666' }}>
-                          {formatCurrency(asset.totalVolume)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Trading Mistakes Analysis */}
-            <div style={{
-              backgroundColor: darkMode ? '#1e1e1e' : 'white',
-              borderRadius: '12px',
-              padding: '20px',
-              marginBottom: '20px',
-              boxShadow: darkMode ? '0 4px 12px rgba(0,0,0,0.3)' : '0 4px 12px rgba(0,0,0,0.1)'
-            }}>
-              <h3 style={{ color: darkMode ? '#e0e0e0' : '#333', marginBottom: '15px' }}>
-                ⚠️ Common Trading Mistakes
-              </h3>
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                gap: '15px'
-              }}>
-                <div style={{
-                  backgroundColor: darkMode ? '#2a2a2a' : '#f5f5f5',
-                  borderRadius: '8px',
-                  padding: '15px',
-                  textAlign: 'center'
-                }}>
-                  <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#F44336', marginBottom: '5px' }}>
-                    {analytics.tradingMistakes.overleveraging}
-                  </div>
-                  <div style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '14px' }}>Overleveraging</div>
-                  <div style={{ color: darkMode ? '#888' : '#999', fontSize: '12px', marginTop: '5px' }}>
-                    Position &gt; 20% of balance
-                  </div>
-                </div>
-                <div style={{
-                  backgroundColor: darkMode ? '#2a2a2a' : '#f5f5f5',
-                  borderRadius: '8px',
-                  padding: '15px',
-                  textAlign: 'center'
-                }}>
-                  <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#FF9800', marginBottom: '5px' }}>
-                    {analytics.tradingMistakes.noStopLoss}
-                  </div>
-                  <div style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '14px' }}>No Stop Loss</div>
-                  <div style={{ color: darkMode ? '#888' : '#999', fontSize: '12px', marginTop: '5px' }}>
-                    Trading without protection
-                  </div>
-                </div>
-                <div style={{
-                  backgroundColor: darkMode ? '#2a2a2a' : '#f5f5f5',
-                  borderRadius: '8px',
-                  padding: '15px',
-                  textAlign: 'center'
-                }}>
-                  <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#2196F3', marginBottom: '5px' }}>
-                    {analytics.tradingMistakes.quickExits}
-                  </div>
-                  <div style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '14px' }}>Quick Exits</div>
-                  <div style={{ color: darkMode ? '#888' : '#999', fontSize: '12px', marginTop: '5px' }}>
-                    Exited in &lt; 5 minutes
-                  </div>
-                </div>
-                <div style={{
-                  backgroundColor: darkMode ? '#2a2a2a' : '#f5f5f5',
-                  borderRadius: '8px',
-                  padding: '15px',
-                  textAlign: 'center'
-                }}>
-                  <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#9C27B0', marginBottom: '5px' }}>
-                    {analytics.tradingMistakes.largePositionSizes}
-                  </div>
-                  <div style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '14px' }}>High Leverage</div>
-                  <div style={{ color: darkMode ? '#888' : '#999', fontSize: '12px', marginTop: '5px' }}>
-                    Leverage &gt; 10x
-                  </div>
-                </div>
-              </div>
-              <div style={{
-                marginTop: '20px',
-                padding: '15px',
-                backgroundColor: darkMode ? 'rgba(244, 67, 54, 0.1)' : '#ffebee',
-                borderRadius: '8px',
-                textAlign: 'center'
-              }}>
-                <div style={{ color: '#F44336', fontSize: '16px', fontWeight: '500' }}>
-                  Total Trades with Mistakes: {analytics.tradingMistakes.totalMistakes}
-                </div>
-                <div style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '14px', marginTop: '5px' }}>
-                  These mistakes often lead to losses and account liquidations
-                </div>
-              </div>
-            </div>
-
-            {/* Time to Profitability */}
-            <div style={{
-              backgroundColor: darkMode ? '#1e1e1e' : 'white',
-              borderRadius: '12px',
-              padding: '20px',
-              marginBottom: '20px',
-              boxShadow: darkMode ? '0 4px 12px rgba(0,0,0,0.3)' : '0 4px 12px rgba(0,0,0,0.1)'
-            }}>
-              <h3 style={{ color: darkMode ? '#e0e0e0' : '#333', marginBottom: '15px' }}>
-                💰 Time to Profitability
-              </h3>
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-                gap: '20px',
-                marginBottom: '20px'
-              }}>
-                <div style={{
-                  backgroundColor: darkMode ? '#2a2a2a' : '#f5f5f5',
-                  borderRadius: '8px',
-                  padding: '20px',
-                  textAlign: 'center'
-                }}>
-                  <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#4CAF50', marginBottom: '10px' }}>
-                    {analytics.profitability.averageTimeToProfit 
-                      ? `${analytics.profitability.averageTimeToProfit.toFixed(1)} days`
-                      : 'N/A'}
-                  </div>
-                  <div style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '14px' }}>
-                    Average Time to Profitability
-                  </div>
-                </div>
-                <div style={{
-                  backgroundColor: darkMode ? '#2a2a2a' : '#f5f5f5',
-                  borderRadius: '8px',
-                  padding: '20px',
-                  textAlign: 'center'
-                }}>
-                  <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#2196F3', marginBottom: '10px' }}>
-                    {analytics.profitability.profitabilityRate.toFixed(1)}%
-                  </div>
-                  <div style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '14px' }}>
-                    Profitable Traders
-                  </div>
-                </div>
-              </div>
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-around',
-                padding: '15px',
-                backgroundColor: darkMode ? '#2a2a2a' : '#f5f5f5',
-                borderRadius: '8px'
-              }}>
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#4CAF50' }}>
-                    {analytics.profitability.userBreakdown.profitable}
-                  </div>
-                  <div style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '12px' }}>Profitable</div>
-                </div>
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#F44336' }}>
-                    {analytics.profitability.userBreakdown.unprofitable}
-                  </div>
-                  <div style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '12px' }}>Unprofitable</div>
-                </div>
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#9E9E9E' }}>
-                    {analytics.profitability.userBreakdown.noTrades}
-                  </div>
-                  <div style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '12px' }}>No Trades</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Filters */}
         <div style={{
@@ -630,8 +434,13 @@ const SandboxPerformancePage = () => {
                   key={user.userId} 
                   style={{ 
                     borderBottom: `1px solid ${darkMode ? '#333' : '#eee'}`,
-                    backgroundColor: index % 2 === 0 ? 'transparent' : (darkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)')
+                    backgroundColor: index % 2 === 0 ? 'transparent' : (darkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)'),
+                    cursor: 'pointer',
+                    transition: 'background-color 0.2s'
                   }}
+                  onClick={() => handleUserClick(user.userId)}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = index % 2 === 0 ? 'transparent' : (darkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)')}
                 >
                   <td style={{ padding: '12px 10px' }}>
                     <div style={{ color: darkMode ? '#e0e0e0' : '#333', fontWeight: '500' }}>
@@ -724,6 +533,338 @@ const SandboxPerformancePage = () => {
             <p style={{ color: darkMode ? '#b0b0b0' : '#666', margin: 0 }}>
               No users match the current filter criteria.
             </p>
+          </div>
+        )}
+
+        {/* User Analytics Modal */}
+        {selectedUser && userAnalytics && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '20px'
+          }} onClick={() => { setSelectedUser(null); setUserAnalytics(null); }}>
+            <div style={{
+              backgroundColor: darkMode ? '#1e1e1e' : 'white',
+              borderRadius: '12px',
+              maxWidth: '1200px',
+              maxHeight: '90vh',
+              overflow: 'auto',
+              padding: '30px',
+              position: 'relative',
+              boxShadow: '0 20px 40px rgba(0,0,0,0.3)'
+            }} onClick={(e) => e.stopPropagation()}>
+              
+              {/* Close Button */}
+              <button 
+                onClick={() => { setSelectedUser(null); setUserAnalytics(null); }}
+                style={{
+                  position: 'absolute',
+                  top: '20px',
+                  right: '20px',
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '24px',
+                  cursor: 'pointer',
+                  color: darkMode ? '#e0e0e0' : '#333'
+                }}
+              >
+                ×
+              </button>
+
+              {/* Header */}
+              <div style={{ marginBottom: '30px' }}>
+                <h2 style={{ color: darkMode ? '#e0e0e0' : '#333', marginBottom: '10px' }}>
+                  📊 Trading Analytics for {selectedUser.name}
+                </h2>
+                <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
+                  <div>
+                    <span style={{ color: darkMode ? '#b0b0b0' : '#666' }}>Email: </span>
+                    <span style={{ color: darkMode ? '#e0e0e0' : '#333' }}>{selectedUser.email}</span>
+                  </div>
+                  <div>
+                    <span style={{ color: darkMode ? '#b0b0b0' : '#666' }}>Balance: </span>
+                    <span style={{ color: darkMode ? '#e0e0e0' : '#333', fontWeight: '500' }}>
+                      {formatCurrency(selectedUser.portfolio.balance)}
+                    </span>
+                  </div>
+                  <div>
+                    <span style={{ color: darkMode ? '#b0b0b0' : '#666' }}>Return: </span>
+                    <span style={{ 
+                      color: getReturnColor(selectedUser.portfolio.realTradingReturn),
+                      fontWeight: '500'
+                    }}>
+                      {formatPercentage(selectedUser.portfolio.realTradingReturn)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {analyticsLoading ? (
+                <div style={{ textAlign: 'center', padding: '40px' }}>
+                  <CryptoLoader message="Loading analytics..." />
+                </div>
+              ) : (
+                <>
+                  {/* Summary Stats */}
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                    gap: '15px',
+                    marginBottom: '30px'
+                  }}>
+                    <div style={{
+                      backgroundColor: darkMode ? '#2a2a2a' : '#f5f5f5',
+                      borderRadius: '8px',
+                      padding: '15px',
+                      textAlign: 'center'
+                    }}>
+                      <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#2196F3' }}>
+                        {userAnalytics.summary.totalTrades}
+                      </div>
+                      <div style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '12px' }}>Total Trades</div>
+                    </div>
+                    <div style={{
+                      backgroundColor: darkMode ? '#2a2a2a' : '#f5f5f5',
+                      borderRadius: '8px',
+                      padding: '15px',
+                      textAlign: 'center'
+                    }}>
+                      <div style={{ fontSize: '24px', fontWeight: 'bold', color: getReturnColor((userAnalytics.summary.winRate || 0) - 50) }}>
+                        {(userAnalytics.summary.winRate || 0).toFixed(1)}%
+                      </div>
+                      <div style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '12px' }}>Win Rate</div>
+                    </div>
+                    <div style={{
+                      backgroundColor: darkMode ? '#2a2a2a' : '#f5f5f5',
+                      borderRadius: '8px',
+                      padding: '15px',
+                      textAlign: 'center'
+                    }}>
+                      <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#4CAF50' }}>
+                        {formatCurrency(userAnalytics.summary.avgWin)}
+                      </div>
+                      <div style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '12px' }}>Avg Win</div>
+                    </div>
+                    <div style={{
+                      backgroundColor: darkMode ? '#2a2a2a' : '#f5f5f5',
+                      borderRadius: '8px',
+                      padding: '15px',
+                      textAlign: 'center'
+                    }}>
+                      <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#F44336' }}>
+                        {formatCurrency(userAnalytics.summary.avgLoss)}
+                      </div>
+                      <div style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '12px' }}>Avg Loss</div>
+                    </div>
+                  </div>
+
+                  {/* Favorite Assets */}
+                  <div style={{
+                    backgroundColor: darkMode ? '#2a2a2a' : '#f9f9f9',
+                    borderRadius: '8px',
+                    padding: '20px',
+                    marginBottom: '20px'
+                  }}>
+                    <h3 style={{ color: darkMode ? '#e0e0e0' : '#333', marginBottom: '15px' }}>
+                      🎯 Most Traded Assets
+                    </h3>
+                    <div style={{ overflowX: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <thead>
+                          <tr style={{ borderBottom: `2px solid ${darkMode ? '#444' : '#ddd'}` }}>
+                            <th style={{ padding: '8px', textAlign: 'left', color: darkMode ? '#e0e0e0' : '#333', fontSize: '14px' }}>Asset</th>
+                            <th style={{ padding: '8px', textAlign: 'center', color: darkMode ? '#e0e0e0' : '#333', fontSize: '14px' }}>Trades</th>
+                            <th style={{ padding: '8px', textAlign: 'center', color: darkMode ? '#e0e0e0' : '#333', fontSize: '14px' }}>Win Rate</th>
+                            <th style={{ padding: '8px', textAlign: 'right', color: darkMode ? '#e0e0e0' : '#333', fontSize: '14px' }}>Total P&L</th>
+                            <th style={{ padding: '8px', textAlign: 'right', color: darkMode ? '#e0e0e0' : '#333', fontSize: '14px' }}>Avg Hold Time</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {userAnalytics.favoriteAssets.slice(0, 5).map((asset) => (
+                            <tr key={asset.symbol} style={{ borderBottom: `1px solid ${darkMode ? '#333' : '#eee'}` }}>
+                              <td style={{ padding: '8px', color: darkMode ? '#e0e0e0' : '#333' }}>{asset.symbol}</td>
+                              <td style={{ padding: '8px', textAlign: 'center', color: darkMode ? '#b0b0b0' : '#666' }}>{asset.totalTrades}</td>
+                              <td style={{ padding: '8px', textAlign: 'center', color: getReturnColor((asset.winRate || 0) - 50), fontWeight: '500' }}>
+                                {(asset.winRate || 0).toFixed(1)}%
+                              </td>
+                              <td style={{ padding: '8px', textAlign: 'right', color: getReturnColor(asset.totalPnL), fontWeight: '500' }}>
+                                {formatCurrency(asset.totalPnL)}
+                              </td>
+                              <td style={{ padding: '8px', textAlign: 'right', color: darkMode ? '#b0b0b0' : '#666' }}>
+                                {(asset.avgHoldingTime || 0).toFixed(1)} min
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* Trading Mistakes */}
+                  <div style={{
+                    backgroundColor: darkMode ? '#2a2a2a' : '#f9f9f9',
+                    borderRadius: '8px',
+                    padding: '20px',
+                    marginBottom: '20px'
+                  }}>
+                    <h3 style={{ color: darkMode ? '#e0e0e0' : '#333', marginBottom: '15px' }}>
+                      ⚠️ Trading Mistakes Analysis
+                    </h3>
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                      gap: '15px'
+                    }}>
+                      <div style={{
+                        backgroundColor: darkMode ? '#333' : '#fff',
+                        borderRadius: '8px',
+                        padding: '15px',
+                        border: `2px solid ${darkMode ? '#555' : '#eee'}`
+                      }}>
+                        <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#F44336', marginBottom: '5px' }}>
+                          {userAnalytics.tradingMistakes.overleveraging.length}
+                        </div>
+                        <div style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '14px' }}>Overleveraging</div>
+                        {userAnalytics.tradingMistakes.overleveraging.length > 0 && (
+                          <div style={{ color: darkMode ? '#888' : '#999', fontSize: '12px', marginTop: '5px' }}>
+                            Latest: {userAnalytics.tradingMistakes.overleveraging[0].percentage}% of balance
+                          </div>
+                        )}
+                      </div>
+                      <div style={{
+                        backgroundColor: darkMode ? '#333' : '#fff',
+                        borderRadius: '8px',
+                        padding: '15px',
+                        border: `2px solid ${darkMode ? '#555' : '#eee'}`
+                      }}>
+                        <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#FF9800', marginBottom: '5px' }}>
+                          {userAnalytics.tradingMistakes.noStopLoss.length}
+                        </div>
+                        <div style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '14px' }}>No Stop Loss</div>
+                      </div>
+                      <div style={{
+                        backgroundColor: darkMode ? '#333' : '#fff',
+                        borderRadius: '8px',
+                        padding: '15px',
+                        border: `2px solid ${darkMode ? '#555' : '#eee'}`
+                      }}>
+                        <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#2196F3', marginBottom: '5px' }}>
+                          {userAnalytics.tradingMistakes.quickExits.length}
+                        </div>
+                        <div style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '14px' }}>Quick Exits</div>
+                      </div>
+                      <div style={{
+                        backgroundColor: darkMode ? '#333' : '#fff',
+                        borderRadius: '8px',
+                        padding: '15px',
+                        border: `2px solid ${darkMode ? '#555' : '#eee'}`
+                      }}>
+                        <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#9C27B0', marginBottom: '5px' }}>
+                          {userAnalytics.tradingMistakes.highLeverage.length}
+                        </div>
+                        <div style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '14px' }}>High Leverage</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Profitability Journey */}
+                  <div style={{
+                    backgroundColor: darkMode ? '#2a2a2a' : '#f9f9f9',
+                    borderRadius: '8px',
+                    padding: '20px',
+                    marginBottom: '20px'
+                  }}>
+                    <h3 style={{ color: darkMode ? '#e0e0e0' : '#333', marginBottom: '15px' }}>
+                      💰 Profitability Status
+                    </h3>
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                      gap: '20px'
+                    }}>
+                      <div style={{
+                        backgroundColor: darkMode ? '#333' : '#fff',
+                        borderRadius: '8px',
+                        padding: '20px',
+                        textAlign: 'center',
+                        border: `2px solid ${userAnalytics.profitability.isProfitable ? '#4CAF50' : '#F44336'}`
+                      }}>
+                        <div style={{ fontSize: '18px', fontWeight: 'bold', color: userAnalytics.profitability.isProfitable ? '#4CAF50' : '#F44336' }}>
+                          {userAnalytics.profitability.isProfitable ? 'PROFITABLE' : 'NOT PROFITABLE'}
+                        </div>
+                        <div style={{ fontSize: '24px', fontWeight: 'bold', color: getReturnColor(userAnalytics.profitability.totalPnL), marginTop: '10px' }}>
+                          {formatCurrency(userAnalytics.profitability.totalPnL)}
+                        </div>
+                        <div style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '12px' }}>Total P&L</div>
+                      </div>
+                      {userAnalytics.profitability.timeToProfit && (
+                        <div style={{
+                          backgroundColor: darkMode ? '#333' : '#fff',
+                          borderRadius: '8px',
+                          padding: '20px',
+                          textAlign: 'center',
+                          border: `2px solid ${darkMode ? '#555' : '#eee'}`
+                        }}>
+                          <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#4CAF50' }}>
+                            {(userAnalytics.profitability.timeToProfit || 0).toFixed(0)} days
+                          </div>
+                          <div style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '12px' }}>Time to Profitability</div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Trading Patterns */}
+                  {userAnalytics.tradingPatterns && (
+                    <div style={{
+                      backgroundColor: darkMode ? '#2a2a2a' : '#f9f9f9',
+                      borderRadius: '8px',
+                      padding: '20px'
+                    }}>
+                      <h3 style={{ color: darkMode ? '#e0e0e0' : '#333', marginBottom: '15px' }}>
+                        🔍 Trading Patterns
+                      </h3>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
+                        {userAnalytics.tradingPatterns.favoriteTimeOfDay && (
+                          <div>
+                            <div style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '14px' }}>Favorite Trading Time</div>
+                            <div style={{ color: darkMode ? '#e0e0e0' : '#333', fontSize: '16px', fontWeight: '500' }}>
+                              {userAnalytics.tradingPatterns.favoriteTimeOfDay.timeString}
+                            </div>
+                          </div>
+                        )}
+                        <div>
+                          <div style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '14px' }}>Max Win Streak</div>
+                          <div style={{ color: '#4CAF50', fontSize: '16px', fontWeight: '500' }}>
+                            {userAnalytics.tradingPatterns.winStreaks} trades
+                          </div>
+                        </div>
+                        <div>
+                          <div style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '14px' }}>Max Loss Streak</div>
+                          <div style={{ color: '#F44336', fontSize: '16px', fontWeight: '500' }}>
+                            {userAnalytics.tradingPatterns.lossStreaks} trades
+                          </div>
+                        </div>
+                        <div>
+                          <div style={{ color: darkMode ? '#b0b0b0' : '#666', fontSize: '14px' }}>Avg Trade Size</div>
+                          <div style={{ color: darkMode ? '#e0e0e0' : '#333', fontSize: '16px', fontWeight: '500' }}>
+                            {formatCurrency(userAnalytics.tradingPatterns.averageTradeSize)}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
           </div>
         )}
       </div>
