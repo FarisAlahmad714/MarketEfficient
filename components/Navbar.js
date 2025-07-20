@@ -372,25 +372,20 @@ const Navbar = () => {
             {router.pathname.includes('/dashboard') && <div className="nav-active-dot"></div>}
           </Link>
           
-          {isAuthenticated && (
-            <div className="sandbox-nav-container">
+          <div className="sandbox-nav-container">
               <Link 
-                href={sandboxUnlocked || user?.isAdmin ? "/sandbox" : "#"} 
-                className={`nav-link ${router.pathname.includes('/sandbox') ? 'active' : ''} ${!sandboxUnlocked && !user?.isAdmin ? 'locked' : ''}`}
-                onClick={!sandboxUnlocked && !user?.isAdmin ? (e) => {
+                href={isAuthenticated && (sandboxUnlocked || user?.isAdmin) ? "/sandbox" : "/pricing"} 
+                className={`nav-link ${router.pathname.includes('/sandbox') ? 'active' : ''} ${isAuthenticated && !sandboxUnlocked && !user?.isAdmin ? 'locked' : ''}`}
+                onClick={!isAuthenticated ? undefined : (!sandboxUnlocked && !user?.isAdmin ? (e) => {
                   e.preventDefault();
                   // Could show a modal with unlock requirements
-                } : undefined}
-                title={user?.isAdmin ? 'Sandbox Trading (Admin Access)' : sandboxUnlocked ? 'Sandbox Trading' : `Sandbox Trading (${sandboxProgress.toFixed(0)}% complete)`}
+                } : undefined)}
+                title={!isAuthenticated ? 'Login to access Sandbox Trading' : user?.isAdmin ? 'Sandbox Trading (Admin Access)' : sandboxUnlocked ? 'Sandbox Trading' : `Sandbox Trading (${sandboxProgress.toFixed(0)}% complete)`}
               >
                 <div className="nav-icon-wrapper">
-                  {sandboxUnlocked || user?.isAdmin ? (
-                    <RiExchangeLine className="nav-icon" />
-                  ) : (
-                    <FaLock className="nav-icon" />
-                  )}
+                  <RiExchangeLine className="nav-icon" />
                   <span className="nav-glow"></span>
-                  {!sandboxUnlocked && !user?.isAdmin && sandboxProgress > 0 && (
+                  {isAuthenticated && !sandboxUnlocked && !user?.isAdmin && sandboxProgress > 0 && (
                     <div className="progress-ring">
                       <svg width="40" height="40" className="progress-circle">
                         <circle 
@@ -417,12 +412,12 @@ const Navbar = () => {
                   )}
                 </div>
                 <span className="nav-text">
-                  {user?.isAdmin ? 'Sandbox' : sandboxUnlocked ? 'Sandbox' : `Sandbox ${sandboxProgress.toFixed(0)}%`}
+                  {!isAuthenticated ? 'Sandbox' : user?.isAdmin ? 'Sandbox' : sandboxUnlocked ? 'Sandbox' : `Sandbox ${sandboxProgress.toFixed(0)}%`}
                 </span>
                 {router.pathname.includes('/sandbox') && <div className="nav-active-dot"></div>}
               </Link>
               
-              {!sandboxUnlocked && !user?.isAdmin && (
+              {isAuthenticated && !sandboxUnlocked && !user?.isAdmin && (
                 <div className="sandbox-tooltip">
                   <div className="tooltip-content">
                     <div className="tooltip-header">
@@ -455,7 +450,6 @@ const Navbar = () => {
                 </div>
               )}
             </div>
-          )}
         </nav>
 
         <div className="navbar-actions">
@@ -721,25 +715,19 @@ const Navbar = () => {
                 </Link>
               )}
               
-              {isAuthenticated && (
-                <Link 
-                  href={sandboxUnlocked || user?.isAdmin ? "/sandbox" : "#"} 
-                  className={`mobile-link mobile-link-6 ${router.pathname.includes('/sandbox') ? 'active' : ''} ${!sandboxUnlocked && !user?.isAdmin ? 'locked' : ''}`}
-                  onClick={(sandboxUnlocked || user?.isAdmin) ? () => setMobileMenuOpen(false) : (e) => {
-                    e.preventDefault();
-                    // Could show unlock requirements modal
-                  }}
-                >
-                  {sandboxUnlocked || user?.isAdmin ? (
-                    <RiExchangeLine className="mobile-icon" />
-                  ) : (
-                    <FaLock className="mobile-icon" />
-                  )}
-                  <span>
-                    {user?.isAdmin ? 'Sandbox Trading' : sandboxUnlocked ? 'Sandbox Trading' : `Sandbox ${sandboxProgress.toFixed(0)}%`}
-                  </span>
-                </Link>
-              )}
+              <Link 
+                href={isAuthenticated && (sandboxUnlocked || user?.isAdmin) ? "/sandbox" : "/pricing"} 
+                className={`mobile-link mobile-link-6 ${router.pathname.includes('/sandbox') ? 'active' : ''} ${isAuthenticated && !sandboxUnlocked && !user?.isAdmin ? 'locked' : ''}`}
+                onClick={!isAuthenticated ? () => setMobileMenuOpen(false) : ((sandboxUnlocked || user?.isAdmin) ? () => setMobileMenuOpen(false) : (e) => {
+                  e.preventDefault();
+                  // Could show unlock requirements modal
+                })}
+              >
+                <RiExchangeLine className="mobile-icon" />
+                <span>
+                  {!isAuthenticated ? 'Sandbox Trading' : user?.isAdmin ? 'Sandbox Trading' : sandboxUnlocked ? 'Sandbox Trading' : `Sandbox ${sandboxProgress.toFixed(0)}%`}
+                </span>
+              </Link>
             </div>
             
             {isAuthenticated && (
