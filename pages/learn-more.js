@@ -1,4 +1,4 @@
-import React, { useContext, useState } from 'react';
+import React, { useContext, useState, useEffect } from 'react';
 import { Target, Award, Clock, ArrowRight, Sparkles, Zap, Shield, Users } from 'lucide-react';
 import { FaGraduationCap } from 'react-icons/fa';
 import { TbScale, TbChartLine } from 'react-icons/tb';
@@ -10,6 +10,16 @@ import { motion } from 'framer-motion';
 const LearnMorePage = () => {
   const { darkMode } = useContext(ThemeContext);
   const [hoveredCard, setHoveredCard] = useState(null);
+  const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowWidth(window.innerWidth);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   return (
     <div style={{
@@ -23,9 +33,9 @@ const LearnMorePage = () => {
       {/* Hero Section - Clean Grid */}
       <section style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(12, 1fr)',
+        gridTemplateColumns: windowWidth > 768 ? 'repeat(12, 1fr)' : '1fr',
         gap: '24px',
-        padding: 'clamp(80px, 10vw, 120px) 0',
+        padding: windowWidth > 768 ? 'clamp(80px, 10vw, 120px) 0' : 'clamp(60px, 10vw, 80px) 0',
         alignItems: 'center',
       }}>
         <motion.div
@@ -33,11 +43,12 @@ const LearnMorePage = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
           style={{
-            gridColumn: 'span 7',
+            gridColumn: windowWidth > 768 ? 'span 7' : 'span 1',
+            textAlign: windowWidth > 768 ? 'left' : 'center',
           }}
         >
           <h1 style={{
-            fontSize: 'clamp(3rem, 5vw, 4.5rem)',
+            fontSize: windowWidth > 768 ? 'clamp(3rem, 5vw, 4.5rem)' : 'clamp(2.5rem, 8vw, 3rem)',
             fontWeight: 900,
             color: darkMode ? '#FFFFFF' : '#000000',
             lineHeight: 1.1,
@@ -97,8 +108,8 @@ const LearnMorePage = () => {
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.8, delay: 0.2 }}
           style={{
-            gridColumn: 'span 5',
-            display: 'grid',
+            gridColumn: windowWidth > 768 ? 'span 5' : 'span 1',
+            display: windowWidth > 768 ? 'grid' : 'none',
             gridTemplateColumns: 'repeat(2, 1fr)',
             gap: '16px',
             height: '400px',
@@ -156,7 +167,7 @@ const LearnMorePage = () => {
               style={{
                 background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(34, 197, 94, 0.05) 100%)',
                 borderRadius: '16px',
-                padding: '32px',
+                padding: windowWidth > 768 ? '32px' : '24px',
                 border: `1px solid rgba(34, 197, 94, 0.2)`,
                 flex: 1.5,
               }}
@@ -219,9 +230,9 @@ const LearnMorePage = () => {
 
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(12, 1fr)',
-          gridTemplateRows: 'repeat(3, 180px)',
-          gap: '24px',
+          gridTemplateColumns: windowWidth > 768 ? 'repeat(12, 1fr)' : '1fr',
+          gridTemplateRows: windowWidth > 768 ? 'repeat(3, 180px)' : 'auto',
+          gap: windowWidth > 768 ? '24px' : '16px',
         }}>
           {/* Large card - Main problem */}
           <motion.div
@@ -232,13 +243,13 @@ const LearnMorePage = () => {
             onHoverStart={() => setHoveredCard('main')}
             onHoverEnd={() => setHoveredCard(null)}
             style={{
-              gridColumn: 'span 8',
-              gridRow: 'span 2',
+              gridColumn: windowWidth > 768 ? 'span 8' : 'span 1',
+              gridRow: windowWidth > 768 ? 'span 2' : 'span 1',
               background: darkMode 
                 ? 'linear-gradient(135deg, #1A1A1A 0%, #0F0F0F 100%)' 
                 : 'linear-gradient(135deg, #FFFFFF 0%, #F8F8F8 100%)',
               borderRadius: '24px',
-              padding: '48px',
+              padding: windowWidth > 768 ? '48px' : '32px',
               border: hoveredCard === 'main' 
                 ? '2px solid #22C55E' 
                 : `1px solid ${darkMode ? '#2A2A2A' : '#E5E5E5'}`,
@@ -267,19 +278,21 @@ const LearnMorePage = () => {
                 Fear, greed, and ego override every rational decision.
               </p>
               <div style={{
-                display: 'flex',
-                gap: '40px',
+                display: windowWidth > 768 ? 'flex' : 'grid',
+                gridTemplateColumns: windowWidth > 768 ? undefined : 'repeat(3, 1fr)',
+                gap: windowWidth > 768 ? '40px' : '20px',
+                textAlign: windowWidth > 768 ? 'left' : 'center',
               }}>
                 <div>
-                  <div style={{ fontSize: '2.5rem', fontWeight: 800, color: '#EF4444' }}>73%</div>
+                  <div style={{ fontSize: windowWidth > 768 ? '2.5rem' : '2rem', fontWeight: 800, color: '#EF4444' }}>73%</div>
                   <div style={{ color: darkMode ? '#A0A0A0' : '#666666' }}>Revenge trade</div>
                 </div>
                 <div>
-                  <div style={{ fontSize: '2.5rem', fontWeight: 800, color: '#F59E0B' }}>81%</div>
+                  <div style={{ fontSize: windowWidth > 768 ? '2.5rem' : '2rem', fontWeight: 800, color: '#F59E0B' }}>81%</div>
                   <div style={{ color: darkMode ? '#A0A0A0' : '#666666' }}>Hold losers too long</div>
                 </div>
                 <div>
-                  <div style={{ fontSize: '2.5rem', fontWeight: 800, color: '#3B82F6' }}>92%</div>
+                  <div style={{ fontSize: windowWidth > 768 ? '2.5rem' : '2rem', fontWeight: 800, color: '#3B82F6' }}>92%</div>
                   <div style={{ color: darkMode ? '#A0A0A0' : '#666666' }}>FOMO into trades</div>
                 </div>
               </div>
@@ -309,10 +322,10 @@ const LearnMorePage = () => {
             transition={{ delay: 0.1 }}
             whileHover={{ scale: 1.05 }}
             style={{
-              gridColumn: 'span 4',
+              gridColumn: windowWidth > 768 ? 'span 4' : 'span 1',
               background: darkMode ? '#1A1A1A' : '#F8F8F8',
               borderRadius: '20px',
-              padding: '32px',
+              padding: windowWidth > 768 ? '32px' : '24px',
               border: `1px solid ${darkMode ? '#2A2A2A' : '#E5E5E5'}`,
               cursor: 'pointer',
             }}
@@ -341,10 +354,10 @@ const LearnMorePage = () => {
             transition={{ delay: 0.2 }}
             whileHover={{ scale: 1.05 }}
             style={{
-              gridColumn: 'span 4',
+              gridColumn: windowWidth > 768 ? 'span 4' : 'span 1',
               background: darkMode ? '#1A1A1A' : '#F8F8F8',
               borderRadius: '20px',
-              padding: '32px',
+              padding: windowWidth > 768 ? '32px' : '24px',
               border: `1px solid ${darkMode ? '#2A2A2A' : '#E5E5E5'}`,
               cursor: 'pointer',
             }}
@@ -373,11 +386,11 @@ const LearnMorePage = () => {
             transition={{ delay: 0.3 }}
             whileHover={{ scale: 1.05 }}
             style={{
-              gridColumn: 'span 4',
+              gridColumn: windowWidth > 768 ? 'span 4' : 'span 1',
               gridRow: 'span 1',
               background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(239, 68, 68, 0.05) 100%)',
               borderRadius: '20px',
-              padding: '32px',
+              padding: windowWidth > 768 ? '32px' : '24px',
               border: '1px solid rgba(239, 68, 68, 0.2)',
               cursor: 'pointer',
             }}
@@ -406,15 +419,17 @@ const LearnMorePage = () => {
             transition={{ delay: 0.4 }}
             whileHover={{ scale: 1.05 }}
             style={{
-              gridColumn: 'span 8',
+              gridColumn: windowWidth > 768 ? 'span 8' : 'span 1',
               background: darkMode ? '#1A1A1A' : '#F8F8F8',
               borderRadius: '20px',
-              padding: '32px',
+              padding: windowWidth > 768 ? '32px' : '24px',
               border: `1px solid ${darkMode ? '#2A2A2A' : '#E5E5E5'}`,
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              gap: '32px',
+              gap: windowWidth > 768 ? '32px' : '20px',
+              flexDirection: windowWidth > 768 ? 'row' : 'column',
+              textAlign: windowWidth > 768 ? 'left' : 'center',
             }}
           >
             <Target size={48} color="#F59E0B" />
@@ -469,7 +484,7 @@ const LearnMorePage = () => {
 
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+          gridTemplateColumns: windowWidth > 768 ? 'repeat(auto-fit, minmax(280px, 1fr))' : '1fr',
           gap: '32px',
         }}>
           {[
@@ -512,7 +527,7 @@ const LearnMorePage = () => {
               style={{
                 background: darkMode ? '#1A1A1A' : '#FFFFFF',
                 borderRadius: '24px',
-                padding: '40px',
+                padding: windowWidth > 768 ? '40px' : '32px',
                 border: `1px solid ${darkMode ? '#2A2A2A' : '#E5E5E5'}`,
                 cursor: 'pointer',
                 transition: 'all 0.3s ease',

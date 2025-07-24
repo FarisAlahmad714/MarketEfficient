@@ -208,9 +208,17 @@ export default function HomePage() {
   const { darkMode } = useContext(ThemeContext);
   const { isAuthenticated, user } = useContext(AuthContext);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
 
   useEffect(() => {
     logger.log('Home page loaded');
+    
+    const handleResize = () => {
+      setWindowWidth(windowWidth);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   return (
@@ -232,90 +240,99 @@ export default function HomePage() {
         animate={{ opacity: 1 }}
         transition={{ duration: 0.8 }}
         style={{
-          textAlign: 'center',
-          padding: 'clamp(60px, 10vw, 80px) 20px clamp(40px, 8vw, 60px)',
+          display: 'grid',
+          gridTemplateColumns: windowWidth > 768 ? 'repeat(2, 1fr)' : '1fr',
+          gap: windowWidth > 768 ? '48px' : '32px',
+          alignItems: 'center',
+          padding: 'clamp(40px, 8vw, 80px) 20px clamp(40px, 8vw, 60px)',
           marginBottom: 'clamp(40px, 8vw, 60px)',
           position: 'relative',
+          maxWidth: '1200px',
+          margin: '0 auto',
         }}
       >
-        {/* Trust Badge */}
-        <motion.div
-          initial={{ y: -20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.2 }}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '8px 16px',
-            background: darkMode ? 'rgba(34, 197, 94, 0.15)' : 'rgba(34, 197, 94, 0.1)',
-            borderRadius: '20px',
-            marginBottom: '24px',
-            border: `1px solid ${darkMode ? 'rgba(34, 197, 94, 0.3)' : 'rgba(34, 197, 94, 0.2)'}`,
-          }}
-        >
-          <ShieldCheck size={16} color="#22C55E" />
-          <span style={{
-            fontSize: '14px',
-            color: '#22C55E',
-            fontWeight: 600,
-          }}>
-            The Only Complete Trading Education Platform
-          </span>
-        </motion.div>
+        {/* Left Column - Content */}
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '24px',
+          alignItems: windowWidth > 768 ? 'flex-start' : 'center',
+          textAlign: windowWidth > 768 ? 'left' : 'center',
+          order: 1,
+        }}>
+          {/* Trust Badge */}
+          <motion.div
+            initial={{ y: -20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.2 }}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '8px 16px',
+              background: darkMode ? 'rgba(34, 197, 94, 0.15)' : 'rgba(34, 197, 94, 0.1)',
+              borderRadius: '20px',
+              border: `1px solid ${darkMode ? 'rgba(34, 197, 94, 0.3)' : 'rgba(34, 197, 94, 0.2)'}`,
+            }}
+          >
+            <ShieldCheck size={16} color="#22C55E" />
+            <span style={{
+              fontSize: '14px',
+              color: '#22C55E',
+              fontWeight: 600,
+            }}>
+              The Only Complete Trading Education Platform
+            </span>
+          </motion.div>
 
-        <motion.h1
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.3 }}
-          style={{
-            fontSize: 'clamp(2.5rem, 5vw, 3.5rem)',
-            fontWeight: 800,
-            color: darkMode ? '#F5F5F5' : '#1E293B',
-            marginBottom: '24px',
-            lineHeight: 1.2,
-            letterSpacing: '-0.02em',
-            maxWidth: '900px',
-            margin: '0 auto 24px',
-          }}
-        >
-          Stop Jumping Between Courses.
-          <br />
-          <span style={{ color: '#22C55E' }}>Master Your Senses.</span>
-        </motion.h1>
-        
-        <motion.p
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.4 }}
-          style={{
-            fontSize: 'clamp(1.1rem, 2vw, 1.3rem)',
-            color: darkMode ? '#B0B0B0' : '#64748B',
-            marginBottom: '40px',
-            maxWidth: '700px',
-            margin: '0 auto 40px',
-            lineHeight: '1.6',
-            fontWeight: 500,
-          }}
-        >
-          ChartSense is the first platform that takes you from psychological assessment to confident execution. 
-          No more static videos or useless quizzes—just real skills, real practice, real results.
-        </motion.p>
+          {/* Title */}
+          <motion.h1
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.3 }}
+            style={{
+              fontSize: windowWidth > 768 ? 'clamp(2.5rem, 5vw, 3.5rem)' : 'clamp(2rem, 8vw, 2.5rem)',
+              fontWeight: 800,
+              color: darkMode ? '#F5F5F5' : '#1E293B',
+              lineHeight: 1.2,
+              letterSpacing: '-0.02em',
+              maxWidth: '600px',
+            }}
+          >
+            Stop Jumping Between Courses.
+            <br />
+            <span style={{ color: '#22C55E' }}>Master Your Senses.</span>
+          </motion.h1>
+          
+          {/* Description */}
+          <motion.p
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.4 }}
+            style={{
+              fontSize: windowWidth > 768 ? 'clamp(1.1rem, 2vw, 1.3rem)' : 'clamp(1rem, 3vw, 1.1rem)',
+              color: darkMode ? '#B0B0B0' : '#64748B',
+              maxWidth: '500px',
+              lineHeight: '1.6',
+              fontWeight: 500,
+            }}
+          >
+            ChartSense is the first platform that takes you from psychological assessment to confident execution. 
+            No more static videos or useless quizzes—just real skills, real practice, real results.
+          </motion.p>
 
-        {/* CTA Buttons */}
-        <motion.div
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.5 }}
-          style={{ 
-            display: 'flex', 
-            justifyContent: 'center', 
-            gap: '16px',
-            flexWrap: 'wrap',
-            marginBottom: '32px',
-            padding: '0 16px',
-          }}
-        >
+          {/* CTA Buttons */}
+          <motion.div
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.5 }}
+            style={{ 
+              display: 'flex', 
+              flexDirection: 'row',
+              gap: '16px',
+              flexWrap: 'wrap',
+            }}
+          >
           {isAuthenticated ? (
             <Link 
               href="/dashboard" 
@@ -393,33 +410,65 @@ export default function HomePage() {
               </Link>
             </>
           )}
-        </motion.div>
+          </motion.div>
+        </div>
 
-        {/* Quick Stats */}
+        {/* Right Column - Quick Stats */}
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
+          initial={{ opacity: 0, x: windowWidth > 768 ? 20 : 0 }}
+          animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.6 }}
           style={{
-            display: 'flex',
-            justifyContent: 'center',
-            gap: '40px',
-            flexWrap: 'wrap',
-            marginTop: '40px',
-            padding: '0 16px',
+            display: windowWidth > 768 ? 'grid' : 'flex',
+            gridTemplateColumns: '1fr',
+            flexDirection: windowWidth > 768 ? undefined : 'row',
+            gap: windowWidth > 768 ? '20px' : '16px',
+            padding: windowWidth > 768 ? '20px' : '0',
+            order: 2,
+            justifyContent: windowWidth > 768 ? undefined : 'center',
+            flexWrap: windowWidth > 768 ? undefined : 'wrap',
           }}
         >
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '2rem', fontWeight: 800, color: '#22C55E' }}>5-Step</div>
-            <div style={{ fontSize: '0.9rem', color: darkMode ? '#94A3B8' : '#64748B' }}>Learning Pipeline</div>
+          <div style={{ 
+            padding: windowWidth > 768 ? '32px' : '20px',
+            background: darkMode ? 'rgba(34, 197, 94, 0.05)' : 'rgba(34, 197, 94, 0.03)',
+            borderRadius: '20px',
+            border: `1px solid ${darkMode ? 'rgba(34, 197, 94, 0.15)' : 'rgba(34, 197, 94, 0.1)'}`,
+            transition: 'all 0.3s ease',
+            transform: windowWidth > 768 ? 'translateX(20px)' : 'none',
+            minWidth: windowWidth > 768 ? 'auto' : '140px',
+            flex: windowWidth > 768 ? undefined : '1',
+            textAlign: 'center',
+          }}>
+            <div style={{ fontSize: windowWidth > 768 ? '3rem' : '2rem', fontWeight: 800, color: '#22C55E', marginBottom: '8px' }}>5-Step</div>
+            <div style={{ fontSize: windowWidth > 768 ? '1.1rem' : '0.9rem', color: darkMode ? '#94A3B8' : '#64748B' }}>Learning Pipeline</div>
           </div>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '2rem', fontWeight: 800, color: '#3B82F6' }}>3 Unique</div>
-            <div style={{ fontSize: '0.9rem', color: darkMode ? '#94A3B8' : '#64748B' }}>Practice Modes</div>
+          <div style={{ 
+            padding: windowWidth > 768 ? '32px' : '20px',
+            background: darkMode ? 'rgba(59, 130, 246, 0.05)' : 'rgba(59, 130, 246, 0.03)',
+            borderRadius: '20px',
+            border: `1px solid ${darkMode ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.1)'}`,
+            transition: 'all 0.3s ease',
+            minWidth: windowWidth > 768 ? 'auto' : '140px',
+            flex: windowWidth > 768 ? undefined : '1',
+            textAlign: 'center',
+          }}>
+            <div style={{ fontSize: windowWidth > 768 ? '3rem' : '2rem', fontWeight: 800, color: '#3B82F6', marginBottom: '8px' }}>3 Unique</div>
+            <div style={{ fontSize: windowWidth > 768 ? '1.1rem' : '0.9rem', color: darkMode ? '#94A3B8' : '#64748B' }}>Practice Modes</div>
           </div>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '2rem', fontWeight: 800, color: '#F59E0B' }}>AI-Powered</div>
-            <div style={{ fontSize: '0.9rem', color: darkMode ? '#94A3B8' : '#64748B' }}>Bias Analysis</div>
+          <div style={{ 
+            padding: windowWidth > 768 ? '32px' : '20px',
+            background: darkMode ? 'rgba(245, 158, 11, 0.05)' : 'rgba(245, 158, 11, 0.03)',
+            borderRadius: '20px',
+            border: `1px solid ${darkMode ? 'rgba(245, 158, 11, 0.15)' : 'rgba(245, 158, 11, 0.1)'}`,
+            transition: 'all 0.3s ease',
+            transform: windowWidth > 768 ? 'translateX(20px)' : 'none',
+            minWidth: windowWidth > 768 ? 'auto' : '140px',
+            flex: windowWidth > 768 ? undefined : '1',
+            textAlign: 'center',
+          }}>
+            <div style={{ fontSize: windowWidth > 768 ? '3rem' : '2rem', fontWeight: 800, color: '#F59E0B', marginBottom: '8px' }}>AI-Powered</div>
+            <div style={{ fontSize: windowWidth > 768 ? '1.1rem' : '0.9rem', color: darkMode ? '#94A3B8' : '#64748B' }}>Bias Analysis</div>
           </div>
         </motion.div>
       </motion.section>
@@ -459,31 +508,35 @@ export default function HomePage() {
           {/* Comparison Grid */}
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-            gap: '20px',
+            gridTemplateColumns: windowWidth > 768 ? '3fr 1fr 3fr' : '1fr',
+            gap: windowWidth > 768 ? '40px' : '20px',
+            alignItems: 'center',
             marginBottom: '60px',
             padding: '0 16px',
+            maxWidth: '1000px',
+            margin: '0 auto 60px',
           }}>
             <motion.div
               whileHover={{ y: -4 }}
               style={{
-                padding: '24px',
+                padding: '32px',
                 background: darkMode ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.05)',
                 border: `1px solid ${darkMode ? 'rgba(239, 68, 68, 0.3)' : 'rgba(239, 68, 68, 0.2)'}`,
-                borderRadius: '12px',
+                borderRadius: '16px',
                 textAlign: 'left',
+                height: '100%',
               }}
             >
               <h3 style={{
-                fontSize: '1.2rem',
+                fontSize: '1.4rem',
                 fontWeight: 700,
                 color: '#EF4444',
-                marginBottom: '12px',
+                marginBottom: '20px',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '8px',
+                gap: '12px',
               }}>
-                <TrendingDown size={20} />
+                <TrendingDown size={24} />
                 Other Platforms
               </h3>
               <ul style={{
@@ -491,8 +544,8 @@ export default function HomePage() {
                 padding: 0,
                 margin: 0,
                 color: darkMode ? '#C0C0C0' : '#6B7280',
-                fontSize: '0.95rem',
-                lineHeight: '1.8',
+                fontSize: '1rem',
+                lineHeight: '2.2',
               }}>
                 <li>❌ Static video courses</li>
                 <li>❌ No practice environment</li>
@@ -502,26 +555,51 @@ export default function HomePage() {
               </ul>
             </motion.div>
             
+            {/* VS Divider */}
+            <div style={{
+              display: windowWidth > 768 ? 'flex' : 'none',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              <div style={{
+                width: '60px',
+                height: '60px',
+                borderRadius: '50%',
+                background: darkMode ? '#1E1E1E' : '#FFFFFF',
+                border: `2px solid ${darkMode ? '#374151' : '#E5E7EB'}`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '1.2rem',
+                fontWeight: 700,
+                color: darkMode ? '#9CA3AF' : '#6B7280',
+                boxShadow: darkMode ? '0 4px 20px rgba(0, 0, 0, 0.3)' : '0 4px 20px rgba(0, 0, 0, 0.1)',
+              }}>
+                VS
+              </div>
+            </div>
+            
             <motion.div
               whileHover={{ y: -4 }}
               style={{
-                padding: '24px',
+                padding: '32px',
                 background: darkMode ? 'rgba(34, 197, 94, 0.1)' : 'rgba(34, 197, 94, 0.05)',
                 border: `1px solid ${darkMode ? 'rgba(34, 197, 94, 0.3)' : 'rgba(34, 197, 94, 0.2)'}`,
-                borderRadius: '12px',
+                borderRadius: '16px',
                 textAlign: 'left',
+                height: '100%',
               }}
             >
               <h3 style={{
-                fontSize: '1.2rem',
+                fontSize: '1.4rem',
                 fontWeight: 700,
                 color: '#22C55E',
-                marginBottom: '12px',
+                marginBottom: '20px',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '8px',
+                gap: '12px',
               }}>
-                <TrendingUp size={20} />
+                <TrendingUp size={24} />
                 ChartSense
               </h3>
               <ul style={{
@@ -529,8 +607,8 @@ export default function HomePage() {
                 padding: 0,
                 margin: 0,
                 color: darkMode ? '#C0C0C0' : '#6B7280',
-                fontSize: '0.95rem',
-                lineHeight: '1.8',
+                fontSize: '1rem',
+                lineHeight: '2.2',
               }}>
                 <li>✅ Interactive skill-building</li>
                 <li>✅ Risk-free trading sandbox</li>
@@ -577,7 +655,7 @@ export default function HomePage() {
         {/* Pipeline Steps */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+          gridTemplateColumns: windowWidth > 768 ? 'repeat(auto-fit, minmax(180px, 1fr))' : 'repeat(auto-fit, minmax(150px, 1fr))',
           gap: '16px',
           maxWidth: '1200px',
           margin: '0 auto',
@@ -650,7 +728,7 @@ export default function HomePage() {
               </div>
               
               {/* Connector Line - Hide on mobile */}
-              {index < 4 && (
+              {index < 4 && windowWidth > 768 && (
                 <div style={{
                   position: 'absolute',
                   top: '15px',
@@ -659,7 +737,6 @@ export default function HomePage() {
                   height: '2px',
                   background: darkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
                   zIndex: 1,
-                  display: window.innerWidth < 768 ? 'none' : 'block',
                 }} />
               )}
             </motion.div>
