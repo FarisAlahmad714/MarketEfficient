@@ -52,7 +52,7 @@ export default async function handler(req, res) {
       ],
       isPrivate: { $ne: true } // Only show public profiles
     })
-.select('_id username name profileImageUrl createdAt')
+.select('_id username name profileImageUrl profileImageGcsPath createdAt')
     .limit(parseInt(limit))
     .skip(skip)
     .sort({ createdAt: -1 })

@@ -51,8 +51,17 @@ const SocialFeedPage = () => {
         profileImageGcsPath: user.profileImageGcsPath || null
       }));
     
-    return [...feedUsers, ...followedUsersForImages];
-  }, [feedContent, userContent, activeTab, followedUsers]);
+    // Include search results users
+    const searchUsersForImages = searchResults
+      .filter(user => !feedUsers.some(feedUser => feedUser.userId === user._id) && 
+                      !followedUsersForImages.some(followedUser => followedUser.userId === user._id))
+      .map(user => ({
+        userId: user._id,
+        profileImageGcsPath: user.profileImageGcsPath || null
+      }));
+    
+    return [...feedUsers, ...followedUsersForImages, ...searchUsersForImages];
+  }, [feedContent, userContent, activeTab, followedUsers, searchResults]);
   const { imageUrls } = useLeaderboardImages(feedUsersForImages);
 
 

@@ -382,7 +382,7 @@ export default function HomePage() {
                   e.currentTarget.style.boxShadow = '0 4px 14px rgba(34, 197, 94, 0.25)';
                 }}
               >
-                Register Now
+                  Master Your Senses
               </Link>
               <Link 
                 href="/learn-more" 
@@ -1310,13 +1310,13 @@ export default function HomePage() {
                 color: darkMode ? '#F5F5F5' : '#1E293B',
                 marginBottom: '4px',
               }}>
-                Active Community
+                Join Our Community
               </h4>
               <p style={{
                 fontSize: '0.9rem',
                 color: darkMode ? '#94A3B8' : '#64748B',
               }}>
-                Learn with 1000+ traders
+                
               </p>
             </div>
           </motion.div>
@@ -1412,7 +1412,7 @@ export default function HomePage() {
                 e.currentTarget.style.boxShadow = '0 6px 20px rgba(34, 197, 94, 0.3)';
               }}
             >
-              Get Started Free
+              Master Your Senses & Register NOW
             </Link>
           )}
         </motion.div>
