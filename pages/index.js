@@ -6,6 +6,10 @@ import { ThemeContext } from '../contexts/ThemeContext';
 import { AuthContext } from '../contexts/AuthContext';
 import Leaderboard from '../components/Leaderboard';
 import { ShieldCheck, BarChart2, Users, Zap, Brain, LineChart as LucideLineChart, BookOpen, TrendingUp, Play, Clock, Target, TrendingDown, Award, Star, Eye, ChevronRight, Sparkles, Menu, X } from 'lucide-react';
+import { BiHomeAlt } from 'react-icons/bi';
+import { TbScale, TbChartLine } from 'react-icons/tb';
+import { FaTachometerAlt, FaGraduationCap } from 'react-icons/fa';
+import { RiExchangeLine } from 'react-icons/ri';
 import { motion } from 'framer-motion';
 import TrackedPage from '../components/TrackedPage';
 import logger from '../lib/logger';
@@ -663,7 +667,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Feature Cards Section */}
+      {/* Feature Cards Section - Revolutionary Bento Grid */}
       <section style={{ marginBottom: '80px' }}>
         <motion.h2 
           initial={{ opacity: 0, y: 30 }}
@@ -680,87 +684,565 @@ export default function HomePage() {
         >
           Everything You Need in One Platform
         </motion.h2>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 350px), 1fr))',
-          gap: '24px',
-          width: '100%',
-        }}>
-          <FeatureCard
-            darkMode={darkMode}
-            icon={BookOpen}
-            title="Study Hub"
-            description="Build your foundation with structured lessons covering everything from market basics to advanced strategies. Interactive modules and real-world case studies ensure you actually understand the concepts, not just memorize them."
-            benefits={[
-              "Interactive lessons that adapt to your level",
-              "Real market examples and case studies",
-              "Progress tracking with knowledge checks"
-            ]}
-            link="/study"
-            linkText="Start Learning"
-            color="#8B5CF6"
-            step={1}
-          />
-          <FeatureCard
-            darkMode={darkMode}
-            icon={Brain}
-            title="AI Bias Detection"
-            description="Discover and eliminate the psychological biases killing your profits. Our AI analyzes your trading decisions, exposes hidden patterns, and provides personalized feedback to rewire your trading mindset."
-            benefits={[
-              "Daily scenarios that expose hidden biases",
-              "AI analysis of your decision patterns",
-              "Track improvement over time"
-            ]}
-            link="/bias-test"
-            linkText="Test Your Mind"
-            color="#22C55E"
-            step={2}
-          />
-          <FeatureCard
-            darkMode={darkMode}
-            icon={LucideLineChart}
-            title="Chart Mastery"
-            description="Practice reading charts like a pro with hands-on exams. Master swing points, Fibonacci levels, and fair value gaps using real market data. No theory—just practical skills you'll use every day."
-            benefits={[
-              "Three core technical analysis skills",
-              "Practice on real historical charts",
-              "Instant feedback on accuracy"
-            ]}
-            link="/chart-exam"
-            linkText="Practice Charts"
-            color="#3B82F6"
-            step={3}
-          />
-          <FeatureCard
-            darkMode={darkMode}
-            icon={TrendingUp}
-            title="Trading Sandbox"
-            description="Put it all together in our risk-free trading environment. Practice with virtual capital, test strategies, and build confidence before risking real money. Unlock by proving your skills in tests."
-            benefits={[
-              "10,000 SENSES starting capital",
-              "Real market conditions simulation",
-              "Track wins, losses, and metrics"
-            ]}
-            link="/sandbox"
-            linkText="Start Trading"
-            color="#EF4444"
-            step={4}
-          />
-          <FeatureCard
-            darkMode={darkMode}
-            icon={BarChart2}
-            title="Performance Analytics"
-            description="See exactly where you stand with comprehensive tracking. Monitor bias scores, chart accuracy, sandbox performance, and get AI insights on what to improve next."
-            benefits={[
-              "Complete performance dashboard",
-              "AI-powered improvement tips",
-              "Compare with other traders"
-            ]}
-            link="/dashboard"
-            linkText="View Analytics"
-            color="#F59E0B"
-            step={5}
-          />
+        
+        {/* Bento Grid Layout */}
+        <style jsx>{`
+          @media (max-width: 768px) {
+            .bento-grid {
+              grid-template-columns: 1fr !important;
+              grid-template-rows: auto !important;
+            }
+            .bento-grid > * {
+              grid-column: span 1 !important;
+              grid-row: span 1 !important;
+              min-height: 200px;
+            }
+          }
+          @media (min-width: 769px) and (max-width: 1024px) {
+            .bento-grid {
+              grid-template-columns: repeat(6, 1fr) !important;
+            }
+            .study-hub { grid-column: span 6 !important; }
+            .bias-test { grid-column: span 3 !important; }
+            .stats-box { grid-column: span 3 !important; }
+            .chart-exam { grid-column: span 6 !important; }
+            .sandbox { grid-column: span 3 !important; }
+            .dashboard { grid-column: span 3 !important; }
+            .community { grid-column: span 6 !important; }
+          }
+        `}</style>
+        <div 
+          className="bento-grid"
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(12, 1fr)',
+            gridTemplateRows: 'repeat(6, minmax(120px, 1fr))',
+            gap: '20px',
+            width: '100%',
+            maxWidth: '1200px',
+            margin: '0 auto',
+            padding: '0 16px',
+          }}>
+          {/* Study Hub - Large Feature Box */}
+          <motion.div
+            className="study-hub"
+            initial={{ opacity: 0, scale: 0.95 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+            style={{
+              gridColumn: 'span 5',
+              gridRow: 'span 3',
+              background: darkMode 
+                ? 'linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(139, 92, 246, 0.05) 100%)' 
+                : 'linear-gradient(135deg, rgba(139, 92, 246, 0.08) 0%, rgba(139, 92, 246, 0.02) 100%)',
+              borderRadius: '24px',
+              padding: '40px',
+              border: `1px solid ${darkMode ? 'rgba(139, 92, 246, 0.3)' : 'rgba(139, 92, 246, 0.2)'}`,
+              position: 'relative',
+              overflow: 'hidden',
+              cursor: 'pointer',
+              transition: 'all 0.3s ease',
+            }}
+            whileHover={{
+              y: -4,
+              boxShadow: darkMode 
+                ? '0 20px 40px rgba(139, 92, 246, 0.3)' 
+                : '0 20px 40px rgba(139, 92, 246, 0.15)',
+            }}
+            onClick={() => window.location.href = '/study'}
+          >
+            <div style={{
+              position: 'absolute',
+              top: '24px',
+              right: '24px',
+              background: 'rgba(139, 92, 246, 0.2)',
+              color: '#8B5CF6',
+              padding: '6px 16px',
+              borderRadius: '20px',
+              fontSize: '14px',
+              fontWeight: 600,
+            }}>
+              Step 1
+            </div>
+            
+            <FaGraduationCap size={48} color="#8B5CF6" style={{ marginBottom: '20px' }} />
+            <h3 style={{
+              fontSize: '2rem',
+              fontWeight: 700,
+              color: darkMode ? '#F5F5F5' : '#1E293B',
+              marginBottom: '16px',
+              letterSpacing: '-0.02em',
+            }}>
+              Study Hub
+            </h3>
+            <p style={{
+              fontSize: '1.1rem',
+              color: darkMode ? '#94A3B8' : '#64748B',
+              lineHeight: 1.6,
+              marginBottom: '24px',
+            }}>
+              Build your foundation with structured lessons. Interactive modules and real-world case studies ensure you actually understand the concepts.
+            </p>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              color: '#8B5CF6',
+              fontWeight: 600,
+            }}>
+              Start Learning <ChevronRight size={20} />
+            </div>
+          </motion.div>
+
+          {/* AI Bias Test - Medium Box */}
+          <motion.div
+            className="bias-test"
+            initial={{ opacity: 0, scale: 0.95 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            style={{
+              gridColumn: 'span 4',
+              gridRow: 'span 2',
+              background: darkMode ? 'rgba(30, 30, 30, 0.8)' : 'rgba(255, 255, 255, 0.95)',
+              borderRadius: '20px',
+              padding: '32px',
+              border: `1px solid ${darkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)'}`,
+              position: 'relative',
+              overflow: 'hidden',
+              cursor: 'pointer',
+              transition: 'all 0.3s ease',
+            }}
+            whileHover={{
+              y: -4,
+              boxShadow: darkMode 
+                ? '0 20px 40px rgba(34, 197, 94, 0.3)' 
+                : '0 20px 40px rgba(34, 197, 94, 0.15)',
+              borderColor: 'rgba(34, 197, 94, 0.3)',
+            }}
+            onClick={() => window.location.href = '/bias-test'}
+          >
+            <div style={{
+              position: 'absolute',
+              top: '20px',
+              right: '20px',
+              background: 'rgba(34, 197, 94, 0.15)',
+              color: '#22C55E',
+              padding: '4px 12px',
+              borderRadius: '16px',
+              fontSize: '12px',
+              fontWeight: 600,
+            }}>
+              Step 2
+            </div>
+            
+            <TbScale size={40} color="#22C55E" style={{ marginBottom: '16px' }} />
+            <h3 style={{
+              fontSize: '1.5rem',
+              fontWeight: 700,
+              color: darkMode ? '#F5F5F5' : '#1E293B',
+              marginBottom: '12px',
+            }}>
+              AI Bias Detection
+            </h3>
+            <p style={{
+              fontSize: '0.95rem',
+              color: darkMode ? '#94A3B8' : '#64748B',
+              lineHeight: 1.5,
+            }}>
+              Discover hidden psychological patterns killing your profits
+            </p>
+          </motion.div>
+
+          {/* Quick Stats Box */}
+          <motion.div
+            className="stats-box"
+            initial={{ opacity: 0, scale: 0.95 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.15 }}
+            style={{
+              gridColumn: 'span 3',
+              gridRow: 'span 2',
+              background: darkMode 
+                ? 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(59, 130, 246, 0.05) 100%)' 
+                : 'linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(59, 130, 246, 0.02) 100%)',
+              borderRadius: '20px',
+              padding: '24px',
+              border: `1px solid ${darkMode ? 'rgba(59, 130, 246, 0.3)' : 'rgba(59, 130, 246, 0.2)'}`,
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              alignItems: 'center',
+              textAlign: 'center',
+            }}
+          >
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+              style={{
+                width: '80px',
+                height: '80px',
+                borderRadius: '50%',
+                background: 'conic-gradient(from 0deg, #3B82F6, #22C55E, #F59E0B, #3B82F6)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: '20px',
+              }}
+            >
+              <div style={{
+                width: '70px',
+                height: '70px',
+                borderRadius: '50%',
+                background: darkMode ? '#0F0F0F' : '#FFFFFF',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '1.5rem',
+                fontWeight: 800,
+                color: '#3B82F6',
+              }}>
+                100%
+              </div>
+            </motion.div>
+            <h4 style={{
+              fontSize: '1.1rem',
+              fontWeight: 700,
+              color: darkMode ? '#F5F5F5' : '#1E293B',
+              marginBottom: '8px',
+            }}>
+              Complete Pipeline
+            </h4>
+            <p style={{
+              fontSize: '0.9rem',
+              color: darkMode ? '#94A3B8' : '#64748B',
+            }}>
+              From psychology to profits
+            </p>
+          </motion.div>
+
+          {/* Chart Exam - Wide Box */}
+          <motion.div
+            className="chart-exam"
+            initial={{ opacity: 0, scale: 0.95 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            style={{
+              gridColumn: 'span 7',
+              gridRow: 'span 2',
+              background: darkMode ? 'rgba(30, 30, 30, 0.8)' : 'rgba(255, 255, 255, 0.95)',
+              borderRadius: '20px',
+              padding: '32px',
+              border: `1px solid ${darkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)'}`,
+              position: 'relative',
+              overflow: 'hidden',
+              cursor: 'pointer',
+              transition: 'all 0.3s ease',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '32px',
+            }}
+            whileHover={{
+              y: -4,
+              boxShadow: darkMode 
+                ? '0 20px 40px rgba(59, 130, 246, 0.3)' 
+                : '0 20px 40px rgba(59, 130, 246, 0.15)',
+              borderColor: 'rgba(59, 130, 246, 0.3)',
+            }}
+            onClick={() => window.location.href = '/chart-exam'}
+          >
+            <div style={{ flex: 1 }}>
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                background: 'rgba(59, 130, 246, 0.15)',
+                color: '#3B82F6',
+                padding: '4px 12px',
+                borderRadius: '16px',
+                fontSize: '12px',
+                fontWeight: 600,
+                marginBottom: '16px',
+              }}>
+                Step 3
+              </div>
+              
+              <h3 style={{
+                fontSize: '1.8rem',
+                fontWeight: 700,
+                color: darkMode ? '#F5F5F5' : '#1E293B',
+                marginBottom: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+              }}>
+                <TbChartLine size={36} color="#3B82F6" />
+                Chart Mastery
+              </h3>
+              <p style={{
+                fontSize: '1rem',
+                color: darkMode ? '#94A3B8' : '#64748B',
+                lineHeight: 1.5,
+              }}>
+                Practice reading charts like a pro. Master swing points, Fibonacci levels, and fair value gaps using real market data.
+              </p>
+            </div>
+            
+            {/* Visual Chart Animation */}
+            <div style={{
+              width: '200px',
+              height: '100px',
+              position: 'relative',
+            }}>
+              <svg width="200" height="100" style={{ position: 'absolute', top: 0, left: 0 }}>
+                <motion.path
+                  d="M0,80 L40,60 L80,70 L120,30 L160,50 L200,20"
+                  stroke="#3B82F6"
+                  strokeWidth="3"
+                  fill="none"
+                  initial={{ pathLength: 0 }}
+                  animate={{ pathLength: 1 }}
+                  transition={{ duration: 2, repeat: Infinity, repeatDelay: 1 }}
+                />
+              </svg>
+            </div>
+          </motion.div>
+
+          {/* Trading Sandbox - Large Interactive Box */}
+          <motion.div
+            className="sandbox"
+            initial={{ opacity: 0, scale: 0.95 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.25 }}
+            style={{
+              gridColumn: 'span 5',
+              gridRow: 'span 3',
+              background: darkMode 
+                ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(239, 68, 68, 0.05) 100%)' 
+                : 'linear-gradient(135deg, rgba(239, 68, 68, 0.08) 0%, rgba(239, 68, 68, 0.02) 100%)',
+              borderRadius: '24px',
+              padding: '40px',
+              border: `1px solid ${darkMode ? 'rgba(239, 68, 68, 0.3)' : 'rgba(239, 68, 68, 0.2)'}`,
+              position: 'relative',
+              overflow: 'hidden',
+              cursor: 'pointer',
+              transition: 'all 0.3s ease',
+            }}
+            whileHover={{
+              y: -4,
+              boxShadow: darkMode 
+                ? '0 20px 40px rgba(239, 68, 68, 0.3)' 
+                : '0 20px 40px rgba(239, 68, 68, 0.15)',
+            }}
+            onClick={() => window.location.href = '/sandbox'}
+          >
+            <div style={{
+              position: 'absolute',
+              top: '24px',
+              right: '24px',
+              background: 'rgba(239, 68, 68, 0.2)',
+              color: '#EF4444',
+              padding: '6px 16px',
+              borderRadius: '20px',
+              fontSize: '14px',
+              fontWeight: 600,
+            }}>
+              Step 4
+            </div>
+            
+            <RiExchangeLine size={48} color="#EF4444" style={{ marginBottom: '20px' }} />
+            <h3 style={{
+              fontSize: '2rem',
+              fontWeight: 700,
+              color: darkMode ? '#F5F5F5' : '#1E293B',
+              marginBottom: '16px',
+              letterSpacing: '-0.02em',
+            }}>
+              Trading Sandbox
+            </h3>
+            <p style={{
+              fontSize: '1.1rem',
+              color: darkMode ? '#94A3B8' : '#64748B',
+              lineHeight: 1.6,
+              marginBottom: '24px',
+            }}>
+              Risk-free trading environment with real market conditions. Test strategies and build confidence before risking real money.
+            </p>
+            
+            <div style={{
+              background: darkMode ? 'rgba(0, 0, 0, 0.3)' : 'rgba(0, 0, 0, 0.05)',
+              borderRadius: '12px',
+              padding: '16px',
+              marginBottom: '20px',
+            }}>
+              <div style={{
+                fontSize: '0.9rem',
+                color: darkMode ? '#94A3B8' : '#64748B',
+                marginBottom: '8px',
+              }}>
+                Starting Capital
+              </div>
+              <div style={{
+                fontSize: '2rem',
+                fontWeight: 800,
+                color: '#EF4444',
+              }}>
+                10,000 SENSES
+              </div>
+            </div>
+            
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              color: '#EF4444',
+              fontWeight: 600,
+            }}>
+              Start Trading <ChevronRight size={20} />
+            </div>
+          </motion.div>
+
+          {/* Performance Dashboard - Animated Stats */}
+          <motion.div
+            className="dashboard"
+            initial={{ opacity: 0, scale: 0.95 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.3 }}
+            style={{
+              gridColumn: 'span 4',
+              gridRow: 'span 2',
+              background: darkMode ? 'rgba(30, 30, 30, 0.8)' : 'rgba(255, 255, 255, 0.95)',
+              borderRadius: '20px',
+              padding: '32px',
+              border: `1px solid ${darkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)'}`,
+              position: 'relative',
+              overflow: 'hidden',
+              cursor: 'pointer',
+              transition: 'all 0.3s ease',
+            }}
+            whileHover={{
+              y: -4,
+              boxShadow: darkMode 
+                ? '0 20px 40px rgba(245, 158, 11, 0.3)' 
+                : '0 20px 40px rgba(245, 158, 11, 0.15)',
+              borderColor: 'rgba(245, 158, 11, 0.3)',
+            }}
+            onClick={() => window.location.href = '/dashboard'}
+          >
+            <div style={{
+              position: 'absolute',
+              top: '20px',
+              right: '20px',
+              background: 'rgba(245, 158, 11, 0.15)',
+              color: '#F59E0B',
+              padding: '4px 12px',
+              borderRadius: '16px',
+              fontSize: '12px',
+              fontWeight: 600,
+            }}>
+              Step 5
+            </div>
+            
+            <FaTachometerAlt size={40} color="#F59E0B" style={{ marginBottom: '16px' }} />
+            <h3 style={{
+              fontSize: '1.5rem',
+              fontWeight: 700,
+              color: darkMode ? '#F5F5F5' : '#1E293B',
+              marginBottom: '12px',
+            }}>
+              Performance Analytics
+            </h3>
+            <p style={{
+              fontSize: '0.95rem',
+              color: darkMode ? '#94A3B8' : '#64748B',
+              lineHeight: 1.5,
+              marginBottom: '20px',
+            }}>
+              Track progress with AI-powered insights
+            </p>
+            
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, 1fr)',
+              gap: '12px',
+            }}>
+              {[
+                { label: 'Win Rate', value: '68%', color: '#22C55E' },
+                { label: 'Avg Return', value: '+2.3%', color: '#3B82F6' },
+              ].map((stat, index) => (
+                <div 
+                  key={index}
+                  style={{
+                    background: darkMode ? 'rgba(0, 0, 0, 0.3)' : 'rgba(0, 0, 0, 0.05)',
+                    borderRadius: '8px',
+                    padding: '12px',
+                    textAlign: 'center',
+                  }}
+                >
+                  <div style={{
+                    fontSize: '0.8rem',
+                    color: darkMode ? '#94A3B8' : '#64748B',
+                    marginBottom: '4px',
+                  }}>
+                    {stat.label}
+                  </div>
+                  <div style={{
+                    fontSize: '1.2rem',
+                    fontWeight: 700,
+                    color: stat.color,
+                  }}>
+                    {stat.value}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+
+          {/* Community Box */}
+          <motion.div
+            className="community"
+            initial={{ opacity: 0, scale: 0.95 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.35 }}
+            style={{
+              gridColumn: 'span 3',
+              gridRow: 'span 1',
+              background: darkMode 
+                ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(34, 197, 94, 0.05) 100%)' 
+                : 'linear-gradient(135deg, rgba(34, 197, 94, 0.08) 0%, rgba(34, 197, 94, 0.02) 100%)',
+              borderRadius: '20px',
+              padding: '24px',
+              border: `1px solid ${darkMode ? 'rgba(34, 197, 94, 0.3)' : 'rgba(34, 197, 94, 0.2)'}`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              textAlign: 'center',
+            }}
+          >
+            <div>
+              <Users size={32} color="#22C55E" style={{ marginBottom: '12px' }} />
+              <h4 style={{
+                fontSize: '1.1rem',
+                fontWeight: 700,
+                color: darkMode ? '#F5F5F5' : '#1E293B',
+                marginBottom: '4px',
+              }}>
+                Active Community
+              </h4>
+              <p style={{
+                fontSize: '0.9rem',
+                color: darkMode ? '#94A3B8' : '#64748B',
+              }}>
+                Learn with 1000+ traders
+              </p>
+            </div>
+          </motion.div>
         </div>
       </section>
 
@@ -838,22 +1320,22 @@ export default function HomePage() {
                 background: '#22C55E',
                 color: '#FFFFFF',
                 textDecoration: 'none',
-                borderRadius: '8px',
-                fontSize: '1.2rem',
-                fontWeight: 600,
+                borderRadius: '12px',
+                fontSize: '1.1rem',
+                fontWeight: 700,
                 transition: 'all 0.2s ease',
                 boxShadow: '0 6px 20px rgba(34, 197, 94, 0.3)',
               }}
               onMouseOver={(e) => {
                 e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = '0 8px 25px rgba(34, 197, 94, 0.4)';
+                e.currentTarget.style.boxShadow = '0 8px 30px rgba(34, 197, 94, 0.4)';
               }}
               onMouseOut={(e) => {
                 e.currentTarget.style.transform = 'translateY(0)';
                 e.currentTarget.style.boxShadow = '0 6px 20px rgba(34, 197, 94, 0.3)';
               }}
             >
-              Master Your Senses →
+              Get Started Free
             </Link>
           )}
         </motion.div>
