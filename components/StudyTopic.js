@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { studyContent, isTopicAccessible } from '../lib/studyContent';
 import DOMPurify from 'isomorphic-dompurify';
 import { useRouter } from 'next/router';
+import storage from '../lib/storage';
 
 const StudyTopic = ({ topicName }) => {
   const { user } = useAuth();
@@ -33,6 +34,30 @@ const StudyTopic = ({ topicName }) => {
     }
   }, [user]);
 
+  // Track when user starts a topic
+  useEffect(() => {
+    const trackTopicStart = async () => {
+      if (user && topicName) {
+        const token = await storage.getItem('auth_token');
+        if (token) {
+          fetch('/api/study/progress/update', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              topicName,
+              action: 'startTopic'
+            })
+          }).catch(error => console.error('Error tracking topic start:', error));
+        }
+      }
+    };
+    
+    trackTopicStart();
+  }, [user, topicName]);
+
   // Remove the automatic redirect that's causing the infinite loop
   // Instead, we'll show an access denied message in the render
 
@@ -54,8 +79,43 @@ const StudyTopic = ({ topicName }) => {
     }
   };
 
-  const completeLesson = () => {
+  const completeLesson = async () => {
     setCompletedLessons(prev => new Set([...prev, currentLesson]));
+    
+    // Save progress to database if user is logged in
+    if (user) {
+      try {
+        const token = await storage.getItem('auth_token');
+        if (token) {
+          const response = await fetch('/api/study/progress/update', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              topicName,
+              lessonTitle,
+              action: 'completeLesson'
+            })
+          });
+          
+          const data = await response.json();
+          console.log('Lesson completion response:', data);
+          console.log('Current lesson:', lessonTitle, 'Total lessons:', Object.keys(topicData.lessons).length);
+          
+          if (!response.ok) {
+            console.error('Failed to save progress:', data);
+          }
+        } else {
+          console.log('No auth token found, progress not saved');
+        }
+      } catch (error) {
+        console.error('Error saving progress:', error);
+      }
+    } else {
+      console.log('User not logged in, progress not saved');
+    }
     
     if (lessonContent.quiz) {
       setShowQuiz(true);
@@ -64,12 +124,43 @@ const StudyTopic = ({ topicName }) => {
     }
   };
 
-  const submitQuiz = () => {
+  const submitQuiz = async () => {
     const isCorrect = parseInt(quizAnswer) === lessonContent.quiz.correct;
     setQuizResult({
       isCorrect,
       explanation: lessonContent.quiz.explanation
     });
+    
+    // Save quiz score to database
+    if (user) {
+      try {
+        const token = await storage.getItem('auth_token');
+        if (token) {
+          const response = await fetch('/api/study/progress/update', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              topicName,
+              lessonTitle,
+              action: 'updateQuizScore',
+              quizScore: isCorrect ? 100 : 0
+            })
+          });
+          
+          const data = await response.json();
+          console.log('Quiz score response:', data);
+          
+          if (data.topicCompleted) {
+            console.log('Topic completed! Total completed:', data.totalCompleted);
+          }
+        }
+      } catch (error) {
+        console.error('Error saving quiz score:', error);
+      }
+    }
 
     // Allow progression regardless of quiz result after showing feedback
     setTimeout(() => {
@@ -77,6 +168,7 @@ const StudyTopic = ({ topicName }) => {
         nextLesson();
       } else {
         // Completed all lessons - redirect back to study section
+        console.log('All lessons completed, redirecting to study section...');
         router.push('/study');
       }
     }, 3000);

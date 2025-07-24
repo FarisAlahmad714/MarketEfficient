@@ -4,15 +4,60 @@ import { getTopicsByDifficulty, getDifficultyMetadata, isTopicAccessible } from 
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import styles from '../styles/StudySection.module.css';
+import storage from '../lib/storage';
+import { 
+  CheckCircle, 
+  Clock, 
+  BookOpen, 
+  ArrowRight, 
+  Lock,
+  UserCircle,
+  BarChart3,
+  GraduationCap,
+  ChartLine,
+  Brain,
+  Users,
+  Layers,
+  Seedling,
+  Building,
+  Crown,
+  FileText,
+  Signal,
+  Grid3x3,
+  Home
+} from 'lucide-react';
 
 const StudySection = () => {
   const { user } = useAuth();
   const router = useRouter();
   const [userSubscription, setUserSubscription] = useState('free');
   const [activeTab, setActiveTab] = useState('all');
+  const [userProgress, setUserProgress] = useState(null);
+  const [loadingProgress, setLoadingProgress] = useState(true);
   
   const topicsByDifficulty = getTopicsByDifficulty();
   const difficultyMetadata = getDifficultyMetadata();
+  
+  console.log('StudySection rendered, user:', user, 'userProgress:', userProgress);
+  
+  // Map Font Awesome icons to Lucide icons
+  const getIconComponent = (faIconClass) => {
+    const iconMap = {
+      'fas fa-brain': Brain,
+      'fas fa-coins': BookOpen,
+      'fas fa-university': Building,
+      'fas fa-layer-group': Layers,
+      'fas fa-seedling': Seedling,
+      'fas fa-chart-line': ChartLine,
+      'fas fa-chart-bar': BarChart3,
+      'fas fa-building': Building,
+      'fas fa-crown': Crown,
+      'fas fa-fire': Crown,
+      'fas fa-bolt': Crown,
+      'fas fa-star': Crown
+    };
+    return iconMap[faIconClass] || BookOpen;
+  };
 
   useEffect(() => {
     if (user) {
@@ -31,6 +76,101 @@ const StudySection = () => {
     }
   }, [user]);
 
+  // Function to fetch user's study progress
+  const fetchProgress = async () => {
+    console.log('fetchProgress called, user:', user);
+    if (user) {
+      try {
+        // Get token from storage
+        const token = await storage.getItem('auth_token');
+        console.log('Token from storage:', token ? 'exists' : 'not found');
+        
+        if (token) {
+          console.log('Fetching progress from API...');
+          const response = await fetch('/api/study/progress', {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          
+          console.log('Progress API response status:', response.status);
+          if (response.ok) {
+            const data = await response.json();
+            console.log('Fetched user progress data:', data);
+            console.log('Progress detail:', JSON.stringify(data.progress, null, 2));
+            setUserProgress(data.progress);
+          } else {
+            console.error('Progress API error:', response.status, response.statusText);
+          }
+        } else {
+          console.log('No auth token found in storage');
+        }
+      } catch (error) {
+        console.error('Error fetching progress:', error);
+      } finally {
+        setLoadingProgress(false);
+      }
+    } else {
+      console.log('No user logged in, skipping progress fetch');
+      setLoadingProgress(false);
+    }
+  };
+
+  // Fetch progress on mount and when user changes
+  useEffect(() => {
+    fetchProgress();
+  }, [user]);
+
+  // Refetch progress when navigating back to this page
+  useEffect(() => {
+    const handleFocus = () => {
+      if (user) {
+        console.log('Page focused, refetching progress...');
+        fetchProgress();
+      }
+    };
+
+    // Listen for page visibility changes
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && user) {
+        console.log('Page visible, refetching progress...');
+        fetchProgress();
+      }
+    });
+
+    // Also refetch when router events occur
+    const handleRouteChange = () => {
+      if (router.pathname === '/study' && user) {
+        console.log('Navigated to study page, refetching progress...');
+        fetchProgress();
+      }
+    };
+
+    router.events.on('routeChangeComplete', handleRouteChange);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      router.events.off('routeChangeComplete', handleRouteChange);
+    };
+  }, [user, router]);
+
+  const isTopicCompleted = (topicName) => {
+    if (!userProgress || !userProgress.topicProgress) return false;
+    const progress = userProgress.topicProgress[topicName];
+    const isCompleted = progress && progress.completedAt;
+    console.log(`Topic ${topicName} completed:`, isCompleted, progress);
+    return isCompleted;
+  };
+
+  const getTopicCompletionPercentage = (topicName, topic) => {
+    if (!userProgress || !userProgress.topicProgress) return 0;
+    const progress = userProgress.topicProgress[topicName];
+    if (!progress || !progress.completedLessons || !Array.isArray(progress.completedLessons)) return 0;
+    const totalLessons = Object.keys(topic.lessons).length;
+    return Math.round((progress.completedLessons.length / totalLessons) * 100);
+  };
+
   const getUserLevelText = () => {
     if (userSubscription === 'paid' || userSubscription === 'promo') return 'Premium Trader';
     if (userSubscription === 'existing') return 'Intermediate Trader';
@@ -45,17 +185,28 @@ const StudySection = () => {
 
   const renderTopicCard = (topic) => {
     const isAccessible = isTopicAccessible(topic.level, userSubscription, user?.isAdmin);
+    const isCompleted = isTopicCompleted(topic.name);
+    const completionPercentage = getTopicCompletionPercentage(topic.name, topic);
     
     return (
       <div 
         key={topic.name}
-        className={`${styles.studyCard} ${!isAccessible ? styles.locked : ''} ${styles[topic.level]}`}
+        className={`${styles.studyCard} ${!isAccessible ? styles.locked : ''} ${styles[topic.level]} ${isCompleted ? styles.completed : ''}`}
       >
         <div className={styles.studyCardHeader}>
           <div className={styles.difficultyBadge} style={{ backgroundColor: difficultyMetadata[topic.level]?.color }}>
-            <i className={difficultyMetadata[topic.level]?.icon}></i>
+            {(() => {
+              const IconComponent = getIconComponent(difficultyMetadata[topic.level]?.icon);
+              return <IconComponent size={12} />;
+            })()}
             <span>{topic.level}</span>
           </div>
+          {isCompleted && (
+            <div className={styles.completionBadge}>
+              <CheckCircle size={20} />
+              <span>Completed</span>
+            </div>
+          )}
         </div>
 
         <div className={styles.studyCardContent}>
@@ -64,14 +215,26 @@ const StudySection = () => {
           
           <div className={styles.studyMeta}>
             <div className={styles.estimatedTime}>
-              <i className="fas fa-clock"></i>
+              <Clock size={14} />
               <span>{topic.estimatedTime}</span>
             </div>
             <div className={styles.lessonCount}>
-              <i className="fas fa-book-open"></i>
+              <BookOpen size={14} />
               <span>{Object.keys(topic.lessons).length} lessons</span>
             </div>
           </div>
+
+          {user && completionPercentage > 0 && !isCompleted && (
+            <div className={styles.progressContainer}>
+              <div className={styles.progressBar}>
+                <div 
+                  className={styles.progressFill} 
+                  style={{ width: `${completionPercentage}%` }}
+                ></div>
+              </div>
+              <span className={styles.progressText}>{completionPercentage}% Complete</span>
+            </div>
+          )}
 
           <div className={styles.lessonPreview}>
             <h4>Course Content ({Object.keys(topic.lessons).length} lessons)</h4>
@@ -80,7 +243,7 @@ const StudySection = () => {
                 <div key={index} className={styles.lessonItem}>
                   <div className={styles.lessonThumbnail}>
                     <div className={styles.lessonPlayBtn}>
-                      <i className="fas fa-book-open"></i>
+                      <BookOpen size={12} />
                     </div>
                     <div className={styles.lessonDuration}>Read</div>
                   </div>
@@ -88,11 +251,11 @@ const StudySection = () => {
                     <h5 className={styles.lessonName}>{lessonTitle}</h5>
                     <div className={styles.lessonMeta}>
                       <span className={styles.lessonType}>
-                        <i className="fas fa-file-text"></i>
+                        <FileText size={12} style={{marginRight: '4px', display: 'inline-block'}} />
                         Interactive Lesson
                       </span>
                       <span className={styles.lessonDifficulty}>
-                        <i className="fas fa-signal"></i>
+                        <Signal size={12} style={{marginRight: '4px', display: 'inline-block'}} />
                         {topic.level}
                       </span>
                     </div>
@@ -120,7 +283,7 @@ const StudySection = () => {
           {isAccessible ? (
             <Link href={`/study/${encodeURIComponent(topic.name)}`} className={styles.studyBtn}>
               <span>Start Learning</span>
-              <i className="fas fa-arrow-right"></i>
+              <ArrowRight size={14} />
             </Link>
           ) : (
             <div className={styles.lockedContent}>
@@ -128,7 +291,7 @@ const StudySection = () => {
                 className={styles.unlockBtn}
                 onClick={() => router.push('/pricing')}
               >
-                <i className="fas fa-lock"></i>
+                <Lock size={14} style={{marginRight: '4px'}} />
                 <span>Unlock with Pro</span>
               </button>
               <p className={styles.unlockNote}>{difficultyMetadata[topic.level]?.accessText}</p>
@@ -196,11 +359,11 @@ const StudySection = () => {
         <p>Master professional trading with our comprehensive educational platform</p>
         <div className="progress-overview">
           <div className="user-level">
-            <i className="fas fa-user-graduate"></i>
+            <GraduationCap size={16} style={{marginRight: '6px'}} />
             <span>Your Level: {getUserLevelText()}</span>
           </div>
           <div className="total-progress">
-            <i className="fas fa-chart-bar"></i>
+            <BarChart3 size={16} style={{marginRight: '6px'}} />
             <span>
               {Object.values(topicsByDifficulty).reduce((acc, topics) => 
                 acc + topics.filter(topic => isTopicAccessible(topic.level, userSubscription, user?.isAdmin)).length, 0
@@ -216,7 +379,7 @@ const StudySection = () => {
             className={`nav-tab ${activeTab === 'all' ? 'active' : ''}`}
             onClick={() => setActiveTab('all')}
           >
-            <i className="fas fa-th-large"></i>
+            <Grid3x3 size={16} style={{marginRight: '6px'}} />
             All Courses
           </button>
           {Object.entries(difficultyMetadata).map(([difficulty, metadata]) => (
@@ -226,7 +389,10 @@ const StudySection = () => {
               onClick={() => setActiveTab(difficulty)}
               style={{ '--tab-color': metadata.color }}
             >
-              <i className={metadata.icon}></i>
+              {(() => {
+                const IconComponent = getIconComponent(metadata.icon);
+                return <IconComponent size={16} style={{marginRight: '6px'}} />;
+              })()}
               {metadata.title}
               <span className="tab-count">{topicsByDifficulty[difficulty]?.length || 0}</span>
             </button>
@@ -243,28 +409,28 @@ const StudySection = () => {
         <div className="benefits-grid">
           <div className="benefit-card">
             <div className="benefit-icon">
-              <i className="fas fa-graduation-cap"></i>
+              <GraduationCap size={28} />
             </div>
             <h3>Structured Learning Path</h3>
             <p>From beginner fundamentals to advanced institutional strategies</p>
           </div>
           <div className="benefit-card">
             <div className="benefit-icon">
-              <i className="fas fa-chart-line"></i>
+              <ChartLine size={28} />
             </div>
             <h3>Real Market Analysis</h3>
             <p>Learn with actual trading charts and professional examples</p>
           </div>
           <div className="benefit-card">
             <div className="benefit-icon">
-              <i className="fas fa-brain"></i>
+              <Brain size={28} />
             </div>
             <h3>Interactive Quizzes</h3>
             <p>Test your knowledge and reinforce learning with instant feedback</p>
           </div>
           <div className="benefit-card">
             <div className="benefit-icon">
-              <i className="fas fa-users"></i>
+              <Users size={28} />
             </div>
             <h3>Professional Techniques</h3>
             <p>Master institutional trading methods used by professional traders</p>
@@ -279,13 +445,10 @@ const StudySection = () => {
           padding: 40px 20px;
         }
 
-        /* Global icon size control for study section */
-        .study-section-container i[class*="fa-"] {
-          font-size: inherit;
-        }
-        
-        .nav-tab i {
-          font-size: 0.9rem !important;
+        /* Lucide React icon styling */
+        .study-section-container svg {
+          display: inline-block;
+          vertical-align: middle;
         }
 
         .study-header {
@@ -534,6 +697,22 @@ const StudySection = () => {
           font-weight: 600;
           font-size: 0.8rem;
           text-transform: capitalize;
+        }
+
+        .completion-badge {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 8px 16px;
+          background: #4CAF50;
+          color: white;
+          border-radius: 20px;
+          font-weight: 600;
+          font-size: 0.85rem;
+        }
+
+        .completion-badge svg {
+          flex-shrink: 0;
         }
 
         .study-card-content {

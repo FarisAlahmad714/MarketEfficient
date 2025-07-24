@@ -277,7 +277,7 @@ export default function HomePage() {
         >
           Stop Jumping Between Courses.
           <br />
-          <span style={{ color: '#22C55E' }}>Start Actually Trading.</span>
+          <span style={{ color: '#22C55E' }}>Master Your Senses.</span>
         </motion.h1>
         
         <motion.p
@@ -361,10 +361,10 @@ export default function HomePage() {
                   e.currentTarget.style.boxShadow = '0 4px 14px rgba(34, 197, 94, 0.25)';
                 }}
               >
-                Start Free Trial
+                Register Now
               </Link>
               <Link 
-                href="#how-it-works" 
+                href="/learn-more" 
                 style={{
                   padding: '14px 32px',
                   background: 'transparent',
@@ -385,7 +385,7 @@ export default function HomePage() {
                   e.currentTarget.style.color = darkMode ? '#F5F5F5' : '#1E293B';
                 }}
               >
-                See How It Works
+                Learn About Us
               </Link>
             </>
           )}
@@ -764,118 +764,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Social Proof Section */}
-      <section style={{ marginBottom: '80px' }}>
-        <motion.div
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.8 }}
-          style={{
-            textAlign: 'center',
-            marginBottom: '60px',
-          }}
-        >
-          <h2 style={{
-            fontSize: 'clamp(2rem, 4vw, 2.5rem)',
-            fontWeight: 800,
-            color: darkMode ? '#F5F5F5' : '#1E293B',
-            marginBottom: '40px',
-            letterSpacing: '-0.02em',
-          }}>
-            Join Traders Who Are Actually Succeeding
-          </h2>
-          
-          {/* Success Metrics */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-            gap: '16px',
-            maxWidth: '800px',
-            margin: '0 auto 60px',
-            padding: '0 16px',
-          }}>
-            <div style={{
-              padding: '24px',
-              background: darkMode ? 'rgba(34, 197, 94, 0.1)' : 'rgba(34, 197, 94, 0.05)',
-              border: `1px solid ${darkMode ? 'rgba(34, 197, 94, 0.3)' : 'rgba(34, 197, 94, 0.2)'}`,
-              borderRadius: '12px',
-            }}>
-              <div style={{ fontSize: '2.5rem', fontWeight: 800, color: '#22C55E', marginBottom: '4px' }}>87%</div>
-              <div style={{ fontSize: '0.9rem', color: darkMode ? '#94A3B8' : '#64748B' }}>Complete the full pipeline</div>
-            </div>
-            <div style={{
-              padding: '24px',
-              background: darkMode ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.05)',
-              border: `1px solid ${darkMode ? 'rgba(59, 130, 246, 0.3)' : 'rgba(59, 130, 246, 0.2)'}`,
-              borderRadius: '12px',
-            }}>
-              <div style={{ fontSize: '2.5rem', fontWeight: 800, color: '#3B82F6', marginBottom: '4px' }}>3.2x</div>
-              <div style={{ fontSize: '0.9rem', color: darkMode ? '#94A3B8' : '#64748B' }}>Faster skill development</div>
-            </div>
-            <div style={{
-              padding: '24px',
-              background: darkMode ? 'rgba(245, 158, 11, 0.1)' : 'rgba(245, 158, 11, 0.05)',
-              border: `1px solid ${darkMode ? 'rgba(245, 158, 11, 0.3)' : 'rgba(245, 158, 11, 0.2)'}`,
-              borderRadius: '12px',
-            }}>
-              <div style={{ fontSize: '2.5rem', fontWeight: 800, color: '#F59E0B', marginBottom: '4px' }}>94%</div>
-              <div style={{ fontSize: '0.9rem', color: darkMode ? '#94A3B8' : '#64748B' }}>Feel more confident trading</div>
-            </div>
-          </div>
-
-          {/* Testimonial */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            style={{
-              maxWidth: '700px',
-              margin: '0 auto 40px',
-              padding: '32px',
-              background: darkMode ? 'rgba(30, 30, 30, 0.8)' : 'rgba(255, 255, 255, 0.95)',
-              borderRadius: '16px',
-              border: darkMode ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.08)',
-              position: 'relative',
-            }}
-          >
-            <div style={{
-              position: 'absolute',
-              top: '16px',
-              left: '24px',
-              fontSize: '3rem',
-              color: '#22C55E',
-              opacity: 0.3,
-            }}>"</div>
-            <p style={{
-              fontSize: '1.1rem',
-              color: darkMode ? '#CBD5E1' : '#475569',
-              lineHeight: '1.8',
-              fontStyle: 'italic',
-              marginBottom: '16px',
-            }}>
-              After years of jumping between courses and YouTube videos, ChartSense finally gave me a structured path. 
-              The bias tests revealed patterns I never knew I had. Now I'm consistently profitable for the first time.
-            </p>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-            }}>
-              <div style={{
-                width: '48px',
-                height: '48px',
-                borderRadius: '50%',
-                background: darkMode ? '#374151' : '#E5E7EB',
-              }} />
-              <div style={{ textAlign: 'left' }}>
-                <div style={{ fontWeight: 600, color: darkMode ? '#F5F5F5' : '#1E293B' }}>Sarah Chen</div>
-                <div style={{ fontSize: '0.9rem', color: darkMode ? '#94A3B8' : '#64748B' }}>Full-time Trader, 2 years</div>
-              </div>
-            </div>
-          </motion.div>
-        </motion.div>
-      </section>
 
       {/* Leaderboard Section */}
       <section style={{ marginBottom: '80px' }}>
@@ -965,7 +853,7 @@ export default function HomePage() {
                 e.currentTarget.style.boxShadow = '0 6px 20px rgba(34, 197, 94, 0.3)';
               }}
             >
-              Start Your Free Trial →
+              Master Your Senses →
             </Link>
           )}
         </motion.div>
