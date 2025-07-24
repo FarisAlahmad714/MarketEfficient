@@ -692,7 +692,7 @@ const StudyTopic = ({ topicName }) => {
         }
 
         .result-icon {
-          font-size: 2rem;
+          font-size: 1.25rem;
           flex-shrink: 0;
         }
 

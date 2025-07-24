@@ -1,5 +1,15 @@
 /* Study Section Specific Styles */
 
+/* Global icon size control */
+.studyCard i[class*="fa-"],
+.studyBtn i[class*="fa-"],
+.difficultyBadge i[class*="fa-"],
+.lessonCount i[class*="fa-"],
+.estimatedTime i[class*="fa-"] {
+  font-size: 0.75rem !important;
+  vertical-align: middle;
+}
+
 /* Course Card Styling - Compact & Modern */
 .studyCard {
   background: var(--bg-tertiary);
@@ -363,7 +373,7 @@
   align-items: center;
   justify-content: center;
   color: white;
-  font-size: 1rem;
+  font-size: 0.875rem;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 

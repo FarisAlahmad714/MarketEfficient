@@ -279,6 +279,15 @@ const StudySection = () => {
           padding: 40px 20px;
         }
 
+        /* Global icon size control for study section */
+        .study-section-container i[class*="fa-"] {
+          font-size: inherit;
+        }
+        
+        .nav-tab i {
+          font-size: 0.9rem !important;
+        }
+
         .study-header {
           text-align: center;
           margin-bottom: 50px;
@@ -421,9 +430,16 @@ const StudySection = () => {
         }
 
         .difficulty-text h2 {
-          font-size: 2rem;
+          font-size: 1.8rem;
           margin-bottom: 8px;
           color: var(--text-primary);
+        }
+        
+        /* Specific control for tab icons */
+        .nav-tabs .fa-seedling,
+        .nav-tabs .fa-layer-group,
+        .nav-tabs .fa-university {
+          font-size: 0.85rem !important;
         }
 
         .difficulty-text p {
@@ -830,17 +846,17 @@ const StudySection = () => {
         }
 
         .benefit-icon {
-          width: 90px;
-          height: 90px;
+          width: 56px;
+          height: 56px;
           background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
           border-radius: 50%;
           display: flex;
           align-items: center;
           justify-content: center;
-          margin: 0 auto 25px auto;
-          font-size: 2.2rem;
+          margin: 0 auto 20px auto;
+          font-size: 1.25rem;
           color: white;
-          box-shadow: 0 10px 25px rgba(76, 175, 80, 0.3);
+          box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
         }
 
         .benefit-card h3 {
@@ -885,9 +901,9 @@ const StudySection = () => {
           }
 
           .difficulty-icon {
-            width: 60px;
-            height: 60px;
-            font-size: 1.5rem;
+            width: 40px;
+            height: 40px;
+            font-size: 0.95rem;
           }
 
           .benefits-grid {
@@ -896,10 +912,10 @@ const StudySection = () => {
           }
 
           .benefit-icon {
-            width: 70px;
-            height: 70px;
-            font-size: 1.8rem;
-            margin-bottom: 20px;
+            width: 48px;
+            height: 48px;
+            font-size: 1.1rem;
+            margin-bottom: 15px;
           }
 
           .study-benefits {
@@ -917,16 +933,16 @@ const StudySection = () => {
           }
 
           .difficulty-icon {
-            width: 50px;
-            height: 50px;
-            font-size: 1.3rem;
+            width: 36px;
+            height: 36px;
+            font-size: 0.85rem;
           }
 
           .benefit-icon {
-            width: 60px;
-            height: 60px;
-            font-size: 1.5rem;
-            margin-bottom: 15px;
+            width: 44px;
+            height: 44px;
+            font-size: 1rem;
+            margin-bottom: 12px;
           }
 
           .topic-icon {
