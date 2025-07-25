@@ -423,14 +423,15 @@ const PortfolioOverview = ({ portfolioData, onRefresh }) => {
         
         .metrics-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-          gap: 16px;
+          grid-template-columns: repeat(6, 1fr);
+          gap: 12px;
         }
         
         .metric-card {
-          padding: 20px;
-          border-radius: 12px;
+          padding: 12px;
+          border-radius: 10px;
           transition: all 0.3s ease;
+          min-width: 0;
         }
         
         .dark .metric-card {
@@ -458,25 +459,25 @@ const PortfolioOverview = ({ portfolioData, onRefresh }) => {
         }
         
         .balance-card {
-          grid-column: span 2;
+          grid-column: span 1;
         }
         
         .metric-header {
           display: flex;
           align-items: center;
-          gap: 8px;
-          margin-bottom: 12px;
+          gap: 6px;
+          margin-bottom: 8px;
         }
         
         .metric-icon {
-          font-size: 1rem;
+          font-size: 0.875rem;
         }
         
         .metric-label {
-          font-size: 0.875rem;
+          font-size: 0.75rem;
           font-weight: 600;
           text-transform: uppercase;
-          letter-spacing: 0.5px;
+          letter-spacing: 0.3px;
         }
         
         .dark .metric-label {
@@ -488,11 +489,12 @@ const PortfolioOverview = ({ portfolioData, onRefresh }) => {
         }
         
         .metric-value {
-          font-size: 1.75rem;
+          font-size: 1.25rem;
           font-weight: 800;
           font-family: 'SF Mono', Monaco, monospace;
-          margin-bottom: 4px;
-          line-height: 1.2;
+          margin-bottom: 2px;
+          line-height: 1.1;
+          word-break: break-word;
         }
         
         .dark .metric-value {
@@ -504,9 +506,12 @@ const PortfolioOverview = ({ portfolioData, onRefresh }) => {
         }
         
         .metric-sublabel {
-          font-size: 0.75rem;
+          font-size: 0.7rem;
           font-weight: 500;
           opacity: 0.8;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
         
         .dark .metric-sublabel {
@@ -517,13 +522,20 @@ const PortfolioOverview = ({ portfolioData, onRefresh }) => {
           color: rgba(0, 0, 0, 0.6);
         }
         
+        @media (max-width: 1200px) {
+          .metrics-grid {
+            grid-template-columns: repeat(3, 1fr);
+          }
+        }
+        
         @media (max-width: 768px) {
           .portfolio-overview {
-            padding: 20px;
+            padding: 16px;
           }
           
           .metrics-grid {
-            grid-template-columns: 1fr;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
           }
           
           .balance-card {
@@ -531,7 +543,11 @@ const PortfolioOverview = ({ portfolioData, onRefresh }) => {
           }
           
           .metric-value {
-            font-size: 1.5rem;
+            font-size: 1.1rem;
+          }
+          
+          .metric-card {
+            padding: 10px;
           }
         }
       `}</style>
