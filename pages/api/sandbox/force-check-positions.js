@@ -18,7 +18,6 @@ export default async function handler(req, res) {
     jwt.verify(token, process.env.JWT_SECRET);
     
     // Force check all positions
-    console.log('[API] Force checking positions for SL/TP...');
     await stopLossMonitor.checkAllOpenTrades();
     
     return res.status(200).json({ 

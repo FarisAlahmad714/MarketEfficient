@@ -3,6 +3,7 @@ import { requireAuth } from '../../../middleware/auth';
 import { createApiHandler, composeMiddleware } from '../../../lib/api-handler';
 import connectDB from '../../../lib/database';
 import SandboxTrade from '../../../models/SandboxTrade';
+import stopLossMonitor from '../../../lib/sandbox-stop-loss-monitor';
 
 async function updateTradeHandler(req, res) {
   await connectDB();
@@ -59,6 +60,15 @@ async function updateTradeHandler(req, res) {
         message: 'Failed to update trade in database' 
       });
     }
+
+    // Force immediate check of this position for SL/TP
+    setTimeout(async () => {
+      try {
+        await stopLossMonitor.checkAllOpenTrades();
+      } catch (error) {
+        // Silent fail - monitor will check again on next interval
+      }
+    }, 1000); // Small delay to ensure DB update is propagated
 
     res.status(200).json({
       success: true,
