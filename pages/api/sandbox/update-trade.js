@@ -37,11 +37,13 @@ async function updateTradeHandler(req, res) {
     const updateData = {};
 
     if (stopLoss !== null && stopLoss !== undefined && !isNaN(stopLoss) && stopLoss > 0) {
-      updateData['stopLoss.price'] = parseFloat(stopLoss);
+      // Update the entire stopLoss object to avoid MongoDB error when stopLoss is null
+      updateData.stopLoss = { price: parseFloat(stopLoss) };
     }
 
     if (takeProfit !== null && takeProfit !== undefined && !isNaN(takeProfit) && takeProfit > 0) {
-      updateData['takeProfit.price'] = parseFloat(takeProfit);
+      // Update the entire takeProfit object to avoid MongoDB error when takeProfit is null
+      updateData.takeProfit = { price: parseFloat(takeProfit) };
     }
 
     // Update the trade

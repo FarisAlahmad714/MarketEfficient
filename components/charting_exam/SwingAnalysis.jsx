@@ -43,6 +43,24 @@ const Chart = dynamic(
           crosshair: {
             mode: 0, // CrosshairMode.Normal
           },
+          // Enable full interactivity in practice mode
+          ...(options.isPracticeMode ? {
+            handleScroll: {
+              mouseWheel: true,
+              pressedMouseMove: true,
+              horzTouchDrag: true,
+              vertTouchDrag: true,
+            },
+            handleScale: {
+              axisPressedMouseMove: {
+                time: true,
+                price: true,
+              },
+              axisDoubleClickReset: true,
+              mouseWheel: true,
+              pinch: true,
+            },
+          } : {}),
         });
         
         // Add candlestick series
@@ -345,16 +363,29 @@ const FeedbackSummary = styled.div`
   }
 `;
 
-const SwingAnalysis = ({ chartData, onDrawingsUpdate, chartCount, isDarkMode, validationResults }) => {
+const SwingAnalysis = React.forwardRef(({ chartData, onDrawingsUpdate, chartCount, isDarkMode, validationResults, isPracticeMode = false }, ref) => {
   const containerRef = useRef(null);
   const panelRef = useRef(null);
   const [drawings, setDrawings] = useState([]);
-  const [markingMode, setMarkingMode] = useState(null);
+  const [markingMode, setMarkingMode] = useState(isPracticeMode ? 'mark-swing-points' : null);
   const [panelOffset, setPanelOffset] = useState({ x: 0, y: 10 });
   const [isDragging, setIsDragging] = useState(false);
   const [currentCoords, setCurrentCoords] = useState({ x: 0, y: 0 });
   const [isMobile, setIsMobile] = useState(false);
   const [feedbackMarkers, setFeedbackMarkers] = useState([]);
+
+  // Expose functions through ref
+  React.useImperativeHandle(ref, () => ({
+    clearFeedbackMarkers: () => {
+      console.log('Clearing feedback markers via ref');
+      setFeedbackMarkers([]);
+    },
+    clearAll: () => {
+      console.log('Clearing all drawings and feedback markers via ref');
+      setDrawings([]);
+      setFeedbackMarkers([]);
+    }
+  }));
 
   // Define all functions before toolsConfig to avoid ReferenceError
   const undoLastMarker = () => {
@@ -369,6 +400,10 @@ const SwingAnalysis = ({ chartData, onDrawingsUpdate, chartCount, isDarkMode, va
 
   const clearAllMarkers = () => {
     setDrawings([]);
+    // Only clear feedback markers in practice mode
+    if (isPracticeMode) {
+      setFeedbackMarkers([]);
+    }
   };
 
   const markNoSwingPoints = () => {
@@ -440,6 +475,7 @@ const SwingAnalysis = ({ chartData, onDrawingsUpdate, chartCount, isDarkMode, va
 
   // Create chart markers
   const chartMarkers = React.useMemo(() => {
+    console.log('Creating chart markers. Drawings:', drawings.length, 'FeedbackMarkers:', feedbackMarkers.length);
     if (!drawings) return feedbackMarkers.filter(m => m && typeof m.time === 'number' && !isNaN(m.time));
     
     if (drawings.length === 1 && drawings[0].no_swings_found) {
@@ -462,13 +498,26 @@ const SwingAnalysis = ({ chartData, onDrawingsUpdate, chartCount, isDarkMode, va
       .filter(m => m && typeof m.time === 'number' && !isNaN(m.time))
       .sort((a, b) => a.time - b.time);
     
-    return [...userMarkers, ...sortedFeedbackMarkers].sort((a, b) => a.time - b.time);
+    const allMarkers = [...userMarkers, ...sortedFeedbackMarkers].sort((a, b) => a.time - b.time);
+    console.log('Final chartMarkers:', allMarkers);
+    return allMarkers;
   }, [drawings, feedbackMarkers]);
 
   // Process validation results
   useEffect(() => {
-    if (validationResults && validationResults.feedback) {
-      processFeedbackMarkers(validationResults.feedback);
+    console.log('SwingAnalysis validationResults:', validationResults);
+    if (validationResults) {
+      // Check if this is practice mode (has correctAnswers array)
+      if (validationResults.correctAnswers && Array.isArray(validationResults.correctAnswers)) {
+        // Practice mode format
+        console.log('Processing practice mode correctAnswers:', validationResults.correctAnswers);
+        console.log('Current user drawings:', drawings);
+        processCorrectAnswers(validationResults.correctAnswers);
+      } else if (validationResults.feedback && typeof validationResults.feedback === 'object' && !Array.isArray(validationResults.feedback)) {
+        // Test mode format (feedback is an object with correct/incorrect arrays)
+        console.log('Processing test mode feedback');
+        processFeedbackMarkers(validationResults.feedback);
+      }
     }
   }, [validationResults]);
 
@@ -532,10 +581,92 @@ const SwingAnalysis = ({ chartData, onDrawingsUpdate, chartCount, isDarkMode, va
     setFeedbackMarkers(validMarkers);
   };
 
+  // Process correct answers for practice mode
+  const processCorrectAnswers = (correctAnswers) => {
+    console.log('processCorrectAnswers called with:', correctAnswers);
+    const markers = [];
+    
+    // Create tolerance for matching
+    const timeTolerance = 86400 * 2; // 2 days in seconds
+    const priceTolerance = 0.02; // 2% price tolerance
+    
+    correctAnswers.forEach(answer => {
+      if (answer.time && typeof answer.time === 'number' && !isNaN(answer.time)) {
+        // Check if user identified this point
+        const userFound = drawings.some(userPoint => {
+          const timeDiff = Math.abs(userPoint.time - answer.time);
+          const priceDiff = Math.abs(userPoint.price - answer.price) / answer.price;
+          return timeDiff <= timeTolerance && 
+                 priceDiff <= priceTolerance && 
+                 userPoint.type === answer.type;
+        });
+        
+        if (userFound) {
+          // User correctly identified this point - show in green/blue
+          markers.push({
+            time: answer.time,
+            position: answer.type === 'high' ? 'aboveBar' : 'belowBar',
+            color: answer.type === 'high' ? '#4CAF50' : '#2196F3',
+            shape: 'circle',
+            size: 3,
+            text: `Correct ${answer.type?.toUpperCase() || 'Point'}`,
+            price: answer.price,
+            type: 'correct'
+          });
+        } else {
+          // User missed this point - show in yellow/gold
+          markers.push({
+            time: answer.time,
+            position: answer.type === 'high' ? 'aboveBar' : 'belowBar',
+            color: '#FFD700', // Gold color for missed points
+            shape: 'circle',
+            size: 4,
+            text: `Missed ${answer.type?.toUpperCase() || 'Point'}`,
+            price: answer.price,
+            type: 'missed'
+          });
+        }
+      }
+    });
+    
+    // Also mark user's incorrect points in red
+    drawings.forEach(userPoint => {
+      if (userPoint.time && typeof userPoint.time === 'number' && !isNaN(userPoint.time)) {
+        // Check if this user point matches any correct answer
+        const isCorrect = correctAnswers.some(answer => {
+          const timeDiff = Math.abs(userPoint.time - answer.time);
+          const priceDiff = Math.abs(userPoint.price - answer.price) / answer.price;
+          return timeDiff <= timeTolerance && 
+                 priceDiff <= priceTolerance && 
+                 userPoint.type === answer.type;
+        });
+        
+        if (!isCorrect && !userPoint.no_swings_found) {
+          // User marked an incorrect point
+          markers.push({
+            time: userPoint.time,
+            position: 'inBar',
+            color: '#FF0000', // Red for incorrect
+            shape: 'square',
+            size: 3,
+            text: 'Incorrect Point',
+            price: userPoint.price,
+            type: 'incorrect'
+          });
+        }
+      }
+    });
+    
+    const validMarkers = markers.filter(marker => marker && typeof marker.time === 'number' && !isNaN(marker.time) && marker.time > 0);
+    validMarkers.sort((a, b) => a.time - b.time);
+    console.log('Setting feedback markers in processCorrectAnswers:', validMarkers);
+    setFeedbackMarkers(validMarkers);
+  };
+
   // Update parent component
   useEffect(() => {
     if (onDrawingsUpdate) onDrawingsUpdate(drawings);
-  }, [drawings, onDrawingsUpdate]);
+  }, [drawings]); // Remove onDrawingsUpdate from dependencies to prevent infinite loop
 
   // Define toolsConfig after functions to ensure they're available
   const toolsConfig = [
@@ -571,9 +702,10 @@ const SwingAnalysis = ({ chartData, onDrawingsUpdate, chartCount, isDarkMode, va
   // Handle tool selection
   const handleToolSelect = (toolId) => {
     const tool = toolsConfig.find(t => t.id === toolId);
-    if (tool.onClick) {
+    if (tool && tool.onClick) {
       tool.onClick();
-    } else {
+    } else if (toolId === 'mark-swing-points') {
+      // Toggle marking mode for the drawing tool
       setMarkingMode(markingMode === toolId ? null : toolId);
     }
   };
@@ -685,7 +817,7 @@ const SwingAnalysis = ({ chartData, onDrawingsUpdate, chartCount, isDarkMode, va
               <Chart 
                 container={containerRef} 
                 chartData={formattedChartData} 
-                options={{ isDarkMode, markers: chartMarkers }}
+                options={{ isDarkMode, markers: chartMarkers, isPracticeMode }}
                 onClick={handlePointClick}
               />
             ) : (
@@ -820,6 +952,8 @@ const SwingAnalysis = ({ chartData, onDrawingsUpdate, chartCount, isDarkMode, va
       </div>
     </div>
   );
-};
+});
+
+SwingAnalysis.displayName = 'SwingAnalysis';
 
 export default SwingAnalysis;

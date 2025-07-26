@@ -30,10 +30,23 @@ const Chart = dynamic(
             timeVisible: true,
           },
           crosshair: {
-            mode: 0,
+            mode: 1, // Changed from 0 to 1 to enable crosshair
           },
-          handleScroll: !options.drawingMode,
-          handleScale: !options.drawingMode,
+          handleScroll: {
+            mouseWheel: true,
+            pressedMouseMove: !options.drawingMode,
+            horzTouchDrag: !options.drawingMode,
+            vertTouchDrag: !options.drawingMode,
+          },
+          handleScale: {
+            axisPressedMouseMove: {
+              time: true,
+              price: true,
+            },
+            axisDoubleClickReset: true,
+            mouseWheel: true,
+            pinch: true,
+          },
         });
         
         if (options.drawingMode) {
@@ -52,7 +65,7 @@ const Chart = dynamic(
         
         candlestick.setData(chartData);
         
-        if (options.fibLevels && options.fibLevels.length > 0) {
+        if (options.fibLevels && options.fibLevels.length > 0 && options.startTime && options.endTime) {
           options.fibLevels.forEach(level => {
             const lineSeries = chart.addLineSeries({
               color: level.color,
@@ -63,6 +76,11 @@ const Chart = dynamic(
             
             let timePoint1 = options.startTime;
             let timePoint2 = options.endTime;
+            
+            // Skip if time points are not defined
+            if (!timePoint1 || !timePoint2) {
+              return;
+            }
             
             if (Math.abs(timePoint1 - timePoint2) < 60) {
               if (timePoint1 < timePoint2) {
@@ -356,17 +374,18 @@ function enhancePointSelection(point, chartData, part, isEndPoint = false) {
   };
 }
 
-const FibonacciRetracement = ({ chartData, onDrawingsUpdate, part, chartCount, isDarkMode }) => {
+const FibonacciRetracement = ({ chartData, onDrawingsUpdate, part, chartCount, isDarkMode, isPracticeMode = false, validationResults = null }) => {
   const containerRef = useRef(null);
   const panelRef = useRef(null);
   const [drawings, setDrawings] = useState([]);
-  const [drawingMode, setDrawingMode] = useState(false);
+  const [drawingMode, setDrawingMode] = useState(isPracticeMode);
   const [startPoint, setStartPoint] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
   const [fibonacciLevels, setFibonacciLevels] = useState(DEFAULT_FIBONACCI_LEVELS);
   const [chartKey, setChartKey] = useState(0);
   const [showClearNotification, setShowClearNotification] = useState(false);
   const [prevPart, setPrevPart] = useState(part);
+  const [correctFibs, setCorrectFibs] = useState([]);
   
   // Draggable panel state
   const [panelOffset, setPanelOffset] = useState({ x: 0, y: 10 });
@@ -399,13 +418,16 @@ const FibonacciRetracement = ({ chartData, onDrawingsUpdate, part, chartCount, i
     if (prevPart !== part && prevPart !== undefined) {
       clearAllDrawings();
       setStartPoint(null);
-      setDrawingMode(false);
+      // Keep drawing mode enabled in practice mode when switching parts
+      if (!isPracticeMode) {
+        setDrawingMode(false);
+      }
       setPrevPart(part);
       setShowClearNotification(true);
       setTimeout(() => setShowClearNotification(false), 2000);
       logger.log(`Cleared Part ${prevPart} drawings, now on Part ${part}`);
     }
-  }, [part, prevPart]);
+  }, [part, prevPart, isPracticeMode]);
   
   useEffect(() => {
     setChartKey(prev => prev + 1);
@@ -426,7 +448,14 @@ const FibonacciRetracement = ({ chartData, onDrawingsUpdate, part, chartCount, i
   const fibLevels = React.useMemo(() => {
     const levels = [];
     
+    // Add user drawings
     drawings.forEach(drawing => {
+      if (!drawing.start || !drawing.end || 
+          typeof drawing.start.price !== 'number' || 
+          typeof drawing.end.price !== 'number') {
+        return;
+      }
+      
       const priceDiff = drawing.start.price - drawing.end.price;
       fibonacciLevels
         .filter(fib => fib.visible)
@@ -442,18 +471,44 @@ const FibonacciRetracement = ({ chartData, onDrawingsUpdate, part, chartCount, i
         });
     });
     
+    // Add correct answers with different styling
+    correctFibs.forEach(drawing => {
+      if (!drawing.start || !drawing.end || 
+          typeof drawing.start.price !== 'number' || 
+          typeof drawing.end.price !== 'number') {
+        return;
+      }
+      
+      const priceDiff = drawing.start.price - drawing.end.price;
+      fibonacciLevels
+        .filter(fib => fib.visible)
+        .forEach(fib => {
+          const level = {
+            price: drawing.end.price + priceDiff * fib.level,
+            color: 'rgba(255, 152, 0, 0.8)', // Orange for correct answers
+            lineWidth: 2,
+            lineStyle: 0,
+            title: `Expected ${fib.label}`
+          };
+          levels.push(level);
+        });
+    });
+    
     return levels;
-  }, [drawings, fibonacciLevels]);
+  }, [drawings, fibonacciLevels, correctFibs]);
   
   const chartOptions = React.useMemo(() => {
-    if (drawings.length === 0) {
+    // Combine user drawings with correct answers
+    const allDrawings = [...drawings, ...correctFibs];
+    
+    if (allDrawings.length === 0) {
       return { 
         isDarkMode,
         drawingMode
       };
     }
     
-    const latestDrawing = drawings[drawings.length - 1];
+    const latestDrawing = allDrawings[allDrawings.length - 1];
     let startTime = latestDrawing.start.time;
     let endTime = latestDrawing.end.time;
     
@@ -472,29 +527,59 @@ const FibonacciRetracement = ({ chartData, onDrawingsUpdate, part, chartCount, i
       startTime: startTime,
       endTime: endTime
     };
-  }, [drawings, fibLevels, isDarkMode, drawingMode]);
+  }, [drawings, fibLevels, isDarkMode, drawingMode, correctFibs]);
   
   const chartMarkers = React.useMemo(() => {
     const markers = [];
     
+    // User drawings
     drawings.forEach((drawing, index) => {
-      markers.push({
-        time: drawing.start.time,
-        position: 'belowBar',
-        color: '#2196F3',
-        shape: 'circle',
-        size: 2,
-        text: `Start ${index + 1}`
-      });
+      if (drawing.start && drawing.start.time) {
+        markers.push({
+          time: drawing.start.time,
+          position: 'belowBar',
+          color: '#2196F3',
+          shape: 'circle',
+          size: 2,
+          text: `Start ${index + 1}`
+        });
+      }
       
-      markers.push({
-        time: drawing.end.time,
-        position: 'aboveBar',
-        color: '#4CAF50',
-        shape: 'circle',
-        size: 2,
-        text: `End ${index + 1}`
-      });
+      if (drawing.end && drawing.end.time) {
+        markers.push({
+          time: drawing.end.time,
+          position: 'aboveBar',
+          color: '#4CAF50',
+          shape: 'circle',
+          size: 2,
+          text: `End ${index + 1}`
+        });
+      }
+    });
+    
+    // Correct answer markers
+    correctFibs.forEach((drawing, index) => {
+      if (drawing.start && drawing.start.time) {
+        markers.push({
+          time: drawing.start.time,
+          position: drawing.direction === 'uptrend' ? 'aboveBar' : 'belowBar',
+          color: '#FF9800',
+          shape: 'circle',
+          size: 3,
+          text: `Expected Start`
+        });
+      }
+      
+      if (drawing.end && drawing.end.time) {
+        markers.push({
+          time: drawing.end.time,
+          position: drawing.direction === 'uptrend' ? 'belowBar' : 'aboveBar',
+          color: '#FF9800',
+          shape: 'circle',
+          size: 3,
+          text: `Expected End`
+        });
+      }
     });
     
     const processedMarkers = [];
@@ -512,13 +597,38 @@ const FibonacciRetracement = ({ chartData, onDrawingsUpdate, part, chartCount, i
     });
     
     return processedMarkers.sort((a, b) => a.time - b.time);
-  }, [drawings]);
+  }, [drawings, correctFibs]);
   
   useEffect(() => {
     if (onDrawingsUpdate) {
       onDrawingsUpdate(drawings);
     }
-  }, [drawings, onDrawingsUpdate]);
+  }, [drawings]); // Removed onDrawingsUpdate to prevent infinite loop
+
+  // Process validation results to show correct answers
+  useEffect(() => {
+    if (validationResults && validationResults.correctAnswers) {
+      // Filter correct answers to only show the one matching current part
+      const currentDirection = part === 1 ? 'uptrend' : 'downtrend';
+      const correctDrawings = validationResults.correctAnswers
+        .filter(answer => answer.direction === currentDirection)
+        .map(answer => ({
+          start: {
+            time: answer.startTime,
+            price: answer.startPrice
+          },
+          end: {
+            time: answer.endTime,
+            price: answer.endPrice
+          },
+          direction: answer.direction,
+          isCorrect: true
+        }));
+      setCorrectFibs(correctDrawings);
+    } else {
+      setCorrectFibs([]);
+    }
+  }, [validationResults, part]);
   
   // Dragging logic
   const startPanelDragging = (e) => {
@@ -551,10 +661,15 @@ const FibonacciRetracement = ({ chartData, onDrawingsUpdate, part, chartCount, i
   };
   
   const handlePointClick = (point) => {
-    if (!drawingMode) return;
+    console.log('Fibonacci click:', { point, drawingMode, startPoint });
+    if (!drawingMode) {
+      console.log('Drawing mode is false, ignoring click');
+      return;
+    }
     
     if (!startPoint) {
       const enhancedPoint = enhancePointSelection(point, chartData, part, false);
+      console.log('Setting start point:', enhancedPoint);
       setStartPoint({
         time: enhancedPoint.time,
         price: enhancedPoint.price
@@ -576,6 +691,7 @@ const FibonacciRetracement = ({ chartData, onDrawingsUpdate, part, chartCount, i
         direction: part === 1 ? 'uptrend' : 'downtrend'
       };
       
+      console.log('Creating new drawing:', newDrawing);
       setDrawings([...drawings, newDrawing]);
       setStartPoint(null);
     }
@@ -602,6 +718,10 @@ const FibonacciRetracement = ({ chartData, onDrawingsUpdate, part, chartCount, i
   const clearAllDrawings = () => {
     setDrawings([]);
     setStartPoint(null);
+    // Clear correct fibs in practice mode
+    if (isPracticeMode) {
+      setCorrectFibs([]);
+    }
   };
   
   const toggleSettings = () => {
@@ -711,6 +831,7 @@ const FibonacciRetracement = ({ chartData, onDrawingsUpdate, part, chartCount, i
                   isDarkMode,
                   drawingMode,
                   markers: chartMarkers,
+                  isPracticeMode,
                   ...chartOptions
                 }}
                 onClick={handlePointClick}

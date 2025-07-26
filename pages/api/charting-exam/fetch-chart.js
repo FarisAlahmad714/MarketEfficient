@@ -22,7 +22,14 @@ const STOCK_ASSETS = [
   { type: 'equity', symbol: 'tsla', apiId: 'TSLA' }    // TESLA
 ];
 
-const ASSETS = [...CRYPTO_ASSETS, ...STOCK_ASSETS];
+const COMMODITY_ASSETS = [
+  { type: 'commodity', symbol: 'xau', apiId: 'XAU/USD' },    // Gold Spot
+  { type: 'commodity', symbol: 'xag', apiId: 'XAG/USD' },    // Silver Spot  
+  { type: 'commodity', symbol: 'cl=f', apiId: 'CL=F' },      // Crude Oil WTI
+  { type: 'commodity', symbol: 'ng=f', apiId: 'NG=F' }       // Natural Gas
+];
+
+const ASSETS = [...CRYPTO_ASSETS, ...STOCK_ASSETS, ...COMMODITY_ASSETS];
 
 const TIMEFRAMES_ALL = ['1h', '4h', '1d', '1w'];
 const TIMEFRAMES_FVG = ['1h', '4h', '1d'];
@@ -54,6 +61,8 @@ async function fetchChartHandler(req, res) {
     assetPool = CRYPTO_ASSETS;
   } else if (assetType === 'stocks') {
     assetPool = STOCK_ASSETS;
+  } else if (assetType === 'commodities') {
+    assetPool = COMMODITY_ASSETS;
   }
   
   logger.log(`Fetching chart for exam type: ${examType}, asset type: ${assetType}, available timeframes:`, timeframes);

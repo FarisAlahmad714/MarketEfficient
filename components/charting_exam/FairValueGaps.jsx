@@ -220,12 +220,16 @@ const FairValueGaps = ({
   validationResults = null,
   onSubmit = null,
   symbol = "Unknown",
-  timeframe = "Unknown"
+  timeframe = "Unknown",
+  isPracticeMode = false,
+  existingDrawings = []
 }) => {
   const chartContainerRef = useRef(null);
   const chartRef = useRef(null);
   const candleSeriesRef = useRef(null);
   const panelRef = useRef(null);
+  const expectedFVGLineSeries = useRef([]);
+  const correctFVGSeries = useRef([]);
 
   const [drawingMode, setDrawingMode] = useState(null);
   const [startPoint, setStartPoint] = useState(null);
@@ -235,6 +239,7 @@ const FairValueGaps = ({
   const [isDragging, setIsDragging] = useState(false);
   const [currentCoords, setCurrentCoords] = useState({ x: 0, y: 0 });
   const [expectedFVGMarkers, setExpectedFVGMarkers] = useState([]);
+  const [correctFVGs, setCorrectFVGs] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showClearNotification, setShowClearNotification] = useState(false);
   const [prevPart, setPrevPart] = useState(part);
@@ -340,7 +345,28 @@ const FairValueGaps = ({
         vertLines: { visible: false },
         horzLines: { visible: false }
       },
-      timeScale: { timeVisible: true, secondsVisible: false },
+      timeScale: { 
+        timeVisible: true, 
+        secondsVisible: false,
+        rightOffset: 5,
+        barSpacing: 12,
+      },
+      // Enable full interactivity
+      handleScroll: {
+        mouseWheel: true,
+        pressedMouseMove: true,
+        horzTouchDrag: true,
+        vertTouchDrag: true,
+      },
+      handleScale: {
+        axisPressedMouseMove: {
+          time: true,
+          price: true,
+        },
+        axisDoubleClickReset: true,
+        mouseWheel: true,
+        pinch: true,
+      },
       crosshair: {
         mode: CrosshairMode.Normal,
         vertLine: { visible: true, labelVisible: true },
@@ -387,6 +413,53 @@ const FairValueGaps = ({
     });
   }, [isDarkMode]);
 
+  // Redraw existing FVGs when chart is ready or existing drawings change
+  useEffect(() => {
+    if (!chartRef.current || !candleSeriesRef.current || !chartData || chartData.length === 0) return;
+    
+    // Clear existing rectangles first
+    rectangles.forEach(rect => {
+      if (rect.lines) {
+        rect.lines.forEach(line => {
+          if (rect.isLineSeries) {
+            try {
+              chartRef.current.removeSeries(line);
+            } catch (error) {
+              console.error('Error removing line series:', error);
+            }
+          } else {
+            candleSeriesRef.current.removePriceLine(line);
+          }
+        });
+      }
+    });
+    setRectangles([]);
+    
+    // Redraw existing FVGs
+    if (existingDrawings && existingDrawings.length > 0) {
+      console.log('Redrawing existing FVGs:', existingDrawings);
+      const newRectangles = [];
+      
+      existingDrawings.forEach(fvg => {
+        if (!fvg.no_fvgs_found) {
+          const rect = drawRectangle(
+            fvg.startTime,
+            fvg.endTime,
+            fvg.topPrice,
+            fvg.bottomPrice,
+            fvg.type
+          );
+          if (rect) {
+            newRectangles.push(rect);
+          }
+        }
+      });
+      
+      setRectangles(newRectangles);
+      setUserFVGs(existingDrawings);
+    }
+  }, [chartData, existingDrawings]);
+
   // Subscribe to chart clicks for drawing interactions
   useEffect(() => {
     if (chartRef.current && candleSeriesRef.current) {
@@ -417,6 +490,23 @@ const FairValueGaps = ({
     }
   }, [userFVGs, onDrawingsUpdate]);
 
+  // Process validation results to show correct answers
+  useEffect(() => {
+    if (validationResults && validationResults.correctAnswers) {
+      const correct = validationResults.correctAnswers.map(answer => ({
+        startTime: answer.time || answer.startTime,
+        endTime: answer.endTime || answer.time + 3600, // Default 1 hour width
+        topPrice: answer.gapTop || answer.topPrice,
+        bottomPrice: answer.gapBottom || answer.bottomPrice,
+        type: answer.type,
+        isCorrect: true
+      }));
+      setCorrectFVGs(correct);
+    } else {
+      setCorrectFVGs([]);
+    }
+  }, [validationResults]);
+
   // Process validation results - add labels to existing FVG visualizations
   useEffect(() => {
     if (validationResults && chartRef.current) {
@@ -431,6 +521,106 @@ const FairValueGaps = ({
       }, 500);
     }
   }, [validationResults]);
+
+  // Draw correct FVGs when validation results are available
+  useEffect(() => {
+    if (!chartRef.current || !candleSeriesRef.current) return;
+    
+    // Clear previous correct FVG series
+    if (correctFVGSeries.current.length > 0) {
+      correctFVGSeries.current.forEach(series => {
+        try {
+          chartRef.current.removeSeries(series);
+        } catch (error) {
+          console.error('Error removing correct FVG series:', error);
+        }
+      });
+      correctFVGSeries.current = [];
+    }
+    
+    if (correctFVGs.length === 0) return;
+
+    // Draw correct FVGs with different styling
+    correctFVGs.forEach(fvg => {
+      if (!chartRef.current || !candleSeriesRef.current) return;
+      
+      const color = fvg.type === 'bullish' ? colors.correctBullish : colors.correctBearish;
+      const [actualStartTime, actualEndTime] = fvg.startTime < fvg.endTime ? 
+        [fvg.startTime, fvg.endTime] : [fvg.endTime, fvg.startTime];
+      
+      // Find the third candle
+      const startIndex = chartData.findIndex(d => d.time === actualStartTime);
+      const thirdCandleIndex = Math.min(startIndex + 3, chartData.length - 1);
+      let thirdCandleTime = chartData[thirdCandleIndex]?.time || actualEndTime;
+      
+      // Ensure third candle time is different from start time
+      if (thirdCandleTime === actualStartTime && chartData[thirdCandleIndex + 1]) {
+        thirdCandleTime = chartData[thirdCandleIndex + 1].time;
+      }
+      
+      // Skip if we can't get different timestamps
+      if (thirdCandleTime === actualStartTime) {
+        return;
+      }
+      
+      // Create FVG box with fill between boundaries using baseline area series
+      const transparentColor = 'rgba(255, 152, 0, 0.3)'; // Orange for correct answers
+        
+      const fillSeries = chartRef.current.addBaselineSeries({
+        baseValue: { type: 'price', price: (fvg.topPrice + fvg.bottomPrice) / 2 },
+        topLineColor: transparentColor,
+        topFillColor1: transparentColor,
+        topFillColor2: transparentColor,
+        bottomLineColor: transparentColor,
+        bottomFillColor1: transparentColor,
+        bottomFillColor2: transparentColor,
+        lineWidth: 0,
+        priceScaleId: 'right',
+        crosshairMarkerVisible: false,
+        lastValueVisible: false,
+        priceLineVisible: false
+      });
+      
+      // Create data points for the fill
+      const fillData = [
+        { time: actualStartTime, value: fvg.topPrice },
+        { time: thirdCandleTime, value: fvg.topPrice }
+      ];
+      
+      // Ensure unique timestamps by sorting and removing duplicates
+      const uniqueFillData = fillData
+        .filter((item, index, self) => 
+          index === self.findIndex(t => t.time === item.time)
+        )
+        .sort((a, b) => a.time - b.time);
+      
+      // Only set data if we have valid points
+      if (uniqueFillData.length >= 2) {
+        fillSeries.setData(uniqueFillData);
+        // Track this series for cleanup
+        correctFVGSeries.current.push(fillSeries);
+      }
+      
+      // Add markers
+      const newMarkers = [
+        {
+          time: actualStartTime,
+          position: 'inBar',
+          color: color,
+          shape: 'square',
+          size: 2,
+          text: `Expected ${fvg.type === 'bullish' ? 'Bullish' : 'Bearish'} FVG`
+        }
+      ];
+      
+      const existingMarkers = candleSeriesRef.current.markers() || [];
+      const updatedMarkers = [...existingMarkers, ...newMarkers]
+        .filter(m => m && typeof m.time === 'number' && !isNaN(m.time))
+        .sort((a, b) => a.time - b.time);
+      
+      candleSeriesRef.current.setMarkers(updatedMarkers);
+    });
+  }, [correctFVGs, chartData, chartRef.current, candleSeriesRef.current]);
 
   // Find candle by time
   const findCandleByTime = (time) => {
@@ -737,6 +927,34 @@ const FairValueGaps = ({
     setUserFVGs([]);
     clearFVGVisualElements();
     resetNoFvgsState();
+    
+    // Clear validation-related states in practice mode
+    if (isPracticeMode) {
+      setCorrectFVGs([]);
+      setExpectedFVGMarkers([]);
+      // Remove any existing line series for expected FVGs
+      if (expectedFVGLineSeries.current) {
+        expectedFVGLineSeries.current.forEach(series => {
+          try {
+            chartRef.current.removeSeries(series);
+          } catch (error) {
+            console.error('Error removing expected FVG line series:', error);
+          }
+        });
+        expectedFVGLineSeries.current = [];
+      }
+      // Remove correct FVG series
+      if (correctFVGSeries.current.length > 0) {
+        correctFVGSeries.current.forEach(series => {
+          try {
+            chartRef.current.removeSeries(series);
+          } catch (error) {
+            console.error('Error removing correct FVG series:', error);
+          }
+        });
+        correctFVGSeries.current = [];
+      }
+    }
   };
 
   // Mark "No FVGs Found"

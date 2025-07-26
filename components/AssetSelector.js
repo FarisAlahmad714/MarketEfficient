@@ -27,6 +27,7 @@ import {
   FaFire,
 } from 'react-icons/fa';
 import TimeframeModal from './TimeframeModal';
+import CustomDateTest from './CustomDateTest';
 
 // Styled Components
 const Container = styled.div`
@@ -596,6 +597,56 @@ const RetryButton = styled.button`
   align-items: center;
 `;
 
+// Tab Components
+const TabContainer = styled.div`
+  margin-bottom: 60px;
+`;
+
+const TabList = styled.div`
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  margin-bottom: 40px;
+  border-bottom: 2px solid ${({ darkMode }) => (darkMode ? '#333' : '#e0e0e0')};
+  padding-bottom: 20px;
+`;
+
+const Tab = styled.button`
+  background: none;
+  border: none;
+  padding: 12px 32px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: ${({ active, darkMode }) => 
+    active 
+      ? (darkMode ? '#00c4ff' : '#4f46e5')
+      : (darkMode ? '#666' : '#999')
+  };
+  cursor: pointer;
+  position: relative;
+  transition: all 0.3s ease;
+  
+  &:hover {
+    color: ${({ darkMode }) => (darkMode ? '#00c4ff' : '#4f46e5')};
+  }
+  
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: -22px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: ${({ darkMode }) => (darkMode ? '#00c4ff' : '#4f46e5')};
+    transform: scaleX(${({ active }) => (active ? '1' : '0')});
+    transition: transform 0.3s ease;
+  }
+`;
+
+const TabContent = styled.div`
+  display: ${({ active }) => (active ? 'block' : 'none')};
+`;
+
 // AssetSelector Component
 const AssetSelector = () => {
   const [assets, setAssets] = useState([]);
@@ -605,6 +656,7 @@ const AssetSelector = () => {
   const [error, setError] = useState(null);
   const [showTimeframeModal, setShowTimeframeModal] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState(null);
+  const [activeTab, setActiveTab] = useState('biasTest'); // 'biasTest' or 'customDate'
   
   // Carousel state
   const [cryptoCurrentIndex, setCryptoCurrentIndex] = useState(0);
@@ -1152,24 +1204,161 @@ const AssetSelector = () => {
         style={{ bottom: '10%', right: '15%' }}
       />
 
-      <Header className="asset-selector-container">
+      <Header className="asset-selector-container" style={{ position: 'relative', overflow: 'visible' }}>
         <motion.div
-          initial={{ opacity: 0, y: -30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
+          initial={{ opacity: 0, scale: 0.8, rotateX: -60 }}
+          animate={{ opacity: 1, scale: 1, rotateX: 0 }}
+          transition={{ duration: 1, ease: "easeOut" }}
+          style={{
+            perspective: '1000px',
+            marginBottom: '30px'
+          }}
         >
-          <Title darkMode={darkMode}>
-            Select Your <Highlight>Asset</Highlight>
+          <Title darkMode={darkMode} style={{
+            fontSize: '4rem',
+            position: 'relative',
+            textAlign: 'center',
+            transformStyle: 'preserve-3d'
+          }}>
+            <div style={{
+              display: 'inline-block',
+              position: 'relative'
+            }}>
+              <motion.span 
+                style={{
+                  position: 'absolute',
+                  top: '-10px',
+                  right: '-25px',
+                  fontSize: '0.9rem',
+                  fontWeight: '600',
+                  color: '#ff4444',
+                  transform: 'rotate(-12deg)',
+                  fontStyle: 'italic',
+                  background: 'rgba(255, 68, 68, 0.1)',
+                  padding: '2px 8px',
+                  borderRadius: '15px',
+                  border: '2px solid #ff4444',
+                  zIndex: 10
+                }}
+                animate={{ scale: [1, 1.1, 1] }}
+                transition={{ duration: 2, repeat: Infinity }}
+              >
+                LIVE
+              </motion.span>
+              
+              <span style={{ 
+                fontWeight: '100',
+                fontSize: '1.8rem',
+                letterSpacing: '8px',
+                display: 'block',
+                marginBottom: '-10px',
+                textTransform: 'uppercase',
+                color: darkMode ? '#b0b0b0' : '#666'
+              }}>
+                Choose Your
+              </span>
+              
+              <span style={{
+                fontSize: '5rem',
+                fontWeight: '900',
+                letterSpacing: '-2px',
+                display: 'block',
+                lineHeight: '0.9',
+                position: 'relative',
+                textTransform: 'uppercase',
+                color: darkMode ? '#00ff88' : '#4f46e5',
+                textShadow: darkMode 
+                  ? '0 0 40px rgba(0, 255, 136, 0.6), 0 0 80px rgba(0, 255, 136, 0.3)' 
+                  : '0 0 40px rgba(79, 70, 229, 0.4), 0 0 80px rgba(79, 70, 229, 0.2)'
+              }}>
+                ASSET
+              </span>
+              
+              <span style={{ 
+                fontWeight: '200',
+                fontSize: '1.6rem',
+                letterSpacing: '3px',
+                display: 'block',
+                marginTop: '10px',
+                textAlign: 'center',
+                color: darkMode ? '#b0b0b0' : '#666'
+              }}>
+                & TEST YOUR
+              </span>
+              
+              <span style={{
+                fontSize: '5rem',
+                fontWeight: '900',
+                letterSpacing: '-2px',
+                display: 'block',
+                lineHeight: '0.9',
+                marginTop: '5px',
+                textTransform: 'uppercase',
+                color: darkMode ? '#ff6b35' : '#dc2626',
+                textShadow: darkMode 
+                  ? '0 0 40px rgba(255, 107, 53, 0.6), 0 0 80px rgba(255, 107, 53, 0.3)' 
+                  : '0 0 40px rgba(220, 38, 38, 0.4), 0 0 80px rgba(220, 38, 38, 0.2)'
+              }}>
+                BIAS
+              </span>
+            </div>
           </Title>
         </motion.div>
+        
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
+          transition={{ duration: 0.8, delay: 0.5, ease: "easeOut" }}
         >
-          <Subtitle>
-            Challenge your market prediction skills by analyzing real-time price charts and
-            forecasting market trends across multiple asset classes.
+          <Subtitle style={{
+            fontSize: '1.4rem',
+            maxWidth: '800px',
+            margin: '0 auto',
+            lineHeight: '2',
+            textAlign: 'center',
+            position: 'relative',
+            padding: '20px',
+            background: darkMode 
+              ? 'linear-gradient(135deg, rgba(0, 255, 136, 0.03) 0%, transparent 100%)'
+              : 'linear-gradient(135deg, rgba(79, 70, 229, 0.03) 0%, transparent 100%)',
+            borderRadius: '20px',
+            border: darkMode 
+              ? '1px solid rgba(0, 255, 136, 0.1)'
+              : '1px solid rgba(79, 70, 229, 0.1)'
+          }}>
+            <span style={{
+              fontWeight: '700',
+              fontSize: '1.5rem',
+              color: darkMode ? '#ffffff' : '#000000'
+            }}>
+              Challenge
+            </span>{' '}
+            <span style={{ 
+              color: darkMode ? '#b0b0b0' : '#666'
+            }}>
+              your market prediction skills by analyzing
+            </span>{' '}
+            <span style={{
+              color: darkMode ? '#00ff88' : '#10b981',
+              fontWeight: '700'
+            }}>
+              real-time price charts
+            </span>{' '}
+            <span style={{ 
+              color: darkMode ? '#b0b0b0' : '#666'
+            }}>
+              and forecasting market trends across
+            </span>{' '}
+            <span style={{
+              color: darkMode ? '#ffd700' : '#f59e0b',
+              fontWeight: '700',
+              fontSize: '1.5rem',
+              textShadow: darkMode 
+                ? '0 0 20px rgba(255, 215, 0, 0.4)' 
+                : '0 0 20px rgba(245, 158, 11, 0.3)'
+            }}>
+              multiple asset classes
+            </span>
           </Subtitle>
         </motion.div>
         <motion.div
@@ -1190,7 +1379,28 @@ const AssetSelector = () => {
         </motion.div>
       </Header>
 
-      <div style={{ marginTop: '80px' }} className="asset-categories-container">
+      {/* Tab Navigation */}
+      <TabContainer>
+        <TabList darkMode={darkMode}>
+          <Tab 
+            active={activeTab === 'biasTest'} 
+            darkMode={darkMode}
+            onClick={() => setActiveTab('biasTest')}
+          >
+            Bias Test
+          </Tab>
+          <Tab 
+            active={activeTab === 'customDate'} 
+            darkMode={darkMode}
+            onClick={() => setActiveTab('customDate')}
+          >
+            Custom Date Analysis
+          </Tab>
+        </TabList>
+
+        {/* Bias Test Content */}
+        <TabContent active={activeTab === 'biasTest'}>
+          <div style={{ marginTop: '40px' }} className="asset-categories-container">
         {/* Crypto Assets Carousel */}
         <div className="crypto-assets-section">
           {renderCarousel(
@@ -1229,7 +1439,14 @@ const AssetSelector = () => {
             'Commodities'
           )}
         </div>
-      </div>
+          </div>
+        </TabContent>
+
+        {/* Custom Date Test Content */}
+        <TabContent active={activeTab === 'customDate'}>
+          <CustomDateTest />
+        </TabContent>
+      </TabContainer>
 
       {showTimeframeModal && (
         <TimeframeModal

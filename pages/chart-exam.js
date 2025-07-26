@@ -8,6 +8,7 @@ const ChartExamIntro = () => {
   const { darkMode } = useContext(ThemeContext);
   const router = useRouter();
   const [selectedExam, setSelectedExam] = useState(null);
+  const [activeTab, setActiveTab] = useState('exams');
   
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
@@ -335,15 +336,158 @@ const ChartExamIntro = () => {
       padding: isMobile ? '20px 15px' : '40px 20px',
       color: darkMode ? '#e0e0e0' : '#333'
     }}>
-      <h1 style={{ 
-        textAlign: 'center', 
-        marginBottom: isMobile ? '20px' : '40px',
-        color: darkMode ? '#e0e0e0' : '#333',
-        fontSize: isMobile ? '1.8rem' : '2.5rem'
+      <div style={{ 
+        textAlign: isMobile ? 'center' : 'left', 
+        marginBottom: isMobile ? '20px' : '60px',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: isMobile ? 'center' : 'flex-start',
+        gap: '15px',
+        paddingLeft: isMobile ? '0' : '80px',
+        position: 'relative'
       }}>
-        Technical Analysis Chart Exam
-      </h1>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: isMobile ? '15px' : '25px',
+          flexWrap: 'wrap',
+          justifyContent: isMobile ? 'center' : 'flex-start',
+          position: 'relative'
+        }}>
+          <div style={{
+            position: isMobile ? 'relative' : 'absolute',
+            left: isMobile ? 'auto' : '-70px',
+            top: isMobile ? 'auto' : '50%',
+            transform: isMobile ? 'none' : 'translateY(-50%)',
+            display: 'inline-block'
+          }}>
+            <img 
+              src="/images/logo.webp" 
+              alt="ChartSense Logo" 
+              style={{
+                width: isMobile ? '50px' : '80px',
+                height: isMobile ? '50px' : '80px',
+                filter: darkMode ? 'drop-shadow(0 0 20px rgba(0, 196, 255, 0.5))' : 'drop-shadow(0 0 20px rgba(79, 70, 229, 0.3))',
+                animation: 'pulse 2s ease-in-out infinite',
+                transform: isMobile ? 'none' : 'rotate(-10deg)'
+              }}
+            />
+          </div>
+          <h1 style={{ 
+            color: darkMode ? '#e0e0e0' : '#333',
+            fontSize: isMobile ? '1.8rem' : '3.2rem',
+            fontWeight: '900',
+            margin: 0,
+            background: darkMode 
+              ? 'linear-gradient(135deg, #00c4ff 0%, #0099ff 50%, #00c4ff 100%)'
+              : 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #4f46e5 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text',
+            textShadow: darkMode ? '0 0 30px rgba(0, 196, 255, 0.3)' : '0 0 30px rgba(79, 70, 229, 0.2)',
+            letterSpacing: '-1px',
+            lineHeight: '1.1',
+            transform: isMobile ? 'none' : 'skewX(-5deg)'
+          }}>
+            Technical Analysis<br />
+            <span style={{ 
+              fontSize: isMobile ? '1.6rem' : '2.6rem',
+              letterSpacing: '2px',
+              fontWeight: '700'
+            }}>
+              CHARTING EXAM™
+            </span>
+          </h1>
+        </div>
+        <p style={{
+          fontSize: isMobile ? '0.9rem' : '1.2rem',
+          color: darkMode ? '#b0b0b0' : '#666',
+          margin: 0,
+          fontStyle: 'italic',
+          opacity: 0.8,
+          paddingLeft: isMobile ? '0' : '105px',
+          transform: isMobile ? 'none' : 'translateX(20px)'
+        }}>
+          Master the art of chart analysis with ChartSense
+        </p>
+        
+        {!isMobile && (
+          <div style={{
+            position: 'absolute',
+            right: '-50px',
+            top: '0',
+            width: '200px',
+            height: '100px',
+            background: darkMode 
+              ? 'radial-gradient(ellipse at center, rgba(0, 196, 255, 0.15) 0%, transparent 70%)'
+              : 'radial-gradient(ellipse at center, rgba(79, 70, 229, 0.1) 0%, transparent 70%)',
+            filter: 'blur(40px)',
+            pointerEvents: 'none'
+          }} />
+        )}
+      </div>
+      
+      <style jsx>{`
+        @keyframes pulse {
+          0% { transform: scale(1); }
+          50% { transform: scale(1.05); }
+          100% { transform: scale(1); }
+        }
+      `}</style>
 
+      {/* Tab Navigation */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        marginBottom: '30px',
+        gap: '20px'
+      }}>
+        <button
+          onClick={() => setActiveTab('exams')}
+          style={{
+            background: 'none',
+            border: 'none',
+            padding: '12px 32px',
+            fontSize: '1.1rem',
+            fontWeight: '600',
+            color: activeTab === 'exams' 
+              ? (darkMode ? '#00c4ff' : '#4f46e5')
+              : (darkMode ? '#666' : '#999'),
+            cursor: 'pointer',
+            position: 'relative',
+            transition: 'all 0.3s ease',
+            borderBottom: activeTab === 'exams' 
+              ? `3px solid ${darkMode ? '#00c4ff' : '#4f46e5'}`
+              : '3px solid transparent'
+          }}
+        >
+          Chart Exams
+        </button>
+        <button
+          onClick={() => setActiveTab('practice')}
+          style={{
+            background: 'none',
+            border: 'none',
+            padding: '12px 32px',
+            fontSize: '1.1rem',
+            fontWeight: '600',
+            color: activeTab === 'practice' 
+              ? (darkMode ? '#00c4ff' : '#4f46e5')
+              : (darkMode ? '#666' : '#999'),
+            cursor: 'pointer',
+            position: 'relative',
+            transition: 'all 0.3s ease',
+            borderBottom: activeTab === 'practice' 
+              ? `3px solid ${darkMode ? '#00c4ff' : '#4f46e5'}`
+              : '3px solid transparent'
+          }}
+        >
+          Practice Mode
+        </button>
+      </div>
+
+      {activeTab === 'exams' ? (
+      <>
       <div style={{
         backgroundColor: darkMode ? '#1e1e1e' : '#f8f9fa',
         borderRadius: '8px',
@@ -1148,6 +1292,49 @@ const ChartExamIntro = () => {
                   AAPL, NVDA, TSLA, and other equities • Traditional patterns • Market hours
                 </p>
               </div>
+
+              <div
+                onClick={() => router.push(`/chart-exam/${selectedExam}?assetType=commodities`)}
+                style={{
+                  padding: '20px',
+                  border: `2px solid ${darkMode ? '#404040' : '#e0e0e0'}`,
+                  borderRadius: '8px',
+                  marginBottom: '15px',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                  backgroundColor: darkMode ? '#333' : '#f8f9fa'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.borderColor = '#2196F3';
+                  e.currentTarget.style.backgroundColor = darkMode ? '#3a3a3a' : '#f0f8ff';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.borderColor = darkMode ? '#404040' : '#e0e0e0';
+                  e.currentTarget.style.backgroundColor = darkMode ? '#333' : '#f8f9fa';
+                }}
+              >
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  marginBottom: '8px'
+                }}>
+                  <span style={{ fontSize: '24px', marginRight: '12px' }}>🏆</span>
+                  <h4 style={{
+                    margin: 0,
+                    color: darkMode ? '#e0e0e0' : '#333',
+                    fontSize: '1.1rem'
+                  }}>
+                    Commodities
+                  </h4>
+                </div>
+                <p style={{
+                  margin: 0,
+                  color: darkMode ? '#b0b0b0' : '#666',
+                  fontSize: '0.9rem'
+                }}>
+                  Gold (XAU/USD), Silver (XAG/USD), Crude Oil (CL=F) • Lower leverage • Global markets
+                </p>
+              </div>
             </div>
 
             {/* Randomization Info */}
@@ -1203,6 +1390,92 @@ const ChartExamIntro = () => {
                 Cancel
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      </>
+      ) : (
+        /* Practice Mode Content */
+        <div style={{
+          backgroundColor: darkMode ? '#1e1e1e' : '#f8f9fa',
+          borderRadius: '8px',
+          padding: isMobile ? '20px' : '30px',
+          marginBottom: isMobile ? '20px' : '40px',
+          textAlign: 'center'
+        }}>
+          <h2 style={{
+            fontSize: '1.8rem',
+            marginBottom: '20px',
+            color: darkMode ? '#e0e0e0' : '#333'
+          }}>
+            Practice Mode
+          </h2>
+          <p style={{
+            fontSize: '1.1rem',
+            marginBottom: '30px',
+            color: darkMode ? '#b0b0b0' : '#666',
+            maxWidth: '600px',
+            margin: '0 auto 30px'
+          }}>
+            Practice with live market data and all analysis tools available. Get instant validation feedback without time pressure.
+          </p>
+          <button
+            onClick={() => router.push('/chart-exam/practice')}
+            style={{
+              padding: '15px 40px',
+              backgroundColor: darkMode ? '#3f51b5' : '#2196F3',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '1.1rem',
+              fontWeight: '600',
+              cursor: 'pointer',
+              transition: 'all 0.3s ease',
+              boxShadow: '0 4px 15px rgba(33, 150, 243, 0.3)'
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.backgroundColor = darkMode ? '#303f9f' : '#1976D2';
+              e.currentTarget.style.transform = 'translateY(-2px)';
+              e.currentTarget.style.boxShadow = '0 6px 20px rgba(33, 150, 243, 0.4)';
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.backgroundColor = darkMode ? '#3f51b5' : '#2196F3';
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 4px 15px rgba(33, 150, 243, 0.3)';
+            }}
+          >
+            Start Practice Mode
+          </button>
+          
+          <div style={{
+            marginTop: '40px',
+            padding: '20px',
+            backgroundColor: darkMode ? '#2a2a2a' : '#ffffff',
+            borderRadius: '8px',
+            border: `1px solid ${darkMode ? '#404040' : '#e0e0e0'}`
+          }}>
+            <h3 style={{
+              fontSize: '1.3rem',
+              marginBottom: '15px',
+              color: darkMode ? '#e0e0e0' : '#333'
+            }}>
+              Practice Mode Features:
+            </h3>
+            <ul style={{
+              textAlign: 'left',
+              maxWidth: '500px',
+              margin: '0 auto',
+              lineHeight: '1.8',
+              color: darkMode ? '#b0b0b0' : '#666'
+            }}>
+              <li>Live market data for all assets</li>
+              <li>Choose from crypto or stock assets</li>
+              <li>Switch timeframes on the fly (1H, 4H, Daily, Weekly)</li>
+              <li>All three tools available: Swings, Fibonacci, Fair Value Gaps</li>
+              <li>Instant validation showing correct answers</li>
+              <li>No time limits or scoring pressure</li>
+              <li>Educational feedback on your analysis</li>
+            </ul>
           </div>
         </div>
       )}
