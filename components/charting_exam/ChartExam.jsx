@@ -124,7 +124,7 @@ const LoadingOverlay = styled.div`
   }
 `;
 
-const ChartExam = ({ examType, assetType, startTour }) => {
+const ChartExam = ({ examType, assetType, startTour, tourCompleted = false }) => {
   // Move all hook calls inside the component function
   const router = useRouter();
   const { darkMode } = React.useContext(ThemeContext);
@@ -541,12 +541,12 @@ useEffect(() => {
     fetchChartData(true); // Force refresh for initial load
   }, [examType, assetType]);
   
-  // Restart session when part changes (for fibonacci/fvg exams)
+  // Restart session when part changes (for fibonacci/fvg exams) - but only after tour is completed
   useEffect(() => {
-    if (!loading && chartData.length > 0 && !sessionStarted && timeRemaining === null && !isTransitioning) {
+    if (!loading && chartData.length > 0 && !sessionStarted && timeRemaining === null && !isTransitioning && tourCompleted) {
       startChartSession();
     }
-  }, [part, loading, sessionStarted, isTransitioning]);
+  }, [part, loading, sessionStarted, isTransitioning, tourCompleted]);
   
   // Focus detection - pause timer when user switches tabs/browsers
   useEffect(() => {

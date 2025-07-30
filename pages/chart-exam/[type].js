@@ -16,6 +16,7 @@ const ChartExamPage = () => {
   // Tour state
   const [showTour, setShowTour] = useState(false);
   const [tourSteps, setTourSteps] = useState([]);
+  const [tourCompleted, setTourCompleted] = useState(false);
   
   useEffect(() => {
     if (type) {
@@ -33,6 +34,9 @@ const ChartExamPage = () => {
         setTimeout(() => {
           setShowTour(true);
         }, 2000);
+      } else {
+        // Tour already completed or skipped
+        setTourCompleted(true);
       }
     }
   }, [type]);
@@ -101,10 +105,12 @@ const ChartExamPage = () => {
   const handleTourComplete = () => {
     localStorage.setItem(`tour-completed-chart-exam-${type}`, 'true');
     setShowTour(false);
+    setTourCompleted(true);
   };
 
   const handleTourSkip = () => {
     setShowTour(false);
+    setTourCompleted(true);
   };
 
   const startTour = () => {
@@ -115,7 +121,7 @@ const ChartExamPage = () => {
   
   return (
     <>
-      <ChartExam examType={type} assetType={assetType} startTour={startTour} />
+      <ChartExam examType={type} assetType={assetType} startTour={startTour} tourCompleted={tourCompleted} />
       
       <GuidedTour
         steps={tourSteps}

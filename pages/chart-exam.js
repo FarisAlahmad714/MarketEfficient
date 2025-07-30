@@ -482,7 +482,7 @@ const ChartExamIntro = () => {
               : '3px solid transparent'
           }}
         >
-          Practice Mode
+          Live Charts(Practice Mode)
         </button>
       </div>
 

@@ -742,6 +742,82 @@ const ChartPracticeMode = () => {
                   </div>
                 )}
 
+                {/* Show Fibonacci Analysis if available */}
+                {validationResults.expected && validationResults.expected.analysis && activeTool === 'fibonacci' && (
+                  <div style={{ 
+                    marginTop: '20px',
+                    padding: '20px',
+                    background: darkMode ? 'rgba(33, 150, 243, 0.1)' : 'rgba(33, 150, 243, 0.05)',
+                    borderRadius: '8px',
+                    border: `1px solid ${darkMode ? 'rgba(33, 150, 243, 0.3)' : 'rgba(33, 150, 243, 0.2)'}`
+                  }}>
+                    <h3 style={{ 
+                      marginBottom: '15px', 
+                      color: '#2196F3',
+                      fontSize: '1.1rem'
+                    }}>
+                      📊 Technical Analysis
+                    </h3>
+                    
+                    {/* Summary */}
+                    <p style={{ 
+                      marginBottom: '15px',
+                      color: darkMode ? '#e0e0e0' : '#333',
+                      lineHeight: '1.6'
+                    }}>
+                      {validationResults.expected.analysis.summary}
+                    </p>
+                    
+                    {/* Key Points */}
+                    {validationResults.expected.analysis.keyPoints && (
+                      <div style={{ marginBottom: '15px' }}>
+                        <h4 style={{ 
+                          marginBottom: '10px',
+                          color: darkMode ? '#b0b0b0' : '#666',
+                          fontSize: '0.95rem'
+                        }}>
+                          Key Points:
+                        </h4>
+                        <ul style={{ 
+                          margin: 0,
+                          paddingLeft: '20px',
+                          color: darkMode ? '#b0b0b0' : '#666'
+                        }}>
+                          <li>{validationResults.expected.analysis.keyPoints.startPoint}</li>
+                          <li>{validationResults.expected.analysis.keyPoints.endPoint}</li>
+                          <li>{validationResults.expected.analysis.keyPoints.movement}</li>
+                        </ul>
+                      </div>
+                    )}
+                    
+                    {/* Why Optimal */}
+                    {validationResults.expected.analysis.keyPoints && validationResults.expected.analysis.keyPoints.significance && (
+                      <p style={{ 
+                        marginTop: '10px',
+                        padding: '10px',
+                        background: darkMode ? 'rgba(76, 175, 80, 0.1)' : 'rgba(76, 175, 80, 0.05)',
+                        borderLeft: '3px solid #4CAF50',
+                        borderRadius: '4px',
+                        color: darkMode ? '#e0e0e0' : '#333',
+                        fontSize: '0.9rem'
+                      }}>
+                        <strong>Why this was chosen:</strong> {validationResults.expected.analysis.keyPoints.significance}
+                      </p>
+                    )}
+                    
+                    {/* Alternatives */}
+                    {validationResults.expected.analysis.alternatives && validationResults.expected.analysis.alternatives.exists && (
+                      <div style={{ 
+                        marginTop: '10px',
+                        fontSize: '0.85rem',
+                        color: darkMode ? '#b0b0b0' : '#666'
+                      }}>
+                        <strong>Alternative valid retracements:</strong> {validationResults.expected.analysis.alternatives.examples.join(', ')}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {validationResults.correctAnswers && validationResults.correctAnswers.length > 0 && (
                   <Note $darkMode={darkMode}>
                     <strong>Click "View Results on Chart" to see the validation</strong><br />

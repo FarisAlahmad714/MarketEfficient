@@ -24,6 +24,11 @@ const Navbar = () => {
   const mobileMenuRef = useRef(null);
   const userMenuRef = useRef(null);
   const canvasRef = useRef(null);
+  
+  // Debug: Log pathname on every render
+  useEffect(() => {
+    console.log('Navbar - Current pathname:', router.pathname);
+  });
 
   // Fetch profile image for authenticated user
   const { profileImageUrl, loading: imageLoading, refreshProfileImage } = useProfileImage(user?.id, isAuthenticated);
@@ -333,7 +338,7 @@ const Navbar = () => {
               <span className="nav-glow"></span>
             </div>
             <span className="nav-text">Home</span>
-            {router.pathname === '/' && <div className="nav-active-dot"></div>}
+            {router.pathname === '/' && <div className="nav-active-dot" key="home-dot"></div>}
           </Link>
           
           <Link href="/study" className={`nav-link ${router.pathname.includes('/study') ? 'active' : ''}`}>
@@ -342,7 +347,7 @@ const Navbar = () => {
               <span className="nav-glow"></span>
             </div>
             <span className="nav-text">Study</span>
-            {router.pathname.includes('/study') && <div className="nav-active-dot"></div>}
+            {router.pathname.includes('/study') && <div className="nav-active-dot" key="study-dot"></div>}
           </Link>
           
           <Link href="/bias-test" className={`nav-link ${router.pathname.includes('/bias-test') ? 'active' : ''}`}>
@@ -351,7 +356,7 @@ const Navbar = () => {
               <span className="nav-glow"></span>
             </div>
             <span className="nav-text">Bias Test</span>
-            {router.pathname.includes('/bias-test') && <div className="nav-active-dot"></div>}
+            {router.pathname.includes('/bias-test') && <div className="nav-active-dot" key="bias-test-dot"></div>}
           </Link>
           
           <Link href="/chart-exam" className={`nav-link ${router.pathname.includes('/chart-exam') ? 'active' : ''}`}>
@@ -360,7 +365,7 @@ const Navbar = () => {
               <span className="nav-glow"></span>
             </div>
             <span className="nav-text">Chart Exam</span>
-            {router.pathname.includes('/chart-exam') && <div className="nav-active-dot"></div>}
+            {router.pathname.includes('/chart-exam') && <div className="nav-active-dot" key="chart-exam-dot"></div>}
           </Link>
           
           <Link href="/dashboard" className={`nav-link ${router.pathname.includes('/dashboard') ? 'active' : ''}`}>
@@ -369,7 +374,7 @@ const Navbar = () => {
               <span className="nav-glow"></span>
             </div>
             <span className="nav-text">Dashboard</span>
-            {router.pathname.includes('/dashboard') && <div className="nav-active-dot"></div>}
+            {router.pathname.includes('/dashboard') && <div className="nav-active-dot" key="dashboard-dot"></div>}
           </Link>
           
           <div className="sandbox-nav-container">
@@ -414,7 +419,7 @@ const Navbar = () => {
                 <span className="nav-text">
                   {!isAuthenticated ? 'Sandbox' : user?.isAdmin ? 'Sandbox' : sandboxUnlocked ? 'Sandbox' : `Sandbox ${sandboxProgress.toFixed(0)}%`}
                 </span>
-                {router.pathname.includes('/sandbox') && <div className="nav-active-dot"></div>}
+                {router.pathname.includes('/sandbox') && <div className="nav-active-dot" key="sandbox-dot"></div>}
               </Link>
               
               {isAuthenticated && !sandboxUnlocked && !user?.isAdmin && (
@@ -626,15 +631,20 @@ const Navbar = () => {
               style={!darkMode ? {
                 color: '#1e293b',
                 background: 'rgba(0, 0, 0, 0.04)',
-                border: '1px solid rgba(0, 0, 0, 0.1)'
+                border: '1px solid rgba(0, 0, 0, 0.1)',
+                outline: 'none',
+                textShadow: 'none'
               } : {
                 color: 'white',
-                background: 'linear-gradient(135deg, #3b82f6 0%, #6366f1 100%)',
-                boxShadow: '0 8px 20px rgba(59, 130, 246, 0.3)'
+                background: '#3b82f6',
+                outline: 'none',
+                textShadow: 'none',
+                boxShadow: 'none',
+                border: 'none'
               }}
             >
-              <span>Sign In</span>
-              <span className="button-glow"></span>
+              <span style={darkMode ? { textShadow: 'none', filter: 'none' } : {}}>Sign In</span>
+              {!darkMode && <span className="button-glow"></span>}
             </Link>
           )}
           

@@ -1394,7 +1394,7 @@ const AssetSelector = () => {
             darkMode={darkMode}
             onClick={() => setActiveTab('customDate')}
           >
-            Custom Date Analysis
+            Custom Date Analysis(Practice Mode)
           </Tab>
         </TabList>
 

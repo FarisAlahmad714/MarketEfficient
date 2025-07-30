@@ -837,6 +837,69 @@ const ResultsPanel = ({ results, onContinue, examType, part, chartCount, isDarkM
                   ))
                 }
               </FibonacciAnswerGrid>
+              
+              {/* Technical Analysis Section */}
+              {results.expected.analysis && (
+                <div style={{ 
+                  marginTop: '20px',
+                  padding: '15px',
+                  background: isDarkMode ? 'rgba(33, 150, 243, 0.1)' : 'rgba(33, 150, 243, 0.05)',
+                  borderRadius: '8px',
+                  border: `1px solid ${isDarkMode ? 'rgba(33, 150, 243, 0.3)' : 'rgba(33, 150, 243, 0.2)'}`
+                }}>
+                  <h5 style={{ 
+                    marginBottom: '12px', 
+                    color: '#2196F3',
+                    fontSize: '1rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}>
+                    <FaRuler /> Technical Analysis
+                  </h5>
+                  
+                  {/* Summary */}
+                  <p style={{ 
+                    marginBottom: '15px',
+                    color: isDarkMode ? '#e0e0e0' : '#333',
+                    lineHeight: '1.6',
+                    fontSize: '0.9rem'
+                  }}>
+                    {results.expected.analysis.summary}
+                  </p>
+                  
+                  {/* Why this was chosen */}
+                  {results.expected.analysis.keyPoints && results.expected.analysis.keyPoints.significance && (
+                    <div style={{ 
+                      padding: '10px',
+                      background: isDarkMode ? 'rgba(76, 175, 80, 0.1)' : 'rgba(76, 175, 80, 0.05)',
+                      borderLeft: '3px solid #4CAF50',
+                      borderRadius: '4px',
+                      marginBottom: '10px'
+                    }}>
+                      <p style={{ 
+                        margin: 0,
+                        color: isDarkMode ? '#e0e0e0' : '#333',
+                        fontSize: '0.85rem'
+                      }}>
+                        <strong>Why this was optimal:</strong> {results.expected.analysis.keyPoints.significance}
+                      </p>
+                    </div>
+                  )}
+                  
+                  {/* Alternative retracements */}
+                  {results.expected.analysis.alternatives && results.expected.analysis.alternatives.exists && (
+                    <p style={{ 
+                      marginTop: '10px',
+                      fontSize: '0.85rem',
+                      color: isDarkMode ? '#b0b0b0' : '#666',
+                      fontStyle: 'italic'
+                    }}>
+                      <strong>Note:</strong> {results.expected.analysis.alternatives.note}
+                    </p>
+                  )}
+                </div>
+              )}
             </FeedbackSection>
           )}
           

@@ -138,25 +138,28 @@ const Chart = dynamic(
   { ssr: false }
 );
 
-// Default Fibonacci levels with TradingView-like options
-const DEFAULT_FIBONACCI_LEVELS = [
-  { level: 0, label: "0", visible: true, color: 'rgba(255, 255, 255, 0.5)', isKey: false },
-  { level: 0.236, label: "0.236", visible: true, color: 'rgba(255, 255, 255, 0.5)', isKey: false },
-  { level: 0.382, label: "0.382", visible: true, color: 'rgba(255, 255, 255, 0.5)', isKey: false },
-  { level: 0.5, label: "0.5", visible: true, color: '#F0B90B', isKey: true },
-  { level: 0.618, label: "0.618", visible: true, color: '#F0B90B', isKey: true },
-  { level: 0.65, label: "0.65", visible: false, color: 'rgba(255, 255, 255, 0.5)', isKey: false },
-  { level: 0.705, label: "0.705", visible: true, color: '#F0B90B', isKey: true },
-  { level: 0.786, label: "0.786", visible: true, color: 'rgba(255, 255, 255, 0.5)', isKey: false },
-  { level: 1, label: "1", visible: true, color: 'rgba(255, 255, 255, 0.5)', isKey: false },
-  { level: 1.27, label: "1.27", visible: false, color: 'rgba(255, 255, 255, 0.5)', isKey: false },
-  { level: 1.414, label: "1.414", visible: false, color: 'rgba(255, 255, 255, 0.5)', isKey: false },
-  { level: 1.618, label: "1.618", visible: true, color: 'rgba(255, 255, 255, 0.5)', isKey: false },
-  { level: 2, label: "2", visible: false, color: 'rgba(255, 255, 255, 0.5)', isKey: false },
-  { level: 2.618, label: "2.618", visible: false, color: 'rgba(255, 255, 255, 0.5)', isKey: false },
-  { level: 3.618, label: "3.618", visible: false, color: 'rgba(255, 255, 255, 0.5)', isKey: false },
-  { level: 4.236, label: "4.236", visible: false, color: 'rgba(255, 255, 255, 0.5)', isKey: false }
-];
+// Function to get default Fibonacci levels with theme-aware colors
+const getDefaultFibonacciLevels = (isDarkMode) => {
+  const lineColor = isDarkMode ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.5)';
+  return [
+    { level: 0, label: "0", visible: true, color: lineColor, isKey: false },
+    { level: 0.236, label: "0.236", visible: true, color: lineColor, isKey: false },
+    { level: 0.382, label: "0.382", visible: true, color: lineColor, isKey: false },
+    { level: 0.5, label: "0.5", visible: true, color: '#F0B90B', isKey: true },
+    { level: 0.618, label: "0.618", visible: true, color: '#F0B90B', isKey: true },
+    { level: 0.65, label: "0.65", visible: false, color: lineColor, isKey: false },
+    { level: 0.705, label: "0.705", visible: true, color: '#F0B90B', isKey: true },
+    { level: 0.786, label: "0.786", visible: true, color: lineColor, isKey: false },
+    { level: 1, label: "1", visible: true, color: lineColor, isKey: false },
+    { level: 1.27, label: "1.27", visible: false, color: lineColor, isKey: false },
+    { level: 1.414, label: "1.414", visible: false, color: lineColor, isKey: false },
+    { level: 1.618, label: "1.618", visible: true, color: lineColor, isKey: false },
+    { level: 2, label: "2", visible: false, color: lineColor, isKey: false },
+    { level: 2.618, label: "2.618", visible: false, color: lineColor, isKey: false },
+    { level: 3.618, label: "3.618", visible: false, color: lineColor, isKey: false },
+    { level: 4.236, label: "4.236", visible: false, color: lineColor, isKey: false }
+  ];
+};
 
 // Styled components
 const ChartContainer = styled.div`
@@ -381,7 +384,7 @@ const FibonacciRetracement = ({ chartData, onDrawingsUpdate, part, chartCount, i
   const [drawingMode, setDrawingMode] = useState(isPracticeMode);
   const [startPoint, setStartPoint] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
-  const [fibonacciLevels, setFibonacciLevels] = useState(DEFAULT_FIBONACCI_LEVELS);
+  const [fibonacciLevels, setFibonacciLevels] = useState(getDefaultFibonacciLevels(isDarkMode));
   const [chartKey, setChartKey] = useState(0);
   const [showClearNotification, setShowClearNotification] = useState(false);
   const [prevPart, setPrevPart] = useState(part);
@@ -404,6 +407,11 @@ const FibonacciRetracement = ({ chartData, onDrawingsUpdate, part, chartCount, i
     
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
+  
+  // Update Fibonacci levels when theme changes
+  useEffect(() => {
+    setFibonacciLevels(getDefaultFibonacciLevels(isDarkMode));
+  }, [isDarkMode]);
   
   // Set initial panel position
   useEffect(() => {
@@ -462,7 +470,7 @@ const FibonacciRetracement = ({ chartData, onDrawingsUpdate, part, chartCount, i
         .forEach(fib => {
           const level = {
             price: drawing.end.price + priceDiff * fib.level,
-            color: fib.color || 'rgba(255, 255, 255, 0.5)',
+            color: fib.color,
             lineWidth: fib.isKey ? 1.5 : 1,
             lineStyle: 0,
             title: `Fib ${fib.label}`

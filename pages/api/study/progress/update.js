@@ -1,6 +1,7 @@
 import connectDB from '../../../../lib/database';
 import StudyProgress from '../../../../models/StudyProgress';
 import { studyContent } from '../../../../lib/studyContent';
+import { checkAndNotifyNewBadges } from '../../../../lib/badge-service';
 import jwt from 'jsonwebtoken';
 
 export default async function handler(req, res) {
@@ -80,6 +81,17 @@ export default async function handler(req, res) {
     
     progress.lastStudyDate = new Date();
     await progress.save();
+
+    // Check for new badges when a lesson or topic is completed
+    if (action === 'completeLesson' || (action === 'completeLesson' && topicProgress.completedAt != null)) {
+      try {
+        const badgeResult = await checkAndNotifyNewBadges(decoded.userId);
+        console.log('Badge check result:', badgeResult);
+      } catch (badgeError) {
+        console.error('Error checking badges:', badgeError);
+        // Don't fail the request if badge check fails
+      }
+    }
 
     res.status(200).json({ 
       success: true, 

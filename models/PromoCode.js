@@ -212,14 +212,6 @@ PromoCodeSchema.statics.createPresetCodes = async function(adminUserId) {
       discountValue: 1400, // $14 off
       finalPrice: 1500, // $15 final price (48% off monthly)
       description: 'Friends & Family Discount - $15 monthly subscription (48% off)'
-    },
-    {
-      code: 'TESTFREE',
-      type: 'preset',
-      discountType: 'free_access',
-      discountValue: 0,
-      finalPrice: 0, // Completely free
-      description: 'Test Code - Free access for testing (100% off)'
     }
   ];
   
@@ -246,7 +238,14 @@ PromoCodeSchema.statics.createPresetCodes = async function(adminUserId) {
 };
 
 // Static method to find valid code by code string
-PromoCodeSchema.statics.findValidCode = function(codeString) {
+PromoCodeSchema.statics.findValidCode = async function(codeString) {
+  // First check if this is a template code - templates should NEVER be valid
+  const { isTemplateCode } = require('../lib/promo-templates');
+  if (isTemplateCode(codeString)) {
+    console.error(`⚠️ SECURITY: Attempted to use template code: ${codeString}`);
+    return null; // Templates are never valid codes
+  }
+  
   const now = new Date();
   return this.findOne({
     code: codeString.toUpperCase(),

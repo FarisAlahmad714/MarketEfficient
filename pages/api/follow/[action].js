@@ -91,7 +91,23 @@ export default async function handler(req, res) {
             followerName: user.name
           }
         });
+        
+        // Send email notification if the target user has email notifications enabled
+        if (targetUser.notifications?.email !== false && targetUser.isVerified) {
+          const { sendNewFollowerEmail } = require('../../../lib/email-service');
+          
+          // Prepare follower data for email
+          const followerData = {
+            name: user.name,
+            username: user.username,
+            bio: user.bio || null
+          };
+          
+          await sendNewFollowerEmail(targetUser, followerData);
+          console.log(`[Follow API] Email sent to ${targetUser.email} for new follower ${user.username}`);
+        }
       } catch (notificationError) {
+        console.error('[Follow API] Failed to create notification or send email:', notificationError);
         // Don't fail the follow action if notification fails
       }
 

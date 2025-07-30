@@ -300,18 +300,30 @@ const FairValueGaps = ({
     
     if (drawingMode === 'draw-rectangle') {
       if (!startPoint) {
-        setStartPoint({ time: nearestCandle.time, price });
+        // First click - adjust price to nearest wick and track which wick
+        const adjustedPrice = adjustPriceToWick(price, nearestCandle);
+        const isHighWick = adjustedPrice === nearestCandle.high;
+        setStartPoint({ 
+          time: nearestCandle.time, 
+          price: adjustedPrice,
+          isHighWick: isHighWick 
+        });
       } else {
+        // Second click - adjust price to nearest wick and track which wick
+        const adjustedPrice = adjustPriceToWick(price, nearestCandle);
+        const isHighWick = adjustedPrice === nearestCandle.high;
         const fvgType = part === 1 ? 'bullish' : 'bearish';
-        const topPrice = Math.max(startPoint.price, price);
-        const bottomPrice = Math.min(startPoint.price, price);
+        const topPrice = Math.max(startPoint.price, adjustedPrice);
+        const bottomPrice = Math.min(startPoint.price, adjustedPrice);
         
         const newRect = drawRectangle(
           startPoint.time,
           nearestCandle.time,
           topPrice,
           bottomPrice,
-          fvgType
+          fvgType,
+          startPoint.isHighWick,
+          isHighWick
         );
         
         if (newRect) {
@@ -632,9 +644,20 @@ const FairValueGaps = ({
     )[0];
   };
 
+  // Adjust price to nearest wick (high or low)
+  const adjustPriceToWick = (clickedPrice, candle) => {
+    if (!candle) return clickedPrice;
+    
+    // Calculate distances to high and low
+    const distanceToHigh = Math.abs(clickedPrice - candle.high);
+    const distanceToLow = Math.abs(clickedPrice - candle.low);
+    
+    // Return the closer wick price
+    return distanceToHigh < distanceToLow ? candle.high : candle.low;
+  };
 
   // Draw rectangle on chart - now draws horizontal rays extending to 3rd candlestick
-  const drawRectangle = (startTime, endTime, topPrice, bottomPrice, type = 'bullish') => {
+  const drawRectangle = (startTime, endTime, topPrice, bottomPrice, type = 'bullish', startIsHighWick = true, endIsHighWick = true) => {
     if (!chartRef.current || !candleSeriesRef.current) return null;
     
     const color = type === 'bullish' ? colors.bullish : colors.bearish;
@@ -648,10 +671,17 @@ const FairValueGaps = ({
     const newMarkers = [
       {
         time: actualStartTime,
-        position: 'inBar',
+        position: startIsHighWick ? 'aboveBar' : 'belowBar',
         color: color,
         shape: 'square',
         text: type === 'bullish' ? 'B-FVG Start' : 'S-FVG Start'
+      },
+      {
+        time: actualEndTime,
+        position: endIsHighWick ? 'aboveBar' : 'belowBar',
+        color: color,
+        shape: 'square',
+        text: type === 'bullish' ? 'B-FVG End' : 'S-FVG End'
       }
     ];
     

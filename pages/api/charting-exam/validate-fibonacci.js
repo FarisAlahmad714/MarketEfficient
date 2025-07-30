@@ -116,7 +116,8 @@ async function handler(req, res) {
         start: expectedRetracement.start,
         end: expectedRetracement.end,
         direction: expectedRetracement.direction,
-        levels: calculateFibonacciLevels(expectedRetracement.start, expectedRetracement.end).levels
+        levels: calculateFibonacciLevels(expectedRetracement.start, expectedRetracement.end).levels,
+        analysis: generateFibonacciAnalysis(expectedRetracement, chartData, validationResult.alternativeRetracements || [])
       },
       chart_count: chartCount,
       next_part: part === 1 ? 2 : null,
@@ -452,7 +453,8 @@ logger.log(`Validation tolerances: price=${priceTolerance.toFixed(4)}, time=${ti
     message,
     score: creditsEarned,
     totalExpectedPoints: totalCredits,
-    feedback
+    feedback,
+    alternativeRetracements: alternativeRetracements
   };
 }
 
@@ -572,6 +574,206 @@ function findAlternativeRetracements(chartData, part) {
   } catch (error) {
     return [];
   }
+}
+
+/**
+ * Generate human-readable analysis explaining why these Fibonacci points were chosen
+ * @param {Object} retracement - The chosen Fibonacci retracement
+ * @param {Array} chartData - The full chart data
+ * @param {Array} alternatives - Alternative valid retracements
+ * @returns {Object} Analysis object with various explanation aspects
+ */
+function generateFibonacciAnalysis(retracement, chartData, alternatives = []) {
+  try {
+    // Format dates
+    const startDate = new Date(retracement.start.time * 1000).toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric',
+      year: 'numeric'
+    });
+    const endDate = new Date(retracement.end.time * 1000).toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric',
+      year: 'numeric'
+    });
+    
+    // Calculate time span
+    const timeDays = Math.floor((retracement.end.time - retracement.start.time) / 86400);
+    const timeHours = Math.floor((retracement.end.time - retracement.start.time) / 3600);
+    const timeSpan = timeDays > 0 ? `${timeDays} day${timeDays > 1 ? 's' : ''}` : `${timeHours} hours`;
+    
+    // Calculate price movement
+    const priceMove = Math.abs(retracement.start.price - retracement.end.price);
+    const priceMovePercent = ((priceMove / retracement.start.price) * 100).toFixed(1);
+    
+    // Analyze what happened before the start point (context)
+    const startContext = analyzePreSwingMovement(chartData, retracement.start, retracement.direction);
+    
+    // Analyze the retracement characteristics
+    const retracementType = analyzeRetracementType(chartData, retracement);
+    
+    // Build the main explanation
+    const mainExplanation = retracement.direction === 'uptrend' 
+      ? `This uptrend Fibonacci retracement was identified from the swing high at $${retracement.start.price.toFixed(2)} on ${startDate} to the swing low at $${retracement.end.price.toFixed(2)} on ${endDate}. ${startContext} The ${priceMovePercent}% retracement over ${timeSpan} ${retracementType}`
+      : `This downtrend Fibonacci retracement was identified from the swing low at $${retracement.start.price.toFixed(2)} on ${startDate} to the swing high at $${retracement.end.price.toFixed(2)} on ${endDate}. ${startContext} The ${priceMovePercent}% retracement over ${timeSpan} ${retracementType}`;
+    
+    // Explain why this was optimal
+    const whyOptimal = explainWhyOptimal(retracement, chartData);
+    
+    // Explain alternatives if any
+    const alternativeExplanations = alternatives.length > 0 
+      ? alternatives.slice(0, 2).map(alt => {
+          const altStartDate = new Date(alt.start.time * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          const altEndDate = new Date(alt.end.time * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          return `$${alt.start.price.toFixed(2)} (${altStartDate}) to $${alt.end.price.toFixed(2)} (${altEndDate})`;
+        })
+      : [];
+    
+    return {
+      summary: mainExplanation,
+      keyPoints: {
+        startPoint: `The ${retracement.direction === 'uptrend' ? 'high' : 'low'} at $${retracement.start.price.toFixed(2)} on ${startDate} marked ${startContext}`,
+        endPoint: `The ${retracement.direction === 'uptrend' ? 'low' : 'high'} at $${retracement.end.price.toFixed(2)} on ${endDate} completed the retracement`,
+        movement: `${priceMovePercent}% price movement over ${timeSpan}`,
+        significance: whyOptimal
+      },
+      technicalDetails: {
+        priceRange: `$${priceMove.toFixed(2)} (${priceMovePercent}%)`,
+        timeframe: timeSpan,
+        direction: retracement.direction,
+        startSignificance: `${(retracement.start.significance * 100).toFixed(1)}% of price range`,
+        endSignificance: `${(retracement.end.significance * 100).toFixed(1)}% of price range`
+      },
+      alternatives: alternativeExplanations.length > 0 ? {
+        exists: true,
+        count: alternatives.length,
+        examples: alternativeExplanations,
+        note: "Other valid Fibonacci retracements exist in this chart, but this one showed the strongest technical characteristics"
+      } : {
+        exists: false,
+        note: "This was the most prominent Fibonacci retracement pattern in the chart"
+      }
+    };
+  } catch (error) {
+    logger.error('Error generating Fibonacci analysis:', error);
+    return {
+      summary: "Technical analysis completed",
+      keyPoints: {},
+      technicalDetails: {},
+      alternatives: { exists: false }
+    };
+  }
+}
+
+/**
+ * Analyze what happened before the swing point
+ */
+function analyzePreSwingMovement(chartData, swingPoint, direction) {
+  try {
+    // Find the swing point in chart data
+    const swingIndex = chartData.findIndex(c => 
+      Math.abs(c.time - swingPoint.time) < 3600 || 
+      (c.date && Math.abs(new Date(c.date).getTime()/1000 - swingPoint.time) < 3600)
+    );
+    
+    if (swingIndex < 5) {
+      return "the beginning of a significant price movement";
+    }
+    
+    // Look at 5-10 candles before
+    const lookback = Math.min(10, swingIndex);
+    const priorCandles = chartData.slice(swingIndex - lookback, swingIndex);
+    
+    // Calculate the trend leading to this point
+    const startPrice = priorCandles[0].close;
+    const endPrice = priorCandles[priorCandles.length - 1].close;
+    const priceChange = ((endPrice - startPrice) / startPrice * 100).toFixed(1);
+    
+    if (direction === 'uptrend') {
+      if (parseFloat(priceChange) > 5) {
+        return `the peak after a strong ${Math.abs(priceChange)}% rally`;
+      } else if (parseFloat(priceChange) > 2) {
+        return `a significant high following steady upward movement`;
+      } else {
+        return `a key resistance level in the price action`;
+      }
+    } else {
+      if (parseFloat(priceChange) < -5) {
+        return `the bottom after a ${Math.abs(priceChange)}% decline`;
+      } else if (parseFloat(priceChange) < -2) {
+        return `a significant low following downward pressure`;
+      } else {
+        return `a key support level in the price action`;
+      }
+    }
+  } catch (error) {
+    return "a significant turning point";
+  }
+}
+
+/**
+ * Analyze the type of retracement
+ */
+function analyzeRetracementType(chartData, retracement) {
+  const priceMove = Math.abs(retracement.start.price - retracement.end.price);
+  const priceMovePercent = (priceMove / retracement.start.price) * 100;
+  
+  // Find how many candles in the retracement
+  const startIndex = chartData.findIndex(c => 
+    Math.abs(c.time - retracement.start.time) < 3600 || 
+    (c.date && Math.abs(new Date(c.date).getTime()/1000 - retracement.start.time) < 3600)
+  );
+  const endIndex = chartData.findIndex(c => 
+    Math.abs(c.time - retracement.end.time) < 3600 || 
+    (c.date && Math.abs(new Date(c.date).getTime()/1000 - retracement.end.time) < 3600)
+  );
+  
+  const candleCount = Math.abs(endIndex - startIndex);
+  
+  if (priceMovePercent > 10) {
+    return `represents a deep retracement, ideal for Fibonacci analysis`;
+  } else if (priceMovePercent > 5) {
+    return `shows a healthy pullback with clear structure`;
+  } else if (candleCount > 20) {
+    return `demonstrates a gradual, controlled retracement`;
+  } else {
+    return `provides a clear retracement pattern`;
+  }
+}
+
+/**
+ * Explain why this retracement was optimal
+ */
+function explainWhyOptimal(retracement, chartData) {
+  const aspects = [];
+  
+  // Price range coverage
+  const maxPrice = Math.max(...chartData.map(c => c.high));
+  const minPrice = Math.min(...chartData.map(c => c.low));
+  const priceRange = maxPrice - minPrice;
+  const moveSize = Math.abs(retracement.start.price - retracement.end.price);
+  const rangeCoverage = (moveSize / priceRange) * 100;
+  
+  if (rangeCoverage > 30) {
+    aspects.push(`covers ${rangeCoverage.toFixed(0)}% of the chart's price range`);
+  }
+  
+  // Significance of points
+  if (retracement.start.significance > 0.7 || retracement.end.significance > 0.7) {
+    aspects.push("connects major swing points");
+  }
+  
+  // Time spacing
+  const timeDays = Math.floor((retracement.end.time - retracement.start.time) / 86400);
+  if (timeDays > 5) {
+    aspects.push(`spans a significant ${timeDays}-day period`);
+  }
+  
+  if (aspects.length === 0) {
+    return "This retracement showed the clearest technical structure";
+  }
+  
+  return `This retracement was optimal because it ${aspects.join(" and ")}`;
 }
 
 export default createApiHandler(
