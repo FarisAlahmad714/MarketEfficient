@@ -21,26 +21,12 @@ const EnhancedPromoCodeManagement = () => {
   const [typeFilter, setTypeFilter] = useState('all');
   
   // Modal states
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [showUserModal, setShowUserModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedPromoCode, setSelectedPromoCode] = useState(null);
   const [selectedUser, setSelectedUser] = useState(null);
-  
-  // Form states
-  const [formData, setFormData] = useState({
-    code: '',
-    type: 'custom',
-    discountType: 'fixed_amount',
-    discountValue: '',
-    finalPrice: '',
-    description: '',
-    maxUses: 1,
-    validUntil: '',
-    applicablePlans: ['both']
-  });
+  const [deleteLoading, setDeleteLoading] = useState(false);
   
   const [generateData, setGenerateData] = useState({
     suffix: '',
@@ -160,6 +146,17 @@ const EnhancedPromoCodeManagement = () => {
     }
   };
 
+  const resetGenerateModal = () => {
+    setGeneratedCodes([]);
+    setGenerateData({
+      suffix: '',
+      quantity: 1,
+      maxUses: 1,
+      validUntil: '',
+      description: ''
+    });
+  };
+
   const handleCopyCode = async (code, index) => {
     try {
       await navigator.clipboard.writeText(code);
@@ -168,6 +165,34 @@ const EnhancedPromoCodeManagement = () => {
         setCopiedStates(prev => ({ ...prev, [index]: false }));
       }, 2000);
     } catch (err) {
+    }
+  };
+
+  const handleDeletePromoCode = async () => {
+    if (!selectedPromoCode) return;
+    
+    setDeleteLoading(true);
+    try {
+      const token = await storage.getItem('auth_token');
+      const response = await fetch(`/api/admin/promo-codes?id=${selectedPromoCode._id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        setShowDeleteModal(false);
+        setSelectedPromoCode(null);
+        fetchData(); // Refresh the list
+      } else {
+        const data = await response.json();
+        setError(data.error || 'Failed to delete promo code');
+      }
+    } catch (err) {
+      setError(err.message || 'An error occurred while deleting');
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -442,6 +467,10 @@ const EnhancedPromoCodeManagement = () => {
               setSelectedPromoCode(code);
               setShowGenerateModal(true);
             }}
+            onDelete={(code) => {
+              setSelectedPromoCode(code);
+              setShowDeleteModal(true);
+            }}
           />
         )}
         
@@ -476,12 +505,13 @@ const EnhancedPromoCodeManagement = () => {
           onClose={() => {
             setShowGenerateModal(false);
             setSelectedPromoCode(null);
-            setGeneratedCodes([]);
+            resetGenerateModal();
           }}
           generatedCodes={generatedCodes}
           onCopy={handleCopyCode}
           copiedStates={copiedStates}
           darkMode={darkMode}
+          onReset={resetGenerateModal}
         />
       )}
 
@@ -494,6 +524,20 @@ const EnhancedPromoCodeManagement = () => {
             setSelectedUser(null);
           }}
           darkMode={darkMode}
+        />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && selectedPromoCode && (
+        <DeleteConfirmationModal
+          promoCode={selectedPromoCode}
+          onConfirm={handleDeletePromoCode}
+          onClose={() => {
+            setShowDeleteModal(false);
+            setSelectedPromoCode(null);
+          }}
+          darkMode={darkMode}
+          loading={deleteLoading}
         />
       )}
       </div>
@@ -566,7 +610,7 @@ const OverviewTab = ({ promoCodes, users, stats, darkMode }) => (
 );
 
 // Component for Promo Codes Tab
-const PromoCodesTab = ({ promoCodes, search, setSearch, statusFilter, setStatusFilter, typeFilter, setTypeFilter, darkMode, onGenerate }) => {
+const PromoCodesTab = ({ promoCodes, search, setSearch, statusFilter, setStatusFilter, typeFilter, setTypeFilter, darkMode, onGenerate, onDelete }) => {
   // Get preset codes for filter buttons
   const presetCodes = promoCodes.filter(code => code.type === 'preset');
   
@@ -698,8 +742,8 @@ const PromoCodesTab = ({ promoCodes, search, setSearch, statusFilter, setStatusF
               }}
             >
               <option value="all">All Types</option>
+              <option value="preset">Preset Templates</option>
               <option value="generated">Generated</option>
-              <option value="custom">Custom</option>
             </select>
           </div>
         </div>
@@ -712,6 +756,7 @@ const PromoCodesTab = ({ promoCodes, search, setSearch, statusFilter, setStatusF
         codes={promoCodes.filter(code => code.type !== 'preset' && code.currentUses > 0)}
         darkMode={darkMode}
         onGenerate={onGenerate}
+        onDelete={onDelete}
         emptyMessage="No active codes yet. Generate some codes and they'll appear here once used!"
       />
 
@@ -722,6 +767,7 @@ const PromoCodesTab = ({ promoCodes, search, setSearch, statusFilter, setStatusF
         codes={promoCodes.filter(code => code.type !== 'preset' && code.currentUses === 0)}
         darkMode={darkMode}
         onGenerate={onGenerate}
+        onDelete={onDelete}
         emptyMessage="All your codes are being used! Generate more to see them here."
       />
     </div>
@@ -729,7 +775,7 @@ const PromoCodesTab = ({ promoCodes, search, setSearch, statusFilter, setStatusF
 };
 
 // Carousel Component for Promo Codes
-const PromoCodeCarousel = ({ title, subtitle, codes, darkMode, onGenerate, emptyMessage }) => {
+const PromoCodeCarousel = ({ title, subtitle, codes, darkMode, onGenerate, onDelete, emptyMessage }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const cardsPerView = 3;
   const maxIndex = Math.max(0, codes.length - cardsPerView);
@@ -886,6 +932,7 @@ const PromoCodeCarousel = ({ title, subtitle, codes, darkMode, onGenerate, empty
                 code={code}
                 darkMode={darkMode}
                 onGenerate={() => onGenerate(code)}
+                onDelete={() => onDelete(code)}
               />
             </div>
           ))}
@@ -922,12 +969,12 @@ const PromoCodeCarousel = ({ title, subtitle, codes, darkMode, onGenerate, empty
 };
 
 // Component for individual promo code cards
-const PromoCodeCard = ({ code, darkMode, onGenerate }) => {
+const PromoCodeCard = ({ code, darkMode, onGenerate, onDelete }) => {
   const getTypeColor = (type) => {
     switch (type) {
       case 'preset': return '#3b82f6';
       case 'generated': return '#10b981';
-      case 'custom': return '#8b5cf6';
+      case 'full_access': return '#f59e0b';
       default: return '#6b7280';
     }
   };
@@ -1101,33 +1148,78 @@ const PromoCodeCard = ({ code, darkMode, onGenerate }) => {
       {/* Footer */}
       <div style={{
         display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center'
+        flexDirection: 'column',
+        gap: '8px'
       }}>
-        {code.validUntil && (
-          <div style={{
-            fontSize: '11px',
-            color: darkMode ? '#9ca3af' : '#6b7280'
-          }}>
-            Expires {new Date(code.validUntil).toLocaleDateString()}
-          </div>
-        )}
+        {/* Timestamp */}
+        <div style={{
+          fontSize: '11px',
+          color: darkMode ? '#9ca3af' : '#6b7280',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '4px'
+        }}>
+          <span>🕐</span>
+          <span>Generated {new Date(code.createdAt).toLocaleDateString()} at {new Date(code.createdAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}</span>
+        </div>
         
-        <button
-          style={{
-            backgroundColor: darkMode ? '#4b5563' : '#e5e7eb',
-            color: darkMode ? '#e0e0e0' : '#374151',
-            border: 'none',
-            borderRadius: '6px',
-            padding: '6px 12px',
-            fontSize: '11px',
-            fontWeight: '500',
-            cursor: 'pointer',
-            marginLeft: 'auto'
-          }}
-        >
-          Edit
-        </button>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          {code.validUntil && (
+            <div style={{
+              fontSize: '11px',
+              color: darkMode ? '#9ca3af' : '#6b7280'
+            }}>
+              Expires {new Date(code.validUntil).toLocaleDateString()}
+            </div>
+          )}
+          
+          <div style={{ display: 'flex', gap: '8px', marginLeft: 'auto' }}>
+            {code.type === 'preset' && (
+              <button
+                onClick={() => onGenerate && onGenerate()}
+                style={{
+                  backgroundColor: darkMode ? '#3b82f6' : '#3b82f6',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '6px 12px',
+                  fontSize: '11px',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}
+              >
+                <span style={{ fontSize: '10px' }}>✨</span> Generate
+              </button>
+            )}
+            {code.type !== 'preset' && code.currentUses === 0 && (
+              <button
+                onClick={() => onDelete && onDelete()}
+                style={{
+                  backgroundColor: darkMode ? '#dc2626' : '#ef4444',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '6px 12px',
+                  fontSize: '11px',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}
+              >
+                <span style={{ fontSize: '10px' }}>🗑️</span> Delete
+              </button>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -1384,7 +1476,7 @@ const AnalyticsTab = ({ promoCodes, users, stats, darkMode }) => {
                   width: '12px',
                   height: '12px',
                   borderRadius: '50%',
-                  backgroundColor: type === 'preset' ? '#3b82f6' : type === 'generated' ? '#10b981' : '#8b5cf6'
+                  backgroundColor: type === 'preset' ? '#3b82f6' : type === 'generated' ? '#10b981' : type === 'full_access' ? '#f59e0b' : '#6b7280'
                 }}></div>
                 <span style={{
                   color: darkMode ? '#e0e0e0' : '#1f2937',
@@ -1463,7 +1555,7 @@ const AnalyticsTab = ({ promoCodes, users, stats, darkMode }) => {
 };
 
 // Component for Generate Modal
-const GenerateModal = ({ promoCode, generateData, setGenerateData, onGenerate, onClose, generatedCodes, onCopy, copiedStates, darkMode }) => (
+const GenerateModal = ({ promoCode, generateData, setGenerateData, onGenerate, onClose, generatedCodes, onCopy, copiedStates, darkMode, onReset }) => (
   <div style={{
     position: 'fixed',
     top: 0,
@@ -1694,42 +1786,58 @@ const GenerateModal = ({ promoCode, generateData, setGenerateData, onGenerate, o
             {generatedCodes.map((code, index) => (
               <div key={index} style={{
                 display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                padding: '8px 0',
+                flexDirection: 'column',
+                padding: '12px 0',
                 borderBottom: index < generatedCodes.length - 1 ? `1px solid ${darkMode ? '#4b5563' : '#e5e7eb'}` : 'none'
               }}>
-                <span style={{
-                  fontFamily: 'monospace',
-                  fontSize: '14px',
-                  fontWeight: 'bold',
-                  color: darkMode ? '#10b981' : '#059669'
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: '4px'
                 }}>
-                  {code.code}
-                </span>
-                <button
-                  onClick={() => onCopy(code.code, index)}
-                  style={{
-                    backgroundColor: copiedStates[index] ? '#10b981' : 'transparent',
-                    border: `1px solid ${copiedStates[index] ? '#10b981' : (darkMode ? '#6b7280' : '#d1d5db')}`,
-                    borderRadius: '6px',
-                    padding: '4px 8px',
-                    cursor: 'pointer',
-                    fontSize: '12px',
-                    color: copiedStates[index] ? 'white' : (darkMode ? '#e0e0e0' : '#374151'),
-                    transition: 'all 0.2s ease',
-                    minWidth: '60px'
-                  }}
-                >
-                  {copiedStates[index] ? '✓ Copied!' : 'Copy'}
-                </button>
+                  <span style={{
+                    fontFamily: 'monospace',
+                    fontSize: '14px',
+                    fontWeight: 'bold',
+                    color: darkMode ? '#10b981' : '#059669'
+                  }}>
+                    {code.code}
+                  </span>
+                  <button
+                    onClick={() => onCopy(code.code, index)}
+                    style={{
+                      backgroundColor: copiedStates[index] ? '#10b981' : 'transparent',
+                      border: `1px solid ${copiedStates[index] ? '#10b981' : (darkMode ? '#6b7280' : '#d1d5db')}`,
+                      borderRadius: '6px',
+                      padding: '4px 8px',
+                      cursor: 'pointer',
+                      fontSize: '12px',
+                      color: copiedStates[index] ? 'white' : (darkMode ? '#e0e0e0' : '#374151'),
+                      transition: 'all 0.2s ease',
+                      minWidth: '60px'
+                    }}
+                  >
+                    {copiedStates[index] ? '✓ Copied!' : 'Copy'}
+                  </button>
+                </div>
+                <div style={{
+                  fontSize: '11px',
+                  color: darkMode ? '#9ca3af' : '#6b7280',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}>
+                  <span>🕐</span>
+                  <span>Generated at {new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}</span>
+                </div>
               </div>
             ))}
           </div>
 
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
             <button
-              onClick={() => setGeneratedCodes([])}
+              onClick={() => onReset()}
               style={{
                 backgroundColor: darkMode ? '#374151' : '#f3f4f6',
                 color: darkMode ? '#e0e0e0' : '#374151',
@@ -1944,6 +2052,168 @@ const UserDetailsModal = ({ user, onClose, darkMode }) => (
           }}
         >
           Close
+        </button>
+      </div>
+    </div>
+  </div>
+);
+
+// Delete Confirmation Modal Component
+const DeleteConfirmationModal = ({ promoCode, onConfirm, onClose, darkMode, loading }) => (
+  <div style={{
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+    padding: '20px'
+  }}>
+    <div style={{
+      backgroundColor: darkMode ? '#1f2937' : 'white',
+      borderRadius: '16px',
+      padding: '32px',
+      maxWidth: '500px',
+      width: '100%',
+      boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
+    }}>
+      <h3 style={{ 
+        color: darkMode ? '#e0e0e0' : '#1f2937',
+        marginBottom: '16px',
+        fontSize: '24px',
+        fontWeight: '600'
+      }}>
+        ⚠️ Confirm Deletion
+      </h3>
+      
+      <p style={{
+        color: darkMode ? '#9ca3af' : '#6b7280',
+        marginBottom: '24px',
+        fontSize: '16px',
+        lineHeight: '1.5'
+      }}>
+        Are you sure you want to delete this promo code?
+      </p>
+      
+      <div style={{
+        backgroundColor: darkMode ? '#374151' : '#f9fafb',
+        borderRadius: '12px',
+        padding: '20px',
+        marginBottom: '24px'
+      }}>
+        <div style={{ marginBottom: '12px' }}>
+          <span style={{ 
+            color: darkMode ? '#9ca3af' : '#6b7280', 
+            fontSize: '14px' 
+          }}>Code:</span>
+          <span style={{ 
+            color: darkMode ? '#e0e0e0' : '#1f2937',
+            fontSize: '16px',
+            fontWeight: '600',
+            fontFamily: 'monospace',
+            marginLeft: '8px'
+          }}>
+            {promoCode.code}
+          </span>
+        </div>
+        
+        <div style={{ marginBottom: '12px' }}>
+          <span style={{ 
+            color: darkMode ? '#9ca3af' : '#6b7280', 
+            fontSize: '14px' 
+          }}>Type:</span>
+          <span style={{ 
+            color: darkMode ? '#e0e0e0' : '#1f2937',
+            fontSize: '14px',
+            marginLeft: '8px',
+            textTransform: 'capitalize'
+          }}>
+            {promoCode.type}
+          </span>
+        </div>
+        
+        <div style={{ marginBottom: '12px' }}>
+          <span style={{ 
+            color: darkMode ? '#9ca3af' : '#6b7280', 
+            fontSize: '14px' 
+          }}>Uses:</span>
+          <span style={{ 
+            color: darkMode ? '#e0e0e0' : '#1f2937',
+            fontSize: '14px',
+            marginLeft: '8px'
+          }}>
+            {promoCode.currentUses} / {promoCode.maxUses}
+          </span>
+        </div>
+        
+        {promoCode.currentUses > 0 && (
+          <div style={{
+            backgroundColor: darkMode ? '#7f1d1d' : '#fee2e2',
+            color: darkMode ? '#ef4444' : '#dc2626',
+            padding: '12px',
+            borderRadius: '8px',
+            fontSize: '13px',
+            marginTop: '16px'
+          }}>
+            ⚠️ This code has been used {promoCode.currentUses} time{promoCode.currentUses !== 1 ? 's' : ''}. Deletion will not affect existing users.
+          </div>
+        )}
+      </div>
+      
+      <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+        <button
+          onClick={onClose}
+          disabled={loading}
+          style={{
+            backgroundColor: darkMode ? '#374151' : '#f3f4f6',
+            color: darkMode ? '#e0e0e0' : '#374151',
+            border: 'none',
+            borderRadius: '8px',
+            padding: '12px 24px',
+            cursor: loading ? 'not-allowed' : 'pointer',
+            fontSize: '14px',
+            fontWeight: '500',
+            opacity: loading ? 0.5 : 1
+          }}
+        >
+          Cancel
+        </button>
+        <button
+          onClick={onConfirm}
+          disabled={loading}
+          style={{
+            backgroundColor: '#dc2626',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            padding: '12px 24px',
+            cursor: loading ? 'not-allowed' : 'pointer',
+            fontSize: '14px',
+            fontWeight: '500',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            opacity: loading ? 0.8 : 1
+          }}
+        >
+          {loading ? (
+            <>
+              <span style={{ 
+                display: 'inline-block',
+                animation: 'spin 1s linear infinite'
+              }}>⏳</span>
+              Deleting...
+            </>
+          ) : (
+            <>
+              <span>🗑️</span>
+              Delete Promo Code
+            </>
+          )}
         </button>
       </div>
     </div>

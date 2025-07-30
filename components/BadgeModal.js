@@ -741,7 +741,13 @@ const BadgeModal = ({ isOpen, onClose, userBadges = [], isOwnProfile = false, pr
   const earnedBadgeIds = Array.isArray(userBadges) 
     ? userBadges.map(badge => typeof badge === 'string' ? badge : badge.id)
     : [];
-  const earnedCount = earnedBadgeIds.length;
+  
+  // Count only badges that exist in our badge system
+  const validEarnedBadgeIds = earnedBadgeIds.filter(badgeId => 
+    allBadges.some(badge => badge.id === badgeId)
+  );
+  
+  const earnedCount = validEarnedBadgeIds.length;
   const totalCount = allBadges.length;
 
   const filteredBadges = allBadges.filter(badge => {
@@ -750,8 +756,8 @@ const BadgeModal = ({ isOpen, onClose, userBadges = [], isOwnProfile = false, pr
     return categoryMatch && rarityMatch;
   }).sort((a, b) => {
     // Sort so earned badges appear first
-    const aEarned = earnedBadgeIds.includes(a.id);
-    const bEarned = earnedBadgeIds.includes(b.id);
+    const aEarned = validEarnedBadgeIds.includes(a.id);
+    const bEarned = validEarnedBadgeIds.includes(b.id);
     
     if (aEarned && !bEarned) return -1;
     if (!aEarned && bEarned) return 1;
@@ -906,7 +912,7 @@ const BadgeModal = ({ isOpen, onClose, userBadges = [], isOwnProfile = false, pr
             gap: '12px'
           }}>
             {filteredBadges.map(badge => {
-              const isEarned = earnedBadgeIds.includes(badge.id);
+              const isEarned = validEarnedBadgeIds.includes(badge.id);
               
               return (
                 <div

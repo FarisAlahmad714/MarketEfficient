@@ -803,7 +803,7 @@ const ProfileHeader = ({
 
           {/* Pokemon-Style Badge Showcase */}
           {(() => {
-            return profile?.earnedBadges && profile.earnedBadges.length > 0;
+            return profile?.earnedBadgeObjects && profile.earnedBadgeObjects.length > 0;
           })() && (
             <div style={{
               background: darkMode 
@@ -869,7 +869,7 @@ const ProfileHeader = ({
                     minWidth: '20px',
                     textAlign: 'center'
                   }}>
-                    {profile.earnedBadges.length}
+                    {profile.earnedBadgeObjects.length}
                   </span>
                 </div>
                 
@@ -878,7 +878,7 @@ const ProfileHeader = ({
                   gap: '8px',
                   flexWrap: 'wrap'
                 }}>
-                  {profile.earnedBadges.slice(0, 6).map((badge, index) => {
+                  {profile.earnedBadgeObjects.slice(0, 6).map((badge, index) => {
                     const getRarityGlow = (rarity) => {
                       switch (rarity) {
                         case 'mythic':
@@ -1018,7 +1018,7 @@ const ProfileHeader = ({
                     );
                   })}
                   
-                  {profile.earnedBadges.length > 6 && (
+                  {profile.earnedBadgeObjects.length > 6 && (
                     <div style={{
                       width: '42px',
                       height: '42px',
@@ -1032,7 +1032,7 @@ const ProfileHeader = ({
                       fontSize: '12px',
                       fontWeight: 'bold'
                     }}>
-                      +{profile.earnedBadges.length - 6}
+                      +{profile.earnedBadgeObjects.length - 6}
                     </div>
                   )}
                 </div>

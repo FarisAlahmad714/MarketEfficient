@@ -102,47 +102,12 @@ async function getPromoCodes(req, res) {
 
 async function createPromoCode(req, res, admin) {
   try {
-    const {
-      code,
-      type,
-      discountType,
-      discountValue,
-      finalPrice,
-      description,
-      maxUses = 1,
-      validUntil,
-      applicablePlans = ['both']
-    } = req.body;
-
-    // Validate required fields
-    if (!code || !type || !discountType || discountValue === undefined || !description) {
-      return res.status(400).json({ error: 'Missing required fields' });
-    }
-
-    // Ensure applicablePlans is an array
-    const plansArray = Array.isArray(applicablePlans) ? applicablePlans : [applicablePlans];
-
-    // Check if code already exists
-    const existingCode = await PromoCode.findOne({ code: code.toUpperCase() });
-    if (existingCode) {
-      return res.status(400).json({ error: 'Promo code already exists' });
-    }
-
-    // Create promo code
-    const promoCode = new PromoCode({
-      code: code.toUpperCase(),
-      type,
-      discountType,
-      discountValue,
-      finalPrice,
-      description,
-      maxUses,
-      validUntil: validUntil ? new Date(validUntil) : undefined,
-      applicablePlans: plansArray,
-      createdBy: admin._id
+    // Custom promo code creation has been disabled
+    // Only preset templates can be used to generate codes
+    return res.status(403).json({ 
+      error: 'Custom promo code creation is disabled. Please use the generate feature with preset templates instead.',
+      message: 'For security and consistency, only preset template-based code generation is allowed.'
     });
-
-    await promoCode.save();
 
     // Log admin action
     await AdminAction.logAction({
@@ -244,30 +209,43 @@ async function deactivatePromoCode(req, res, admin) {
       return res.status(404).json({ error: 'Promo code not found' });
     }
 
-    promoCode.isActive = false;
-    await promoCode.save();
+    // Prevent deletion of preset codes
+    if (promoCode.type === 'preset') {
+      return res.status(400).json({ error: 'Cannot delete preset template codes' });
+    }
+
+    // Store details before deletion for logging
+    const codeDetails = {
+      code: promoCode.code,
+      type: promoCode.type,
+      uses: promoCode.currentUses,
+      maxUses: promoCode.maxUses
+    };
+
+    // Delete the promo code
+    await PromoCode.findByIdAndDelete(id);
 
     // Log admin action
     await AdminAction.logAction({
       adminUserId: admin._id,
-      action: 'promo_code_deactivated',
+      action: 'promo_code_deleted',
       targetType: 'promo_code',
-      targetId: promoCode._id,
-      targetIdentifier: promoCode.code,
-      description: `Deactivated promo code: ${promoCode.code}`,
+      targetId: id,
+      targetIdentifier: codeDetails.code,
+      description: `Deleted promo code: ${codeDetails.code}`,
       details: {
-        reason: 'Admin deactivation'
+        ...codeDetails,
+        reason: 'Admin deletion'
       },
       category: 'financial',
-      severity: 'medium'
+      severity: 'high'
     });
 
     res.status(200).json({
-      message: 'Promo code deactivated successfully',
-      promoCode
+      message: 'Promo code deleted successfully'
     });
 
   } catch (error) {
-    res.status(500).json({ error: 'Failed to deactivate promo code' });
+    res.status(500).json({ error: 'Failed to delete promo code' });
   }
 } 

@@ -237,10 +237,7 @@ const PublicProfilePage = () => {
       }}>
         {/* Profile Header */}
         <ProfileHeader 
-          profile={{
-            ...profile,
-            earnedBadges: profile?.earnedBadgeObjects || []
-          }}
+          profile={profile}
           isOwnProfile={isOwnProfile}
           onShare={handleShare}
         />

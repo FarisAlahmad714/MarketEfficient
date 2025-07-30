@@ -18,7 +18,7 @@ const PromoCodeSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['preset', 'custom', 'generated', 'full_access'],
+    enum: ['preset', 'generated', 'full_access'],
     required: true
   },
   discountType: {
