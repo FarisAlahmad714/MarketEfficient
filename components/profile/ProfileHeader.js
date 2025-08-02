@@ -200,7 +200,8 @@ const ProfileHeader = ({
       setLoading(true);
       const token = storage.getItem('auth_token');
       
-      const response = await fetch('/api/user/update-profile', {
+      // Temporarily use test endpoint to debug
+      const response = await fetch('/api/test-upload', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

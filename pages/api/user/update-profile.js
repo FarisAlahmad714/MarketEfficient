@@ -256,6 +256,8 @@ export const config = {
   api: {
     bodyParser: {
       sizeLimit: '10mb',
+      // Try parsing as text instead of JSON to see if that helps
+      type: 'application/json',
     },
   },
 };
