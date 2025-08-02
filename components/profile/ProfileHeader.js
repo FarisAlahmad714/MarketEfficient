@@ -169,15 +169,20 @@ const ProfileHeader = ({
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
-      // Validate file type
-      if (!file.type.startsWith('image/')) {
+      // Check file extension for HEIC/HEIF files which might not have proper MIME type
+      const fileName = file.name.toLowerCase();
+      const isHeicFile = fileName.endsWith('.heic') || fileName.endsWith('.heif');
+      
+      // Validate file type - be more lenient with HEIC files
+      if (!file.type.startsWith('image/') && !isHeicFile) {
         setSaveError('Please select a valid image file');
         return;
       }
       
       // Validate file size (5MB limit)
       if (file.size > 5 * 1024 * 1024) {
-        setSaveError('Image size must be less than 5MB');
+        const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+        setSaveError(`Image size is ${sizeMB}MB. Please select an image less than 5MB`);
         return;
       }
       
