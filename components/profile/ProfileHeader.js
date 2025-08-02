@@ -8,6 +8,7 @@ import { FaUser, FaCamera, FaTwitter, FaLinkedin, FaInstagram, FaShare, FaCog, F
 import storage from '../../lib/storage';
 import BadgeModal from '../BadgeModal';
 import FollowModal from './FollowModal';
+import { compressImage } from '../../utils/imageCompression';
 
 const ProfileHeader = ({ 
   profile, 
@@ -166,7 +167,7 @@ const ProfileHeader = ({
     }
   };
 
-  const handleImageUpload = (e) => {
+  const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (file) {
       // Check file extension for HEIC/HEIF files which might not have proper MIME type
@@ -179,19 +180,30 @@ const ProfileHeader = ({
         return;
       }
       
-      // Validate file size (5MB limit)
-      if (file.size > 5 * 1024 * 1024) {
-        const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
-        setSaveError(`Image size is ${sizeMB}MB. Please select an image less than 5MB`);
-        return;
+      // No need to check file size - we'll compress it
+      try {
+        setSaveError('Compressing image...');
+        
+        // Compress the image
+        const compressedImage = await compressImage(file, 800, 800, 0.7);
+        
+        // Check compressed size
+        const compressedSize = (compressedImage.length * 3) / 4; // Approximate base64 to bytes
+        const compressedSizeMB = (compressedSize / (1024 * 1024)).toFixed(1);
+        
+        if (compressedSize > 2 * 1024 * 1024) {
+          setSaveError(`Compressed image is still ${compressedSizeMB}MB. Try a smaller image.`);
+          return;
+        }
+        
+        setSaveError(null);
+        setProfileImage(compressedImage);
+        saveProfileImage(compressedImage);
+        
+      } catch (error) {
+        setSaveError('Failed to process image. Please try another.');
+        console.error('Image compression error:', error);
       }
-      
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setProfileImage(reader.result);
-        saveProfileImage(reader.result);
-      };
-      reader.readAsDataURL(file);
     }
   };
 
@@ -200,8 +212,7 @@ const ProfileHeader = ({
       setLoading(true);
       const token = storage.getItem('auth_token');
       
-      // Temporarily use test endpoint to debug
-      const response = await fetch('/api/test-upload', {
+      const response = await fetch('/api/user/update-profile', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -221,12 +232,15 @@ const ProfileHeader = ({
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
       
-      // Trigger navbar refresh
-      window.dispatchEvent(new CustomEvent('profileImageUpdated'));
-      
-      if (onProfileUpdate) {
-        onProfileUpdate();
-      }
+      // Wait a bit before triggering refresh to ensure GCS upload is complete
+      setTimeout(() => {
+        // Trigger navbar refresh
+        window.dispatchEvent(new CustomEvent('profileImageUpdated'));
+        
+        if (onProfileUpdate) {
+          onProfileUpdate();
+        }
+      }, 1000);
       
     } catch (error) {
       setSaveError(error.message);
