@@ -179,20 +179,15 @@ const ProfileHeader = ({
         return;
       }
       
-      // Validate file size (5MB limit)
-      if (file.size > 5 * 1024 * 1024) {
+      // Validate file size (3MB limit to prevent base64 string issues)
+      if (file.size > 3 * 1024 * 1024) {
         const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
-        setSaveError(`Image size is ${sizeMB}MB. Please select an image less than 5MB`);
+        setSaveError(`Image size is ${sizeMB}MB. Please select an image less than 3MB to prevent upload issues`);
         return;
       }
       
       const reader = new FileReader();
       reader.onloadend = () => {
-        // Show debug info in the error message for iPhone users
-        const debugInfo = `Debug: ${file.name} | Type: ${file.type || 'unknown'} | Size: ${(file.size / 1024).toFixed(1)}KB`;
-        setSaveError(debugInfo);
-        setTimeout(() => setSaveError(null), 5000);
-        
         setProfileImage(reader.result);
         saveProfileImage(reader.result);
       };

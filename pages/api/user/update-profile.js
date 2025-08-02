@@ -164,7 +164,7 @@ async function handler(req, res) {
         // uploadImageToGCS now returns { gcsPath }
         const { gcsPath } = await uploadImageToGCS(newProfileImageBase64);
         userToUpdate.profileImageGcsPath = gcsPath; // Save the GCS path
-        userToUpdate.profileImageUrl = ''; // Clear any old direct URL; signed URL will be fetched on demand
+        // Don't set profileImageUrl at all - let it keep its current value or default
       } catch (gcsUploadError) {
         logger.error('Failed to upload new profile image to GCS:', gcsUploadError);
         return res.status(500).json({ error: 'Failed to upload profile image.', details: gcsUploadError.message });
@@ -174,7 +174,17 @@ async function handler(req, res) {
     // The 'notifications' field is not handled here as it was removed from the client-side form.
     // If old user objects in DB have it, it will remain unless explicitly cleared.
 
-    await userToUpdate.save();
+    try {
+      await userToUpdate.save();
+    } catch (saveError) {
+      logger.error('Error saving user:', saveError);
+      logger.error('User data being saved:', {
+        profileImageGcsPath: userToUpdate.profileImageGcsPath,
+        profileImageUrl: userToUpdate.profileImageUrl,
+        _id: userToUpdate._id
+      });
+      throw saveError;
+    }
 
     // Return relevant updated user info
     const updatedUserInfo = {
