@@ -188,6 +188,11 @@ const ProfileHeader = ({
       
       const reader = new FileReader();
       reader.onloadend = () => {
+        // Show debug info in the error message for iPhone users
+        const debugInfo = `Debug: ${file.name} | Type: ${file.type || 'unknown'} | Size: ${(file.size / 1024).toFixed(1)}KB`;
+        setSaveError(debugInfo);
+        setTimeout(() => setSaveError(null), 5000);
+        
         setProfileImage(reader.result);
         saveProfileImage(reader.result);
       };
@@ -213,7 +218,8 @@ const ProfileHeader = ({
       
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to update profile image');
+        console.error('Profile update error:', errorData);
+        throw new Error(errorData.details || errorData.error || 'Failed to update profile image');
       }
       
       setSaveSuccess(true);

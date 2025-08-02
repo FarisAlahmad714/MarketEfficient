@@ -212,10 +212,33 @@ async function handler(req, res) {
 
   } catch (error) {
     logger.error('Error updating profile:', error);
+    logger.error('Full error details:', JSON.stringify(error, null, 2));
+    
     if (error.name === 'ValidationError') {
-        return res.status(400).json({ error: 'Validation failed', details: error.errors });
+        // Extract the specific validation error message
+        const validationErrors = {};
+        for (const field in error.errors) {
+            validationErrors[field] = error.errors[field].message;
+        }
+        return res.status(400).json({ 
+            error: 'Validation failed', 
+            details: validationErrors,
+            fullError: error.message 
+        });
     }
-    return res.status(500).json({ error: 'Failed to update profile.', details: error.message });
+    
+    // Check if it's a GCS upload error
+    if (error.message && error.message.includes('base64')) {
+        return res.status(400).json({ 
+            error: 'Invalid image format', 
+            details: error.message 
+        });
+    }
+    
+    return res.status(500).json({ 
+        error: 'Failed to update profile.', 
+        details: error.message 
+    });
   }
 }
 
