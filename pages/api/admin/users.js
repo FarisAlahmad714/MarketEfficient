@@ -5,6 +5,7 @@ import { composeMiddleware } from '../../../lib/api-handler';
 import User from '../../../models/User';
 import TestResults from '../../../models/TestResults';
 import Subscription from '../../../models/Subscription';
+import { getSignedUrlForImage } from '../../../lib/gcs-service';
 
 async function usersHandler(req, res) {
   // User is already authenticated and verified as admin via middleware
@@ -46,8 +47,20 @@ async function usersHandler(req, res) {
           'promoCodeUsed',
           'code description discountAmount'
         );
+        
+        // Generate signed URL for profile image if it exists
+        let profileImageUrl = null;
+        if (user.profileImageGcsPath) {
+          try {
+            profileImageUrl = await getSignedUrlForImage(user.profileImageGcsPath);
+          } catch (error) {
+            console.error('Failed to generate profile image URL:', error);
+          }
+        }
+        
         return {
           ...user.toObject(),
+          profileImageUrl,
           subscription: subscription
             ? {
                 plan: subscription.plan,
