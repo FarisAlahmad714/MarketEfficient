@@ -282,10 +282,16 @@ const ChartExam = ({ examType, assetType, startTour, tourCompleted = false }) =>
   
   // Validate user drawings with chart data included in payload
   const validateDrawings = async () => {
+    // Prevent multiple submissions
+    if (submitting) {
+      logger.log("Already submitting, ignoring duplicate request");
+      return;
+    }
+    
     logger.log("Validating drawings:", drawings);
   
     // Check if there are drawings to validate
-    if (drawings.length === 0 && !drawings[0]?.no_fvgs_found && !drawings[0]?.no_swings_found) {
+    if (drawings.length === 0 || (!drawings[0]?.no_fvgs_found && !drawings[0]?.no_swings_found && drawings.length === 0)) {
       showAlert('Please mark at least one point before submitting.', 'Missing Input', 'warning');
       return;
     }
@@ -309,6 +315,9 @@ const ChartExam = ({ examType, assetType, startTour, tourCompleted = false }) =>
       const token = await storage.getItem('auth_token');
       
       // Include auth token in request headers
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
@@ -322,13 +331,16 @@ const ChartExam = ({ examType, assetType, startTour, tourCompleted = false }) =>
           part: examType === 'fibonacci-retracement' ? part : 
                 examType === 'fair-value-gaps' ? part : null,
           timeframe: timeframe // Pass the timeframe for adaptive gap sizing
-        })
+        }),
+        signal: controller.signal
       });
+      
+      clearTimeout(timeoutId);
       
       const data = await response.json();
       
       // Handle validation failures more gracefully
-      if (data.error) {
+      if (data.error || !response.ok) {
         console.error('Validation error:', data.error, data.message);
         
         // Handle time expiry specifically
@@ -341,7 +353,7 @@ const ChartExam = ({ examType, assetType, startTour, tourCompleted = false }) =>
           return;
         }
         
-        showError(`Validation error: ${data.message || 'Something went wrong'}`);
+        showError(`Validation error: ${data.message || 'Something went wrong during submission. Please try again.'}`);
         setSubmitting(false);
         return;
       }
@@ -385,7 +397,12 @@ const ChartExam = ({ examType, assetType, startTour, tourCompleted = false }) =>
       
     } catch (error) {
       console.error('Error validating drawings:', error);
-      showError('Error validating your submission. Please try again.', 'Validation Error');
+      
+      if (error.name === 'AbortError') {
+        showError('Submission timed out. Please check your connection and try again.', 'Timeout Error');
+      } else {
+        showError('Error validating your submission. Please try again.', 'Validation Error');
+      }
     } finally {
       setSubmitting(false);
     }
@@ -496,46 +513,7 @@ const handleDrawingsUpdate = (newDrawings) => {
     return prevDrawings;
   });
 };
-useEffect(() => {
-  // Only update chart data when chart is initially loading or when we explicitly need a new chart
-  // Prevent unwanted updates during active testing session
-  if (chartRef.current && chartData && chartData.length > 0 && !sessionStarted) {
-    try {
-      // Update data without recreating chart
-      const chart = chartRef.current.getChart();
-      if (chart && chart.series && chart.series[0]) {
-        // Update data without triggering view reset
-        const currentExtremes = {
-          xAxis: chart.xAxis[0].getExtremes(),
-          yAxis: chart.yAxis[0].getExtremes()
-        };
-        
-        // Update data
-        chart.series[0].setData(chartData, false);
-        
-        // Restore view only if we had valid extremes
-        if (currentExtremes.xAxis.min !== null && currentExtremes.xAxis.max !== null) {
-          chart.xAxis[0].setExtremes(
-            currentExtremes.xAxis.min,
-            currentExtremes.xAxis.max, 
-            false
-          );
-        }
-        if (currentExtremes.yAxis.min !== null && currentExtremes.yAxis.max !== null) {
-          chart.yAxis[0].setExtremes(
-            currentExtremes.yAxis.min,
-            currentExtremes.yAxis.max,
-            false
-          );
-        }
-        
-        chart.redraw(false);
-      }
-    } catch (error) {
-      console.error("Error updating chart data:", error);
-    }
-  }
-}, [chartData, sessionStarted]);
+// Removed problematic useEffect that was causing random chart updates
   // Fetch initial chart data
   useEffect(() => {
     fetchChartData(true); // Force refresh for initial load
@@ -679,7 +657,7 @@ useEffect(() => {
       <ControlPanel>
         <Button 
           onClick={validateDrawings} 
-          disabled={loading || submitting || timeRemaining === 0 || isTimerPaused}
+          disabled={loading || submitting || timeRemaining === 0}
           $isDarkMode={darkMode}
         >
           Submit Answer

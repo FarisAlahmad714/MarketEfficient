@@ -92,14 +92,34 @@ const CountdownTimer = ({
     }
   };
 
+  // Handle timer countdown
   useEffect(() => {
-    if (timeLeft <= 0) {
-      onTimeExpired?.();
+    if (timeLeft <= 0 || isPaused) {
       return;
     }
 
-    // Don't countdown if paused
-    if (isPaused) {
+    const timer = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev <= 1) {
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [isPaused]);
+  
+  // Call onTimeExpired when timeLeft reaches 0
+  useEffect(() => {
+    if (timeLeft === 0 && onTimeExpired) {
+      onTimeExpired();
+    }
+  }, [timeLeft, onTimeExpired]);
+
+  // Handle warnings and sounds separately
+  useEffect(() => {
+    if (timeLeft <= 0) {
       return;
     }
 
@@ -117,19 +137,7 @@ const CountdownTimer = ({
       playWarningSound();
       setHasPlayed30SecondSound(true);
     }
-
-    const timer = setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev <= 1) {
-          onTimeExpired?.();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [timeLeft, onTimeExpired, isPaused, hasPlayed1MinuteSound, hasPlayed30SecondSound]);
+  }, [timeLeft, isPaused, hasPlayed1MinuteSound, hasPlayed30SecondSound]);
 
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);

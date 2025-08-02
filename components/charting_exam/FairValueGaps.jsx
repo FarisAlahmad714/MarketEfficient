@@ -425,11 +425,12 @@ const FairValueGaps = ({
     });
   }, [isDarkMode]);
 
-  // Redraw existing FVGs when chart is ready or existing drawings change
+  // Initialize existing drawings only once when component mounts or chartData changes
   useEffect(() => {
     if (!chartRef.current || !candleSeriesRef.current || !chartData || chartData.length === 0) return;
+    if (!existingDrawings || existingDrawings.length === 0) return;
     
-    // Clear existing rectangles first
+    // Clear any existing rectangles
     rectangles.forEach(rect => {
       if (rect.lines) {
         rect.lines.forEach(line => {
@@ -445,32 +446,29 @@ const FairValueGaps = ({
         });
       }
     });
-    setRectangles([]);
     
-    // Redraw existing FVGs
-    if (existingDrawings && existingDrawings.length > 0) {
-      console.log('Redrawing existing FVGs:', existingDrawings);
-      const newRectangles = [];
-      
-      existingDrawings.forEach(fvg => {
-        if (!fvg.no_fvgs_found) {
-          const rect = drawRectangle(
-            fvg.startTime,
-            fvg.endTime,
-            fvg.topPrice,
-            fvg.bottomPrice,
-            fvg.type
-          );
-          if (rect) {
-            newRectangles.push(rect);
-          }
+    // Draw existing FVGs
+    console.log('Drawing existing FVGs:', existingDrawings);
+    const newRectangles = [];
+    
+    existingDrawings.forEach(fvg => {
+      if (!fvg.no_fvgs_found) {
+        const rect = drawRectangle(
+          fvg.startTime,
+          fvg.endTime,
+          fvg.topPrice,
+          fvg.bottomPrice,
+          fvg.type
+        );
+        if (rect) {
+          newRectangles.push(rect);
         }
-      });
-      
-      setRectangles(newRectangles);
-      setUserFVGs(existingDrawings);
-    }
-  }, [chartData, existingDrawings]);
+      }
+    });
+    
+    setRectangles(newRectangles);
+    setUserFVGs(existingDrawings);
+  }, [chartData]); // Only depend on chartData, not existingDrawings
 
   // Subscribe to chart clicks for drawing interactions
   useEffect(() => {
@@ -500,7 +498,7 @@ const FairValueGaps = ({
     if (onDrawingsUpdate) {
       onDrawingsUpdate(userFVGs);
     }
-  }, [userFVGs, onDrawingsUpdate]);
+  }, [userFVGs]); // Removed onDrawingsUpdate from deps to prevent infinite loops
 
   // Process validation results to show correct answers
   useEffect(() => {

@@ -465,7 +465,7 @@ const ProfileHeader = ({
               <input 
                 type="file" 
                 id="profile-image-upload" 
-                accept="image/*" 
+                accept="image/jpeg,image/jpg,image/png,image/gif,image/webp,image/avif,image/heic,image/heif,.heic,.heif,image/*" 
                 onChange={handleImageUpload} 
                 style={{ display: 'none' }} 
               />

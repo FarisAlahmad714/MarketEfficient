@@ -1,36 +1,73 @@
-// API endpoint to force check positions for SL/TP
+// pages/api/sandbox/force-check-positions.js
+// API endpoint to force an immediate check of all positions
+
 import jwt from 'jsonwebtoken';
-import stopLossMonitor from '../../../lib/sandbox-stop-loss-monitor';
+import connectDB from '../../../lib/database';
+import { verifyToken } from '../../../lib/auth-utils';
+
+// Import CommonJS modules
+const stopLossMonitor = require('../../../lib/sandbox-stop-loss-monitor');
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    return res.status(405).json({ 
+      success: false, 
+      error: 'Method not allowed' 
+    });
   }
 
   try {
-    // Simple auth check
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'Unauthorized' });
+    // Verify user is authenticated
+    const userId = await verifyToken(req);
+    if (!userId) {
+      return res.status(401).json({ 
+        success: false, 
+        error: 'Unauthorized' 
+      });
     }
+
+    await connectDB();
+
+    // Check if monitor is running
+    const status = stopLossMonitor.getStatus();
+    if (!status.isRunning) {
+      // Start the monitor if it's not running
+      console.log('[Force Check] Monitor not running, starting it...');
+      await stopLossMonitor.start();
+      
+      // Wait a moment for it to initialize
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+
+    // Force an immediate check
+    console.log('[Force Check] Triggering immediate position check...');
+    const startTime = Date.now();
     
-    const token = authHeader.split(' ')[1];
-    jwt.verify(token, process.env.JWT_SECRET);
-    
-    // Force check all positions
-    await stopLossMonitor.checkAllOpenTrades();
-    
-    return res.status(200).json({ 
-      success: true, 
-      message: 'Position check completed',
-      monitorStatus: stopLossMonitor.getStatus()
-    });
-    
+    try {
+      await stopLossMonitor.checkAllOpenTrades();
+      const duration = Date.now() - startTime;
+      
+      return res.status(200).json({
+        success: true,
+        message: 'Position check completed successfully',
+        duration: `${duration}ms`,
+        monitorStatus: stopLossMonitor.getStatus()
+      });
+    } catch (checkError) {
+      console.error('[Force Check] Error during position check:', checkError);
+      return res.status(500).json({
+        success: false,
+        error: 'Position check failed',
+        details: checkError.message
+      });
+    }
+
   } catch (error) {
-    console.error('Error in force-check-positions:', error);
+    console.error('[Force Check API] Error:', error);
     return res.status(500).json({ 
-      error: 'Failed to check positions', 
-      details: error.message 
+      success: false, 
+      error: 'Failed to force check positions',
+      details: error.message
     });
   }
 }
