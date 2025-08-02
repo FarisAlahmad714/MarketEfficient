@@ -3,7 +3,7 @@
 
 import jwt from 'jsonwebtoken';
 import connectDB from '../../../lib/database';
-import { verifyToken } from '../../../lib/auth-utils';
+import { verifyToken } from '../../../middleware/auth';
 
 // Import CommonJS modules
 const stopLossMonitor = require('../../../lib/sandbox-stop-loss-monitor');
