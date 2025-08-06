@@ -188,7 +188,16 @@ const PortfolioOverview = ({ portfolioData, onRefresh }) => {
           >
             {reloadingAssets ? '⏳ Loading...' : '🔄 Refresh'}
           </button>
-          {/* Grant Admin and Reset buttons removed */}
+          {portfolioData.isAdmin && (
+            <button 
+              className="admin-reset-button" 
+              onClick={handleAdminReset}
+              disabled={resetting}
+              title="Admin Only: Reset portfolio to 10,000 SENSES"
+            >
+              {resetting ? '⏳ Resetting...' : '🔄 Admin Reset'}
+            </button>
+          )}
         </div>
         <div className="reset-info">
           📅 Next Reset: {new Date(portfolioData.reset?.nextResetDate).toLocaleDateString()}

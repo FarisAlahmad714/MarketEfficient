@@ -1,8 +1,9 @@
 import React, { useContext, useState, useEffect } from 'react';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, BookOpen, Brain, BarChart2, Zap, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
 import { ThemeContext } from '../contexts/ThemeContext';
 import { motion } from 'framer-motion';
+import VideoFeatureCard from '../components/VideoFeatureCard';
 
 const LearnMorePage = () => {
   const { darkMode } = useContext(ThemeContext);
@@ -147,44 +148,185 @@ const LearnMorePage = () => {
   ];
 
   return (
-    <div style={{
-      maxWidth: '1200px',
-      margin: '0 auto',
-      padding: '0 20px 60px',
-      fontFamily: "'Inter', -apple-system, sans-serif",
-      background: darkMode ? '#0A0A0A' : '#FFFFFF',
-      minHeight: '100vh',
-    }}>
-      {/* Header Section */}
-      <section style={{
-        padding: windowWidth > 768 ? '80px 0 60px' : '60px 0 40px',
+    <>
+      <div className={`learn-page ${darkMode ? 'dark' : 'light'}`}>
+        <div className="learn-hero">
+          {/* Header background inspired by footer's skewed design */}
+          <div className="hero-background">
+            {/* Skewed background section like footer but inverted */}
+            <div className="skewed-overlay"></div>
+            
+            {/* Beautiful grid pattern matching footer */}
+            {darkMode && (
+              <div className="grid-pattern"></div>
+            )}
+            
+            {/* Decorative radial gradients like footer */}
+            <div className="decorative-circle circle-1"></div>
+            <div className="decorative-circle circle-2"></div>
+            <div className="decorative-circle circle-3"></div>
+            
+            {/* Animated shimmer line */}
+            <div className="shimmer-divider">
+              <div className="shimmer-animation"></div>
+            </div>
+          </div>
+          
+          <div className="hero-content">
+            <h1 className="hero-title">
+              <span className="gradient-text">How ChartSense</span>
+              <span className="outline-text">Works</span>
+            </h1>
+            
+            <p className="hero-subtitle">
+              Five interconnected tools that <span className="highlight">transform how you learn</span>, practice, and master trading
+            </p>
+          </div>
+        </div>
+
+        <div style={{
+          maxWidth: '1200px',
+          margin: '0 auto',
+          padding: '0 20px 60px',
+          fontFamily: "'Inter', -apple-system, sans-serif",
+          background: darkMode ? '#0A0A0A' : '#FFFFFF',
+          minHeight: 'calc(100vh - 400px)',
+        }}>
+
+      {/* Video Feature Cards Section */}
+      <section style={{ 
+        padding: '60px 0',
         borderBottom: `1px solid ${darkMode ? '#1F1F1F' : '#F0F0F0'}`,
       }}>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-        >
-          <h1 style={{
-            fontSize: windowWidth > 768 ? '3.5rem' : '2.5rem',
-            fontWeight: 800,
-            color: darkMode ? '#FFFFFF' : '#000000',
-            lineHeight: 1.2,
-            marginBottom: '24px',
-            letterSpacing: '-0.03em',
-          }}>
-            How ChartSense Works
-          </h1>
-          <p style={{
-            fontSize: windowWidth > 768 ? '1.4rem' : '1.2rem',
-            color: darkMode ? '#888888' : '#666666',
-            lineHeight: 1.6,
+          transition={{ duration: 0.6, delay: 0.2 }}
+          style={{
+            textAlign: 'center',
             maxWidth: '800px',
+            margin: '0 auto',
+          }}
+        >
+          <h2 style={{
+            fontSize: windowWidth > 768 ? '3rem' : '2.5rem',
+            fontWeight: 800,
+            background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 50%, #06b6d4 100%)',
+            backgroundClip: 'text',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            marginBottom: '20px',
+            letterSpacing: '-0.02em',
+            lineHeight: '1.2',
           }}>
-            Five interconnected tools that transform how you learn, practice, and master trading. 
-            Each feature is designed to solve a specific problem traders face.
+            Featured Learning Tools
+          </h2>
+          <p style={{
+            fontSize: windowWidth > 768 ? '1.3rem' : '1.1rem',
+            color: darkMode ? '#B0B0B0' : '#666666',
+            marginBottom: '48px',
+            lineHeight: '1.6',
+            fontWeight: '400',
+          }}>
+            Interactive demonstrations of our core features
           </p>
         </motion.div>
+
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: windowWidth > 1024 ? 'repeat(3, 1fr)' : windowWidth > 768 ? 'repeat(2, 1fr)' : '1fr',
+          gap: '30px',
+        }}>
+          <VideoFeatureCard
+            darkMode={darkMode}
+            icon={BookOpen}
+            title="Study Hub"
+            description="Master trading fundamentals with our structured curriculum and progress tracking."
+            link="/study"
+            linkText="Start Learning"
+            color="#8B5CF6"
+            accentColor="#A78BFA"
+            benefits={[
+              'Structured learning path',
+              'Progress tracking',
+              'Interactive exercises',
+              'Expert-curated content'
+            ]}
+            videoTitle="Trading Education Platform"
+          />
+
+          <VideoFeatureCard
+            darkMode={darkMode}
+            icon={Brain}
+            title="AI Bias Test"
+            description="Identify and overcome psychological trading biases with AI-powered analysis."
+            link="/bias-test"
+            linkText="Test Your Biases"
+            color="#22C55E"
+            accentColor="#4ADE80"
+            benefits={[
+              'Personalized bias profile',
+              'Behavioral pattern analysis',
+              'Custom improvement plans',
+              'Weekly progress reports'
+            ]}
+            videoTitle="Psychological Analysis Tool"
+          />
+
+          <VideoFeatureCard
+            darkMode={darkMode}
+            icon={BarChart2}
+            title="Chart Analysis Exam"
+            description="Practice chart reading with thousands of real market scenarios."
+            link="/charting-exam"
+            linkText="Practice Charts"
+            color="#3B82F6"
+            accentColor="#60A5FA"
+            benefits={[
+              'Real market scenarios',
+              'Instant feedback',
+              'Pattern recognition training',
+              'Multi-timeframe analysis'
+            ]}
+            videoTitle="Technical Analysis Practice"
+          />
+
+          <VideoFeatureCard
+            darkMode={darkMode}
+            icon={TrendingUp}
+            title="Analytics Hub"
+            description="Track your performance with comprehensive trading analytics."
+            link="/analytics"
+            linkText="View Analytics"
+            color="#EF4444"
+            accentColor="#F87171"
+            benefits={[
+              'Detailed performance metrics',
+              'Win/loss analysis',
+              'Pattern identification',
+              'Predictive modeling'
+            ]}
+            videoTitle="Performance Analytics Dashboard"
+          />
+
+          <VideoFeatureCard
+            darkMode={darkMode}
+            icon={Zap}
+            title="Trading Sandbox"
+            description="Risk-free trading environment with real market conditions."
+            link="/sandbox-trading"
+            linkText="Start Trading"
+            color="#F59E0B"
+            accentColor="#FCD34D"
+            benefits={[
+              'Real-time market data',
+              'Virtual currency trading',
+              'No financial risk',
+              'Performance tracking'
+            ]}
+            videoTitle="Simulated Trading Environment"
+          />
+        </div>
       </section>
 
       {/* Features Deep Dive */}
@@ -451,7 +593,191 @@ const LearnMorePage = () => {
           </Link>
         </motion.div>
       </section>
-    </div>
+        </div>
+      </div>
+
+      <style jsx>{`
+        .learn-page {
+          min-height: 100vh;
+          overflow-x: hidden;
+        }
+        
+        .learn-hero {
+          position: relative;
+          margin-top: -100px;
+          padding: 100px 20px 80px;
+          overflow: hidden;
+        }
+        
+        /* Hero background - inspired by footer's design */
+        .hero-background {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+        }
+        
+        /* Skewed overlay - inverted version of footer's skew */
+        .skewed-overlay {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 120%;
+          transform: skewY(-3deg);
+          transform-origin: top right;
+          background: ${darkMode ? '#1a1a1a' : '#f8f9fa'};
+          z-index: -1;
+        }
+        
+        /* Grid pattern - exact match to footer's grid */
+        .grid-pattern {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+          background-size: 20px 20px;
+          z-index: 0;
+        }
+        
+        /* Decorative circles - matching footer's radial gradients */
+        .decorative-circle {
+          position: absolute;
+          border-radius: 50%;
+          z-index: 0;
+        }
+        
+        .circle-1 {
+          width: 200px;
+          height: 200px;
+          background: radial-gradient(circle, rgba(76, 175, 80, 0.15) 0%, rgba(76, 175, 80, 0) 70%);
+          top: 20%;
+          right: 5%;
+        }
+        
+        .circle-2 {
+          width: 300px;
+          height: 300px;
+          background: radial-gradient(circle, rgba(33, 150, 243, 0.12) 0%, rgba(33, 150, 243, 0) 70%);
+          bottom: 10%;
+          left: 10%;
+        }
+        
+        .circle-3 {
+          width: 150px;
+          height: 150px;
+          background: radial-gradient(circle, rgba(156, 39, 176, 0.1) 0%, rgba(156, 39, 176, 0) 70%);
+          top: 60%;
+          left: 70%;
+        }
+        
+        /* Shimmer divider - matching footer's animated line */
+        .shimmer-divider {
+          position: absolute;
+          top: 70%;
+          left: 0;
+          right: 0;
+          height: 2px;
+          background: linear-gradient(90deg, transparent, rgba(33, 150, 243, 0.2) 50%, transparent 100%);
+          overflow: hidden;
+        }
+        
+        .shimmer-animation {
+          position: absolute;
+          width: 100px;
+          height: 100%;
+          background: linear-gradient(90deg, transparent, #2196F3, transparent);
+          animation: shimmer 3s infinite;
+          left: -100px;
+        }
+        
+        @keyframes shimmer {
+          0% { left: -100px; }
+          100% { left: 100%; }
+        }
+        
+        /* Hero content */
+        .hero-content {
+          position: relative;
+          z-index: 1;
+          max-width: 1200px;
+          margin: 0 auto;
+          text-align: center;
+        }
+        
+        /* Hero title */
+        .hero-title {
+          font-size: clamp(3rem, 8vw, 5rem);
+          font-weight: 900;
+          line-height: 1.1;
+          margin: 0 0 24px 0;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 0.2em;
+        }
+        
+        .gradient-text {
+          background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 50%, #06b6d4 100%);
+          background-clip: text;
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          display: inline-block;
+        }
+        
+        .outline-text {
+          color: transparent;
+          -webkit-text-stroke: 2px;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+        
+        .dark .outline-text {
+          -webkit-text-stroke-color: rgba(255, 255, 255, 0.2);
+        }
+        
+        .light .outline-text {
+          -webkit-text-stroke-color: rgba(0, 0, 0, 0.1);
+        }
+        
+        .hero-subtitle {
+          font-size: clamp(1rem, 2vw, 1.25rem);
+          line-height: 1.6;
+          margin: 0 auto 40px;
+          max-width: 600px;
+        }
+        
+        .dark .hero-subtitle {
+          color: rgba(255, 255, 255, 0.7);
+        }
+        
+        .light .hero-subtitle {
+          color: rgba(0, 0, 0, 0.7);
+        }
+        
+        .highlight {
+          font-weight: 700;
+          background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+          background-clip: text;
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+        }
+        
+        @media (max-width: 768px) {
+          .learn-hero {
+            padding: 80px 16px 60px;
+            margin-top: -80px;
+          }
+          
+          .hero-title {
+            font-size: clamp(2.5rem, 10vw, 4rem);
+          }
+        }
+      `}</style>
+    </>
   );
 };
 

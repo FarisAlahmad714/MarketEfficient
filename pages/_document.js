@@ -22,7 +22,7 @@ export default function Document() {
         <meta property="og:image:width" content="1024" />
         <meta property="og:image:height" content="1024" />
         <meta property="og:image:alt" content="ChartSense - Master Trading Skills" />
-        <meta property="og:site_name" content="ChartSense" />
+        <meta property="og:site_name" content="ChartSense by Mithril Labs LLC" />
         
         {/* Twitter Card - MUST be in server HTML */}
         <meta name="twitter:card" content="summary_large_image" />

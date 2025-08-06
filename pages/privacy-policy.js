@@ -82,7 +82,7 @@ const PrivacyPolicy = () => {
         <div style={sectionStyle}>
           <h2 style={headingStyle}>1. Introduction</h2>
           <p style={textStyle}>
-            Welcome to ChartSense ("we," "our," or "us"). We are committed to protecting your privacy and ensuring the security of your personal information. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our trading psychology testing platform and related services.
+            Welcome to ChartSense ("we," "our," or "us"), operated by <strong>Mithril Labs LLC</strong>. We are committed to protecting your privacy and ensuring the security of your personal information. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our trading psychology testing platform and related services.
           </p>
           <p style={textStyle}>
             By using ChartSense, you consent to the data practices described in this policy. If you do not agree with the practices described in this Privacy Policy, please do not use our services.
@@ -239,7 +239,7 @@ const PrivacyPolicy = () => {
         <div style={sectionStyle}>
           <h2 style={headingStyle}>8. International Data Transfers</h2>
           <p style={textStyle}>
-            ChartSense is based in California, USA. If you are accessing our services from outside the United States, please be aware that your information may be transferred to, stored, and processed in the United States and other countries where our service providers operate.
+            ChartSense is operated by Mithril Labs LLC and based in California, USA. If you are accessing our services from outside the United States, please be aware that your information may be transferred to, stored, and processed in the United States and other countries where our service providers operate.
           </p>
           <p style={textStyle}>
             We ensure that all international data transfers comply with applicable data protection laws, including GDPR for European users and CCPA for California residents.
@@ -288,8 +288,10 @@ const PrivacyPolicy = () => {
             If you have any questions, concerns, or requests regarding this Privacy Policy or our data practices, please contact us:
           </p>
           <ul style={listStyle}>
+            <li>Company: Mithril Labs LLC</li>
             <li>Email: support@chartsense.trade</li>
-            <li>Address: ChartSense Privacy Team, California, USA</li>
+            <li>Privacy Inquiries: privacy@chartsense.trade</li>
+            <li>Address: Mithril Labs LLC Privacy Team, California, USA</li>
           </ul>
           <p style={textStyle}>
             For GDPR-related inquiries, please use the subject line "GDPR Request" in your email.

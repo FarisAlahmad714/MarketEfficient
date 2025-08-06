@@ -343,72 +343,33 @@ const ChartExamIntro = () => {
         flexDirection: 'column',
         alignItems: isMobile ? 'center' : 'flex-start',
         gap: '15px',
-        paddingLeft: isMobile ? '0' : '80px',
+        paddingLeft: '0',
         position: 'relative'
       }}>
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: isMobile ? '15px' : '25px',
-          flexWrap: 'wrap',
-          justifyContent: isMobile ? 'center' : 'flex-start',
-          position: 'relative'
+        <h1 style={{ 
+          fontSize: isMobile ? '1.8rem' : '3.2rem',
+          fontWeight: '900',
+          margin: 0,
+          letterSpacing: '-1px',
+          lineHeight: '1.1',
+          transform: isMobile ? 'none' : 'skewX(-5deg)',
+          color: darkMode ? '#e0e0e0' : '#333'
         }}>
-          <div style={{
-            position: isMobile ? 'relative' : 'absolute',
-            left: isMobile ? 'auto' : '-70px',
-            top: isMobile ? 'auto' : '50%',
-            transform: isMobile ? 'none' : 'translateY(-50%)',
-            display: 'inline-block'
-          }}>
-            <img 
-              src="/images/logo.webp" 
-              alt="ChartSense Logo" 
-              style={{
-                width: isMobile ? '50px' : '80px',
-                height: isMobile ? '50px' : '80px',
-                filter: darkMode ? 'drop-shadow(0 0 20px rgba(0, 196, 255, 0.5))' : 'drop-shadow(0 0 20px rgba(79, 70, 229, 0.3))',
-                animation: 'pulse 2s ease-in-out infinite',
-                transform: isMobile ? 'none' : 'rotate(-10deg)'
-              }}
-            />
-          </div>
-          <h1 style={{ 
-            color: darkMode ? '#e0e0e0' : '#333',
-            fontSize: isMobile ? '1.8rem' : '3.2rem',
-            fontWeight: '900',
-            margin: 0,
-            background: darkMode 
-              ? 'linear-gradient(135deg, #00c4ff 0%, #0099ff 50%, #00c4ff 100%)'
-              : 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #4f46e5 100%)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            backgroundClip: 'text',
-            textShadow: darkMode ? '0 0 30px rgba(0, 196, 255, 0.3)' : '0 0 30px rgba(79, 70, 229, 0.2)',
-            letterSpacing: '-1px',
-            lineHeight: '1.1',
-            transform: isMobile ? 'none' : 'skewX(-5deg)'
-          }}>
-            Technical Analysis<br />
-            <span style={{ 
-              fontSize: isMobile ? '1.6rem' : '2.6rem',
-              letterSpacing: '2px',
-              fontWeight: '700'
-            }}>
-              CHARTING EXAM™
-            </span>
-          </h1>
-        </div>
+          <span className="gradient-text-main">Technical Analysis</span><br />
+          <span className="gradient-text-sub">
+            CHARTING EXAM™
+          </span>
+        </h1>
         <p style={{
           fontSize: isMobile ? '0.9rem' : '1.2rem',
-          color: darkMode ? '#b0b0b0' : '#666',
           margin: 0,
           fontStyle: 'italic',
-          opacity: 0.8,
-          paddingLeft: isMobile ? '0' : '105px',
-          transform: isMobile ? 'none' : 'translateX(20px)'
+          opacity: 0.9,
+          paddingLeft: '0',
+          transform: 'none',
+          color: darkMode ? '#b0b0b0' : '#666'
         }}>
-          Master the art of chart analysis with ChartSense
+          <span className="gradient-text-subtitle">Master the art of chart analysis with ChartSense</span>
         </p>
         
         {!isMobile && (
@@ -432,6 +393,81 @@ const ChartExamIntro = () => {
           0% { transform: scale(1); }
           50% { transform: scale(1.05); }
           100% { transform: scale(1); }
+        }
+        
+        @keyframes gradientShift {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+        
+        .gradient-text-main {
+          background: ${darkMode 
+            ? 'linear-gradient(135deg, #00c4ff 0%, #7c3aed 50%, #f59e0b 100%)'
+            : 'linear-gradient(135deg, #4f46e5 0%, #06b6d4 50%, #8b5cf6 100%)'};
+          background-clip: text;
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-size: 200% 200%;
+          animation: gradientShift 4s ease-in-out infinite;
+          display: inline-block;
+        }
+        
+        .gradient-text-sub {
+          background: ${darkMode 
+            ? 'linear-gradient(90deg, #f59e0b 0%, #ef4444 50%, #00c4ff 100%)'
+            : 'linear-gradient(90deg, #dc2626 0%, #7c3aed 50%, #059669 100%)'};
+          background-clip: text;
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-size: 200% 200%;
+          animation: gradientShift 3s ease-in-out infinite reverse;
+          display: inline-block;
+          fontSize: ${isMobile ? '1.6rem' : '2.6rem'};
+          letterSpacing: '2px';
+          fontWeight: '700';
+        }
+        
+        .gradient-text-subtitle {
+          background: ${darkMode 
+            ? 'linear-gradient(45deg, #94a3b8 0%, #64748b 100%)'
+            : 'linear-gradient(45deg, #64748b 0%, #475569 100%)'};
+          background-clip: text;
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          display: inline-block;
+        }
+        
+        .gradient-text-section {
+          background: ${darkMode 
+            ? 'linear-gradient(90deg, #60a5fa 0%, #a78bfa 100%)'
+            : 'linear-gradient(90deg, #4f46e5 0%, #7c3aed 100%)'};
+          background-clip: text;
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          display: inline-block;
+        }
+        
+        .gradient-text-practice {
+          background: ${darkMode 
+            ? 'linear-gradient(135deg, #10b981 0%, #06b6d4 50%, #8b5cf6 100%)'
+            : 'linear-gradient(135deg, #059669 0%, #0891b2 50%, #7c3aed 100%)'};
+          background-clip: text;
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-size: 200% 200%;
+          animation: gradientShift 3s ease-in-out infinite;
+          display: inline-block;
+        }
+        
+        .gradient-text-features {
+          background: ${darkMode 
+            ? 'linear-gradient(90deg, #f59e0b 0%, #ef4444 100%)'
+            : 'linear-gradient(90deg, #dc2626 0%, #ea580c 100%)'};
+          background-clip: text;
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          display: inline-block;
         }
       `}</style>
 
@@ -497,10 +533,11 @@ const ChartExamIntro = () => {
       }}>
         <h2 style={{ 
           marginBottom: isMobile ? '15px' : '20px',
-          color: darkMode ? '#e0e0e0' : '#333',
-          fontSize: isMobile ? '1.3rem' : '1.5rem'
+          fontSize: isMobile ? '1.3rem' : '1.5rem',
+          fontWeight: '700',
+          color: darkMode ? '#e0e0e0' : '#333'
         }}>
-          Test Your Technical Analysis Skills
+          <span className="gradient-text-section">Test Your Technical Analysis Skills</span>
         </h2>
         <p style={{ 
           marginBottom: isMobile ? '15px' : '20px',
@@ -519,11 +556,12 @@ const ChartExamIntro = () => {
           {['Interactive Charts', 'Drawing Tools', 'Real-time Feedback'].map((feature, index) => (
             <div key={index} style={{
               padding: isMobile ? '6px 12px' : '8px 16px',
-              backgroundColor: darkMode ? '#0d47a1' : '#e3f2fd',
-              color: darkMode ? '#90caf9' : '#0d47a1',
+              backgroundColor: darkMode ? 'rgba(33, 150, 243, 0.15)' : 'rgba(33, 150, 243, 0.1)',
+              color: darkMode ? '#60a5fa' : '#2196F3',
               borderRadius: '20px',
               fontSize: isMobile ? '0.8rem' : '0.9rem',
-              display: 'inline-block'
+              display: 'inline-block',
+              border: `1px solid ${darkMode ? 'rgba(33, 150, 243, 0.3)' : 'rgba(33, 150, 243, 0.2)'}`
             }}>
               <span style={{ marginRight: '6px' }}>•</span>
               {feature}
@@ -1406,9 +1444,10 @@ const ChartExamIntro = () => {
           <h2 style={{
             fontSize: '1.8rem',
             marginBottom: '20px',
+            fontWeight: '800',
             color: darkMode ? '#e0e0e0' : '#333'
           }}>
-            Practice Mode
+            <span className="gradient-text-practice">Practice Mode</span>
           </h2>
           <p style={{
             fontSize: '1.1rem',
@@ -1457,9 +1496,10 @@ const ChartExamIntro = () => {
             <h3 style={{
               fontSize: '1.3rem',
               marginBottom: '15px',
+              fontWeight: '700',
               color: darkMode ? '#e0e0e0' : '#333'
             }}>
-              Practice Mode Features:
+              <span className="gradient-text-features">Practice Mode Features:</span>
             </h3>
             <ul style={{
               textAlign: 'left',

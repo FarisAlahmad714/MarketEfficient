@@ -241,7 +241,7 @@ const Footer = () => {
             color: darkMode ? '#b0b0b0' : '#666',
             fontSize: '15px',
           }}>
-            © 2025 ChartSense. All rights reserved.
+            © 2025 Mithril Labs LLC. All rights reserved.
           </p>
           
           <div style={{
@@ -249,6 +249,20 @@ const Footer = () => {
             alignItems: 'center',
             gap: '20px',
           }}>
+            <a href="/learn-more" style={{
+              color: darkMode ? '#b0b0b0' : '#666',
+              textDecoration: 'none',
+              fontSize: '14px',
+              transition: 'color 0.2s ease',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = '#2196F3';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = darkMode ? '#b0b0b0' : '#666';
+            }}>
+              Learn More
+            </a>
             <a href="/privacy-policy" style={{
               color: darkMode ? '#b0b0b0' : '#666',
               textDecoration: 'none',

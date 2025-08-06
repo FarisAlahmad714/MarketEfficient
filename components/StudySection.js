@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { ThemeContext } from '../contexts/ThemeContext';
 import { getTopicsByDifficulty, getDifficultyMetadata, isTopicAccessible } from '../lib/studyContent';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
@@ -29,6 +30,7 @@ import {
 
 const StudySection = () => {
   const { user } = useAuth();
+  const { darkMode } = useContext(ThemeContext);
   const router = useRouter();
   const [userSubscription, setUserSubscription] = useState('free');
   const [activeTab, setActiveTab] = useState('all');
@@ -354,86 +356,105 @@ const StudySection = () => {
 
   return (
     <div className="study-section-container">
-      <div className="study-header">
-        <h1>Trading <span className="highlight">Academy</span></h1>
-        <p>Master professional trading with our comprehensive educational platform</p>
-        <div className="progress-overview">
-          <div className="user-level">
-            <GraduationCap size={16} style={{marginRight: '6px'}} />
-            <span>Your Level: {getUserLevelText()}</span>
-          </div>
-          <div className="total-progress">
-            <BarChart3 size={16} style={{marginRight: '6px'}} />
-            <span>
-              {Object.values(topicsByDifficulty).reduce((acc, topics) => 
-                acc + topics.filter(topic => isTopicAccessible(topic.level, userSubscription, user?.isAdmin)).length, 0
-              )} topics available
-            </span>
-          </div>
+      <div className="study-hero">
+        {/* Header background inspired by dashboard's skewed design */}
+        <div className="hero-background">
+          {/* Skewed background section like dashboard */}
+          <div className="skewed-overlay"></div>
+          
+          {/* Beautiful grid pattern matching dashboard */}
+          {darkMode && (
+            <div className="grid-pattern"></div>
+          )}
+          
+          {/* Decorative radial gradients like dashboard */}
+          <div className="decorative-circle circle-1"></div>
+          <div className="decorative-circle circle-2"></div>
         </div>
-      </div>
-
-      <div className="study-navigation">
-        <div className="nav-tabs">
-          <button 
-            className={`nav-tab ${activeTab === 'all' ? 'active' : ''}`}
-            onClick={() => setActiveTab('all')}
-          >
-            <Grid3x3 size={16} style={{marginRight: '6px'}} />
-            All Courses
-          </button>
-          {Object.entries(difficultyMetadata).map(([difficulty, metadata]) => (
-            <button 
-              key={difficulty}
-              className={`nav-tab ${activeTab === difficulty ? 'active' : ''}`}
-              onClick={() => setActiveTab(difficulty)}
-              style={{ '--tab-color': metadata.color }}
-            >
-              {(() => {
-                const IconComponent = getIconComponent(metadata.icon);
-                return <IconComponent size={16} style={{marginRight: '6px'}} />;
-              })()}
-              {metadata.title}
-              <span className="tab-count">{topicsByDifficulty[difficulty]?.length || 0}</span>
-            </button>
-          ))}
+        
+        <div className="study-header">
+          <h1>Trading <span className="highlight">Academy</span></h1>
+          <p>Master professional trading with our comprehensive educational platform</p>
+          <div className="progress-overview">
+            <div className="user-level">
+              <GraduationCap size={16} style={{marginRight: '6px'}} />
+              <span>Your Level: {getUserLevelText()}</span>
+            </div>
+            <div className="total-progress">
+              <BarChart3 size={16} style={{marginRight: '6px'}} />
+              <span>
+                {Object.values(topicsByDifficulty).reduce((acc, topics) => 
+                  acc + topics.filter(topic => isTopicAccessible(topic.level, userSubscription, user?.isAdmin)).length, 0
+                )} topics available
+              </span>
+            </div>
+          </div>
         </div>
       </div>
 
       <div className="study-content">
-        {activeTab === 'all' ? renderAllTopics() : renderDifficultySection(activeTab)}
-      </div>
+        <div className="study-navigation">
+          <div className="nav-tabs">
+            <button 
+              className={`nav-tab ${activeTab === 'all' ? 'active' : ''}`}
+              onClick={() => setActiveTab('all')}
+            >
+              <Grid3x3 size={16} style={{marginRight: '6px'}} />
+              All Courses
+            </button>
+            {Object.entries(difficultyMetadata).map(([difficulty, metadata]) => (
+              <button 
+                key={difficulty}
+                className={`nav-tab ${activeTab === difficulty ? 'active' : ''}`}
+                onClick={() => setActiveTab(difficulty)}
+                style={{ '--tab-color': metadata.color }}
+              >
+                {(() => {
+                  const IconComponent = getIconComponent(metadata.icon);
+                  return <IconComponent size={16} style={{marginRight: '6px'}} />;
+                })()}
+                {metadata.title}
+                <span className="tab-count">{topicsByDifficulty[difficulty]?.length || 0}</span>
+              </button>
+            ))}
+          </div>
+        </div>
 
-      <div className="study-benefits">
-        <h2>Why Choose ChartSense Academy?</h2>
-        <div className="benefits-grid">
-          <div className="benefit-card">
-            <div className="benefit-icon">
-              <GraduationCap size={28} />
+        <div className="topics-content">
+          {activeTab === 'all' ? renderAllTopics() : renderDifficultySection(activeTab)}
+        </div>
+
+        <div className="study-benefits">
+          <h2>Why Choose ChartSense Academy?</h2>
+          <div className="benefits-grid">
+            <div className="benefit-card">
+              <div className="benefit-icon">
+                <GraduationCap size={28} />
+              </div>
+              <h3>Structured Learning Path</h3>
+              <p>From beginner fundamentals to advanced institutional strategies</p>
             </div>
-            <h3>Structured Learning Path</h3>
-            <p>From beginner fundamentals to advanced institutional strategies</p>
-          </div>
-          <div className="benefit-card">
-            <div className="benefit-icon">
-              <ChartLine size={28} />
+            <div className="benefit-card">
+              <div className="benefit-icon">
+                <ChartLine size={28} />
+              </div>
+              <h3>Real Market Analysis</h3>
+              <p>Learn with actual trading charts and professional examples</p>
             </div>
-            <h3>Real Market Analysis</h3>
-            <p>Learn with actual trading charts and professional examples</p>
-          </div>
-          <div className="benefit-card">
-            <div className="benefit-icon">
-              <Brain size={28} />
+            <div className="benefit-card">
+              <div className="benefit-icon">
+                <Brain size={28} />
+              </div>
+              <h3>Interactive Quizzes</h3>
+              <p>Test your knowledge and reinforce learning with instant feedback</p>
             </div>
-            <h3>Interactive Quizzes</h3>
-            <p>Test your knowledge and reinforce learning with instant feedback</p>
-          </div>
-          <div className="benefit-card">
-            <div className="benefit-icon">
-              <Users size={28} />
+            <div className="benefit-card">
+              <div className="benefit-icon">
+                <Users size={28} />
+              </div>
+              <h3>Professional Techniques</h3>
+              <p>Master institutional trading methods used by professional traders</p>
             </div>
-            <h3>Professional Techniques</h3>
-            <p>Master institutional trading methods used by professional traders</p>
           </div>
         </div>
       </div>
@@ -442,7 +463,71 @@ const StudySection = () => {
         .study-section-container {
           max-width: 1400px;
           margin: 0 auto;
-          padding: 40px 20px;
+        }
+
+        /* Hero section with matching header design */
+        .study-hero {
+          position: relative;
+          margin-top: -40px;
+          padding: 120px 20px 80px;
+          overflow: hidden;
+          min-height: 400px;
+        }
+
+        .hero-background {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+        }
+
+        /* Skewed overlay - matching dashboard design */
+        .skewed-overlay {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 120%;
+          transform: skewY(-3deg);
+          transform-origin: top right;
+          background: ${darkMode ? '#1a1a1a' : '#f8f9fa'};
+          z-index: -1;
+        }
+
+        /* Grid pattern - exact match to dashboard */
+        .grid-pattern {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px), 
+                           linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+          background-size: 20px 20px;
+        }
+
+        /* Decorative circles - matching dashboard */
+        .decorative-circle {
+          position: absolute;
+          border-radius: 50%;
+          pointer-events: none;
+        }
+
+        .circle-1 {
+          top: 20%;
+          left: 5%;
+          width: 200px;
+          height: 200px;
+          background: radial-gradient(circle, rgba(76, 175, 80, 0.1) 0%, rgba(76, 175, 80, 0) 70%);
+        }
+
+        .circle-2 {
+          bottom: 10%;
+          right: 10%;
+          width: 300px;
+          height: 300px;
+          background: radial-gradient(circle, rgba(33, 150, 243, 0.1) 0%, rgba(33, 150, 243, 0) 70%);
         }
 
         /* Lucide React icon styling */
@@ -453,7 +538,14 @@ const StudySection = () => {
 
         .study-header {
           text-align: center;
-          margin-bottom: 50px;
+          position: relative;
+          z-index: 1;
+          max-width: 1200px;
+          margin: 0 auto;
+        }
+
+        .study-content {
+          padding: 0 20px 40px;
         }
 
         .study-header h1 {

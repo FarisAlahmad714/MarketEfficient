@@ -195,26 +195,50 @@ if (data && data.summary && data.summary.testsByType) {
   
   return (
     <TrackedPage>
-    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px 20px' }}>
-      <header style={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center',
-        marginBottom: '30px'
-      }}>
-        <h1 style={{ 
-          color: darkMode ? '#e0e0e0' : '#333',
-          display: 'flex',
-          alignItems: 'center'
-        }}>
-          Your Dashboard
-          <InfoTooltip 
-            text="This dashboard provides an overview of your trading analysis performance, helping you track your progress and identify areas for improvement." 
-            darkMode={darkMode}
-          />
-        </h1>
-        
-        <div style={{ display: 'flex', gap: '10px' }}>
+    <>
+      <div className={`dashboard-page ${darkMode ? 'dark' : 'light'}`}>
+        <div className="dashboard-hero">
+          {/* Header background inspired by footer's skewed design */}
+          <div className="hero-background">
+            {/* Skewed background section like footer but inverted */}
+            <div className="skewed-overlay"></div>
+            
+            {/* Beautiful grid pattern matching footer */}
+            {darkMode && (
+              <div className="grid-pattern"></div>
+            )}
+            
+            {/* Decorative radial gradients like footer */}
+            <div className="decorative-circle circle-1"></div>
+            <div className="decorative-circle circle-2"></div>
+            <div className="decorative-circle circle-3"></div>
+            
+            {/* Animated shimmer line */}
+            <div className="shimmer-divider">
+              <div className="shimmer-animation"></div>
+            </div>
+          </div>
+          
+          <div className="hero-content">
+            <h1 className="hero-title">
+              <span className="gradient-text">Your</span>
+              <span className="outline-text">Dashboard</span>
+            </h1>
+            
+            <p className="hero-subtitle">
+              Track your trading analysis performance and <span className="highlight">identify areas for improvement</span>
+            </p>
+          </div>
+        </div>
+
+        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px 20px' }}>
+          <header style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center',
+            marginBottom: '30px'
+          }}>
+            <div style={{ display: 'flex', gap: '10px' }}>
           <button 
             onClick={() => setPeriod('week')}
             style={{
@@ -257,8 +281,8 @@ if (data && data.summary && data.summary.testsByType) {
           >
             Year
           </button>
-        </div>
-      </header>
+            </div>
+          </header>
       
       {error && (
         <div style={{
@@ -876,7 +900,192 @@ if (data && data.summary && data.summary.testsByType) {
           </div>
         </>
       )}
-    </div>
+        </div>
+      </div>
+
+      <style jsx>{`
+        .dashboard-page {
+          min-height: calc(100vh - 140px);
+          overflow-x: hidden;
+        }
+        
+        .dashboard-hero {
+          position: relative;
+          margin-top: -100px;
+          padding: 100px 20px 80px;
+          overflow: hidden;
+        }
+        
+        /* Hero background - inspired by footer's design */
+        .hero-background {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+        }
+        
+        /* Skewed overlay - inverted version of footer's skew */
+        .skewed-overlay {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 120%;
+          transform: skewY(-3deg);
+          transform-origin: top right;
+          background: ${darkMode ? '#1a1a1a' : '#f8f9fa'};
+          z-index: -1;
+        }
+        
+        /* Grid pattern - exact match to footer's grid */
+        .grid-pattern {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+          background-size: 20px 20px;
+          z-index: 0;
+        }
+        
+        /* Decorative circles - matching footer's radial gradients */
+        .decorative-circle {
+          position: absolute;
+          border-radius: 50%;
+          z-index: 0;
+        }
+        
+        .circle-1 {
+          width: 200px;
+          height: 200px;
+          background: radial-gradient(circle, rgba(76, 175, 80, 0.1) 0%, rgba(76, 175, 80, 0) 70%);
+          top: 20%;
+          right: 5%;
+        }
+        
+        .circle-2 {
+          width: 300px;
+          height: 300px;
+          background: radial-gradient(circle, rgba(33, 150, 243, 0.1) 0%, rgba(33, 150, 243, 0) 70%);
+          bottom: 10%;
+          left: 10%;
+        }
+        
+        .circle-3 {
+          width: 150px;
+          height: 150px;
+          background: radial-gradient(circle, rgba(156, 39, 176, 0.08) 0%, rgba(156, 39, 176, 0) 70%);
+          top: 60%;
+          left: 70%;
+        }
+        
+        /* Shimmer divider - matching footer's animated line */
+        .shimmer-divider {
+          position: absolute;
+          top: 70%;
+          left: 0;
+          right: 0;
+          height: 2px;
+          background: linear-gradient(90deg, transparent, rgba(33, 150, 243, 0.2) 50%, transparent 100%);
+          overflow: hidden;
+        }
+        
+        .shimmer-animation {
+          position: absolute;
+          width: 100px;
+          height: 100%;
+          background: linear-gradient(90deg, transparent, #2196F3, transparent);
+          animation: shimmer 3s infinite;
+          left: -100px;
+        }
+        
+        @keyframes shimmer {
+          0% { left: -100px; }
+          100% { left: 100%; }
+        }
+        
+        /* Hero content */
+        .hero-content {
+          position: relative;
+          z-index: 1;
+          max-width: 1200px;
+          margin: 0 auto;
+          text-align: center;
+        }
+        
+        
+        /* Hero title */
+        .hero-title {
+          font-size: clamp(3rem, 8vw, 5rem);
+          font-weight: 900;
+          line-height: 1.1;
+          margin: 0 0 24px 0;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 0.2em;
+        }
+        
+        .gradient-text {
+          background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 50%, #06b6d4 100%);
+          background-clip: text;
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          display: inline-block;
+        }
+        
+        .outline-text {
+          color: transparent;
+          -webkit-text-stroke: 2px;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+        
+        .dark .outline-text {
+          -webkit-text-stroke-color: rgba(255, 255, 255, 0.2);
+        }
+        
+        .light .outline-text {
+          -webkit-text-stroke-color: rgba(0, 0, 0, 0.1);
+        }
+        
+        .hero-subtitle {
+          font-size: clamp(1rem, 2vw, 1.25rem);
+          line-height: 1.6;
+          margin: 0 auto 40px;
+          max-width: 600px;
+        }
+        
+        .dark .hero-subtitle {
+          color: rgba(255, 255, 255, 0.7);
+        }
+        
+        .light .hero-subtitle {
+          color: rgba(0, 0, 0, 0.7);
+        }
+        
+        .highlight {
+          font-weight: 700;
+          background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+          background-clip: text;
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+        }
+        
+        @media (max-width: 768px) {
+          .dashboard-hero {
+            padding: 80px 16px 60px;
+            margin-top: -80px;
+          }
+          
+          .hero-title {
+            font-size: clamp(2.5rem, 10vw, 4rem);
+          }
+        }
+      `}</style>
+    </>
     </TrackedPage>
   );
 };
