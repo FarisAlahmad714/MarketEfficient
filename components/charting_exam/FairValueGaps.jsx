@@ -237,7 +237,8 @@ const FairValueGaps = ({
   const [rectangles, setRectangles] = useState([]);
   const [panelOffset, setPanelOffset] = useState({ x: 0, y: 10 });
   const [isDragging, setIsDragging] = useState(false);
-  const [currentCoords, setCurrentCoords] = useState({ x: 0, y: 0 });
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [expectedFVGMarkers, setExpectedFVGMarkers] = useState([]);
   const [correctFVGs, setCorrectFVGs] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -1008,35 +1009,92 @@ const FairValueGaps = ({
     }
   };
 
-  // Enhanced dragging logic (copied from SwingAnalysis)
+  // Enhanced dragging logic with proper event handling (EXACT COPY FROM SWING ANALYSIS)
   const startPanelDragging = (e) => {
-    if (e.target.className.includes('panel-header')) {
-      setIsDragging(true);
-      setCurrentCoords({
-        x: e.clientX - panelOffset.x,
-        y: e.clientY - panelOffset.y
-      });
-    }
+    // Only allow dragging from the panel header
+    if (!e.target.className.includes('panel-header') || isMobile) return;
+    
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Record initial positions
+    const rect = panelRef.current.getBoundingClientRect();
+    setDragStart({
+      x: e.clientX,
+      y: e.clientY
+    });
+    setDragOffset({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top
+    });
+    
+    // Add global event listeners for smooth dragging
+    document.addEventListener('mousemove', handlePanelDrag);
+    document.addEventListener('mouseup', stopPanelDragging);
+    document.addEventListener('keydown', handleDragEscape);
+    
+    // Visual feedback
+    document.body.style.cursor = 'grabbing';
+    document.body.style.userSelect = 'none';
+    
+    setIsDragging(true);
   };
 
-  const dragPanel = (e) => {
-    if (isDragging && chartContainerRef.current && panelRef.current) {
-      e.preventDefault();
-      const x = e.clientX - currentCoords.x;
-      const y = e.clientY - currentCoords.y;
-      const container = chartContainerRef.current;
-      const panel = panelRef.current;
-      const maxX = container.offsetWidth - panel.offsetWidth;
-      const maxY = container.offsetHeight - panel.offsetHeight;
-      const newX = Math.max(0, Math.min(x, maxX));
-      const newY = Math.max(0, Math.min(y, maxY));
-      setPanelOffset({ x: newX, y: newY });
-    }
+  const handlePanelDrag = (e) => {
+    if (!isDragging || !chartContainerRef.current || !panelRef.current) return;
+    
+    e.preventDefault();
+    
+    // Calculate new position
+    const container = chartContainerRef.current;
+    const panel = panelRef.current;
+    const containerRect = container.getBoundingClientRect();
+    
+    let newX = e.clientX - containerRect.left - dragOffset.x;
+    let newY = e.clientY - containerRect.top - dragOffset.y;
+    
+    // Boundary constraints with padding
+    const padding = 10;
+    const maxX = container.offsetWidth - panel.offsetWidth - padding;
+    const maxY = container.offsetHeight - panel.offsetHeight - padding;
+    
+    newX = Math.max(padding, Math.min(newX, maxX));
+    newY = Math.max(padding, Math.min(newY, maxY));
+    
+    setPanelOffset({ x: newX, y: newY });
   };
 
   const stopPanelDragging = () => {
+    if (!isDragging) return;
+    
+    // Remove global event listeners
+    document.removeEventListener('mousemove', handlePanelDrag);
+    document.removeEventListener('mouseup', stopPanelDragging);
+    document.removeEventListener('keydown', handleDragEscape);
+    
+    // Reset visual feedback
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+    
     setIsDragging(false);
   };
+
+  const handleDragEscape = (e) => {
+    if (e.key === 'Escape') {
+      stopPanelDragging();
+    }
+  };
+
+  // Cleanup event listeners on unmount
+  useEffect(() => {
+    return () => {
+      document.removeEventListener('mousemove', handlePanelDrag);
+      document.removeEventListener('mouseup', stopPanelDragging);
+      document.removeEventListener('keydown', handleDragEscape);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+  }, []);
 
   // Remove individual FVG
   const removeFVG = (index) => {
@@ -1115,32 +1173,28 @@ const FairValueGaps = ({
     {
       id: 'draw-rectangle',
       label: 'Draw FVG Rectangle',
-      icon: 'fa-square',
       active: drawingMode === 'draw-rectangle'
-    },
-    {
-      id: 'undo',
-      label: 'Undo',
-      icon: 'fa-undo',
-      onClick: handleUndoDrawing,
-      disabled: rectangles.length === 0
     }
   ];
 
   const actionsConfig = [
     {
-      id: 'clear-all',
-      label: 'Clear All',
-      icon: 'fa-trash',
-      onClick: clearAllDrawings,
+      id: 'undo',
+      label: 'Undo',
+      onClick: handleUndoDrawing,
       disabled: rectangles.length === 0
     },
     {
       id: 'no-fvgs',
       label: 'No FVGs Found',
-      icon: 'fa-ban',
       onClick: markNoFvgsFound,
       disabled: isNoFVGsDisabled
+    },
+    {
+      id: 'clear-all',
+      label: 'Clear All',
+      onClick: clearAllDrawings,
+      disabled: rectangles.length === 0
     }
   ];
 
@@ -1161,18 +1215,12 @@ const FairValueGaps = ({
         onToolSelect={handleToolSelect}
         tools={toolsConfig}
         actions={actionsConfig}
-        onClearAll={clearAllDrawings}
         isDarkMode={isDarkMode}
-        noFvgsOption={true}
-        onNoFvgsFound={markNoFvgsFound}
       />
       
       <div style={{ position: 'relative' }}>
         <ChartWrapper 
           $isDarkMode={isDarkMode}
-          onMouseMove={dragPanel}
-          onMouseUp={stopPanelDragging}
-          onMouseLeave={stopPanelDragging}
         >
           <ChartContainer 
             ref={chartContainerRef} 
@@ -1200,10 +1248,15 @@ const FairValueGaps = ({
             left: `${panelOffset.x}px`, 
             top: `${panelOffset.y}px`
           }}
-          onMouseDown={startPanelDragging}
           $isDarkMode={isDarkMode}
         >
-          <PanelHeader className="panel-header" $isBullish={part === 1}>
+          <PanelHeader 
+            className="panel-header" 
+            $isBullish={part === 1}
+            onMouseDown={startPanelDragging}
+            style={{ cursor: isMobile ? 'default' : 'grab' }}
+          >
+            {!isMobile && <span style={{ marginRight: '8px', opacity: 0.7 }}>⋮⋮</span>}
             Fair Value Gaps
           </PanelHeader>
           <PanelContent>

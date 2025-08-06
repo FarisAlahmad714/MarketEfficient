@@ -12,7 +12,7 @@ const GlobalOverlayStyle = createGlobalStyle`
     width: 100vw;
     height: 100vh;
     background: rgba(0, 0, 0, 0.75);
-    z-index: 999998 !important;
+    z-index: 2147483645 !important;
     pointer-events: none;
   }
   
@@ -22,7 +22,7 @@ const GlobalOverlayStyle = createGlobalStyle`
     box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.8),
                 0 0 0 9999px rgba(0, 0, 0, 0.75);
     pointer-events: auto;
-    z-index: 999999 !important;
+    z-index: 2147483646 !important;
   }
 `;
 
@@ -39,21 +39,24 @@ const slideIn = keyframes`
 
 const TourModal = styled.div`
   position: fixed;
-  z-index: 999999 !important;
+  z-index: 2147483647 !important; /* Maximum z-index value */
   background: ${({ $darkMode }) => $darkMode ? '#1a1a1a' : '#ffffff'};
   border: 1px solid ${({ $darkMode }) => $darkMode ? '#333' : '#e0e0e0'};
   border-radius: 12px;
   padding: 24px;
   max-width: 400px;
   width: 90vw;
+  max-height: 60vh;
+  overflow-y: auto;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 
               0 10px 10px -5px rgba(0, 0, 0, 0.3);
   animation: ${slideIn} 0.3s ease-out;
   backdrop-filter: blur(16px);
   
   ${props => props.$position && `
-    top: ${props.$position.top}px;
-    left: ${props.$position.left}px;
+    top: ${props.$position.top}px !important;
+    left: ${props.$position.left}px !important;
+    transform: none !important;
   `}
 
   /* Accessibility improvements */
@@ -65,9 +68,12 @@ const TourModal = styled.div`
   @media (max-width: 768px) {
     max-width: 350px;
     padding: 20px;
+    position: fixed !important;
     top: 50% !important;
     left: 50% !important;
     transform: translate(-50%, -50%) !important;
+    max-height: 90vh;
+    overflow-y: auto;
   }
 `;
 
@@ -106,13 +112,13 @@ const TourDescription = styled.p`
 
 const MediaContainer = styled.div`
   width: 100%;
-  height: 200px;
+  height: ${({ $hasMedia }) => $hasMedia ? '200px' : '0'};
   background: ${({ $darkMode }) => $darkMode ? '#2a2a2a' : '#f5f5f5'};
   border-radius: 8px;
-  display: flex;
+  display: ${({ $hasMedia }) => $hasMedia ? 'flex' : 'none'};
   align-items: center;
   justify-content: center;
-  margin-bottom: 16px;
+  margin-bottom: ${({ $hasMedia }) => $hasMedia ? '16px' : '0'};
   overflow: hidden;
   position: relative;
 `;
@@ -267,14 +273,16 @@ export const GuidedTour = ({
         debugTour(currentStepData, element);
         
         if (element) {
-          // Scroll element into view if it's not visible
-          element.scrollIntoView({ 
-            behavior: 'smooth', 
-            block: 'center',
-            inline: 'nearest'
-          });
+          // Only scroll into view if NOT forcing center positioning
+          if (!currentStepData.forceCenter) {
+            element.scrollIntoView({ 
+              behavior: 'smooth', 
+              block: 'center',
+              inline: 'nearest'
+            });
+          }
           
-          // Small delay to allow scroll to complete, then position everything
+          // Small delay to allow scroll to complete (if any), then position everything
           setTimeout(() => {
             const rect = element.getBoundingClientRect();
             setHighlightedElement({
@@ -285,37 +293,82 @@ export const GuidedTour = ({
             });
             
             // Position modal relative to highlighted element
-            let modalTop = rect.bottom + window.scrollY + 16;
-            let modalLeft = Math.max(16, Math.min(
-              rect.left + window.scrollX, 
-              window.innerWidth - 416
-            ));
-            
-            // Ensure modal stays on screen - be more aggressive about keeping it visible
-            const modalHeight = 450; // Estimated modal height
+            const modalWidth = 400;
             const viewportHeight = window.innerHeight;
+            const viewportWidth = window.innerWidth;
+            const modalHeight = Math.min(450, viewportHeight * 0.6); // Max 60% of viewport height for better visibility
             const scrollTop = window.scrollY;
+            const padding = 20;
             
-            // If modal would go below viewport, position it above the target
-            if (modalTop + modalHeight > scrollTop + viewportHeight) {
-              modalTop = Math.max(scrollTop + 20, rect.top + window.scrollY - modalHeight - 16);
+            // Calculate available space in each direction
+            const spaceBelow = viewportHeight - (rect.bottom - scrollTop);
+            const spaceAbove = rect.top - scrollTop;
+            const spaceRight = viewportWidth - rect.right;
+            const spaceLeft = rect.left;
+            
+            // Check if we're on mobile
+            const isMobile = viewportWidth <= 768;
+            
+            let modalTop, modalLeft;
+            
+            // For mobile or forceCenter flag, always center the modal
+            if (isMobile || currentStepData.forceCenter) {
+              // Get CURRENT scroll position (not after scrollIntoView)
+              const currentScroll = window.scrollY;
+              
+              // More conservative centering - place modal in upper third of viewport
+              // This ensures it's always visible even on smaller viewports
+              modalTop = currentScroll + (viewportHeight * 0.2); // 20% from top
+              modalLeft = (viewportWidth / 2) - (modalWidth / 2);
+              
+              // Ensure it's within bounds
+              modalTop = Math.max(currentScroll + padding, modalTop);
+              modalLeft = Math.max(padding, modalLeft);
+              
+              // Debug logging
+              console.log('Force center modal position:', {
+                step: currentStep,
+                title: currentStepData.title,
+                modalTop,
+                modalLeft,
+                currentScroll,
+                viewportHeight,
+                modalHeight,
+                windowInnerHeight: window.innerHeight,
+                documentHeight: document.documentElement.clientHeight
+              });
+            } else {
+              // Determine vertical position for desktop
+              if (spaceBelow >= modalHeight + padding) {
+                // Enough space below
+                modalTop = rect.bottom + window.scrollY + 16;
+              } else if (spaceAbove >= modalHeight + padding) {
+                // Enough space above
+                modalTop = rect.top + window.scrollY - modalHeight - 16;
+              } else {
+                // Not enough space above or below, center in viewport
+                modalTop = scrollTop + (viewportHeight - modalHeight) / 2;
+              }
+              
+              // Determine horizontal position for desktop
+              if (rect.left + modalWidth + padding <= viewportWidth) {
+                // Align with left edge of target
+                modalLeft = rect.left + window.scrollX;
+              } else if (rect.right - modalWidth >= padding) {
+                // Align with right edge of target
+                modalLeft = rect.right + window.scrollX - modalWidth;
+              } else {
+                // Center horizontally
+                modalLeft = (viewportWidth - modalWidth) / 2;
+              }
+              
+              // Final boundary checks for desktop
+              modalTop = Math.max(scrollTop + padding, Math.min(modalTop, scrollTop + viewportHeight - modalHeight - padding));
+              modalLeft = Math.max(padding, Math.min(modalLeft, viewportWidth - modalWidth - padding));
             }
-            
-            // If modal would be above viewport, position it in viewport
-            if (modalTop < scrollTop + 20) {
-              modalTop = scrollTop + 20;
-            }
-            
-            // Ensure modal doesn't go off the right edge
-            if (modalLeft + 400 > window.innerWidth) {
-              modalLeft = window.innerWidth - 420;
-            }
-            
-            // Don't let it go off the left edge
-            modalLeft = Math.max(20, modalLeft);
             
             setModalPosition({ top: modalTop, left: modalLeft });
-          }, 500);
+          }, currentStepData.forceCenter ? 100 : 500); // Shorter delay for forceCenter
         } else {
           // Element not found, try again after a short delay (for dynamic content)
           setTimeout(() => {
@@ -418,7 +471,13 @@ export const GuidedTour = ({
             controls
             onPlay={() => trackMediaInteraction(tourId, currentStep, 'video', 'play')}
             onPause={() => trackMediaInteraction(tourId, currentStep, 'video', 'pause')}
-            onEnded={() => trackMediaInteraction(tourId, currentStep, 'video', 'complete')}
+            onEnded={() => {
+              trackMediaInteraction(tourId, currentStep, 'video', 'complete');
+              // Auto-advance to next step if this step has autoAdvance flag
+              if (currentStepData.autoAdvance && currentStep < steps.length - 1) {
+                handleNext();
+              }
+            }}
           >
             <source src={src} type="video/mp4" />
             Your browser does not support video playback.
@@ -506,7 +565,7 @@ export const GuidedTour = ({
             {currentStepData.description}
           </TourDescription>
           
-          <MediaContainer $darkMode={darkMode}>
+          <MediaContainer $darkMode={darkMode} $hasMedia={!!currentStepData.media}>
             {renderMedia()}
           </MediaContainer>
         </TourContent>

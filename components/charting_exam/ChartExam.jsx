@@ -181,8 +181,13 @@ const ChartExam = ({ examType, assetType, startTour, tourCompleted = false }) =>
 
   // Handle time expiry
   const handleTimeExpired = async () => {
-    if (isTransitioning) return; // Prevent multiple calls
+    if (isTransitioning) {
+      logger.log('Timer expired but already transitioning, ignoring');
+      return; // Prevent multiple calls
+    }
     
+    logger.log('Timer expired, starting transition to next chart');
+    setIsTransitioning(true); // CRITICAL: Set transitioning flag immediately
     setTimeRemaining(0);
     showAlert('Time expired! Moving to next chart...', 'Time Expired', 'warning');
     setTimeout(async () => {
@@ -193,8 +198,13 @@ const ChartExam = ({ examType, assetType, startTour, tourCompleted = false }) =>
 
   // Handle focus warning timeout (reset exam)
   const handleFocusTimeout = async () => {
-    if (isTransitioning) return; // Prevent multiple calls
+    if (isTransitioning) {
+      logger.log('Focus timeout but already transitioning, ignoring');
+      return; // Prevent multiple calls
+    }
     
+    logger.log('Focus timeout, starting transition to next chart');
+    setIsTransitioning(true); // CRITICAL: Set transitioning flag immediately
     setShowFocusWarning(false);
     setIsTimerPaused(false);
     showAlert('You were away too long! Exam progress has been reset. Moving to next chart...', 'Focus Lost', 'warning');
@@ -213,9 +223,11 @@ const ChartExam = ({ examType, assetType, startTour, tourCompleted = false }) =>
 
   // Fetch chart data with improved data processing
   const fetchChartData = async (forceRefresh = false) => {
-    // Prevent fetching new chart data during an active session unless explicitly forced
-    if ((sessionStarted && timeRemaining > 0 && !forceRefresh) || (loading && !forceRefresh)) {
-      logger.log('Prevented chart refresh during active session or loading');
+    // ENHANCED: Prevent fetching new chart data during transitions or active sessions
+    if ((sessionStarted && timeRemaining > 0 && !forceRefresh) || 
+        (loading && !forceRefresh) || 
+        (isTransitioning && !forceRefresh)) {
+      logger.log('Prevented chart refresh during active session, loading, or transitioning');
       return;
     }
     
@@ -442,9 +454,11 @@ const ChartExam = ({ examType, assetType, startTour, tourCompleted = false }) =>
   const continueExam = async () => {
     // Prevent multiple calls while already transitioning
     if (loading || isTransitioning) {
+      logger.log('continueExam blocked: loading =', loading, 'isTransitioning =', isTransitioning);
       return;
     }
     
+    logger.log('continueExam starting for chart', chartCount, 'part', part);
     setIsTransitioning(true);
     setShowResults(false);
     setResults(null);
@@ -490,12 +504,19 @@ const ChartExam = ({ examType, assetType, startTour, tourCompleted = false }) =>
       }
       
       // Move to the next chart
-      setChartCount(chartCount + 1);
-      setPart(1);
-      setTimeRemaining(null);
-      setSessionStarted(false);
-      await fetchChartData(true); // Force refresh for new chart
-      setIsTransitioning(false);
+      try {
+        setChartCount(chartCount + 1);
+        setPart(1);
+        setTimeRemaining(null);
+        setSessionStarted(false);
+        await fetchChartData(true); // Force refresh for new chart
+        logger.log('Successfully loaded next chart');
+      } catch (error) {
+        logger.error('Error loading next chart:', error);
+      } finally {
+        // Always clear transitioning flag, even if there's an error
+        setIsTransitioning(false);
+      }
     }
   };
   
@@ -522,9 +543,10 @@ const handleDrawingsUpdate = (newDrawings) => {
   // Restart session when part changes (for fibonacci/fvg exams) - but only after tour is completed
   useEffect(() => {
     if (!loading && chartData.length > 0 && !sessionStarted && timeRemaining === null && !isTransitioning && tourCompleted) {
+      logger.log('Starting chart session from useEffect');
       startChartSession();
     }
-  }, [part, loading, sessionStarted, isTransitioning, tourCompleted]);
+  }, [part, loading, sessionStarted, isTransitioning, tourCompleted, chartData.length, timeRemaining]);
   
   // Focus detection - pause timer when user switches tabs/browsers
   useEffect(() => {

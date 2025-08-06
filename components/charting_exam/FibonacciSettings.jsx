@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
-import { FaCog, FaCheck, FaPlus, FaTimes } from 'react-icons/fa';
 
 // Styled components
 const SettingsContainer = styled.div`
@@ -230,7 +229,6 @@ const FibonacciSettings = ({ isDarkMode, levels, onLevelsChange }) => {
     <SettingsContainer $isDarkMode={isDarkMode}>
       <SettingsHeader $isDarkMode={isDarkMode}>
         <SettingsTitle $isDarkMode={isDarkMode}>
-          <FaCog />
           Fibonacci Levels
         </SettingsTitle>
       </SettingsHeader>
@@ -243,7 +241,7 @@ const FibonacciSettings = ({ isDarkMode, levels, onLevelsChange }) => {
               $isDarkMode={isDarkMode}
               onClick={() => toggleLevel(index)}
             >
-              {level.visible && <FaCheck />}
+              {level.visible && '✓'}
             </Checkbox>
             <LevelLabel $isDarkMode={isDarkMode}>{level.label}</LevelLabel>
             <LevelValue 
@@ -265,7 +263,7 @@ const FibonacciSettings = ({ isDarkMode, levels, onLevelsChange }) => {
           onClick={() => setShowAddCustom(!showAddCustom)} 
           $isDarkMode={isDarkMode}
         >
-          <FaPlus size={12} /> Add Custom Level
+          + Add Custom Level
         </Button>
         <Button 
           onClick={resetToDefaults} 
@@ -301,7 +299,7 @@ const FibonacciSettings = ({ isDarkMode, levels, onLevelsChange }) => {
           onClick={() => setShowAddCustom(false)} 
           $isDarkMode={isDarkMode}
         >
-          <FaTimes />
+          ×
         </Button>
       </AddCustomForm>
     </SettingsContainer>

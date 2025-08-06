@@ -47,13 +47,6 @@ const Tool = styled.button`
   gap: 6px;
   transition: all 0.2s ease;
   
-  i {
-    font-size: 16px;
-    
-    @media (max-width: 768px) {
-      font-size: 14px;
-    }
-  }
   
   &:hover {
     background-color: ${props => props.$isSelected 
@@ -83,13 +76,6 @@ const ActionButton = styled.button`
   gap: 6px;
   transition: all 0.2s ease;
   
-  i {
-    font-size: 16px;
-    
-    @media (max-width: 768px) {
-      font-size: 14px;
-    }
-  }
   
   &:hover {
     background-color: ${props => props.$primary 
@@ -117,13 +103,6 @@ const ClearButton = styled.button`
   gap: 6px;
   transition: all 0.2s ease;
   
-  i {
-    font-size: 16px;
-    
-    @media (max-width: 768px) {
-      font-size: 14px;
-    }
-  }
   
   &:hover {
     background-color: ${props => props.$isDarkMode ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.1)'};
@@ -149,13 +128,6 @@ const NoFvgsButton = styled.button`
   gap: 6px;
   transition: all 0.2s ease;
   
-  i {
-    font-size: 16px;
-    
-    @media (max-width: 768px) {
-      font-size: 14px;
-    }
-  }
   
   &:hover {
     background-color: ${props => props.$isDarkMode ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.1)'};
@@ -194,7 +166,6 @@ const ToolPanel = ({
             $isDarkMode={isDarkMode}
             disabled={tool.disabled || false}
           >
-            <i className={`fas ${tool.icon}`}></i>
             {tool.label}
           </Tool>
         ))}
@@ -207,7 +178,6 @@ const ToolPanel = ({
             $isDarkMode={isDarkMode}
             disabled={action.disabled || false}
           >
-            <i className={`fas ${action.icon}`}></i>
             {action.label}
           </ActionButton>
         ))}
@@ -219,7 +189,6 @@ const ToolPanel = ({
             onClick={onNoFvgsFound}
             $isDarkMode={isDarkMode}
           >
-            <i className="fas fa-times-circle"></i>
             No FVGs Found
           </NoFvgsButton>
         )}
@@ -229,7 +198,6 @@ const ToolPanel = ({
             onClick={onClearAll}
             $isDarkMode={isDarkMode}
           >
-            <i className="fas fa-trash-alt"></i>
             Clear All
           </ClearButton>
         )}

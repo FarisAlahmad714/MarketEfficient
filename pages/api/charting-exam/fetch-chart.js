@@ -3,16 +3,12 @@ import { fetchAssetOHLCData } from '../../../lib/data-service';
 import fs from 'fs';
 import path from 'path';
 import logger from '../../../lib/logger'; // Adjust path to your logger utility
-// Define assets and timeframes to match Flask app
+// MATCH BIAS TEST ASSETS - keep original format but only bias test assets
 const CRYPTO_ASSETS = [
   { type: 'crypto', symbol: 'btc', apiId: 'bitcoin' },
   { type: 'crypto', symbol: 'eth', apiId: 'ethereum' },
   { type: 'crypto', symbol: 'bnb', apiId: 'binancecoin' },
-  { type: 'crypto', symbol: 'sol', apiId: 'solana' },
-  { type: 'crypto', symbol: 'cosmos', apiId: 'cosmos' },
-  { type: 'crypto', symbol: 'xrp', apiId: 'ripple' },
-  { type: 'crypto', symbol: 'ltc', apiId: 'litecoin' },
-  { type: 'crypto', symbol: 'link', apiId: 'chainlink' }
+  { type: 'crypto', symbol: 'sol', apiId: 'solana' }
 ];
 
 const STOCK_ASSETS = [
@@ -24,9 +20,9 @@ const STOCK_ASSETS = [
 
 const COMMODITY_ASSETS = [
   { type: 'commodity', symbol: 'xau', apiId: 'XAU/USD' },    // Gold Spot
-  { type: 'commodity', symbol: 'xag', apiId: 'XAG/USD' },    // Silver Spot  
-  { type: 'commodity', symbol: 'cl=f', apiId: 'CL=F' },      // Crude Oil WTI
-  { type: 'commodity', symbol: 'ng=f', apiId: 'NG=F' }       // Natural Gas
+  { type: 'commodity', symbol: 'silver', apiId: 'XAG/USD' }, // Silver Spot  
+  { type: 'commodity', symbol: 'crude', apiId: 'CL=F' },     // Crude Oil WTI
+  { type: 'commodity', symbol: 'gas', apiId: 'NG=F' }        // Natural Gas
 ];
 
 const ASSETS = [...CRYPTO_ASSETS, ...STOCK_ASSETS, ...COMMODITY_ASSETS];

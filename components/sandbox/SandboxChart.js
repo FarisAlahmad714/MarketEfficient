@@ -525,7 +525,7 @@ const SandboxChart = ({ selectedAsset, marketData, onAssetChange, portfolioData 
       </div>
 
       {/* Chart Container */}
-      <div className="chart-content">
+      <div className={`chart-content ${fullscreen ? 'fullscreen' : ''}`}>
         {loading && (
           <div className="chart-loading">
             <div className="loading-spinner"></div>
@@ -562,6 +562,9 @@ const SandboxChart = ({ selectedAsset, marketData, onAssetChange, portfolioData 
           border-radius: 16px;
           overflow: hidden;
           height: fit-content;
+          margin: 0;
+          padding: 0;
+          background: transparent;
         }
         
         .sandbox-chart.fullscreen {
@@ -1148,6 +1151,25 @@ const SandboxChart = ({ selectedAsset, marketData, onAssetChange, portfolioData 
         
         .chart-content {
           position: relative;
+          overflow: hidden;
+          margin: 0;
+          padding: 0;
+        }
+        
+        .chart-content:not(.fullscreen) {
+          height: 500px;
+          max-height: 500px;
+        }
+        
+        .chart-content.fullscreen {
+          height: calc(100vh - 200px);
+          max-height: calc(100vh - 200px);
+        }
+        
+        .chart-content .chart-canvas {
+          display: block;
+          margin: 0;
+          padding: 0;
         }
         
         .chart-loading {
@@ -1189,6 +1211,9 @@ const SandboxChart = ({ selectedAsset, marketData, onAssetChange, portfolioData 
         
         .chart-canvas {
           transition: opacity 0.3s ease;
+          margin: 0;
+          padding: 0;
+          display: block;
         }
         
         .dropdown-overlay {

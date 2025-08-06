@@ -420,13 +420,24 @@ const SandboxTradingInterface = ({ sandboxStatus, onPortfolioUpdate }) => {
 
         {/* Main Section - Chart and Trading */}
         <div className="main-section">
-          <div className="chart-container">
-            <SandboxChart
-              selectedAsset={selectedAsset}
-              marketData={marketData}
-              onAssetChange={handleAssetChange}
-              portfolioData={portfolioData}
-            />
+          <div className="chart-and-positions-container">
+            <div className="chart-container">
+              <SandboxChart
+                selectedAsset={selectedAsset}
+                marketData={marketData}
+                onAssetChange={handleAssetChange}
+                portfolioData={portfolioData}
+              />
+            </div>
+            
+            {/* Positions Panel integrated below chart */}
+            <div className="positions-container">
+              <PositionsPanel
+                portfolioData={portfolioData}
+                marketData={marketData}
+                onPositionUpdate={refreshPortfolio}
+              />
+            </div>
           </div>
           
           <div className="trading-panel-container">
@@ -438,15 +449,6 @@ const SandboxTradingInterface = ({ sandboxStatus, onPortfolioUpdate }) => {
               onUserInteracting={setUserInteracting}
             />
           </div>
-        </div>
-
-        {/* Bottom Section - Positions Panel with Performance Tab */}
-        <div className="bottom-section">
-          <PositionsPanel
-            portfolioData={portfolioData}
-            marketData={marketData}
-            onPositionUpdate={refreshPortfolio}
-          />
         </div>
       </div>
 
@@ -460,7 +462,7 @@ const SandboxTradingInterface = ({ sandboxStatus, onPortfolioUpdate }) => {
         .interface-layout {
           display: flex;
           flex-direction: column;
-          gap: 20px;
+          gap: 16px;
           min-height: calc(100vh - 200px);
         }
         
@@ -515,30 +517,63 @@ const SandboxTradingInterface = ({ sandboxStatus, onPortfolioUpdate }) => {
         .main-section {
           display: grid;
           grid-template-columns: 1fr 350px;
-          gap: 20px;
+          gap: 16px;
           flex: 1;
-          min-height: 500px;
+          min-height: 600px;
+          align-items: start;
+        }
+        
+        .chart-and-positions-container {
+          display: flex;
+          flex-direction: column;
+          gap: 0;
+          height: 100%;
         }
         
         .chart-container {
-          border-radius: 16px;
+          border-radius: 16px 16px 0 0;
           overflow: hidden;
           position: relative;
+          flex-shrink: 0;
         }
         
         .dark .chart-container {
           background: rgba(255, 255, 255, 0.02);
           border: 1px solid rgba(255, 255, 255, 0.1);
+          border-bottom: none;
         }
         
         .light .chart-container {
           background: rgba(0, 0, 0, 0.01);
           border: 1px solid rgba(0, 0, 0, 0.1);
+          border-bottom: none;
+        }
+        
+        .positions-container {
+          border-radius: 0 0 16px 16px;
+          overflow: hidden;
+          flex: 1;
+          min-height: 200px;
+        }
+        
+        .dark .positions-container {
+          background: rgba(255, 255, 255, 0.02);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-top: none;
+        }
+        
+        .light .positions-container {
+          background: rgba(0, 0, 0, 0.01);
+          border: 1px solid rgba(0, 0, 0, 0.1);
+          border-top: none;
         }
         
         .trading-panel-container {
           border-radius: 16px;
           overflow: hidden;
+          height: fit-content;
+          position: sticky;
+          top: 20px;
         }
         
         .dark .trading-panel-container {
@@ -549,10 +584,6 @@ const SandboxTradingInterface = ({ sandboxStatus, onPortfolioUpdate }) => {
         .light .trading-panel-container {
           background: rgba(0, 0, 0, 0.01);
           border: 1px solid rgba(0, 0, 0, 0.1);
-        }
-        
-        .bottom-section {
-          flex-shrink: 0;
         }
         
         @media (max-width: 1200px) {
@@ -569,6 +600,11 @@ const SandboxTradingInterface = ({ sandboxStatus, onPortfolioUpdate }) => {
           
           .trading-panel-container {
             order: -1;
+            position: static;
+          }
+          
+          .chart-and-positions-container {
+            order: 1;
           }
         }
         
@@ -578,11 +614,39 @@ const SandboxTradingInterface = ({ sandboxStatus, onPortfolioUpdate }) => {
           }
           
           .interface-layout {
-            gap: 16px;
+            gap: 12px;
           }
           
           .main-section {
             gap: 12px;
+            min-height: 500px;
+          }
+          
+          .chart-container {
+            border-radius: 16px;
+            border: 1px solid;
+          }
+          
+          .dark .chart-container {
+            border-color: rgba(255, 255, 255, 0.1);
+          }
+          
+          .light .chart-container {
+            border-color: rgba(0, 0, 0, 0.1);
+          }
+          
+          .positions-container {
+            border-radius: 16px;
+            border: 1px solid;
+            margin-top: 12px;
+          }
+          
+          .dark .positions-container {
+            border-color: rgba(255, 255, 255, 0.1);
+          }
+          
+          .light .positions-container {
+            border-color: rgba(0, 0, 0, 0.1);
           }
         }
       `}</style>

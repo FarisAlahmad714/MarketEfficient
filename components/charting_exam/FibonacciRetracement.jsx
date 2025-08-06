@@ -393,7 +393,8 @@ const FibonacciRetracement = ({ chartData, onDrawingsUpdate, part, chartCount, i
   // Draggable panel state
   const [panelOffset, setPanelOffset] = useState({ x: 0, y: 10 });
   const [isDragging, setIsDragging] = useState(false);
-  const [currentCoords, setCurrentCoords] = useState({ x: 0, y: 0 });
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [isMobile, setIsMobile] = useState(false);
   
   // Check for mobile screen size
@@ -638,34 +639,80 @@ const FibonacciRetracement = ({ chartData, onDrawingsUpdate, part, chartCount, i
     }
   }, [validationResults, part]);
   
-  // Dragging logic
+  // Enhanced dragging logic with proper event handling
   const startPanelDragging = (e) => {
-    if (e.target.className.includes('panel-header')) {
-      setIsDragging(true);
-      setCurrentCoords({
-        x: e.clientX - panelOffset.x,
-        y: e.clientY - panelOffset.y
-      });
-    }
+    // Only allow dragging from the panel header
+    if (!e.target.className.includes('panel-header') || isMobile) return;
+    
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Record initial positions
+    const rect = panelRef.current.getBoundingClientRect();
+    setDragStart({
+      x: e.clientX,
+      y: e.clientY
+    });
+    setDragOffset({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top
+    });
+    
+    // Add global event listeners for smooth dragging
+    document.addEventListener('mousemove', handlePanelDrag);
+    document.addEventListener('mouseup', stopPanelDragging);
+    document.addEventListener('keydown', handleDragEscape);
+    
+    // Visual feedback
+    document.body.style.cursor = 'grabbing';
+    document.body.style.userSelect = 'none';
+    
+    setIsDragging(true);
   };
 
-  const dragPanel = (e) => {
-    if (isDragging && containerRef.current && panelRef.current) {
-      e.preventDefault();
-      const x = e.clientX - currentCoords.x;
-      const y = e.clientY - currentCoords.y;
-      const container = containerRef.current;
-      const panel = panelRef.current;
-      const maxX = container.offsetWidth - panel.offsetWidth;
-      const maxY = container.offsetHeight - panel.offsetHeight;
-      const newX = Math.max(0, Math.min(x, maxX));
-      const newY = Math.max(0, Math.min(y, maxY));
-      setPanelOffset({ x: newX, y: newY });
-    }
+  const handlePanelDrag = (e) => {
+    if (!isDragging || !containerRef.current || !panelRef.current) return;
+    
+    e.preventDefault();
+    
+    // Calculate new position
+    const container = containerRef.current;
+    const panel = panelRef.current;
+    const containerRect = container.getBoundingClientRect();
+    
+    let newX = e.clientX - containerRect.left - dragOffset.x;
+    let newY = e.clientY - containerRect.top - dragOffset.y;
+    
+    // Boundary constraints with padding
+    const padding = 10;
+    const maxX = container.offsetWidth - panel.offsetWidth - padding;
+    const maxY = container.offsetHeight - panel.offsetHeight - padding;
+    
+    newX = Math.max(padding, Math.min(newX, maxX));
+    newY = Math.max(padding, Math.min(newY, maxY));
+    
+    setPanelOffset({ x: newX, y: newY });
   };
 
   const stopPanelDragging = () => {
+    if (!isDragging) return;
+    
+    // Remove global event listeners
+    document.removeEventListener('mousemove', handlePanelDrag);
+    document.removeEventListener('mouseup', stopPanelDragging);
+    document.removeEventListener('keydown', handleDragEscape);
+    
+    // Reset visual feedback
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+    
     setIsDragging(false);
+  };
+
+  const handleDragEscape = (e) => {
+    if (e.key === 'Escape') {
+      stopPanelDragging();
+    }
   };
   
   const handlePointClick = (point) => {
@@ -763,7 +810,6 @@ const FibonacciRetracement = ({ chartData, onDrawingsUpdate, part, chartCount, i
     {
       id: 'draw-fibonacci',
       label: drawingMode ? 'Stop Drawing' : 'Draw Fibonacci',
-      icon: 'fa-ruler',
       active: drawingMode
     }
   ];
@@ -772,21 +818,18 @@ const FibonacciRetracement = ({ chartData, onDrawingsUpdate, part, chartCount, i
     {
       id: 'undo',
       label: 'Undo',
-      icon: 'fa-undo',
       onClick: undoLastDrawing,
       disabled: drawings.length === 0 && !startPoint
     },
     {
       id: 'clear-all',
       label: 'Clear All',
-      icon: 'fa-trash-alt',
       onClick: clearAllDrawings,
       disabled: drawings.length === 0 && !startPoint
     },
     {
       id: 'customize-levels',
       label: showSettings ? 'Hide Settings' : 'Customize Levels',
-      icon: 'fa-cog',
       onClick: toggleSettings
     }
   ];
@@ -828,7 +871,7 @@ const FibonacciRetracement = ({ chartData, onDrawingsUpdate, part, chartCount, i
       )}
       
       <div style={{ position: 'relative' }}>
-        <ChartWrapper $isDarkMode={isDarkMode} onMouseMove={dragPanel} onMouseUp={stopPanelDragging} onMouseLeave={stopPanelDragging}>
+        <ChartWrapper $isDarkMode={isDarkMode}>
           <ChartContainer ref={containerRef}>
             {containerRef.current && (
               <Chart 

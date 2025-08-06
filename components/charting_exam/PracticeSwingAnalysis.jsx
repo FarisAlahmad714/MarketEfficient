@@ -181,7 +181,6 @@ const PracticeSwingAnalysis = ({ chartData, onDrawingsUpdate, isDarkMode, valida
     {
       id: 'navigation',
       label: 'Navigate Chart',
-      icon: 'fa-arrows',
       onClick: () => {
         setIsDrawingMode(false);
         setMarkingMode(null);
@@ -192,7 +191,6 @@ const PracticeSwingAnalysis = ({ chartData, onDrawingsUpdate, isDarkMode, valida
     {
       id: 'swing-high',
       label: 'Mark Swing High',
-      icon: 'fa-arrow-up',
       onClick: () => {
         setIsDrawingMode(true);
         setMarkingMode('swing-high');
@@ -203,7 +201,6 @@ const PracticeSwingAnalysis = ({ chartData, onDrawingsUpdate, isDarkMode, valida
     {
       id: 'swing-low',
       label: 'Mark Swing Low',
-      icon: 'fa-arrow-down',
       onClick: () => {
         setIsDrawingMode(true);
         setMarkingMode('swing-low');
@@ -214,7 +211,6 @@ const PracticeSwingAnalysis = ({ chartData, onDrawingsUpdate, isDarkMode, valida
     {
       id: 'clear-all',
       label: 'Clear All',
-      icon: 'fa-trash',
       onClick: () => setDrawings([]),
       disabled: drawings.length === 0
     }
